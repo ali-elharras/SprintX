@@ -1,0 +1,28 @@
+{
+  "name": "university-event-management",
+  "version": "1.0.0",
+  "description": "University Event Management System - MERN Stack",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm start",
+    "install-backend": "cd backend && npm install",
+    "install-frontend": "cd frontend && npm install",
+    "install-all": "npm install && npm run install-backend && npm run install-frontend",
+    "build": "cd frontend && npm run build"
+  },
+  "keywords": [
+    "mern",
+    "university",
+    "event-management",
+    "react",
+    "nodejs",
+    "mongodb"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}

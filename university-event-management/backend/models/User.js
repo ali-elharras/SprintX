@@ -1,0 +1,209 @@
+const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
+
+const userSchema = new mongoose.Schema(
+  {
+    // Basic Information
+    firstName: {
+      type: String,
+      required: [true, "First name is required"],
+      trim: true,
+      maxlength: [50, "First name cannot exceed 50 characters"],
+    },
+    lastName: {
+      type: String,
+      required: [true, "Last name is required"],
+      trim: true,
+      maxlength: [50, "Last name cannot exceed 50 characters"],
+    },
+    email: {
+      type: String,
+      required: [true, "Email is required"],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [
+        /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+        "Please provide a valid email address",
+      ],
+    },
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+      minlength: [8, "Password must be at least 8 characters long"],
+      select: false, // Don't include password in queries by default
+    },
+
+    // Role and University Information
+    role: {
+      type: String,
+      required: [true, "Role is required"],
+      enum: {
+        values: [
+          "student",
+          "staff",
+          "ta",
+          "professor",
+          "admin",
+          "events_office",
+        ],
+        message:
+          "Role must be one of: student, staff, ta, professor, admin, events_office",
+      },
+    },
+    universityId: {
+      type: String,
+      required: [true, "University ID is required"],
+      unique: true,
+      trim: true,
+      match: [
+        /^[A-Za-z0-9]+$/,
+        "University ID can only contain letters and numbers",
+      ],
+    },
+    department: {
+      type: String,
+      required: function () {
+        return ["student", "staff", "ta", "professor"].includes(this.role);
+      },
+      trim: true,
+      maxlength: [100, "Department name cannot exceed 100 characters"],
+    },
+    yearOfStudy: {
+      type: Number,
+      required: function () {
+        return this.role === "student";
+      },
+      min: [1, "Year of study must be at least 1"],
+      max: [10, "Year of study cannot exceed 10"],
+    },
+
+    // Contact Information
+    phoneNumber: {
+      type: String,
+      trim: true,
+      match: [
+        /^[\+]?[\d\s\-\(\)]{10,}$/,
+        "Please provide a valid phone number",
+      ],
+    },
+
+    // Profile Information
+    profilePicture: {
+      type: String, // URL to profile picture
+      default: null,
+    },
+    bio: {
+      type: String,
+      maxlength: [500, "Bio cannot exceed 500 characters"],
+      trim: true,
+    },
+
+    // Account Status
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    verificationToken: {
+      type: String,
+      select: false,
+    },
+    verificationTokenExpires: {
+      type: Date,
+      select: false,
+    },
+
+    // Password Reset
+    passwordResetToken: {
+      type: String,
+      select: false,
+    },
+    passwordResetTokenExpires: {
+      type: Date,
+      select: false,
+    },
+
+    // Preferences
+    emailNotifications: {
+      type: Boolean,
+      default: true,
+    },
+    smsNotifications: {
+      type: Boolean,
+      default: false,
+    },
+
+    // Login Tracking
+    lastLogin: {
+      type: Date,
+      default: null,
+    },
+    loginCount: {
+      type: Number,
+      default: 0,
+    },
+  },
+  {
+    timestamps: true, // Adds createdAt and updatedAt
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
+);
+
+// Virtual for full name
+userSchema.virtual("fullName").get(function () {
+  return `${this.firstName} ${this.lastName}`;
+});
+
+// Index for better query performance
+userSchema.index({ email: 1 });
+userSchema.index({ universityId: 1 });
+userSchema.index({ role: 1 });
+userSchema.index({ department: 1 });
+
+// Pre-save middleware to hash password
+userSchema.pre("save", async function (next) {
+  // Only hash password if it's been modified
+  if (!this.isModified("password")) return next();
+
+  try {
+    // Hash password with cost of 12
+    const salt = await bcrypt.genSalt(12);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Method to compare passwords
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  try {
+    return await bcrypt.compare(candidatePassword, this.password);
+  } catch (error) {
+    throw new Error("Password comparison failed");
+  }
+};
+
+// Method to update last login
+userSchema.methods.updateLastLogin = function () {
+  this.lastLogin = new Date();
+  this.loginCount += 1;
+  return this.save();
+};
+
+// Static method to find by email
+userSchema.statics.findByEmail = function (email) {
+  return this.findOne({ email: email.toLowerCase() });
+};
+
+// Static method to find by university ID
+userSchema.statics.findByUniversityId = function (universityId) {
+  return this.findOne({ universityId });
+};
+
+module.exports = mongoose.model("User", userSchema);
