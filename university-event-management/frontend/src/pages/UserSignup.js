@@ -139,7 +139,7 @@ const UserSignup = () => {
       confirmPassword: "",
       universityId: "",
       department: "",
-      yearOfStudy: "",
+      yearOfStudy: null,
       phoneNumber: "",
     },
   });
@@ -172,9 +172,12 @@ const UserSignup = () => {
       // Add role to submit data
       submitData.role = role;
 
-      // Convert yearOfStudy to number if it exists
-      if (submitData.yearOfStudy) {
+      // Convert yearOfStudy to number if it exists and is not empty
+      if (submitData.yearOfStudy && submitData.yearOfStudy !== "") {
         submitData.yearOfStudy = parseInt(submitData.yearOfStudy);
+      } else {
+        // Remove yearOfStudy from submitData if it's empty or null
+        delete submitData.yearOfStudy;
       }
 
       const result = await registerUser(submitData);
