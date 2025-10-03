@@ -25,8 +25,9 @@ const getRoleFromEmail = (email) => {
   if (!email || typeof email !== "string") return null;
 
   try {
+    // Only allow student, staff, ta, professor roles with guc.edu.eg domain
     const emailPattern =
-      /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor)\.[a-zA-Z0-9.-]+$/;
+      /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor)\.guc\.edu\.eg$/;
     const match = email.match(emailPattern);
     return match ? emailDomainRoleMap[match[1]] : null;
   } catch (error) {
@@ -53,11 +54,11 @@ const userSchema = yup.object({
     .email("Please enter a valid email address")
     .test(
       "university-domain",
-      "Email must use a valid university domain (@student, @staff, @ta, or @professor)",
+      "Email must use GUC domain (@student.guc.edu.eg, @staff.guc.edu.eg, @ta.guc.edu.eg, or @professor.guc.edu.eg)",
       function (value) {
         if (!value) return false;
         const pattern =
-          /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor)\.[a-zA-Z0-9.-]+$/;
+          /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor)\.guc\.edu\.eg$/;
         return pattern.test(value);
       }
     ),
@@ -82,8 +83,8 @@ const userSchema = yup.object({
     ),
   department: yup
     .string()
-    .required("Department is required")
-    .max(100, "Department name must be less than 100 characters"),
+    .max(100, "Department name must be less than 100 characters")
+    .nullable(),
   yearOfStudy: yup
     .mixed()
     .nullable()
@@ -97,16 +98,15 @@ const userSchema = yup.object({
         }
       },
       then: (schema) =>
-        schema
-          .required("Year of study is required for students")
-          .test(
-            "valid-year",
-            "Please select a valid year of study",
-            (value) => {
-              const num = parseInt(value);
-              return !isNaN(num) && num >= 1 && num <= 10;
-            }
-          ),
+        schema.test(
+          "valid-year",
+          "Please select a valid year of study",
+          (value) => {
+            if (!value) return true; // Optional for students too
+            const num = parseInt(value);
+            return !isNaN(num) && num >= 1 && num <= 10;
+          }
+        ),
       otherwise: (schema) => schema.nullable(),
     }),
   phoneNumber: yup
@@ -163,7 +163,7 @@ const UserSignup = () => {
       const role = getRoleFromEmail(submitData.email);
       if (!role) {
         toast.error(
-          "Invalid email domain. Please use @student, @staff, @ta, or @professor domain."
+          "Invalid email domain. Please use GUC email with @student.guc.edu.eg, @staff.guc.edu.eg, @ta.guc.edu.eg, or @professor.guc.edu.eg domain."
         );
         setIsSubmitting(false);
         return;
@@ -287,7 +287,7 @@ const UserSignup = () => {
           <Input
             label="University Email Address"
             type="email"
-            placeholder="e.g., john@student.university.edu or jane@staff.university.edu"
+            placeholder="e.g., john@student.guc.edu.eg or jane@staff.guc.edu.eg"
             required
             error={errors.email?.message}
             {...register("email")}
@@ -326,10 +326,9 @@ const UserSignup = () => {
           {/* Department and Phone Number */}
           <div style={rowStyles}>
             <Input
-              label="Department"
+              label="Department (Optional)"
               type="text"
               placeholder="Enter your department"
-              required
               error={errors.department?.message}
               {...register("department")}
             />
@@ -345,10 +344,9 @@ const UserSignup = () => {
           {/* Year of Study (for students only) */}
           {detectedRole === "student" && (
             <Select
-              label="Year of Study"
+              label="Year of Study (Optional)"
               placeholder="Select your year"
               options={yearOptions}
-              required
               error={errors.yearOfStudy?.message}
               {...register("yearOfStudy")}
             />

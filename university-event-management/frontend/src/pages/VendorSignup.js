@@ -20,12 +20,12 @@ const vendorSchema = yup.object({
     .max(100, "Company name must be less than 100 characters"),
   contactPersonFirstName: yup
     .string()
-    .required("Contact person first name is required")
-    .max(50, "First name must be less than 50 characters"),
+    .max(50, "First name must be less than 50 characters")
+    .nullable(),
   contactPersonLastName: yup
     .string()
-    .required("Contact person last name is required")
-    .max(50, "Last name must be less than 50 characters"),
+    .max(50, "Last name must be less than 50 characters")
+    .nullable(),
   email: yup
     .string()
     .required("Email is required")
@@ -42,53 +42,45 @@ const vendorSchema = yup.object({
     .string()
     .required("Please confirm your password")
     .oneOf([yup.ref("password")], "Passwords must match"),
-  businessRegistrationNumber: yup
-    .string()
-    .required("Business registration number is required"),
+  businessRegistrationNumber: yup.string().nullable(),
   industry: yup
     .string()
-    .required("Industry is required")
-    .max(100, "Industry must be less than 100 characters"),
+    .max(100, "Industry must be less than 100 characters")
+    .nullable(),
   companySize: yup
     .string()
-    .required("Company size is required")
     .oneOf(
       ["startup", "small", "medium", "large", "enterprise"],
       "Please select a valid company size"
-    ),
+    )
+    .nullable(),
   phoneNumber: yup
     .string()
-    .required("Phone number is required")
-    .matches(/^[\+]?[\d\s\-\(\)]{10,}$/, "Please enter a valid phone number"),
+    .matches(/^[\+]?[\d\s\-\(\)]{10,}$/, "Please enter a valid phone number")
+    .nullable(),
   website: yup.string().url("Please enter a valid website URL").nullable(),
   street: yup
     .string()
-    .required("Street address is required")
-    .max(200, "Street address must be less than 200 characters"),
-  city: yup
-    .string()
-    .required("City is required")
-    .max(50, "City must be less than 50 characters"),
+    .max(200, "Street address must be less than 200 characters")
+    .nullable(),
+  city: yup.string().max(50, "City must be less than 50 characters").nullable(),
   state: yup
     .string()
-    .required("State is required")
-    .max(50, "State must be less than 50 characters"),
+    .max(50, "State must be less than 50 characters")
+    .nullable(),
   zipCode: yup
     .string()
-    .required("Zip code is required")
-    .matches(/^[\d\-\s]{5,10}$/, "Please enter a valid zip code"),
+    .matches(/^[\d\-\s]{5,10}$/, "Please enter a valid zip code")
+    .nullable(),
   country: yup
     .string()
-    .required("Country is required")
-    .max(50, "Country must be less than 50 characters"),
+    .max(50, "Country must be less than 50 characters")
+    .nullable(),
   description: yup
     .string()
-    .required("Company description is required")
-    .max(1000, "Description must be less than 1000 characters"),
-  interestedEventTypes: yup
-    .array()
-    .min(1, "Please select at least one event type")
-    .required("Please select interested event types"),
+    .max(1000, "Description must be less than 1000 characters")
+    .nullable(),
+  interestedEventTypes: yup.array().nullable(),
 });
 
 const VendorSignup = () => {
@@ -314,18 +306,16 @@ const VendorSignup = () => {
 
               <div style={rowStyles}>
                 <Input
-                  label="Business Registration Number"
+                  label="Business Registration Number (Optional)"
                   type="text"
                   placeholder="Enter registration number"
-                  required
                   error={errors.businessRegistrationNumber?.message}
                   {...register("businessRegistrationNumber")}
                 />
                 <Select
-                  label="Company Size"
+                  label="Company Size (Optional)"
                   placeholder="Select company size"
                   options={companySizeOptions}
-                  required
                   error={errors.companySize?.message}
                   {...register("companySize")}
                 />
@@ -333,10 +323,9 @@ const VendorSignup = () => {
 
               <div style={rowStyles}>
                 <Input
-                  label="Industry"
+                  label="Industry (Optional)"
                   type="text"
                   placeholder="e.g., Technology, Food & Beverage"
-                  required
                   error={errors.industry?.message}
                   {...register("industry")}
                 />
@@ -362,8 +351,7 @@ const VendorSignup = () => {
                   Company Description *
                 </label>
                 <textarea
-                  placeholder="Describe your company and what you offer..."
-                  required
+                  placeholder="Describe your company and what you offer... (Optional)"
                   style={{
                     ...theme.components.input.base,
                     width: "100%",
@@ -397,18 +385,16 @@ const VendorSignup = () => {
             <div style={formStyles}>
               <div style={rowStyles}>
                 <Input
-                  label="Contact Person First Name"
+                  label="Contact Person First Name (Optional)"
                   type="text"
                   placeholder="Enter first name"
-                  required
                   error={errors.contactPersonFirstName?.message}
                   {...register("contactPersonFirstName")}
                 />
                 <Input
-                  label="Contact Person Last Name"
+                  label="Contact Person Last Name (Optional)"
                   type="text"
                   placeholder="Enter last name"
-                  required
                   error={errors.contactPersonLastName?.message}
                   {...register("contactPersonLastName")}
                 />
@@ -424,10 +410,9 @@ const VendorSignup = () => {
                   {...register("email")}
                 />
                 <Input
-                  label="Phone Number"
+                  label="Phone Number (Optional)"
                   type="tel"
                   placeholder="Enter phone number"
-                  required
                   error={errors.phoneNumber?.message}
                   {...register("phoneNumber")}
                 />
@@ -459,28 +444,25 @@ const VendorSignup = () => {
             <h2 style={sectionTitleStyles}>Business Address</h2>
             <div style={formStyles}>
               <Input
-                label="Street Address"
+                label="Street Address (Optional)"
                 type="text"
                 placeholder="Enter street address"
-                required
                 error={errors.street?.message}
                 {...register("street")}
               />
 
               <div style={rowStyles}>
                 <Input
-                  label="City"
+                  label="City (Optional)"
                   type="text"
                   placeholder="Enter city"
-                  required
                   error={errors.city?.message}
                   {...register("city")}
                 />
                 <Input
-                  label="State/Province"
+                  label="State/Province (Optional)"
                   type="text"
                   placeholder="Enter state or province"
-                  required
                   error={errors.state?.message}
                   {...register("state")}
                 />
@@ -488,18 +470,16 @@ const VendorSignup = () => {
 
               <div style={rowStyles}>
                 <Input
-                  label="Zip/Postal Code"
+                  label="Zip/Postal Code (Optional)"
                   type="text"
                   placeholder="Enter zip code"
-                  required
                   error={errors.zipCode?.message}
                   {...register("zipCode")}
                 />
                 <Input
-                  label="Country"
+                  label="Country (Optional)"
                   type="text"
                   placeholder="Enter country"
-                  required
                   error={errors.country?.message}
                   {...register("country")}
                 />
@@ -509,7 +489,7 @@ const VendorSignup = () => {
 
           {/* Event Interests */}
           <div style={sectionStyles}>
-            <h2 style={sectionTitleStyles}>Event Interests</h2>
+            <h2 style={sectionTitleStyles}>Event Interests (Optional)</h2>
             <p
               style={{
                 color: theme.colors.text.secondary,
@@ -517,7 +497,8 @@ const VendorSignup = () => {
                 fontSize: theme.typography.fontSize.sm,
               }}
             >
-              Select the types of events you're interested in participating in:
+              Select the types of events you're interested in participating in
+              (optional):
             </p>
 
             <div style={checkboxGroupStyles}>
