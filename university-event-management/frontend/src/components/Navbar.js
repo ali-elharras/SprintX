@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import { useAuth } from "../context/AuthContext";
@@ -8,6 +8,7 @@ import Button from "../components/Button";
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     logout,
     getCurrentAccount,
@@ -166,6 +167,74 @@ const Navbar = () => {
     <nav style={navbarStyles}>
       {/* Logo */}
       <div style={logoStyles}>🎓 Campus Events Hub</div>
+
+      {/* Navigation Links */}
+      <div style={{ display: "flex", gap: theme.spacing[6] }}>
+        <button
+          onClick={() => navigate("/events")}
+          style={{
+            background: "none",
+            border: "none",
+            fontSize: theme.typography.fontSize.base,
+            fontWeight: theme.typography.fontWeight.medium,
+            color: location.pathname === "/events" 
+              ? theme.colors.primary.main 
+              : theme.colors.text.secondary,
+            cursor: "pointer",
+            padding: theme.spacing[2],
+            textDecoration: "none",
+            borderBottom: location.pathname === "/events" 
+              ? `2px solid ${theme.colors.primary.main}` 
+              : "2px solid transparent",
+            transition: "all 0.2s ease",
+            fontFamily: theme.typography.fontFamily.primary,
+          }}
+          onMouseEnter={(e) => {
+            if (location.pathname !== "/events") {
+              e.target.style.color = theme.colors.primary.main;
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (location.pathname !== "/events") {
+              e.target.style.color = theme.colors.text.secondary;
+            }
+          }}
+        >
+          Events
+        </button>
+        <button
+          onClick={() => navigate("/dashboard")}
+          style={{
+            background: "none",
+            border: "none",
+            fontSize: theme.typography.fontSize.base,
+            fontWeight: theme.typography.fontWeight.medium,
+            color: location.pathname === "/dashboard" 
+              ? theme.colors.primary.main 
+              : theme.colors.text.secondary,
+            cursor: "pointer",
+            padding: theme.spacing[2],
+            textDecoration: "none",
+            borderBottom: location.pathname === "/dashboard" 
+              ? `2px solid ${theme.colors.primary.main}` 
+              : "2px solid transparent",
+            transition: "all 0.2s ease",
+            fontFamily: theme.typography.fontFamily.primary,
+          }}
+          onMouseEnter={(e) => {
+            if (location.pathname !== "/dashboard") {
+              e.target.style.color = theme.colors.primary.main;
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (location.pathname !== "/dashboard") {
+              e.target.style.color = theme.colors.text.secondary;
+            }
+          }}
+        >
+          Dashboard
+        </button>
+      </div>
 
       {/* Account Section */}
       <div style={accountSectionStyles}>

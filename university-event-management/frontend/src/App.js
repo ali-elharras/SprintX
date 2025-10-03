@@ -15,6 +15,8 @@ import Login from "./pages/Login";
 import UserSignup from "./pages/UserSignup";
 import VendorSignup from "./pages/VendorSignup";
 import Dashboard from "./pages/Dashboard";
+import EventsPage from "./pages/EventsPage";
+import TestRegistrationPage from "./pages/TestRegistrationPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -105,9 +107,18 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/events"
+        element={
+          <ProtectedRoute>
+            <EventsPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Default Routes */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<TestRegistrationPage />} />
+      <Route path="/test" element={<TestRegistrationPage />} />
       <Route path="/signup" element={<Navigate to="/signup/user" replace />} />
 
       {/* 404 Route */}
@@ -146,14 +157,14 @@ const AppRoutes = () => {
               The page you're looking for doesn't exist.
             </p>
             <a
-              href="/dashboard"
+              href="/events"
               style={{
                 ...theme.components.button.primary,
                 textDecoration: "none",
                 display: "inline-block",
               }}
             >
-              Go to Dashboard
+              Browse Events
             </a>
           </div>
         }

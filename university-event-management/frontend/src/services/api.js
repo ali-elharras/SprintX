@@ -51,3 +51,59 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+// ============================================
+// EVENT API ENDPOINTS
+// ============================================
+
+export const eventAPI = {
+  // Get all events
+  getEvents: (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return api.get(`/events${queryParams ? `?${queryParams}` : ""}`);
+  },
+
+  // Get single event by ID
+  getEvent: (id) => api.get(`/events/${id}`),
+
+  // Get events by type
+  getEventsByType: (type) => api.get(`/events/type/${type}`),
+
+  // Create new event (Admin/Events Office only)
+  createEvent: (eventData) => api.post("/events", eventData),
+
+  // Update event (Admin/Events Office only)
+  updateEvent: (id, eventData) => api.put(`/events/${id}`, eventData),
+
+  // Delete event (Admin/Events Office only)
+  deleteEvent: (id) => api.delete(`/events/${id}`),
+};
+
+// ============================================
+// REGISTRATION API ENDPOINTS
+// ============================================
+
+export const registrationAPI = {
+  // Register for an event
+  registerForEvent: (registrationData) => 
+    api.post("/registrations", registrationData),
+
+  // Get current user's registrations
+  getMyRegistrations: () => api.get("/registrations/my"),
+
+  // Get registrations for a specific event (Admin/Events Office only)
+  getEventRegistrations: (eventId) => 
+    api.get(`/registrations/event/${eventId}`),
+
+  // Cancel a registration
+  cancelRegistration: (registrationId) => 
+    api.delete(`/registrations/${registrationId}`),
+
+  // Update registration status (Admin/Events Office only)
+  updateRegistrationStatus: (registrationId, status) =>
+    api.put(`/registrations/${registrationId}/status`, { status }),
+
+  // Check-in participant (Admin/Events Office only)
+  checkInParticipant: (registrationId) =>
+    api.post(`/registrations/${registrationId}/checkin`),
+};
