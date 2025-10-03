@@ -16,7 +16,6 @@ import UserSignup from "./pages/UserSignup";
 import VendorSignup from "./pages/VendorSignup";
 import Dashboard from "./pages/Dashboard";
 import EventsPage from "./pages/EventsPage";
-import TestRegistrationPage from "./pages/TestRegistrationPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -117,8 +116,7 @@ const AppRoutes = () => {
       />
 
       {/* Default Routes */}
-      <Route path="/" element={<TestRegistrationPage />} />
-      <Route path="/test" element={<TestRegistrationPage />} />
+      <Route path="/" element={<Navigate to="/events" replace />} />
       <Route path="/signup" element={<Navigate to="/signup/user" replace />} />
 
       {/* 404 Route */}
