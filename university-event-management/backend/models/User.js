@@ -63,17 +63,13 @@ const userSchema = new mongoose.Schema(
     },
     department: {
       type: String,
-      required: function () {
-        return ["student", "staff", "ta", "professor"].includes(this.role);
-      },
+      required: false, // Made optional per requirements
       trim: true,
       maxlength: [100, "Department name cannot exceed 100 characters"],
     },
     yearOfStudy: {
       type: Number,
-      required: function () {
-        return this.role === "student";
-      },
+      required: false, // Made optional per requirements
       min: [1, "Year of study must be at least 1"],
       max: [10, "Year of study cannot exceed 10"],
     },

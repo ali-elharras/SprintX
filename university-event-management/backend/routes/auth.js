@@ -24,9 +24,9 @@ const userRegistrationValidation = [
   body("email")
     .isEmail()
     .normalizeEmail()
-    .matches(/^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor)\.[a-zA-Z0-9.-]+$/)
+    .matches(/^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor)\.guc\.edu\.eg$/)
     .withMessage(
-      "Email must use a valid university domain (@student, @staff, @ta, or @professor)"
+      "Email must use GUC domain (@student.guc.edu.eg, @staff.guc.edu.eg, @ta.guc.edu.eg, or @professor.guc.edu.eg)"
     ),
   body("password")
     .isLength({ min: 8 })
@@ -46,18 +46,14 @@ const userRegistrationValidation = [
       "University ID is required and can only contain letters and numbers"
     ),
   body("department")
-    .if(body("role").isIn(["student", "staff", "ta", "professor"]))
+    .optional()
     .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage(
-      "Department is required for students, staff, TAs, and professors"
-    ),
+    .isLength({ max: 100 })
+    .withMessage("Department must be less than 100 characters"),
   body("yearOfStudy")
-    .if(body("role").equals("student"))
+    .optional()
     .isInt({ min: 1, max: 10 })
-    .withMessage(
-      "Year of study is required for students and must be between 1 and 10"
-    ),
+    .withMessage("Year of study must be between 1 and 10"),
   body("phoneNumber")
     .optional()
     .matches(/^[\+]?[\d\s\-\(\)]{10,}$/)
@@ -73,24 +69,22 @@ const vendorRegistrationValidation = [
       "Company name is required and must be less than 100 characters"
     ),
   body("contactPersonFirstName")
+    .optional()
     .trim()
-    .isLength({ min: 1, max: 50 })
-    .withMessage(
-      "Contact person first name is required and must be less than 50 characters"
-    ),
+    .isLength({ max: 50 })
+    .withMessage("Contact person first name must be less than 50 characters"),
   body("contactPersonLastName")
+    .optional()
     .trim()
-    .isLength({ min: 1, max: 50 })
-    .withMessage(
-      "Contact person last name is required and must be less than 50 characters"
-    ),
+    .isLength({ max: 50 })
+    .withMessage("Contact person last name must be less than 50 characters"),
   body("email")
     .isEmail()
     .normalizeEmail()
     .custom((email) => {
       // Vendor emails should NOT have university domains
       const universityPattern =
-        /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor)\.[a-zA-Z0-9.-]+$/;
+        /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor)\.guc\.edu\.eg$/;
       if (universityPattern.test(email)) {
         throw new Error(
           "Vendor registration requires a company email address, not a university domain"
@@ -106,20 +100,20 @@ const vendorRegistrationValidation = [
     .withMessage(
       "Password must contain at least one uppercase letter, one lowercase letter, and one number"
     ),
-  body("businessRegistrationNumber")
-    .trim()
-    .isLength({ min: 1 })
-    .withMessage("Business registration number is required"),
+  body("businessRegistrationNumber").optional().trim(),
   body("industry")
+    .optional()
     .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage("Industry is required and must be less than 100 characters"),
+    .isLength({ max: 100 })
+    .withMessage("Industry must be less than 100 characters"),
   body("companySize")
+    .optional()
     .isIn(["startup", "small", "medium", "large", "enterprise"])
     .withMessage(
       "Company size must be one of: startup, small, medium, large, enterprise"
     ),
   body("phoneNumber")
+    .optional()
     .matches(/^[\+]?[\d\s\-\(\)]{10,}$/)
     .withMessage("Please provide a valid phone number"),
   body("website")
@@ -127,37 +121,40 @@ const vendorRegistrationValidation = [
     .isURL()
     .withMessage("Please provide a valid website URL"),
   body("address.street")
+    .optional()
     .trim()
-    .isLength({ min: 1, max: 200 })
-    .withMessage(
-      "Street address is required and must be less than 200 characters"
-    ),
+    .isLength({ max: 200 })
+    .withMessage("Street address must be less than 200 characters"),
   body("address.city")
+    .optional()
     .trim()
-    .isLength({ min: 1, max: 50 })
-    .withMessage("City is required and must be less than 50 characters"),
+    .isLength({ max: 50 })
+    .withMessage("City must be less than 50 characters"),
   body("address.state")
+    .optional()
     .trim()
-    .isLength({ min: 1, max: 50 })
-    .withMessage("State is required and must be less than 50 characters"),
+    .isLength({ max: 50 })
+    .withMessage("State must be less than 50 characters"),
   body("address.zipCode")
+    .optional()
     .trim()
     .matches(/^[\d\-\s]{5,10}$/)
     .withMessage("Please provide a valid zip code"),
   body("address.country")
+    .optional()
     .trim()
-    .isLength({ min: 1, max: 50 })
-    .withMessage("Country is required and must be less than 50 characters"),
+    .isLength({ max: 50 })
+    .withMessage("Country must be less than 50 characters"),
   body("description")
+    .optional()
     .trim()
-    .isLength({ min: 1, max: 1000 })
-    .withMessage(
-      "Company description is required and must be less than 1000 characters"
-    ),
+    .isLength({ max: 1000 })
+    .withMessage("Company description must be less than 1000 characters"),
   body("interestedEventTypes")
-    .isArray({ min: 1 })
-    .withMessage("At least one interested event type is required")
+    .optional()
+    .isArray()
     .custom((value) => {
+      if (!value || value.length === 0) return true;
       const validTypes = ["bazaar", "career_fair", "conference", "workshop"];
       return value.every((type) => validTypes.includes(type));
     })
