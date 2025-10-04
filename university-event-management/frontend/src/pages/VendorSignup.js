@@ -20,12 +20,12 @@ const vendorSchema = yup.object({
     .max(100, "Company name must be less than 100 characters"),
   contactPersonFirstName: yup
     .string()
-    .required("Contact person first name is required")
-    .max(50, "First name must be less than 50 characters"),
+    .max(50, "First name must be less than 50 characters")
+    .nullable(),
   contactPersonLastName: yup
     .string()
-    .required("Contact person last name is required")
-    .max(50, "Last name must be less than 50 characters"),
+    .max(50, "Last name must be less than 50 characters")
+    .nullable(),
   email: yup
     .string()
     .required("Email is required")
@@ -42,53 +42,67 @@ const vendorSchema = yup.object({
     .string()
     .required("Please confirm your password")
     .oneOf([yup.ref("password")], "Passwords must match"),
-  businessRegistrationNumber: yup
-    .string()
-    .required("Business registration number is required"),
+  businessRegistrationNumber: yup.string().nullable(),
   industry: yup
     .string()
-    .required("Industry is required")
-    .max(100, "Industry must be less than 100 characters"),
+    .max(100, "Industry must be less than 100 characters")
+    .nullable(),
   companySize: yup
     .string()
-    .required("Company size is required")
-    .oneOf(
-      ["startup", "small", "medium", "large", "enterprise"],
-      "Please select a valid company size"
+    .nullable()
+    .test(
+      "company-size-format",
+      "Please select a valid company size",
+      function (value) {
+        // If empty or null, it's valid (optional field)
+        if (!value || value.trim() === "") return true;
+        // If has value, validate it's one of the allowed options
+        return ["startup", "small", "medium", "large", "enterprise"].includes(
+          value
+        );
+      }
     ),
   phoneNumber: yup
     .string()
-    .required("Phone number is required")
-    .matches(/^[\+]?[\d\s\-\(\)]{10,}$/, "Please enter a valid phone number"),
+    .nullable()
+    .test(
+      "phone-format",
+      "Please enter a valid phone number",
+      function (value) {
+        // If empty or null, it's valid (optional field)
+        if (!value || value.trim() === "") return true;
+        // If has value, validate format
+        return /^[+]?[\d\s-()]{10,}$/.test(value);
+      }
+    ),
   website: yup.string().url("Please enter a valid website URL").nullable(),
   street: yup
     .string()
-    .required("Street address is required")
-    .max(200, "Street address must be less than 200 characters"),
-  city: yup
-    .string()
-    .required("City is required")
-    .max(50, "City must be less than 50 characters"),
+    .max(200, "Street address must be less than 200 characters")
+    .nullable(),
+  city: yup.string().max(50, "City must be less than 50 characters").nullable(),
   state: yup
     .string()
-    .required("State is required")
-    .max(50, "State must be less than 50 characters"),
+    .max(50, "State must be less than 50 characters")
+    .nullable(),
   zipCode: yup
     .string()
-    .required("Zip code is required")
-    .matches(/^[\d\-\s]{5,10}$/, "Please enter a valid zip code"),
+    .nullable()
+    .test("zip-format", "Please enter a valid zip code", function (value) {
+      // If empty or null, it's valid (optional field)
+      if (!value || value.trim() === "") return true;
+      // If has value, validate format
+      return /^[\d\-\s]{5,10}$/.test(value);
+    }),
   country: yup
     .string()
-    .required("Country is required")
-    .max(50, "Country must be less than 50 characters"),
+    .max(50, "Country must be less than 50 characters")
+    .nullable(),
   description: yup
     .string()
-    .required("Company description is required")
-    .max(1000, "Description must be less than 1000 characters"),
-  interestedEventTypes: yup
-    .array()
-    .min(1, "Please select at least one event type")
-    .required("Please select interested event types"),
+    .max(1000, "Description must be less than 1000 characters")
+    .nullable(),
+  interestedEventTypes: yup.array().nullable(),
 });
 
 const VendorSignup = () => {
@@ -99,7 +113,6 @@ const VendorSignup = () => {
   const {
     register,
     handleSubmit,
-    watch,
     setValue,
     formState: { errors },
   } = useForm({
@@ -170,15 +183,18 @@ const VendorSignup = () => {
       // Structure the data properly
       const submitData = {
         ...otherData,
-        address: {
-          street,
-          city,
-          state,
-          zipCode,
-          country,
-        },
         interestedEventTypes: selectedEventTypes,
       };
+
+      // Only include address if at least one field has a value
+      const addressFields = { street, city, state, zipCode, country };
+      const hasAddressData = Object.values(addressFields).some(
+        (value) => value && value.trim() !== ""
+      );
+
+      if (hasAddressData) {
+        submitData.address = addressFields;
+      }
 
       const result = await registerVendor(submitData);
 
@@ -317,7 +333,6 @@ const VendorSignup = () => {
                   label="Business Registration Number"
                   type="text"
                   placeholder="Enter registration number"
-                  required
                   error={errors.businessRegistrationNumber?.message}
                   {...register("businessRegistrationNumber")}
                 />
@@ -325,7 +340,6 @@ const VendorSignup = () => {
                   label="Company Size"
                   placeholder="Select company size"
                   options={companySizeOptions}
-                  required
                   error={errors.companySize?.message}
                   {...register("companySize")}
                 />
@@ -336,12 +350,11 @@ const VendorSignup = () => {
                   label="Industry"
                   type="text"
                   placeholder="e.g., Technology, Food & Beverage"
-                  required
                   error={errors.industry?.message}
                   {...register("industry")}
                 />
                 <Input
-                  label="Website (Optional)"
+                  label="Website"
                   type="url"
                   placeholder="https://www.yourcompany.com"
                   error={errors.website?.message}
@@ -359,11 +372,10 @@ const VendorSignup = () => {
                     color: theme.colors.text.primary,
                   }}
                 >
-                  Company Description *
+                  Company Description
                 </label>
                 <textarea
                   placeholder="Describe your company and what you offer..."
-                  required
                   style={{
                     ...theme.components.input.base,
                     width: "100%",
@@ -400,7 +412,6 @@ const VendorSignup = () => {
                   label="Contact Person First Name"
                   type="text"
                   placeholder="Enter first name"
-                  required
                   error={errors.contactPersonFirstName?.message}
                   {...register("contactPersonFirstName")}
                 />
@@ -408,7 +419,6 @@ const VendorSignup = () => {
                   label="Contact Person Last Name"
                   type="text"
                   placeholder="Enter last name"
-                  required
                   error={errors.contactPersonLastName?.message}
                   {...register("contactPersonLastName")}
                 />
@@ -427,7 +437,6 @@ const VendorSignup = () => {
                   label="Phone Number"
                   type="tel"
                   placeholder="Enter phone number"
-                  required
                   error={errors.phoneNumber?.message}
                   {...register("phoneNumber")}
                 />
@@ -462,7 +471,6 @@ const VendorSignup = () => {
                 label="Street Address"
                 type="text"
                 placeholder="Enter street address"
-                required
                 error={errors.street?.message}
                 {...register("street")}
               />
@@ -472,7 +480,6 @@ const VendorSignup = () => {
                   label="City"
                   type="text"
                   placeholder="Enter city"
-                  required
                   error={errors.city?.message}
                   {...register("city")}
                 />
@@ -480,7 +487,6 @@ const VendorSignup = () => {
                   label="State/Province"
                   type="text"
                   placeholder="Enter state or province"
-                  required
                   error={errors.state?.message}
                   {...register("state")}
                 />
@@ -491,7 +497,6 @@ const VendorSignup = () => {
                   label="Zip/Postal Code"
                   type="text"
                   placeholder="Enter zip code"
-                  required
                   error={errors.zipCode?.message}
                   {...register("zipCode")}
                 />
@@ -499,7 +504,6 @@ const VendorSignup = () => {
                   label="Country"
                   type="text"
                   placeholder="Enter country"
-                  required
                   error={errors.country?.message}
                   {...register("country")}
                 />
@@ -517,7 +521,7 @@ const VendorSignup = () => {
                 fontSize: theme.typography.fontSize.sm,
               }}
             >
-              Select the types of events you're interested in participating in:
+              Select the types of events you're interested in participating in :
             </p>
 
             <div style={checkboxGroupStyles}>

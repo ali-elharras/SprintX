@@ -144,9 +144,13 @@ const registerUser = async (req, res, next) => {
 // @access  Public
 const registerVendor = async (req, res, next) => {
   try {
+    console.log("=== VENDOR REGISTRATION DEBUG ===");
+    console.log("Request body:", JSON.stringify(req.body, null, 2));
+
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log("Validation errors:", errors.array());
       return res.status(400).json({
         success: false,
         message: "Validation failed",
@@ -180,15 +184,20 @@ const registerVendor = async (req, res, next) => {
       });
     }
 
-    // Check if business registration number already exists
-    const existingBusinessReg = await Vendor.findByBusinessRegistration(
-      businessRegistrationNumber
-    );
-    if (existingBusinessReg) {
-      return res.status(400).json({
-        success: false,
-        message: "Business registration number already registered",
-      });
+    // Check if business registration number already exists (only if provided)
+    if (
+      businessRegistrationNumber &&
+      businessRegistrationNumber.trim() !== ""
+    ) {
+      const existingBusinessReg = await Vendor.findByBusinessRegistration(
+        businessRegistrationNumber
+      );
+      if (existingBusinessReg) {
+        return res.status(400).json({
+          success: false,
+          message: "Business registration number already registered",
+        });
+      }
     }
 
     // Create vendor
@@ -423,10 +432,277 @@ const getProfile = async (req, res, next) => {
   }
 };
 
+// Forgot Password
+const forgotPassword = async (req, res, next) => {
+  console.log(
+    `🔄 [FORGOT PASSWORD] Request received - Time: ${new Date().toISOString()}`
+  );
+  console.log(`🔄 [FORGOT PASSWORD] Request body:`, req.body);
+
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.log(`❌ [FORGOT PASSWORD] Validation failed:`, errors.array());
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: errors.array(),
+      });
+    }
+
+    const { email } = req.body;
+    console.log(`🔄 [FORGOT PASSWORD] Processing request for email: ${email}`);
+
+    const emailService = require("../services/emailService");
+    const crypto = require("crypto");
+
+    // Check if user exists (both user and vendor collections)
+    console.log(`🔍 [FORGOT PASSWORD] Looking up user account for: ${email}`);
+    let account = await User.findByEmail(email);
+    let userType = "user";
+
+    if (!account) {
+      console.log(
+        `🔍 [FORGOT PASSWORD] User not found, checking vendor collection...`
+      );
+      account = await Vendor.findByEmail(email);
+      userType = "vendor";
+    }
+
+    if (!account) {
+      console.log(`⚠️ [FORGOT PASSWORD] No account found for email: ${email}`);
+      // Don't reveal if email exists or not for security
+      return res.status(200).json({
+        success: true,
+        message:
+          "If an account with that email exists, a password reset link has been sent.",
+      });
+    }
+
+    console.log(
+      `✅ [FORGOT PASSWORD] Account found - Type: ${userType}, ID: ${account._id}`
+    );
+
+    // Generate reset token
+    console.log(`🔐 [FORGOT PASSWORD] Generating reset token...`);
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
+    console.log(
+      `🔐 [FORGOT PASSWORD] Reset token generated: ${resetToken.substring(
+        0,
+        8
+      )}...`
+    );
+
+    // Save reset token to account
+    console.log(`💾 [FORGOT PASSWORD] Saving reset token to account...`);
+    account.passwordResetToken = resetToken;
+    account.passwordResetTokenExpires = resetTokenExpiry;
+    await account.save();
+    console.log(`✅ [FORGOT PASSWORD] Reset token saved successfully`);
+
+    // Send reset email
+    try {
+      console.log(`🔄 Attempting to send password reset email to: ${email}`);
+      await emailService.sendPasswordResetEmail(email, resetToken, userType);
+      console.log(`✅ Password reset email sent successfully to: ${email}`);
+    } catch (emailError) {
+      console.error(
+        `❌ Failed to send password reset email to ${email}:`,
+        emailError
+      );
+      // Don't throw the error to avoid revealing email existence
+      // but log it for debugging
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Password reset email sent successfully",
+    });
+  } catch (error) {
+    console.error(`❌ [FORGOT PASSWORD] Error occurred:`, error);
+    next(error);
+  }
+};
+
+// Verify Reset Token
+const verifyResetToken = async (req, res, next) => {
+  console.log(
+    `🔍 [VERIFY TOKEN] Request received - Time: ${new Date().toISOString()}`
+  );
+
+  try {
+    const { token } = req.params;
+    console.log(
+      `🔍 [VERIFY TOKEN] Checking token: ${token?.substring(0, 8)}...`
+    );
+
+    if (!token) {
+      console.log(`❌ [VERIFY TOKEN] No token provided`);
+      return res.status(400).json({
+        success: false,
+        message: "Reset token is required",
+      });
+    }
+
+    console.log(
+      `🕒 [VERIFY TOKEN] Current time: ${Date.now()}, Date: ${new Date()}`
+    );
+
+    // Check if token exists and is not expired (both user and vendor)
+    let account = await User.findOne({
+      passwordResetToken: token,
+      passwordResetTokenExpires: { $gt: Date.now() },
+    });
+
+    let userType = "user";
+    if (!account) {
+      console.log(
+        `🔍 [VERIFY TOKEN] User not found, checking vendor collection...`
+      );
+      account = await Vendor.findOne({
+        passwordResetToken: token,
+        passwordResetTokenExpires: { $gt: Date.now() },
+      });
+      userType = "vendor";
+    }
+
+    if (!account) {
+      console.log(`❌ [VERIFY TOKEN] No valid account found`);
+      // Check if token exists but is expired for debugging
+      let expiredAccount = await User.findOne({ passwordResetToken: token });
+      if (!expiredAccount) {
+        expiredAccount = await Vendor.findOne({ passwordResetToken: token });
+      }
+      if (expiredAccount) {
+        console.log(
+          `⏰ [VERIFY TOKEN] Token found but expired. Expires: ${
+            expiredAccount.passwordResetTokenExpires
+          }, Now: ${new Date()}`
+        );
+      } else {
+        console.log(`🚫 [VERIFY TOKEN] Token not found in database at all`);
+      }
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired reset token",
+      });
+    }
+
+    console.log(
+      `✅ [VERIFY TOKEN] Valid token found for ${userType} ID: ${account._id}`
+    );
+    res.status(200).json({
+      success: true,
+      message: "Reset token is valid",
+    });
+  } catch (error) {
+    console.error(`❌ [VERIFY TOKEN] Error occurred:`, error);
+    next(error);
+  }
+};
+
+// Reset Password
+const resetPassword = async (req, res, next) => {
+  console.log(
+    `🔄 [RESET PASSWORD] Request received - Time: ${new Date().toISOString()}`
+  );
+
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.log(`❌ [RESET PASSWORD] Validation failed:`, errors.array());
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: errors.array(),
+      });
+    }
+
+    const { token, password } = req.body;
+    console.log(
+      `🔍 [RESET PASSWORD] Looking up account with token: ${token.substring(
+        0,
+        8
+      )}...`
+    );
+    console.log(
+      `🕒 [RESET PASSWORD] Current time: ${Date.now()}, Date: ${new Date()}`
+    );
+
+    // Find account with valid reset token (both user and vendor)
+    let account = await User.findOne({
+      passwordResetToken: token,
+      passwordResetTokenExpires: { $gt: Date.now() },
+    });
+
+    let userType = "user";
+    if (!account) {
+      console.log(
+        `🔍 [RESET PASSWORD] User not found, checking vendor collection...`
+      );
+      account = await Vendor.findOne({
+        passwordResetToken: token,
+        passwordResetTokenExpires: { $gt: Date.now() },
+      });
+      userType = "vendor";
+    }
+
+    if (!account) {
+      console.log(`❌ [RESET PASSWORD] No account found with valid token`);
+      // Let's also check if token exists but is expired
+      let expiredAccount = await User.findOne({ passwordResetToken: token });
+      if (!expiredAccount) {
+        expiredAccount = await Vendor.findOne({ passwordResetToken: token });
+      }
+      if (expiredAccount) {
+        console.log(
+          `⏰ [RESET PASSWORD] Token found but expired. Expires: ${
+            expiredAccount.passwordResetTokenExpires
+          }, Now: ${new Date()}`
+        );
+      } else {
+        console.log(`🚫 [RESET PASSWORD] Token not found in database at all`);
+      }
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired reset token",
+      });
+    }
+
+    console.log(
+      `✅ [RESET PASSWORD] Valid account found - Type: ${userType}, ID: ${account._id}`
+    );
+
+    // Update password and clear reset token
+    console.log(
+      `🔐 [RESET PASSWORD] Updating password and clearing reset token...`
+    );
+    account.password = password; // Will be hashed by pre-save middleware
+    account.passwordResetToken = undefined;
+    account.passwordResetTokenExpires = undefined;
+    await account.save();
+
+    console.log(
+      `✅ [RESET PASSWORD] Password reset completed successfully for ${userType} ID: ${account._id}`
+    );
+    res.status(200).json({
+      success: true,
+      message: "Password has been reset successfully",
+    });
+  } catch (error) {
+    console.error(`❌ [RESET PASSWORD] Error occurred:`, error);
+    next(error);
+  }
+};
+
 module.exports = {
   registerUser,
   registerVendor,
   login,
   logout,
   getProfile,
+  forgotPassword,
+  verifyResetToken,
+  resetPassword,
 };
