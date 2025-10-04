@@ -41,9 +41,9 @@ const userRegistrationValidation = [
   body("universityId")
     .trim()
     .isLength({ min: 1 })
-    .matches(/^[A-Za-z0-9]+$/)
+    .matches(/^[0-9\-_\.]+$/)
     .withMessage(
-      "University ID is required and can only contain letters and numbers"
+      "University ID is required and can only contain numbers and symbols (-, _, .)"
     ),
   body("department")
     .optional()
@@ -55,7 +55,7 @@ const userRegistrationValidation = [
     .isInt({ min: 1, max: 10 })
     .withMessage("Year of study must be between 1 and 10"),
   body("phoneNumber")
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .matches(/^[\+]?[\d\s\-\(\)]{10,}$/)
     .withMessage("Please provide a valid phone number"),
 ];
@@ -107,13 +107,13 @@ const vendorRegistrationValidation = [
     .isLength({ max: 100 })
     .withMessage("Industry must be less than 100 characters"),
   body("companySize")
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isIn(["startup", "small", "medium", "large", "enterprise"])
     .withMessage(
       "Company size must be one of: startup, small, medium, large, enterprise"
     ),
   body("phoneNumber")
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .matches(/^[\+]?[\d\s\-\(\)]{10,}$/)
     .withMessage("Please provide a valid phone number"),
   body("website")

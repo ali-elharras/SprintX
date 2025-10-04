@@ -49,15 +49,32 @@ const vendorSchema = yup.object({
     .nullable(),
   companySize: yup
     .string()
-    .oneOf(
-      ["startup", "small", "medium", "large", "enterprise"],
-      "Please select a valid company size"
-    )
-    .nullable(),
+    .nullable()
+    .test(
+      "company-size-format",
+      "Please select a valid company size",
+      function (value) {
+        // If empty or null, it's valid (optional field)
+        if (!value || value.trim() === "") return true;
+        // If has value, validate it's one of the allowed options
+        return ["startup", "small", "medium", "large", "enterprise"].includes(
+          value
+        );
+      }
+    ),
   phoneNumber: yup
     .string()
-    .matches(/^[+]?[\d\s-()]{10,}$/, "Please enter a valid phone number")
-    .nullable(),
+    .nullable()
+    .test(
+      "phone-format",
+      "Please enter a valid phone number",
+      function (value) {
+        // If empty or null, it's valid (optional field)
+        if (!value || value.trim() === "") return true;
+        // If has value, validate format
+        return /^[+]?[\d\s-()]{10,}$/.test(value);
+      }
+    ),
   website: yup.string().url("Please enter a valid website URL").nullable(),
   street: yup
     .string()
@@ -70,8 +87,13 @@ const vendorSchema = yup.object({
     .nullable(),
   zipCode: yup
     .string()
-    .matches(/^[\d\-\s]{5,10}$/, "Please enter a valid zip code")
-    .nullable(),
+    .nullable()
+    .test("zip-format", "Please enter a valid zip code", function (value) {
+      // If empty or null, it's valid (optional field)
+      if (!value || value.trim() === "") return true;
+      // If has value, validate format
+      return /^[\d\-\s]{5,10}$/.test(value);
+    }),
   country: yup
     .string()
     .max(50, "Country must be less than 50 characters")
@@ -308,14 +330,14 @@ const VendorSignup = () => {
 
               <div style={rowStyles}>
                 <Input
-                  label="Business Registration Number (Optional)"
+                  label="Business Registration Number"
                   type="text"
                   placeholder="Enter registration number"
                   error={errors.businessRegistrationNumber?.message}
                   {...register("businessRegistrationNumber")}
                 />
                 <Select
-                  label="Company Size (Optional)"
+                  label="Company Size"
                   placeholder="Select company size"
                   options={companySizeOptions}
                   error={errors.companySize?.message}
@@ -325,14 +347,14 @@ const VendorSignup = () => {
 
               <div style={rowStyles}>
                 <Input
-                  label="Industry (Optional)"
+                  label="Industry"
                   type="text"
                   placeholder="e.g., Technology, Food & Beverage"
                   error={errors.industry?.message}
                   {...register("industry")}
                 />
                 <Input
-                  label="Website (Optional)"
+                  label="Website"
                   type="url"
                   placeholder="https://www.yourcompany.com"
                   error={errors.website?.message}
@@ -350,10 +372,10 @@ const VendorSignup = () => {
                     color: theme.colors.text.primary,
                   }}
                 >
-                  Company Description *
+                  Company Description
                 </label>
                 <textarea
-                  placeholder="Describe your company and what you offer... (Optional)"
+                  placeholder="Describe your company and what you offer..."
                   style={{
                     ...theme.components.input.base,
                     width: "100%",
@@ -387,14 +409,14 @@ const VendorSignup = () => {
             <div style={formStyles}>
               <div style={rowStyles}>
                 <Input
-                  label="Contact Person First Name (Optional)"
+                  label="Contact Person First Name"
                   type="text"
                   placeholder="Enter first name"
                   error={errors.contactPersonFirstName?.message}
                   {...register("contactPersonFirstName")}
                 />
                 <Input
-                  label="Contact Person Last Name (Optional)"
+                  label="Contact Person Last Name"
                   type="text"
                   placeholder="Enter last name"
                   error={errors.contactPersonLastName?.message}
@@ -412,7 +434,7 @@ const VendorSignup = () => {
                   {...register("email")}
                 />
                 <Input
-                  label="Phone Number (Optional)"
+                  label="Phone Number"
                   type="tel"
                   placeholder="Enter phone number"
                   error={errors.phoneNumber?.message}
@@ -446,7 +468,7 @@ const VendorSignup = () => {
             <h2 style={sectionTitleStyles}>Business Address</h2>
             <div style={formStyles}>
               <Input
-                label="Street Address (Optional)"
+                label="Street Address"
                 type="text"
                 placeholder="Enter street address"
                 error={errors.street?.message}
@@ -455,14 +477,14 @@ const VendorSignup = () => {
 
               <div style={rowStyles}>
                 <Input
-                  label="City (Optional)"
+                  label="City"
                   type="text"
                   placeholder="Enter city"
                   error={errors.city?.message}
                   {...register("city")}
                 />
                 <Input
-                  label="State/Province (Optional)"
+                  label="State/Province"
                   type="text"
                   placeholder="Enter state or province"
                   error={errors.state?.message}
@@ -472,14 +494,14 @@ const VendorSignup = () => {
 
               <div style={rowStyles}>
                 <Input
-                  label="Zip/Postal Code (Optional)"
+                  label="Zip/Postal Code"
                   type="text"
                   placeholder="Enter zip code"
                   error={errors.zipCode?.message}
                   {...register("zipCode")}
                 />
                 <Input
-                  label="Country (Optional)"
+                  label="Country"
                   type="text"
                   placeholder="Enter country"
                   error={errors.country?.message}
@@ -491,7 +513,7 @@ const VendorSignup = () => {
 
           {/* Event Interests */}
           <div style={sectionStyles}>
-            <h2 style={sectionTitleStyles}>Event Interests (Optional)</h2>
+            <h2 style={sectionTitleStyles}>Event Interests</h2>
             <p
               style={{
                 color: theme.colors.text.secondary,
@@ -499,8 +521,7 @@ const VendorSignup = () => {
                 fontSize: theme.typography.fontSize.sm,
               }}
             >
-              Select the types of events you're interested in participating in
-              (optional):
+              Select the types of events you're interested in participating in :
             </p>
 
             <div style={checkboxGroupStyles}>
