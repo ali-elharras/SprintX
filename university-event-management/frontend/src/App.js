@@ -14,6 +14,8 @@ import theme from "./theme";
 import Login from "./pages/Login";
 import UserSignup from "./pages/UserSignup";
 import VendorSignup from "./pages/VendorSignup";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 
 // Protected Route Component
@@ -92,6 +94,22 @@ const AppRoutes = () => {
         element={
           <PublicRoute>
             <VendorSignup />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          <PublicRoute>
+            <ForgotPassword />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/reset-password/:token"
+        element={
+          <PublicRoute>
+            <ResetPassword />
           </PublicRoute>
         }
       />

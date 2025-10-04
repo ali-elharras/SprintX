@@ -6,6 +6,9 @@ const {
   login,
   logout,
   getProfile,
+  forgotPassword,
+  verifyResetToken,
+  resetPassword,
 } = require("../controllers/authController");
 const { protect } = require("../middleware/auth");
 
@@ -176,11 +179,36 @@ const loginValidation = [
     .withMessage("User type must be either user or vendor"),
 ];
 
+// Validation rules for forgot password
+const forgotPasswordValidation = [
+  body("email")
+    .isEmail()
+    .normalizeEmail()
+    .withMessage("Please provide a valid email address"),
+];
+
+// Validation rules for reset password
+const resetPasswordValidation = [
+  body("token").notEmpty().withMessage("Reset token is required"),
+  body("password")
+    .isLength({ min: 8 })
+    .withMessage("Password must be at least 8 characters long")
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage(
+      "Password must contain at least one uppercase letter, one lowercase letter, and one number"
+    ),
+];
+
 // Routes
 router.post("/register/user", userRegistrationValidation, registerUser);
 router.post("/register/vendor", vendorRegistrationValidation, registerVendor);
 router.post("/login", loginValidation, login);
 router.post("/logout", protect, logout);
 router.get("/me", protect, getProfile);
+
+// Password reset routes
+router.post("/forgot-password", forgotPasswordValidation, forgotPassword);
+router.get("/verify-reset-token/:token", verifyResetToken);
+router.post("/reset-password", resetPasswordValidation, resetPassword);
 
 module.exports = router;
