@@ -17,9 +17,6 @@ import VendorSignup from "./pages/VendorSignup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
-import CreateConference from "./pages/conference/CreateConference";
-import EditConference from "./pages/conferences/EditConference";
-import ConferenceList from "./components/conference_components/ConferenceList";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -179,34 +176,7 @@ const AppRoutes = () => {
           </div>
         }
       />
-      
-      {/* Conference Routes */}
-      <Route
-        path="/conferences"
-        element={
-          <ProtectedRoute>
-            <ConferenceList />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/conferences/create"
-        element={
-          <ProtectedRoute>
-            <CreateConference />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/conferences/edit/:id"
-        element={
-          <ProtectedRoute>
-            <EditConference />
-          </ProtectedRoute>
-        }
-      />
     </Routes>
-
   );
 };
 
