@@ -30,4 +30,5 @@ export const conferenceService = {
       throw error.response?.data?.error || 'Error deleting conference';
     }
   }
+  
 };

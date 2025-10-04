@@ -1,6 +1,6 @@
 // File: /university-event-management/university-event-management/backend/controllers/conferenceController.js
 
-import Conference, { findByIdAndUpdate, findById, find } from '../models/Conference';
+const Conference = require("../models/Conference.js") ;
 
 // Create a new conference
 const createConference = async (req, res) => {
@@ -72,7 +72,7 @@ const getConferences = async (req, res) => {
     }
 };
 
-export default {
+module.exports = {
     createConference,
     editConference,
     deleteConference,

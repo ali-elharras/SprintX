@@ -17,9 +17,9 @@ import VendorSignup from "./pages/VendorSignup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
-import CreateConference from "./pages/conferences/CreateConference";
-import EditConference from "./pages/conferences/EditConference";
-import ConferenceList from "./components/conference_components/ConferenceList";
+import CreateConference from './pages/conferences/CreateConference';
+import EditConference from './pages/conferences/EditConference';
+import ConferenceList from './components/conference_components/ConferenceList';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -181,30 +181,9 @@ const AppRoutes = () => {
       />
       
       {/* Conference Routes */}
-      <Route
-        path="/conferences"
-        element={
-          <ProtectedRoute>
-            <ConferenceList />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/conferences/create"
-        element={
-          <ProtectedRoute>
-            <CreateConference />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/conferences/edit/:id"
-        element={
-          <ProtectedRoute>
-            <EditConference />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/conferences" element={<ConferenceList />} />
+      <Route path="/conferences/create" element={<CreateConference />} />
+      <Route path="/conferences/edit/:id" element={<EditConference />} />
     </Routes>
 
   );

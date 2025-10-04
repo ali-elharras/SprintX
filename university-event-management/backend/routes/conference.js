@@ -1,9 +1,12 @@
-// File: /university-event-management/university-event-management/backend/routes/conference.js
+const express = require("express");
+const {
+    createConference,
+    editConference,
+    deleteConference,
+    getConferences,
+} = require("../controllers/conferenceController");
 
-import { Router } from "express";
-import { createConference, editConference, deleteConference, getConferences } from "../controllers/conferenceController";
-
-const router = Router();
+const router = express.Router();
 
 // Route to create a new conference
 router.post("/", createConference);
@@ -17,4 +20,4 @@ router.delete("/:id", deleteConference);
 // Route to get all conferences
 router.get("/", getConferences);
 
-export default router;
+module.exports = router;

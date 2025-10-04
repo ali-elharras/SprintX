@@ -7,6 +7,7 @@ const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
 const conferenceRoutes = require("./routes/conference");
+const authRoutes = require("./routes/auth"); // Add this line
 const { errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
@@ -22,12 +23,13 @@ const limiter = rateLimit({
 app.use(helmet()); // Security headers
 app.use(limiter); // Rate limiting
 app.use(morgan("combined")); // Logging
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+app.use(cors({
+    origin: 'http://localhost:3000',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     credentials: true,
-  })
-);
+    exposedHeaders: ['Authorization']
+}));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
@@ -44,6 +46,7 @@ mongoose
   });
 
 // Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/conferences", conferenceRoutes);
 
 // Health check endpoint
