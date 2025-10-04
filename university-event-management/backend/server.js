@@ -8,7 +8,8 @@ require("dotenv").config();
 
 const authRoutes = require("./routes/auth");
 const adminRoutes = require("./routes/admin");
-
+const eventRoutes = require("./routes/events");
+const registrationRoutes = require("./routes/registrations");
 
 const { errorHandler } = require("./middleware/errorHandler");
 
@@ -49,6 +50,8 @@ mongoose
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/events", eventRoutes);
+app.use("/api/registrations", registrationRoutes);
 
 
 // Health check endpoint
