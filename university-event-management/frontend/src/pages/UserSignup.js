@@ -78,8 +78,8 @@ const userSchema = yup.object({
     .string()
     .required("University ID is required")
     .matches(
-      /^[A-Za-z0-9]+$/,
-      "University ID can only contain letters and numbers"
+      /^[0-9\-_\.]+$/,
+      "University ID can only contain numbers and symbols (-, _, .)"
     ),
   department: yup
     .string()
@@ -111,8 +111,17 @@ const userSchema = yup.object({
     }),
   phoneNumber: yup
     .string()
-    .matches(/^[\+]?[\d\s\-\(\)]{10,}$/, "Please enter a valid phone number")
-    .nullable(),
+    .nullable()
+    .test(
+      "phone-format",
+      "Please enter a valid phone number",
+      function (value) {
+        // If empty or null, it's valid (optional field)
+        if (!value || value.trim() === "") return true;
+        // If has value, validate format
+        return /^[\+]?[\d\s\-\(\)]{10,}$/.test(value);
+      }
+    ),
 });
 
 const UserSignup = () => {
@@ -329,14 +338,14 @@ const UserSignup = () => {
           {/* Department and Phone Number */}
           <div style={rowStyles}>
             <Input
-              label="Department (Optional)"
+              label="Department"
               type="text"
               placeholder="Enter your department"
               error={errors.department?.message}
               {...register("department")}
             />
             <Input
-              label="Phone Number (Optional)"
+              label="Phone Number"
               type="tel"
               placeholder="Enter your phone number"
               error={errors.phoneNumber?.message}
@@ -347,7 +356,7 @@ const UserSignup = () => {
           {/* Year of Study (for students only) */}
           {detectedRole === "student" && (
             <Select
-              label="Year of Study (Optional)"
+              label="Year of Study"
               placeholder="Select your year"
               options={yearOptions}
               error={errors.yearOfStudy?.message}

@@ -12,13 +12,13 @@ const vendorSchema = new mongoose.Schema(
     },
     contactPersonFirstName: {
       type: String,
-      required: [true, "Contact person first name is required"],
+      required: false, // Made optional per requirements
       trim: true,
       maxlength: [50, "First name cannot exceed 50 characters"],
     },
     contactPersonLastName: {
       type: String,
-      required: [true, "Contact person last name is required"],
+      required: false, // Made optional per requirements
       trim: true,
       maxlength: [50, "Last name cannot exceed 50 characters"],
     },
@@ -43,8 +43,9 @@ const vendorSchema = new mongoose.Schema(
     // Company Information
     businessRegistrationNumber: {
       type: String,
-      required: [true, "Business registration number is required"],
+      required: false, // Made optional per requirements
       unique: true,
+      sparse: true, // Allow multiple null values for unique field
       trim: true,
     },
     taxId: {
@@ -53,7 +54,7 @@ const vendorSchema = new mongoose.Schema(
     },
     industry: {
       type: String,
-      required: [true, "Industry is required"],
+      required: false, // Made optional per requirements
       trim: true,
       maxlength: [100, "Industry cannot exceed 100 characters"],
     },
@@ -64,13 +65,13 @@ const vendorSchema = new mongoose.Schema(
         message:
           "Company size must be one of: startup, small, medium, large, enterprise",
       },
-      required: [true, "Company size is required"],
+      required: false, // Made optional per requirements
     },
 
     // Contact Information
     phoneNumber: {
       type: String,
-      required: [true, "Phone number is required"],
+      required: false, // Made optional per requirements
       trim: true,
       match: [
         /^[\+]?[\d\s\-\(\)]{10,}$/,
@@ -98,31 +99,31 @@ const vendorSchema = new mongoose.Schema(
     address: {
       street: {
         type: String,
-        required: [true, "Street address is required"],
+        required: false, // Made optional per requirements
         trim: true,
         maxlength: [200, "Street address cannot exceed 200 characters"],
       },
       city: {
         type: String,
-        required: [true, "City is required"],
+        required: false, // Made optional per requirements
         trim: true,
         maxlength: [50, "City cannot exceed 50 characters"],
       },
       state: {
         type: String,
-        required: [true, "State is required"],
+        required: false, // Made optional per requirements
         trim: true,
         maxlength: [50, "State cannot exceed 50 characters"],
       },
       zipCode: {
         type: String,
-        required: [true, "Zip code is required"],
+        required: false, // Made optional per requirements
         trim: true,
         match: [/^[\d\-\s]{5,10}$/, "Please provide a valid zip code"],
       },
       country: {
         type: String,
-        required: [true, "Country is required"],
+        required: false, // Made optional per requirements
         trim: true,
         maxlength: [50, "Country cannot exceed 50 characters"],
       },
@@ -131,7 +132,7 @@ const vendorSchema = new mongoose.Schema(
     // Business Description
     description: {
       type: String,
-      required: [true, "Company description is required"],
+      required: false, // Made optional per requirements
       trim: true,
       maxlength: [1000, "Description cannot exceed 1000 characters"],
     },
@@ -148,7 +149,7 @@ const vendorSchema = new mongoose.Schema(
       {
         type: String,
         enum: ["bazaar", "career_fair", "conference", "workshop"],
-        required: [true, "At least one interested event type is required"],
+        required: false, // Made optional per requirements
       },
     ],
 
