@@ -18,7 +18,9 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import EventsPage from "./pages/EventsPage";
+import CourtsPage from "./pages/CourtsPage";
 import MyRegistrations from "./pages/MyRegistrations";
+import GymSchedulePage from "./pages/GymSchedulePage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -134,10 +136,26 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/courts"
+        element={
+          <ProtectedRoute>
+            <CourtsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/my-registrations"
         element={
           <ProtectedRoute>
             <MyRegistrations />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/gym-schedule"
+        element={
+          <ProtectedRoute>
+            <GymSchedulePage />
           </ProtectedRoute>
         }
       />

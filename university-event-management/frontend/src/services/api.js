@@ -119,3 +119,98 @@ export const registrationAPI = {
   checkInParticipant: (registrationId) =>
     api.post(`/registrations/${registrationId}/checkin`),
 };
+
+// ============================================
+// COURT API ENDPOINTS
+// ============================================
+
+export const courtAPI = {
+  // Get all courts
+  getCourts: (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return api.get(`/courts${queryParams ? `?${queryParams}` : ""}`);
+  },
+
+  // Get single court by ID
+  getCourt: (id) => api.get(`/courts/${id}`),
+
+  // Get courts by type
+  getCourtsByType: (type) => api.get(`/courts/type/${type}`),
+
+  // Get court availability for specific date
+  getCourtAvailability: (courtId, date) => 
+    api.get(`/courts/${courtId}/availability/${date}`),
+
+  // Get weekly availability for a court
+  getWeeklyAvailability: (courtId, startDate = null) => {
+    const params = startDate ? `?startDate=${startDate}` : "";
+    return api.get(`/courts/${courtId}/weekly-availability${params}`);
+  },
+
+  // Get court statistics
+  getCourtStats: () => api.get("/courts/stats"),
+
+  // Create new court (Admin only)
+  createCourt: (courtData) => api.post("/courts", courtData),
+
+  // Update court (Admin/Manager only)
+  updateCourt: (id, courtData) => api.put(`/courts/${id}`, courtData),
+
+  // Delete court (Admin only)
+  deleteCourt: (id) => api.delete(`/courts/${id}`),
+};
+
+// ============================================
+// GYM API FUNCTIONS
+// ============================================
+
+// Get all gym sessions
+export const getGymSessions = (params = {}) => {
+  const queryString = new URLSearchParams(params).toString();
+  return api.get(`/gym/sessions${queryString ? `?${queryString}` : ""}`);
+};
+
+// Get gym sessions by month
+export const getGymSessionsByMonth = (year, month, params = {}) => {
+  const queryString = new URLSearchParams(params).toString();
+  return api.get(`/gym/sessions/month/${year}/${month}${queryString ? `?${queryString}` : ""}`);
+};
+
+// Get gym sessions by date
+export const getGymSessionsByDate = (date) => {
+  return api.get(`/gym/sessions/date/${date}`);
+};
+
+// Get single gym session
+export const getGymSession = (id) => {
+  return api.get(`/gym/sessions/${id}`);
+};
+
+// Get gym session types
+export const getGymSessionTypes = () => {
+  return api.get("/gym/types");
+};
+
+// Register for gym session
+export const registerForGymSession = (sessionId, registrationData) => {
+  return api.post(`/gym/sessions/${sessionId}/register`, registrationData);
+};
+
+// Get user's gym registrations
+export const getUserGymRegistrations = (params = {}) => {
+  const queryString = new URLSearchParams(params).toString();
+  return api.get(`/gym/registrations${queryString ? `?${queryString}` : ""}`);
+};
+
+// Cancel gym registration
+export const cancelGymRegistration = (registrationId, reason) => {
+  return api.delete(`/gym/registrations/${registrationId}`, {
+    data: { reason }
+  });
+};
+
+// Get gym schedule overview
+export const getGymScheduleOverview = (params = {}) => {
+  const queryString = new URLSearchParams(params).toString();
+  return api.get(`/gym/schedule/overview${queryString ? `?${queryString}` : ""}`);
+};

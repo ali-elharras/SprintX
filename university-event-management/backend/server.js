@@ -10,6 +10,8 @@ const authRoutes = require("./routes/auth");
 const adminRoutes = require("./routes/admin");
 const eventRoutes = require("./routes/events");
 const registrationRoutes = require("./routes/registrations");
+const courtRoutes = require("./routes/courts");
+const gymRoutes = require("./routes/gym");
 
 const { errorHandler } = require("./middleware/errorHandler");
 
@@ -52,6 +54,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/registrations", registrationRoutes);
+app.use("/api/courts", courtRoutes);
+app.use("/api/gym", gymRoutes);
 
 
 // Health check endpoint
