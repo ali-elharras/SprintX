@@ -117,7 +117,7 @@ const vendorRegistrationValidation = [
     .matches(/^[\+]?[\d\s\-\(\)]{10,}$/)
     .withMessage("Please provide a valid phone number"),
   body("website")
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isURL()
     .withMessage("Please provide a valid website URL"),
   body("address.street")
@@ -136,7 +136,7 @@ const vendorRegistrationValidation = [
     .isLength({ max: 50 })
     .withMessage("State must be less than 50 characters"),
   body("address.zipCode")
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .trim()
     .matches(/^[\d\-\s]{5,10}$/)
     .withMessage("Please provide a valid zip code"),

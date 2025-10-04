@@ -56,7 +56,7 @@ const vendorSchema = yup.object({
     .nullable(),
   phoneNumber: yup
     .string()
-    .matches(/^[\+]?[\d\s\-\(\)]{10,}$/, "Please enter a valid phone number")
+    .matches(/^[+]?[\d\s-()]{10,}$/, "Please enter a valid phone number")
     .nullable(),
   website: yup.string().url("Please enter a valid website URL").nullable(),
   street: yup
@@ -91,7 +91,6 @@ const VendorSignup = () => {
   const {
     register,
     handleSubmit,
-    watch,
     setValue,
     formState: { errors },
   } = useForm({
@@ -162,15 +161,18 @@ const VendorSignup = () => {
       // Structure the data properly
       const submitData = {
         ...otherData,
-        address: {
-          street,
-          city,
-          state,
-          zipCode,
-          country,
-        },
         interestedEventTypes: selectedEventTypes,
       };
+
+      // Only include address if at least one field has a value
+      const addressFields = { street, city, state, zipCode, country };
+      const hasAddressData = Object.values(addressFields).some(
+        (value) => value && value.trim() !== ""
+      );
+
+      if (hasAddressData) {
+        submitData.address = addressFields;
+      }
 
       const result = await registerVendor(submitData);
 

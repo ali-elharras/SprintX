@@ -144,9 +144,13 @@ const registerUser = async (req, res, next) => {
 // @access  Public
 const registerVendor = async (req, res, next) => {
   try {
+    console.log("=== VENDOR REGISTRATION DEBUG ===");
+    console.log("Request body:", JSON.stringify(req.body, null, 2));
+
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log("Validation errors:", errors.array());
       return res.status(400).json({
         success: false,
         message: "Validation failed",
@@ -180,15 +184,20 @@ const registerVendor = async (req, res, next) => {
       });
     }
 
-    // Check if business registration number already exists
-    const existingBusinessReg = await Vendor.findByBusinessRegistration(
-      businessRegistrationNumber
-    );
-    if (existingBusinessReg) {
-      return res.status(400).json({
-        success: false,
-        message: "Business registration number already registered",
-      });
+    // Check if business registration number already exists (only if provided)
+    if (
+      businessRegistrationNumber &&
+      businessRegistrationNumber.trim() !== ""
+    ) {
+      const existingBusinessReg = await Vendor.findByBusinessRegistration(
+        businessRegistrationNumber
+      );
+      if (existingBusinessReg) {
+        return res.status(400).json({
+          success: false,
+          message: "Business registration number already registered",
+        });
+      }
     }
 
     // Create vendor
