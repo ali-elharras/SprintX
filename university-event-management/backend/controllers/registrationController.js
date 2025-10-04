@@ -23,14 +23,7 @@ const registerForEvent = async (req, res) => {
       firstName, 
       lastName, 
       email, 
-      universityId, 
-      role,
-      department,
-      phoneNumber,
-      yearOfStudy,
-      specialRequirements,
-      dietaryRestrictions,
-      emergencyContact
+      universityId
     } = req.body;
 
     // Find the event
@@ -66,22 +59,6 @@ const registerForEvent = async (req, res) => {
       });
     }
 
-    // Check role eligibility
-    if (!event.eligibleRoles.includes(role)) {
-      return res.status(400).json({
-        success: false,
-        message: `This event is not open to ${role}s`,
-      });
-    }
-
-    // Check department eligibility (if specified)
-    if (event.eligibleDepartments.length > 0 && !event.eligibleDepartments.includes(department)) {
-      return res.status(400).json({
-        success: false,
-        message: "This event is not open to your department",
-      });
-    }
-
     // Check if user is already registered
     const existingRegistration = await Registration.findOne({
       event: eventId,
@@ -105,26 +82,7 @@ const registerForEvent = async (req, res) => {
       lastName: lastName.trim(),
       email: email.toLowerCase().trim(),
       universityId: universityId.trim(),
-      role,
-      department: department?.trim(),
-      phoneNumber: phoneNumber?.trim(),
-      specialRequirements: specialRequirements?.trim(),
-      dietaryRestrictions: dietaryRestrictions?.trim(),
     };
-
-    // Add year of study for students
-    if (role === "student" && yearOfStudy) {
-      registrationData.yearOfStudy = yearOfStudy;
-    }
-
-    // Add emergency contact if provided
-    if (emergencyContact && emergencyContact.name) {
-      registrationData.emergencyContact = {
-        name: emergencyContact.name.trim(),
-        phone: emergencyContact.phone?.trim(),
-        relationship: emergencyContact.relationship?.trim(),
-      };
-    }
 
     // If user is authenticated, link to user account
     if (req.user) {
@@ -172,19 +130,120 @@ const registerForEvent = async (req, res) => {
 // @access  Private
 const getMyRegistrations = async (req, res) => {
   try {
-    const registrations = await Registration.find({
+    const { filter, search, sortBy = 'startDate', sortOrder = 'asc' } = req.query;
+    
+    // Build the query to find user's registrations
+    let query = {
       $or: [
         { user: req.user.id },
         { email: req.user.email }
       ]
-    })
-    .populate("event", "title type startDate endDate location cost status")
-    .sort({ registrationDate: -1 });
+    };
+
+    // Find registrations and populate event details
+    let registrationsQuery = Registration.find(query)
+      .populate({
+        path: "event",
+        select: "title type startDate endDate location cost status description maxParticipants currentParticipants",
+        match: { status: { $ne: "cancelled" } } // Only include active events
+      });
+
+    const registrations = await registrationsQuery.exec();
+
+    // Filter out registrations where event was deleted or cancelled
+    const validRegistrations = registrations.filter(reg => reg.event);
+
+    // Categorize events into upcoming and past
+    const now = new Date();
+    const upcomingEvents = [];
+    const pastEvents = [];
+
+    validRegistrations.forEach(registration => {
+      const eventStartDate = new Date(registration.event.startDate);
+      if (eventStartDate >= now) {
+        upcomingEvents.push(registration);
+      } else {
+        pastEvents.push(registration);
+      }
+    });
+
+    // Apply search filter if provided
+    const applySearch = (events, searchTerm) => {
+      if (!searchTerm) return events;
+      const term = searchTerm.toLowerCase();
+      return events.filter(reg => 
+        reg.event.title.toLowerCase().includes(term) ||
+        reg.event.type.toLowerCase().includes(term) ||
+        reg.event.location.toLowerCase().includes(term)
+      );
+    };
+
+    // Apply event type filter if provided
+    const applyFilter = (events, filterType) => {
+      if (!filterType || filterType === 'all') return events;
+      return events.filter(reg => reg.event.type === filterType);
+    };
+
+    // Sort events
+    const sortEvents = (events, sortBy, sortOrder) => {
+      return events.sort((a, b) => {
+        let aValue, bValue;
+        
+        switch (sortBy) {
+          case 'startDate':
+            aValue = new Date(a.event.startDate);
+            bValue = new Date(b.event.startDate);
+            break;
+          case 'title':
+            aValue = a.event.title.toLowerCase();
+            bValue = b.event.title.toLowerCase();
+            break;
+          case 'type':
+            aValue = a.event.type.toLowerCase();
+            bValue = b.event.type.toLowerCase();
+            break;
+          case 'registrationDate':
+            aValue = new Date(a.registrationDate);
+            bValue = new Date(b.registrationDate);
+            break;
+          default:
+            aValue = new Date(a.event.startDate);
+            bValue = new Date(b.event.startDate);
+        }
+
+        if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
+      });
+    };
+
+    // Apply filters and search
+    let filteredUpcoming = applyFilter(upcomingEvents, filter);
+    let filteredPast = applyFilter(pastEvents, filter);
+    
+    filteredUpcoming = applySearch(filteredUpcoming, search);
+    filteredPast = applySearch(filteredPast, search);
+
+    // Sort events
+    filteredUpcoming = sortEvents(filteredUpcoming, sortBy, sortOrder);
+    filteredPast = sortEvents(filteredPast, sortBy, sortOrder === 'asc' ? 'desc' : 'asc'); // Reverse sort for past events
+
+    // Prepare response data
+    const responseData = {
+      upcoming: filteredUpcoming,
+      past: filteredPast,
+      summary: {
+        totalRegistrations: validRegistrations.length,
+        upcomingCount: filteredUpcoming.length,
+        pastCount: filteredPast.length,
+        allUpcomingCount: upcomingEvents.length,
+        allPastCount: pastEvents.length
+      }
+    };
 
     res.status(200).json({
       success: true,
-      count: registrations.length,
-      data: registrations,
+      data: responseData,
     });
   } catch (error) {
     console.error("Error fetching user registrations:", error);

@@ -6,7 +6,6 @@ import toast from "react-hot-toast";
 import theme from "../theme";
 import Button from "./Button";
 import Input from "./Input";
-import Select from "./Select";
 import { registrationAPI } from "../services/api";
 
 // Validation schema
@@ -33,46 +32,6 @@ const registrationSchema = yup.object({
       "University/Staff ID can only contain letters and numbers"
     )
     .max(20, "University/Staff ID cannot exceed 20 characters"),
-  role: yup
-    .string()
-    .required("Role is required")
-    .oneOf(["student", "staff", "ta", "professor"], "Please select a valid role"),
-  department: yup.string().max(100, "Department name cannot exceed 100 characters"),
-  phoneNumber: yup
-    .string()
-    .matches(
-      /^[\+]?[\d\s\-\(\)]{10,}$/,
-      "Please enter a valid phone number"
-    ),
-  yearOfStudy: yup
-    .number()
-    .when("role", {
-      is: "student",
-      then: (schema) =>
-        schema
-          .required("Year of study is required for students")
-          .min(1, "Year of study must be at least 1")
-          .max(10, "Year of study cannot exceed 10"),
-      otherwise: (schema) => schema.nullable(),
-    }),
-  specialRequirements: yup
-    .string()
-    .max(500, "Special requirements cannot exceed 500 characters"),
-  dietaryRestrictions: yup
-    .string()
-    .max(300, "Dietary restrictions cannot exceed 300 characters"),
-  emergencyContactName: yup
-    .string()
-    .max(100, "Emergency contact name cannot exceed 100 characters"),
-  emergencyContactPhone: yup
-    .string()
-    .matches(
-      /^[\+]?[\d\s\-\(\)]{10,}$/,
-      "Please enter a valid emergency contact phone number"
-    ),
-  emergencyContactRelationship: yup
-    .string()
-    .max(50, "Relationship cannot exceed 50 characters"),
 });
 
 const RegistrationForm = ({ event, onSuccess, onCancel }) => {
@@ -81,16 +40,10 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors },
   } = useForm({
     resolver: yupResolver(registrationSchema),
-    defaultValues: {
-      role: "student",
-    },
   });
-
-  const watchedRole = watch("role");
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
@@ -102,26 +55,8 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
         lastName: data.lastName.trim(),
         email: data.email.toLowerCase().trim(),
         universityId: data.universityId.trim(),
-        role: data.role,
-        department: data.department?.trim(),
-        phoneNumber: data.phoneNumber?.trim(),
-        specialRequirements: data.specialRequirements?.trim(),
-        dietaryRestrictions: data.dietaryRestrictions?.trim(),
+        role: "student", // Default role since we removed the role field
       };
-
-      // Add year of study for students
-      if (data.role === "student" && data.yearOfStudy) {
-        registrationData.yearOfStudy = parseInt(data.yearOfStudy);
-      }
-
-      // Add emergency contact if provided
-      if (data.emergencyContactName?.trim()) {
-        registrationData.emergencyContact = {
-          name: data.emergencyContactName.trim(),
-          phone: data.emergencyContactPhone?.trim(),
-          relationship: data.emergencyContactRelationship?.trim(),
-        };
-      }
 
       const response = await registrationAPI.registerForEvent(registrationData);
       
@@ -134,13 +69,6 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
       setIsSubmitting(false);
     }
   };
-
-  const roleOptions = [
-    { value: "student", label: "Student" },
-    { value: "staff", label: "Staff" },
-    { value: "ta", label: "Teaching Assistant" },
-    { value: "professor", label: "Professor" },
-  ];
 
   return (
     <div
@@ -236,223 +164,12 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
             />
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: theme.spacing[4],
-              marginBottom: theme.spacing[4],
-            }}
-          >
+          <div style={{ marginBottom: theme.spacing[4] }}>
             <Input
               label="University/Staff ID *"
               {...register("universityId")}
               error={errors.universityId?.message}
-              placeholder="Enter your ID"
-            />
-            <Select
-              label="Role *"
-              {...register("role")}
-              error={errors.role?.message}
-              options={roleOptions}
-            />
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: watchedRole === "student" ? "1fr 1fr" : "1fr",
-              gap: theme.spacing[4],
-              marginBottom: theme.spacing[4],
-            }}
-          >
-            <Input
-              label="Department"
-              {...register("department")}
-              error={errors.department?.message}
-              placeholder="Enter your department"
-            />
-            {watchedRole === "student" && (
-              <Input
-                label="Year of Study *"
-                type="number"
-                min="1"
-                max="10"
-                {...register("yearOfStudy")}
-                error={errors.yearOfStudy?.message}
-                placeholder="e.g., 3"
-              />
-            )}
-          </div>
-
-          <Input
-            label="Phone Number"
-            {...register("phoneNumber")}
-            error={errors.phoneNumber?.message}
-            placeholder="Enter your phone number"
-          />
-        </div>
-
-        {/* Additional Information */}
-        <div style={{ marginBottom: theme.spacing[6] }}>
-          <h3
-            style={{
-              fontSize: theme.typography.fontSize.lg,
-              fontWeight: theme.typography.fontWeight.semibold,
-              color: theme.colors.text.primary,
-              marginBottom: theme.spacing[4],
-            }}
-          >
-            Additional Information
-          </h3>
-
-          <div style={{ marginBottom: theme.spacing[4] }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: theme.typography.fontSize.sm,
-                fontWeight: theme.typography.fontWeight.medium,
-                color: theme.colors.text.primary,
-                marginBottom: theme.spacing[2],
-              }}
-            >
-              Special Requirements
-            </label>
-            <textarea
-              {...register("specialRequirements")}
-              placeholder="Any special requirements or accommodations needed..."
-              rows="3"
-              style={{
-                width: "100%",
-                padding: theme.spacing[3],
-                border: `2px solid ${
-                  errors.specialRequirements
-                    ? theme.colors.error.main
-                    : theme.colors.border.light
-                }`,
-                borderRadius: theme.borderRadius.base,
-                fontSize: theme.typography.fontSize.base,
-                resize: "vertical",
-                outline: "none",
-                transition: "border-color 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = theme.colors.primary.main;
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = errors.specialRequirements
-                  ? theme.colors.error.main
-                  : theme.colors.border.light;
-              }}
-            />
-            {errors.specialRequirements && (
-              <p
-                style={{
-                  color: theme.colors.error.main,
-                  fontSize: theme.typography.fontSize.sm,
-                  marginTop: theme.spacing[1],
-                }}
-              >
-                {errors.specialRequirements.message}
-              </p>
-            )}
-          </div>
-
-          <div style={{ marginBottom: theme.spacing[4] }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: theme.typography.fontSize.sm,
-                fontWeight: theme.typography.fontWeight.medium,
-                color: theme.colors.text.primary,
-                marginBottom: theme.spacing[2],
-              }}
-            >
-              Dietary Restrictions
-            </label>
-            <textarea
-              {...register("dietaryRestrictions")}
-              placeholder="Any dietary restrictions or allergies..."
-              rows="2"
-              style={{
-                width: "100%",
-                padding: theme.spacing[3],
-                border: `2px solid ${
-                  errors.dietaryRestrictions
-                    ? theme.colors.error.main
-                    : theme.colors.border.light
-                }`,
-                borderRadius: theme.borderRadius.base,
-                fontSize: theme.typography.fontSize.base,
-                resize: "vertical",
-                outline: "none",
-                transition: "border-color 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = theme.colors.primary.main;
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = errors.dietaryRestrictions
-                  ? theme.colors.error.main
-                  : theme.colors.border.light;
-              }}
-            />
-            {errors.dietaryRestrictions && (
-              <p
-                style={{
-                  color: theme.colors.error.main,
-                  fontSize: theme.typography.fontSize.sm,
-                  marginTop: theme.spacing[1],
-                }}
-              >
-                {errors.dietaryRestrictions.message}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Emergency Contact */}
-        <div style={{ marginBottom: theme.spacing[6] }}>
-          <h3
-            style={{
-              fontSize: theme.typography.fontSize.lg,
-              fontWeight: theme.typography.fontWeight.semibold,
-              color: theme.colors.text.primary,
-              marginBottom: theme.spacing[4],
-            }}
-          >
-            Emergency Contact (Optional)
-          </h3>
-
-          <div style={{ marginBottom: theme.spacing[4] }}>
-            <Input
-              label="Contact Name"
-              {...register("emergencyContactName")}
-              error={errors.emergencyContactName?.message}
-              placeholder="Emergency contact full name"
-            />
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: theme.spacing[4],
-            }}
-          >
-            <Input
-              label="Contact Phone"
-              {...register("emergencyContactPhone")}
-              error={errors.emergencyContactPhone?.message}
-              placeholder="Emergency contact phone"
-            />
-            <Input
-              label="Relationship"
-              {...register("emergencyContactRelationship")}
-              error={errors.emergencyContactRelationship?.message}
-              placeholder="e.g., Parent, Spouse"
+              placeholder="Enter your University/Staff ID"
             />
           </div>
         </div>

@@ -88,8 +88,20 @@ export const registrationAPI = {
   registerForEvent: (registrationData) => 
     api.post("/registrations", registrationData),
 
-  // Get current user's registrations
-  getMyRegistrations: () => api.get("/registrations/my"),
+  // Get current user's registrations with optional filtering
+  getMyRegistrations: (params = {}) => {
+    const queryParams = new URLSearchParams();
+    
+    // Add each parameter if it exists
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+        queryParams.append(key, params[key]);
+      }
+    });
+    
+    const queryString = queryParams.toString();
+    return api.get(`/registrations/my${queryString ? `?${queryString}` : ""}`);
+  },
 
   // Get registrations for a specific event (Admin/Events Office only)
   getEventRegistrations: (eventId) => 

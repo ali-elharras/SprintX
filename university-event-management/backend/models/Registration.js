@@ -48,37 +48,6 @@ const registrationSchema = new mongoose.Schema(
         "University/Staff ID can only contain letters and numbers",
       ],
     },
-    role: {
-      type: String,
-      required: [true, "Role is required"],
-      enum: {
-        values: ["student", "staff", "ta", "professor"],
-        message: "Role must be one of: student, staff, ta, professor",
-      },
-    },
-
-    // Additional Information
-    department: {
-      type: String,
-      trim: true,
-      maxlength: [100, "Department name cannot exceed 100 characters"],
-    },
-    phoneNumber: {
-      type: String,
-      trim: true,
-      match: [
-        /^[\+]?[\d\s\-\(\)]{10,}$/,
-        "Please provide a valid phone number",
-      ],
-    },
-    yearOfStudy: {
-      type: Number,
-      required: function () {
-        return this.role === "student";
-      },
-      min: [1, "Year of study must be at least 1"],
-      max: [10, "Year of study cannot exceed 10"],
-    },
 
     // Registration Status
     status: {
@@ -89,69 +58,6 @@ const registrationSchema = new mongoose.Schema(
     registrationDate: {
       type: Date,
       default: Date.now,
-    },
-
-    // Special Requirements or Notes
-    specialRequirements: {
-      type: String,
-      trim: true,
-      maxlength: [500, "Special requirements cannot exceed 500 characters"],
-    },
-    dietaryRestrictions: {
-      type: String,
-      trim: true,
-      maxlength: [300, "Dietary restrictions cannot exceed 300 characters"],
-    },
-    emergencyContact: {
-      name: {
-        type: String,
-        trim: true,
-        maxlength: [100, "Emergency contact name cannot exceed 100 characters"],
-      },
-      phone: {
-        type: String,
-        trim: true,
-        match: [
-          /^[\+]?[\d\s\-\(\)]{10,}$/,
-          "Please provide a valid emergency contact phone number",
-        ],
-      },
-      relationship: {
-        type: String,
-        trim: true,
-        maxlength: [50, "Relationship cannot exceed 50 characters"],
-      },
-    },
-
-    // Payment Information (for paid events)
-    paymentStatus: {
-      type: String,
-      enum: ["not_required", "pending", "paid", "refunded"],
-      default: "not_required",
-    },
-    paymentAmount: {
-      type: Number,
-      min: [0, "Payment amount cannot be negative"],
-      default: 0,
-    },
-    paymentDate: {
-      type: Date,
-    },
-
-    // Check-in Information
-    checkedIn: {
-      type: Boolean,
-      default: false,
-    },
-    checkInTime: {
-      type: Date,
-    },
-
-    // Admin Notes
-    adminNotes: {
-      type: String,
-      trim: true,
-      maxlength: [1000, "Admin notes cannot exceed 1000 characters"],
     },
   },
   {
