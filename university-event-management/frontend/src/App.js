@@ -17,7 +17,7 @@ import VendorSignup from "./pages/VendorSignup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
-import CreateConference from "./pages/conference/CreateConference";
+import CreateConference from "./pages/conferences/CreateConference";
 import EditConference from "./pages/conferences/EditConference";
 import ConferenceList from "./components/conference_components/ConferenceList";
 
