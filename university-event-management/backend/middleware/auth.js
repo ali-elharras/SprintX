@@ -129,10 +129,22 @@ const requireActiveAccount = (req, res, next) => {
   next();
 };
 
+// Check if user is a vendor
+const requireVendor = (req, res, next) => {
+    if (req.userType !== 'vendor') {
+        return res.status(403).json({
+            success: false,
+            message: 'This route is accessible only by vendors.'
+        });
+    }
+    next();
+};
+
 module.exports = {
   protect,
   authorize,
   requireAdminOrEventsOffice,
   requireApprovedVendor,
   requireActiveAccount,
+  requireVendor,
 };
