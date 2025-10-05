@@ -4,10 +4,10 @@ import theme, { getEventTypeColor, getRoleColor } from "../theme";
 import Card from "../components/Card";
 import Navbar from "../components/Navbar";
 
-const Dashboard = () => {
-  const { user, vendor, isUser, isVendor } = useAuth();
 
-  const containerStyles = {
+const styles = {
+  container: {
+
     minHeight: "100vh",
     background: `linear-gradient(135deg, ${theme.colors.background.default} 0%, ${theme.colors.neutral.gray50} 100%)`,
     fontFamily: theme.typography.fontFamily.primary,
