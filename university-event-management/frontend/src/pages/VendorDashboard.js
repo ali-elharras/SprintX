@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import theme from "../theme";
 import ApplyBazaarModal from "../components/vendor/ApplyBazaarModal";
 import ApplyBoothModal from "../components/vendor/ApplyBoothModal";
+import Navbar from "../components/Navbar";
 
 const styles = {
   pageContainer: {
@@ -466,10 +467,15 @@ const VendorDashboard = () => {
     }
   };
 
-  const appliedBazaarIds = new Set(myApplications.map(app => app.bazaar?._id));
+  const appliedBazaarIds = new Set(
+    myApplications
+      .filter(app => app.bazaar && app.bazaar._id)
+      .map(app => String(app.bazaar._id))
+  );
 
   return (
     <>
+      <Navbar />
       <style>{cssKeyframes}</style>
       <div style={styles.pageContainer}>
         <div style={styles.backgroundPattern}></div>
@@ -513,7 +519,7 @@ const VendorDashboard = () => {
                     key={bazaar._id} 
                     bazaar={bazaar} 
                     onApply={handleApplyClick} 
-                    isApplied={appliedBazaarIds.has(bazaar._id)}
+                    isApplied={appliedBazaarIds.has(String(bazaar._id))}
                   />
                 ))}
               </div>
