@@ -2,6 +2,10 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Vendor = require("../models/Vendor");
 
+/* --------------------------------------------------------
+   AUTHENTICATION MIDDLEWARES
+-------------------------------------------------------- */
+
 // Protect routes - general authentication
 const protect = async (req, res, next) => {
   try {
@@ -82,20 +86,20 @@ const authorize = (...roles) => {
 
 // Check if user is admin or events office
 const requireAdminOrEventsOffice = (req, res, next) => {
-  if (req.userType === "vendo") {
+  if (req.userType === "vendor") {
     return res.status(403).json({
       success: false,
-      message: "Admin or Events Office access requiredhhh",
+      message: "Admin or Events Office access required",
     });
   }
-  /*
-  if (!req.user || !["admin", "events_office", "vendor"].includes(req.user.role)) {
+
+  if (!req.user || !["admin", "events_office"].includes(req.user.role)) {
     return res.status(403).json({
       success: false,
-      message: "Admin or Events Office access requiredAAA",
+      message: "Admin or Events Office access required",
     });
   }
-    */
+
   next();
 };
 
@@ -132,15 +136,41 @@ const requireActiveAccount = (req, res, next) => {
 
 // Check if user is a vendor
 const requireVendor = (req, res, next) => {
-    if (req.userType !== 'vendor') {
-        return res.status(403).json({
-            success: false,
-            message: 'This route is accessible only by vendors.'
-        });
-    }
-    next();
+  if (req.userType !== "vendor") {
+    return res.status(403).json({
+      success: false,
+      message: "This route is accessible only by vendors.",
+    });
+  }
+  next();
 };
 
+// Verify admin token and privileges
+const verifyAdmin = async (req, res, next) => {
+  try {
+    const header = req.headers.authorization;
+    if (!header || !header.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    const token = header.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (!user || user.role !== "admin" || !user.isActive) {
+      return res.status(403).json({ message: "Access denied: Admins only" });
+    }
+
+    req.user = user;
+    next();
+  } catch (err) {
+    return res.status(401).json({ message: "Invalid or expired token" });
+  }
+};
+
+/* --------------------------------------------------------
+   EXPORTS
+-------------------------------------------------------- */
 module.exports = {
   protect,
   authorize,
@@ -148,4 +178,5 @@ module.exports = {
   requireApprovedVendor,
   requireActiveAccount,
   requireVendor,
+  verifyAdmin,
 };

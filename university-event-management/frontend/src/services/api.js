@@ -1,6 +1,8 @@
 import axios from "axios";
 
-// Create axios instance with base configuration
+// ============================================
+// AXIOS INSTANCE SETUP
+// ============================================
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || "http://localhost:5080/api",
   timeout: 10000,
@@ -9,7 +11,9 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to add auth token
+// ============================================
+// REQUEST INTERCEPTOR (Attach JWT)
+// ============================================
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -18,28 +22,30 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor to handle common errors
+// ============================================
+// RESPONSE INTERCEPTOR (Handle common errors)
+// ============================================
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   (error) => {
-    // Handle common error responses
     if (error.response?.status === 401) {
-      // Unauthorized - clear token and redirect to login
+      const wasVendor = localStorage.getItem("userType") === "vendor";
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       localStorage.removeItem("vendor");
       localStorage.removeItem("userType");
-      window.location.href = "/login";
+
+      if (
+        window.location.pathname !== "/login" &&
+        window.location.pathname !== "/vendor-login"
+      ) {
+        window.location.href = wasVendor ? "/vendor-login" : "/login";
+      }
     }
 
-    // Return formatted error
     const errorMessage =
       error.response?.data?.message || error.message || "An error occurred";
     return Promise.reject({
@@ -53,10 +59,9 @@ api.interceptors.response.use(
 export default api;
 
 // ============================================
-// API Service Functions
+// BAZAAR & APPLICATION SERVICES (from HEAD)
 // ============================================
 
-// Event Services
 export const eventServices = {
   getUpcomingBazaars: async () => {
     try {
@@ -68,7 +73,6 @@ export const eventServices = {
   },
 };
 
-// Application Services
 export const applicationServices = {
   applyToBazaar: async (bazaarId, applicationData) => {
     try {
@@ -128,5 +132,112 @@ export const applicationServices = {
     } catch (error) {
       throw error;
     }
+  },
+};
+
+// ============================================
+// EVENT API ENDPOINTS (from main)
+// ============================================
+export const eventAPI = {
+  getEvents: (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return api.get(`/events${queryParams ? `?${queryParams}` : ""}`);
+  },
+
+  getEvent: (id) => api.get(`/events/${id}`),
+  getEventsByType: (type) => api.get(`/events/type/${type}`),
+  createEvent: (eventData) => api.post("/events", eventData),
+  updateEvent: (id, eventData) => api.put(`/events/${id}`, eventData),
+  deleteEvent: (id) => api.delete(`/events/${id}`),
+};
+
+// ============================================
+// REGISTRATION API ENDPOINTS
+// ============================================
+export const registrationAPI = {
+  registerForEvent: (registrationData) =>
+    api.post("/registrations", registrationData),
+
+  getMyRegistrations: (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return api.get(`/registrations/my${queryParams ? `?${queryParams}` : ""}`);
+  },
+
+  getEventRegistrations: (eventId) =>
+    api.get(`/registrations/event/${eventId}`),
+
+  cancelRegistration: (registrationId) =>
+    api.delete(`/registrations/${registrationId}`),
+
+  updateRegistrationStatus: (registrationId, status) =>
+    api.put(`/registrations/${registrationId}/status`, { status }),
+
+  checkInParticipant: (registrationId) =>
+    api.post(`/registrations/${registrationId}/checkin`),
+};
+
+// ============================================
+// COURT API ENDPOINTS
+// ============================================
+export const courtAPI = {
+  getCourts: (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return api.get(`/courts${queryParams ? `?${queryParams}` : ""}`);
+  },
+
+  getCourt: (id) => api.get(`/courts/${id}`),
+  getCourtsByType: (type) => api.get(`/courts/type/${type}`),
+  getCourtAvailability: (courtId, date) =>
+    api.get(`/courts/${courtId}/availability/${date}`),
+
+  getWeeklyAvailability: (courtId, startDate = null) => {
+    const params = startDate ? `?startDate=${startDate}` : "";
+    return api.get(`/courts/${courtId}/weekly-availability${params}`);
+  },
+
+  getCourtStats: () => api.get("/courts/stats"),
+  createCourt: (courtData) => api.post("/courts", courtData),
+  updateCourt: (id, courtData) => api.put(`/courts/${id}`, courtData),
+  deleteCourt: (id) => api.delete(`/courts/${id}`),
+};
+
+// ============================================
+// GYM API ENDPOINTS
+// ============================================
+export const gymAPI = {
+  getSessions: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return api.get(`/gym/sessions${queryString ? `?${queryString}` : ""}`);
+  },
+
+  getSessionsByMonth: (year, month, params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return api.get(
+      `/gym/sessions/month/${year}/${month}${
+        queryString ? `?${queryString}` : ""
+      }`
+    );
+  },
+
+  getSessionsByDate: (date) => api.get(`/gym/sessions/date/${date}`),
+  getSession: (id) => api.get(`/gym/sessions/${id}`),
+  getSessionTypes: () => api.get("/gym/types"),
+
+  register: (sessionId, data) =>
+    api.post(`/gym/sessions/${sessionId}/register`, data),
+
+  getMyRegistrations: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return api.get(`/gym/registrations${queryString ? `?${queryString}` : ""}`);
+  },
+
+  cancelRegistration: (registrationId, reason) =>
+    api.delete(`/gym/registrations/${registrationId}`, { data: { reason } }),
+
+  getScheduleOverview: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return api.get(
+      `/gym/schedule/overview${queryString ? `?${queryString}` : ""}`
+    );
   },
 };

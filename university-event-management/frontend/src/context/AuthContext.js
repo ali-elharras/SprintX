@@ -122,7 +122,7 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: AUTH_ACTIONS.LOADING, payload: true });
       dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
 
-      const response = await authAPI.login({ ...loginData, userType: "user" });
+      const response = await authAPI.login(loginData);
 
       if (response.success) {
         const authData = {
@@ -157,10 +157,7 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: AUTH_ACTIONS.LOADING, payload: true });
       dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
 
-      const response = await authAPI.login({
-        ...loginData,
-        userType: "vendor",
-      });
+      const response = await authAPI.login(loginData);
 
       if (response.success) {
         const authData = {
@@ -251,11 +248,17 @@ export const AuthProvider = ({ children }) => {
         return { success: true, data: response.data };
       }
     } catch (error) {
+      console.error("🚨 [AuthContext] Vendor registration error:", error);
+      const errorMessage = error.message || "Registration failed";
       dispatch({
         type: AUTH_ACTIONS.SET_ERROR,
-        payload: error.message || "Registration failed",
+        payload: errorMessage,
       });
-      return { success: false, error: error.message || "Registration failed" };
+      return {
+        success: false,
+        error: errorMessage,
+        data: error.data, // Include validation errors if available
+      };
     }
   };
 

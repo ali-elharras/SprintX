@@ -6,6 +6,9 @@ const {
   login,
   logout,
   getProfile,
+  forgotPassword,
+  verifyResetToken,
+  resetPassword,
 } = require("../controllers/authController");
 const { protect } = require("../middleware/auth");
 
@@ -41,9 +44,9 @@ const userRegistrationValidation = [
   body("universityId")
     .trim()
     .isLength({ min: 1 })
-    .matches(/^[A-Za-z0-9]+$/)
+    .matches(/^[0-9\-_\.]+$/)
     .withMessage(
-      "University ID is required and can only contain letters and numbers"
+      "University ID is required and can only contain numbers and symbols (-, _, .)"
     ),
   body("department")
     .optional()
@@ -55,7 +58,7 @@ const userRegistrationValidation = [
     .isInt({ min: 1, max: 10 })
     .withMessage("Year of study must be between 1 and 10"),
   body("phoneNumber")
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .matches(/^[\+]?[\d\s\-\(\)]{10,}$/)
     .withMessage("Please provide a valid phone number"),
 ];
@@ -107,17 +110,17 @@ const vendorRegistrationValidation = [
     .isLength({ max: 100 })
     .withMessage("Industry must be less than 100 characters"),
   body("companySize")
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isIn(["startup", "small", "medium", "large", "enterprise"])
     .withMessage(
       "Company size must be one of: startup, small, medium, large, enterprise"
     ),
   body("phoneNumber")
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .matches(/^[\+]?[\d\s\-\(\)]{10,}$/)
     .withMessage("Please provide a valid phone number"),
   body("website")
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isURL()
     .withMessage("Please provide a valid website URL"),
   body("address.street")
@@ -136,7 +139,7 @@ const vendorRegistrationValidation = [
     .isLength({ max: 50 })
     .withMessage("State must be less than 50 characters"),
   body("address.zipCode")
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .trim()
     .matches(/^[\d\-\s]{5,10}$/)
     .withMessage("Please provide a valid zip code"),
@@ -176,11 +179,36 @@ const loginValidation = [
     .withMessage("User type must be either user or vendor"),
 ];
 
+// Validation rules for forgot password
+const forgotPasswordValidation = [
+  body("email")
+    .isEmail()
+    .normalizeEmail()
+    .withMessage("Please provide a valid email address"),
+];
+
+// Validation rules for reset password
+const resetPasswordValidation = [
+  body("token").notEmpty().withMessage("Reset token is required"),
+  body("password")
+    .isLength({ min: 8 })
+    .withMessage("Password must be at least 8 characters long")
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage(
+      "Password must contain at least one uppercase letter, one lowercase letter, and one number"
+    ),
+];
+
 // Routes
 router.post("/register/user", userRegistrationValidation, registerUser);
 router.post("/register/vendor", vendorRegistrationValidation, registerVendor);
 router.post("/login", loginValidation, login);
 router.post("/logout", protect, logout);
 router.get("/me", protect, getProfile);
+
+// Password reset routes
+router.post("/forgot-password", forgotPasswordValidation, forgotPassword);
+router.get("/verify-reset-token/:token", verifyResetToken);
+router.post("/reset-password", resetPasswordValidation, resetPassword);
 
 module.exports = router;

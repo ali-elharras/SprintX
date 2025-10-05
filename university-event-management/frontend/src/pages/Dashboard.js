@@ -4,8 +4,10 @@ import theme, { getEventTypeColor, getRoleColor } from "../theme";
 import Card from "../components/Card";
 import Navbar from "../components/Navbar";
 
-const styles = {
-  container: {
+const Dashboard = () => {
+  const { user, vendor, isUser, isVendor } = useAuth();
+
+  const containerStyles = {
     minHeight: "100vh",
     background: `linear-gradient(135deg, ${theme.colors.background.default} 0%, ${theme.colors.neutral.gray50} 100%)`,
     fontFamily: theme.typography.fontFamily.primary,
@@ -359,7 +361,7 @@ const Dashboard = () => {
         features: [
           "Browse upcoming events",
           "Register for events",
-          "Track your registrations",
+          "View your registrations",
           "Manage your profile",
         ],
       };

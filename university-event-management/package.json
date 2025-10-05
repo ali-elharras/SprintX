@@ -4,7 +4,7 @@
   "description": "University Event Management System - MERN Stack",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "dev": "node scripts/show-credentials.js && concurrently \"npm run server\" \"npm run client\"",
     "server": "cd backend && npm run dev",
     "client": "cd frontend && npm start",
     "install-backend": "cd backend && npm install",

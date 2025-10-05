@@ -9,15 +9,26 @@ import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import theme from "./theme";
 
-// Pages
+// Pages (combined from both branches)
 import Login from "./pages/Login";
+import VendorLogin from "./pages/VendorLogin";
 import UserSignup from "./pages/UserSignup";
 import VendorSignup from "./pages/VendorSignup";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import VendorDashboard from "./pages/VendorDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 
-// Protected Route Component
+import EventsPage from "./pages/EventsPage";
+import CourtsPage from "./pages/CourtsPage";
+import MyRegistrations from "./pages/MyRegistrations";
+import GymSchedulePage from "./pages/GymSchedulePage";
+
+// ---------------------------
+// Protected Route Components
+// ---------------------------
+
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -39,10 +50,13 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
 };
 
-// Public Route Component (redirects to dashboard if already authenticated)
 const PublicRoute = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -77,11 +91,17 @@ const AdminRoute = ({ children }) => {
   return children;
 };
 
+// ---------------------------
+// Router Configuration (merged)
+// ---------------------------
+
 const router = createBrowserRouter([
-    {
+  {
     path: "/",
     element: <Navigate to="/dashboard" replace />,
   },
+
+  // Public Routes
   {
     path: "/login",
     element: (
@@ -91,7 +111,15 @@ const router = createBrowserRouter([
     ),
   },
   {
-    path: "/signup",
+    path: "/vendor-login",
+    element: (
+      <PublicRoute>
+        <VendorLogin />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/signup/user",
     element: (
       <PublicRoute>
         <UserSignup />
@@ -99,13 +127,31 @@ const router = createBrowserRouter([
     ),
   },
   {
-    path: "/vendor-signup",
+    path: "/signup/vendor",
     element: (
       <PublicRoute>
         <VendorSignup />
       </PublicRoute>
     ),
   },
+  {
+    path: "/forgot-password",
+    element: (
+      <PublicRoute>
+        <ForgotPassword />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/reset-password/:token",
+    element: (
+      <PublicRoute>
+        <ResetPassword />
+      </PublicRoute>
+    ),
+  },
+
+  // Protected Routes
   {
     path: "/dashboard",
     element: (
@@ -132,13 +178,95 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+
+  // New pages from main branch
+  {
+    path: "/events",
+    element: (
+      <ProtectedRoute>
+        <EventsPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/courts",
+    element: (
+      <ProtectedRoute>
+        <CourtsPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/my-registrations",
+    element: (
+      <ProtectedRoute>
+        <MyRegistrations />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/gym-schedule",
+    element: (
+      <ProtectedRoute>
+        <GymSchedulePage />
+      </ProtectedRoute>
+    ),
+  },
+
+  // 404 Fallback
   {
     path: "*",
-    element: <Navigate to="/dashboard" replace />,
+    element: (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: theme.typography.fontFamily.primary,
+          textAlign: "center",
+          padding: theme.spacing[4],
+        }}
+      >
+        <h1
+          style={{
+            fontSize: theme.typography.fontSize["4xl"],
+            fontWeight: theme.typography.fontWeight.bold,
+            color: theme.colors.text.primary,
+            marginBottom: theme.spacing[4],
+          }}
+        >
+          404 - Page Not Found
+        </h1>
+        <p
+          style={{
+            fontSize: theme.typography.fontSize.lg,
+            color: theme.colors.text.secondary,
+            marginBottom: theme.spacing[6],
+          }}
+        >
+          The page you're looking for doesn't exist.
+        </p>
+        <a
+          href="/events"
+          style={{
+            ...theme.components.button.primary,
+            textDecoration: "none",
+            display: "inline-block",
+          }}
+        >
+          Browse Events
+        </a>
+      </div>
+    ),
   },
 ]);
 
-// Main App Component
+// ---------------------------
+// Main App
+// ---------------------------
+
 const App = () => {
   return (
     <AuthProvider>
@@ -182,6 +310,5 @@ const App = () => {
     </AuthProvider>
   );
 };
-
 
 export default App;
