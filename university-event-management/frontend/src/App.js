@@ -14,7 +14,9 @@ import theme from "./theme";
 import Login from "./pages/Login";
 import UserSignup from "./pages/UserSignup";
 import VendorSignup from "./pages/VendorSignup";
+import xrSignup from "./pages/VendorSignup";
 import Dashboard from "./pages/Dashboard";
+import VendorDashboard from "./pages/VendorDashboard";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -102,6 +104,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/vendor-dashboard"
+        element={
+          <ProtectedRoute>
+            <VendorDashboard />
           </ProtectedRoute>
         }
       />

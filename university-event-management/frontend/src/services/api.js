@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || "http://localhost:5000/api",
+  baseURL: process.env.REACT_APP_API_URL || "http://localhost:5080/api",
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -51,3 +51,82 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+// ============================================
+// API Service Functions
+// ============================================
+
+// Event Services
+export const eventServices = {
+  getUpcomingBazaars: async () => {
+    try {
+      const response = await api.get("/events/bazaars/upcoming");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
+
+// Application Services
+export const applicationServices = {
+  applyToBazaar: async (bazaarId, applicationData) => {
+    try {
+      const response = await api.post(
+        `/applications/bazaar/${bazaarId}`,
+        applicationData
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  applyForBooth: async (applicationData) => {
+    try {
+      const response = await api.post("/applications/booth", applicationData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getMyParticipations: async () => {
+    try {
+      const response = await api.get("/applications/my-participations");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getMyRequests: async () => {
+    try {
+      const response = await api.get("/applications/my-requests");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getAllApplications: async () => {
+    try {
+      const response = await api.get("/applications");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateApplicationStatus: async (applicationType, applicationId, status) => {
+    try {
+      const response = await api.put(
+        `/applications/${applicationType}/${applicationId}/status`,
+        { status }
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
