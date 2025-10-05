@@ -70,10 +70,39 @@ const  deleteAdminOrEventOffice= async (req, res)=> {
 }
 
 
+const getAllUsers = async (req, res) => {
 
+  try {
+    // Fetch all users with selected fields only (no password or sensitive tokens)
+    const users = await User.find({}, 
+      "firstName lastName email role universityId department yearOfStudy phoneNumber isActive isVerified createdAt"
+    ).lean();
+
+    // Format output to make it frontend-friendly
+    const formattedUsers = users.map(user => ({
+      id: user._id,
+      fullName: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      role: user.role,
+      universityId: user.universityId,
+      department: user.department || "N/A",
+      yearOfStudy: user.yearOfStudy || "N/A",
+      phoneNumber: user.phoneNumber || "N/A",
+      status: user.isActive ? "Active" : "Blocked",
+      verified: user.isVerified,
+      createdAt: user.createdAt.toLocaleDateString(),
+    }));
+
+    res.status(200).json(formattedUsers);
+  } catch (err) {
+    console.error("Error fetching users:", err);
+    res.status(500).json({ message: "Error fetching users" });
+  }
+};
 
 
 module.exports = {
   createAdminOrEventOffice,
   deleteAdminOrEventOffice,
+  getAllUsers,
 };
