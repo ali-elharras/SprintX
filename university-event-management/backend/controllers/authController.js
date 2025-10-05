@@ -214,23 +214,48 @@ const registerVendor = async (req, res, next) => {
       }
     }
 
-    // Create vendor
-    const vendor = await Vendor.create({
+    // Create vendor data object, excluding empty strings for optional fields
+    const vendorData = {
       companyName,
-      contactPersonFirstName,
-      contactPersonLastName,
       email,
       password,
-      businessRegistrationNumber,
-      industry,
-      companySize,
-      phoneNumber,
-      website,
-      address,
-      description,
-      servicesOffered: servicesOffered || [],
-      interestedEventTypes,
-    });
+      interestedEventTypes: interestedEventTypes || [],
+    };
+
+    // Only add optional fields if they have actual values (not empty strings)
+    if (contactPersonFirstName && contactPersonFirstName.trim()) {
+      vendorData.contactPersonFirstName = contactPersonFirstName;
+    }
+    if (contactPersonLastName && contactPersonLastName.trim()) {
+      vendorData.contactPersonLastName = contactPersonLastName;
+    }
+    if (businessRegistrationNumber && businessRegistrationNumber.trim()) {
+      vendorData.businessRegistrationNumber = businessRegistrationNumber;
+    }
+    if (industry && industry.trim()) {
+      vendorData.industry = industry;
+    }
+    if (companySize && companySize.trim()) {
+      vendorData.companySize = companySize;
+    }
+    if (phoneNumber && phoneNumber.trim()) {
+      vendorData.phoneNumber = phoneNumber;
+    }
+    if (website && website.trim()) {
+      vendorData.website = website;
+    }
+    if (description && description.trim()) {
+      vendorData.description = description;
+    }
+    if (address) {
+      vendorData.address = address;
+    }
+    if (servicesOffered && servicesOffered.length > 0) {
+      vendorData.servicesOffered = servicesOffered;
+    }
+
+    // Create vendor
+    const vendor = await Vendor.create(vendorData);
 
     // Generate token
     const token = generateToken(vendor._id, "vendor");
