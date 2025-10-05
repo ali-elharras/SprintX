@@ -19,6 +19,11 @@ import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import EventsPage from "./pages/EventsPage";
 import MyRegistrations from "./pages/MyRegistrations";
+<<<<<<< Updated upstream
+=======
+import GymSchedulePage from "./pages/GymSchedulePage";
+import CreateWorkshop from "./pages/CreateWorkshop";
+>>>>>>> Stashed changes
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -141,6 +146,25 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+<<<<<<< Updated upstream
+=======
+      <Route
+        path="/gym-schedule"
+        element={
+          <ProtectedRoute>
+            <GymSchedulePage />
+          </ProtectedRoute>
+        }
+      />
+       <Route
+        path="/create-workshop"
+        element={
+          <ProtectedRoute>
+            <CreateWorkshop/>
+          </ProtectedRoute>
+        }
+      />
+>>>>>>> Stashed changes
 
       {/* Default Routes */}
       <Route path="/" element={<Navigate to="/events" replace />} />
