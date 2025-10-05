@@ -33,12 +33,24 @@ api.interceptors.response.use(
   (error) => {
     // Handle common error responses
     if (error.response?.status === 401) {
-      // Unauthorized - clear token and redirect to login
+      // Check user type before clearing storage
+      const wasVendor = localStorage.getItem("userType") === "vendor";
+
+      // Unauthorized - clear token and user data
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       localStorage.removeItem("vendor");
       localStorage.removeItem("userType");
-      window.location.href = "/login";
+
+      // Only redirect if user is not already on a login page
+      // For login attempts, let the login page handle the error
+      if (
+        window.location.pathname !== "/login" &&
+        window.location.pathname !== "/vendor-login"
+      ) {
+        // Redirect to appropriate login based on user type that was logged in
+        window.location.href = wasVendor ? "/vendor-login" : "/login";
+      }
     }
 
     // Return formatted error
@@ -87,30 +99,34 @@ export const eventAPI = {
 
 export const registrationAPI = {
   // Register for an event
-  registerForEvent: (registrationData) => 
+  registerForEvent: (registrationData) =>
     api.post("/registrations", registrationData),
 
   // Get current user's registrations with optional filtering
   getMyRegistrations: (params = {}) => {
     const queryParams = new URLSearchParams();
-    
+
     // Add each parameter if it exists
-    Object.keys(params).forEach(key => {
-      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+    Object.keys(params).forEach((key) => {
+      if (
+        params[key] !== undefined &&
+        params[key] !== null &&
+        params[key] !== ""
+      ) {
         queryParams.append(key, params[key]);
       }
     });
-    
+
     const queryString = queryParams.toString();
     return api.get(`/registrations/my${queryString ? `?${queryString}` : ""}`);
   },
 
   // Get registrations for a specific event (Admin/Events Office only)
-  getEventRegistrations: (eventId) => 
+  getEventRegistrations: (eventId) =>
     api.get(`/registrations/event/${eventId}`),
 
   // Cancel a registration
-  cancelRegistration: (registrationId) => 
+  cancelRegistration: (registrationId) =>
     api.delete(`/registrations/${registrationId}`),
 
   // Update registration status (Admin/Events Office only)
@@ -140,7 +156,7 @@ export const courtAPI = {
   getCourtsByType: (type) => api.get(`/courts/type/${type}`),
 
   // Get court availability for specific date
-  getCourtAvailability: (courtId, date) => 
+  getCourtAvailability: (courtId, date) =>
     api.get(`/courts/${courtId}/availability/${date}`),
 
   // Get weekly availability for a court
@@ -175,7 +191,11 @@ export const getGymSessions = (params = {}) => {
 // Get gym sessions by month
 export const getGymSessionsByMonth = (year, month, params = {}) => {
   const queryString = new URLSearchParams(params).toString();
-  return api.get(`/gym/sessions/month/${year}/${month}${queryString ? `?${queryString}` : ""}`);
+  return api.get(
+    `/gym/sessions/month/${year}/${month}${
+      queryString ? `?${queryString}` : ""
+    }`
+  );
 };
 
 // Get gym sessions by date
@@ -207,14 +227,16 @@ export const getUserGymRegistrations = (params = {}) => {
 // Cancel gym registration
 export const cancelGymRegistration = (registrationId, reason) => {
   return api.delete(`/gym/registrations/${registrationId}`, {
-    data: { reason }
+    data: { reason },
   });
 };
 
 // Get gym schedule overview
 export const getGymScheduleOverview = (params = {}) => {
   const queryString = new URLSearchParams(params).toString();
-  return api.get(`/gym/schedule/overview${queryString ? `?${queryString}` : ""}`);
+  return api.get(
+    `/gym/schedule/overview${queryString ? `?${queryString}` : ""}`
+  );
 };
 
 // ============================================
