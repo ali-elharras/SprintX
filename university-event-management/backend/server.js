@@ -6,7 +6,7 @@ const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
-const conferenceRoutes = require("./routes/conference");
+const conferenceRoutes = require("./routes/conference.js");
 const { errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
@@ -24,9 +24,9 @@ app.use(limiter); // Rate limiting
 app.use(morgan("combined")); // Logging
 app.use(cors({
     origin: 'http://localhost:3000',
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    credentials: true,
     exposedHeaders: ['Authorization']
 }));
 app.use(express.json({ limit: "10mb" }));

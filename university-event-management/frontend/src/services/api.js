@@ -216,3 +216,20 @@ export const getGymScheduleOverview = (params = {}) => {
   const queryString = new URLSearchParams(params).toString();
   return api.get(`/gym/schedule/overview${queryString ? `?${queryString}` : ""}`);
 };
+
+// ============================================
+// Conference API ENDPOINTS
+// ============================================
+
+export const conferenceAPI = {
+    // Create new conference
+    createConference: (conferenceData) => api.post('/conferences', conferenceData),
+    
+    // Update conference
+    updateConference: (id, conferenceData) => api.put(`/conferences/${id}`, conferenceData),
+    
+    // Delete conference
+    deleteConference: (id) => api.delete(`/conferences/${id}`),
+
+    getConference: (id) => api.get(`/conferences/${id}`),
+};

@@ -3,8 +3,8 @@ const {
     createConference,
     editConference,
     deleteConference,
-    getConferences,
-} = require("../controllers/conferenceController");
+    getConference,
+} = require("../controllers/conferenceController.js");
 
 const router = express.Router();
 
@@ -17,7 +17,7 @@ router.put("/:id", editConference);
 // Route to delete a conference
 router.delete("/:id", deleteConference);
 
-// Route to get all conferences
-router.get("/", getConferences);
+// Route to get a single conference
+router.get("/:id", getConference);
 
 module.exports = router;

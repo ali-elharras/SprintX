@@ -6,6 +6,8 @@ import {
   Navigate,
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
+import { ToastContainer} from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import theme from "./theme";
@@ -17,9 +19,12 @@ import VendorSignup from "./pages/VendorSignup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
-import CreateConference from "./pages/conference/CreateConference";
+import CreateConference from "./pages/conferences/CreateConference";
 import EditConference from "./pages/conferences/EditConference";
-import ConferenceList from "./components/conference_components/ConferenceList";
+import EventsPage from "./pages/EventsPage";
+import CourtsPage from "./pages/CourtsPage";
+import MyRegistrations from "./pages/MyRegistrations";
+import GymSchedulePage from "./pages/GymSchedulePage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -214,14 +219,6 @@ const AppRoutes = () => {
       
       {/* Conference Routes */}
       <Route
-        path="/conferences"
-        element={
-          <ProtectedRoute>
-            <ConferenceList />
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/conferences/create"
         element={
           <ProtectedRoute>
@@ -244,6 +241,7 @@ const AppRoutes = () => {
 // Main App Component
 const App = () => {
   return (
+    <>
     <Router>
       <AuthProvider>
         <div
@@ -285,6 +283,18 @@ const App = () => {
         </div>
       </AuthProvider>
     </Router>
+    <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
+    </>
   );
 };
 

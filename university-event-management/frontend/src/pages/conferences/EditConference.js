@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import ConferenceForm from '../../components/conference_components/ConferenceForm';
+import { motion } from 'framer-motion';
+import Navbar from '../../components/Navbar';
+import ConferenceForm from '../../components/conference_components/ConferenceForm.js';
 import { conferenceService } from '../../services/conference';
 import theme from '../../theme';
 
@@ -13,13 +15,11 @@ const EditConference = () => {
   useEffect(() => {
     const fetchConference = async () => {
       try {
-        const response = await conferenceService.getAllConferences();
-        const conf = response.data.find(c => c._id === id);
-        if (!conf) {
-          navigate('/conferences');
-          return;
+        const response = await conferenceService.getConference(id);
+        if (!response.success) {
+          throw new Error('Conference not found');
         }
-        setConference(conf);
+        setConference(response.data);
       } catch (error) {
         console.error('Error:', error.message);
         navigate('/conferences');
@@ -31,20 +31,118 @@ const EditConference = () => {
     fetchConference();
   }, [id, navigate]);
 
+  const containerStyles = {
+    minHeight: "100vh",
+    backgroundColor: theme.colors.background.default,
+    fontFamily: theme.typography.fontFamily.primary,
+  };
+
+  const contentWrapperStyles = {
+    minHeight: "calc(100vh - 64px)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: theme.spacing[6],
+  };
+
+  const innerContainerStyles = {
+    width: "100%",
+    maxWidth: "700px",
+    position: "relative",
+  };
+
+  const headerStyles = {
+    marginBottom: theme.spacing[6],
+  };
+
+  const titleStyles = {
+    fontSize: theme.typography.fontSize["3xl"],
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.primary,
+    marginBottom: theme.spacing[2],
+  };
+
+  const dateStyles = {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+  };
+
+  const loadingStyles = {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: "200px",
+  };
+
+  const spinnerStyles = {
+    width: "48px",
+    height: "48px",
+    border: "3px solid transparent",
+    borderTop: `3px solid ${theme.colors.primary}`,
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
+  };
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2" style={{ borderColor: theme.colors.primary }}></div>
+      <div style={containerStyles}>
+        <Navbar />
+        <div style={contentWrapperStyles}>
+          <div style={innerContainerStyles}>
+            <div style={headerStyles}>
+              <h1 style={titleStyles}>Edit Conference</h1>
+              <p style={dateStyles}>
+                {new Date().toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </p>
+            </div>
+            <div style={loadingStyles}>
+              <div style={spinnerStyles}></div>
+            </div>
+          </div>
+        </div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-center mb-8" style={{ color: theme.colors.primary }}>
-        Edit Conference
-      </h1>
-      <ConferenceForm conference={conference} isEdit={true} />
+    <div style={containerStyles}>
+      <Navbar />
+      <div style={contentWrapperStyles}>
+        <div style={innerContainerStyles}>
+          {/* Title and Date above the card */}
+          <div style={headerStyles}>
+            <h1 style={titleStyles}>Edit Conference</h1>
+            <p style={dateStyles}>
+              {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </p>
+          </div>
+
+          {/* Form Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <ConferenceForm conference={conference} isEdit={true} />
+          </motion.div>
+        </div>
+      </div>
     </div>
   );
 };
