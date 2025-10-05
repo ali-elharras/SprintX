@@ -338,6 +338,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess }) =>
               style={{
                 fontSize: theme.typography.fontSize.sm,
                 color: theme.colors.text.secondary,
+                marginBottom: theme.spacing[1],
               }}
             >
               <strong>Instructor:</strong> {event.instructor}
@@ -347,6 +348,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess }) =>
                 style={{
                   fontSize: theme.typography.fontSize.sm,
                   color: theme.colors.text.secondary,
+                  margin: 0,
                 }}
               >
                 <strong>Duration:</strong> {event.duration} hours
@@ -360,28 +362,32 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess }) =>
           style={{
             display: "flex",
             gap: theme.spacing[3],
-            alignItems: "center",
+            alignItems: "stretch",
           }}
         >
           {showRegistration && canRegister() && (
-            <Button
-              variant="primary"
-              onClick={() => setShowRegistrationForm(true)}
-              style={{ flex: 1 }}
-            >
-              Register Now
-            </Button>
+            <div style={{ flex: 1 }}>
+              <Button
+                variant="primary"
+                onClick={() => setShowRegistrationForm(true)}
+                style={{ width: "100%" }}
+              >
+                Register Now
+              </Button>
+            </div>
           )}
-          <Button
-            variant="outline"
-            onClick={() => {
-              // TODO: Navigate to event details page
-              console.log("View details for event:", event._id);
-            }}
-            style={{ flex: showRegistration && canRegister() ? "none" : 1 }}
-          >
-            View Details
-          </Button>
+          <div style={{ flex: showRegistration && canRegister() ? 1 : 1 }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                // TODO: Navigate to event details page
+                console.log("View details for event:", event._id);
+              }}
+              style={{ width: "100%" }}
+            >
+              View Details
+            </Button>
+          </div>
         </div>
       </div>
     </div>
