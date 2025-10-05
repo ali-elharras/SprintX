@@ -12,6 +12,7 @@ import theme from "./theme";
 
 // Pages
 import Login from "./pages/Login";
+import VendorLogin from "./pages/VendorLogin";
 import UserSignup from "./pages/UserSignup";
 import VendorSignup from "./pages/VendorSignup";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -24,7 +25,7 @@ import GymSchedulePage from "./pages/GymSchedulePage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, userType } = useAuth();
 
   if (isLoading) {
     return (
@@ -44,7 +45,12 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    // Redirect to appropriate login page based on current path or default to university login
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
 };
 
 // Public Route Component (redirects to dashboard if already authenticated)
@@ -82,6 +88,14 @@ const AppRoutes = () => {
         element={
           <PublicRoute>
             <Login />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/vendor-login"
+        element={
+          <PublicRoute>
+            <VendorLogin />
           </PublicRoute>
         }
       />
@@ -161,7 +175,7 @@ const AppRoutes = () => {
       />
 
       {/* Default Routes */}
-      <Route path="/" element={<Navigate to="/events" replace />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/signup" element={<Navigate to="/signup/user" replace />} />
 
       {/* 404 Route */}
