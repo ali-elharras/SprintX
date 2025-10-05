@@ -122,7 +122,7 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: AUTH_ACTIONS.LOADING, payload: true });
       dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
 
-      const response = await authAPI.login({ ...loginData, userType: "user" });
+      const response = await authAPI.login(loginData);
 
       if (response.success) {
         const authData = {
@@ -157,10 +157,7 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: AUTH_ACTIONS.LOADING, payload: true });
       dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
 
-      const response = await authAPI.login({
-        ...loginData,
-        userType: "vendor",
-      });
+      const response = await authAPI.login(loginData);
 
       if (response.success) {
         const authData = {

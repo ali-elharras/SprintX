@@ -607,6 +607,11 @@ export const roleColors = {
     light: "#fce7f3",
     dark: "#be185d",
   },
+  events_office: {
+    primary: "#ec4899",
+    light: "#fce7f3",
+    dark: "#be185d",
+  },
 };
 
 // ============================================

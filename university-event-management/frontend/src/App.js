@@ -161,7 +161,7 @@ const AppRoutes = () => {
       />
 
       {/* Default Routes */}
-      <Route path="/" element={<Navigate to="/events" replace />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/signup" element={<Navigate to="/signup/user" replace />} />
 
       {/* 404 Route */}

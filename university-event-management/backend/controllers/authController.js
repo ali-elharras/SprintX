@@ -6,18 +6,23 @@ const Vendor = require("../models/Vendor");
 // Helper function to determine if email is a vendor email
 const isVendorEmail = (email) => {
   const vendorPattern =
-    /^[a-zA-Z0-9._%+-]+@(?!student\.|staff\.|ta\.|professor\.).+$/;
+    /^[a-zA-Z0-9._%+-]+@(?!student\.|staff\.|ta\.|professor\.|admin\.|eventsoffice\.).+$/;
   const universityPattern =
-    /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor)\.[a-zA-Z0-9.-]+$/;
+    /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor|admin|eventsoffice)\.[a-zA-Z0-9.-]+$/;
   return vendorPattern.test(email) && !universityPattern.test(email);
 };
 
 // Helper function to extract role from university email
 const getRoleFromEmail = (email) => {
   const match = email.match(
-    /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor)\.[a-zA-Z0-9.-]+$/
+    /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor|admin|eventsoffice)\.[a-zA-Z0-9.-]+$/
   );
-  return match ? match[1] : null;
+  if (match) {
+    // Map email domain to database role
+    const domainRole = match[1];
+    return domainRole === "eventsoffice" ? "events_office" : domainRole;
+  }
+  return null;
 };
 
 // Generate JWT Token
@@ -60,7 +65,16 @@ const registerUser = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message:
-          "Invalid university email domain. Please use @student, @staff, @ta, or @professor domain.",
+          "Invalid university email domain. Please use @student, @staff, @ta, or @professor domain for registration.",
+      });
+    }
+
+    // Block registration for admin and events office - these are login-only accounts
+    if (emailRole === "admin" || emailRole === "events_office") {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Registration not allowed for this email domain. Please contact your administrator.",
       });
     }
 
@@ -271,8 +285,15 @@ const login = async (req, res, next) => {
       account = await Vendor.findByEmail(email).select("+password");
       accountType = "vendor";
     } else {
+      // This includes student, staff, ta, professor, admin, and events_office
       account = await User.findByEmail(email).select("+password");
       accountType = "user";
+
+      // Log for debugging new email types
+      const userRole = getRoleFromEmail(email);
+      if (userRole === "admin" || userRole === "events_office") {
+        console.log(`🔐 [LOGIN] ${userRole} login attempt for: ${email}`);
+      }
     }
 
     // Check if account exists
