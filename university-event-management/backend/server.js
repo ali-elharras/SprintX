@@ -7,7 +7,6 @@ const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
 const conferenceRoutes = require("./routes/conference");
-const authRoutes = require("./routes/auth"); // Add this line
 const { errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
@@ -46,7 +45,6 @@ mongoose
   });
 
 // Routes
-app.use("/api/auth", authRoutes);
 app.use("/api/conferences", conferenceRoutes);
 
 // Health check endpoint

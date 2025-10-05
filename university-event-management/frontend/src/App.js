@@ -17,9 +17,9 @@ import VendorSignup from "./pages/VendorSignup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
-import CreateConference from './pages/conferences/CreateConference';
-import EditConference from './pages/conferences/EditConference';
-import ConferenceList from './components/conference_components/ConferenceList';
+import CreateConference from "./pages/conference/CreateConference";
+import EditConference from "./pages/conferences/EditConference";
+import ConferenceList from "./components/conference_components/ConferenceList";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -126,9 +126,41 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/events"
+        element={
+          <ProtectedRoute>
+            <EventsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/courts"
+        element={
+          <ProtectedRoute>
+            <CourtsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/my-registrations"
+        element={
+          <ProtectedRoute>
+            <MyRegistrations />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/gym-schedule"
+        element={
+          <ProtectedRoute>
+            <GymSchedulePage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Default Routes */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<Navigate to="/events" replace />} />
       <Route path="/signup" element={<Navigate to="/signup/user" replace />} />
 
       {/* 404 Route */}
@@ -167,25 +199,45 @@ const AppRoutes = () => {
               The page you're looking for doesn't exist.
             </p>
             <a
-              href="/dashboard"
+              href="/events"
               style={{
                 ...theme.components.button.primary,
                 textDecoration: "none",
                 display: "inline-block",
               }}
             >
-              Go to Dashboard
+              Browse Events
             </a>
           </div>
         }
       />
       
       {/* Conference Routes */}
-      <Route path="/conferences" element={<ConferenceList />} />
-      <Route path="/conferences/create" element={<CreateConference />} />
-      <Route path="/conferences/edit/:id" element={<EditConference />} />
+      <Route
+        path="/conferences"
+        element={
+          <ProtectedRoute>
+            <ConferenceList />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/conferences/create"
+        element={
+          <ProtectedRoute>
+            <CreateConference />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/conferences/edit/:id"
+        element={
+          <ProtectedRoute>
+            <EditConference />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
-
   );
 };
 
