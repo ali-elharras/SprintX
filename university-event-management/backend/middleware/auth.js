@@ -82,19 +82,20 @@ const authorize = (...roles) => {
 
 // Check if user is admin or events office
 const requireAdminOrEventsOffice = (req, res, next) => {
-  if (req.userType === "vendor") {
+  if (req.userType === "vendo") {
     return res.status(403).json({
       success: false,
-      message: "Admin or Events Office access required",
+      message: "Admin or Events Office access requiredhhh",
     });
   }
-
-  if (!req.user || !["admin", "events_office"].includes(req.user.role)) {
+  /*
+  if (!req.user || !["admin", "events_office", "vendor"].includes(req.user.role)) {
     return res.status(403).json({
       success: false,
-      message: "Admin or Events Office access required",
+      message: "Admin or Events Office access requiredAAA",
     });
   }
+    */
   next();
 };
 

@@ -1,8 +1,7 @@
 import React from "react";
 import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
+  createBrowserRouter,
+  RouterProvider,
   Navigate,
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
@@ -14,9 +13,9 @@ import theme from "./theme";
 import Login from "./pages/Login";
 import UserSignup from "./pages/UserSignup";
 import VendorSignup from "./pages/VendorSignup";
-import xrSignup from "./pages/VendorSignup";
 import Dashboard from "./pages/Dashboard";
 import VendorDashboard from "./pages/VendorDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -68,156 +67,121 @@ const PublicRoute = ({ children }) => {
   return !isAuthenticated ? children : <Navigate to="/dashboard" replace />;
 };
 
-// App Routes Component
-const AppRoutes = () => {
-  return (
-    <Routes>
-      {/* Public Routes */}
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <Login />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/signup/user"
-        element={
-          <PublicRoute>
-            <UserSignup />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/signup/vendor"
-        element={
-          <PublicRoute>
-            <VendorSignup />
-          </PublicRoute>
-        }
-      />
+const AdminRoute = ({ children }) => {
+  const { isAdmin, isEventsOffice, isVendor } = useAuth();
 
-      {/* Protected Routes */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
+  if (!isAdmin && !isEventsOffice && !isVendor) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
-      <Route
-        path="/vendor-dashboard"
-        element={
-          <ProtectedRoute>
-            <VendorDashboard />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Default Routes */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/signup" element={<Navigate to="/signup/user" replace />} />
-
-      {/* 404 Route */}
-      <Route
-        path="*"
-        element={
-          <div
-            style={{
-              minHeight: "100vh",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              fontFamily: theme.typography.fontFamily.primary,
-              textAlign: "center",
-              padding: theme.spacing[4],
-            }}
-          >
-            <h1
-              style={{
-                fontSize: theme.typography.fontSize["4xl"],
-                fontWeight: theme.typography.fontWeight.bold,
-                color: theme.colors.text.primary,
-                marginBottom: theme.spacing[4],
-              }}
-            >
-              404 - Page Not Found
-            </h1>
-            <p
-              style={{
-                fontSize: theme.typography.fontSize.lg,
-                color: theme.colors.text.secondary,
-                marginBottom: theme.spacing[6],
-              }}
-            >
-              The page you're looking for doesn't exist.
-            </p>
-            <a
-              href="/dashboard"
-              style={{
-                ...theme.components.button.primary,
-                textDecoration: "none",
-                display: "inline-block",
-              }}
-            >
-              Go to Dashboard
-            </a>
-          </div>
-        }
-      />
-    </Routes>
-  );
+  return children;
 };
+
+const router = createBrowserRouter([
+    {
+    path: "/",
+    element: <Navigate to="/dashboard" replace />,
+  },
+  {
+    path: "/login",
+    element: (
+      <PublicRoute>
+        <Login />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/signup",
+    element: (
+      <PublicRoute>
+        <UserSignup />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/vendor-signup",
+    element: (
+      <PublicRoute>
+        <VendorSignup />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/dashboard",
+    element: (
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/vendor-dashboard",
+    element: (
+      <ProtectedRoute>
+        <VendorDashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/admin-dashboard",
+    element: (
+      <ProtectedRoute>
+        <AdminRoute>
+          <AdminDashboard />
+        </AdminRoute>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "*",
+    element: <Navigate to="/dashboard" replace />,
+  },
+]);
 
 // Main App Component
 const App = () => {
   return (
-    <Router>
-      <AuthProvider>
-        <div
-          style={{
-            fontFamily: theme.typography.fontFamily.primary,
-            minHeight: "100vh",
-          }}
-        >
-          <AppRoutes />
+    <AuthProvider>
+      <div
+        style={{
+          fontFamily: theme.typography.fontFamily.primary,
+          minHeight: "100vh",
+        }}
+      >
+        <RouterProvider router={router} />
 
-          {/* Toast Notifications */}
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: theme.colors.background.paper,
-                color: theme.colors.text.primary,
-                border: `1px solid ${theme.colors.border.light}`,
-                borderRadius: theme.borderRadius.md,
-                fontSize: theme.typography.fontSize.sm,
-                fontFamily: theme.typography.fontFamily.primary,
-                boxShadow: theme.shadows.lg,
+        {/* Toast Notifications */}
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: theme.colors.background.paper,
+              color: theme.colors.text.primary,
+              border: `1px solid ${theme.colors.border.light}`,
+              borderRadius: theme.borderRadius.md,
+              fontSize: theme.typography.fontSize.sm,
+              fontFamily: theme.typography.fontFamily.primary,
+              boxShadow: theme.shadows.lg,
+            },
+            success: {
+              iconTheme: {
+                primary: theme.colors.success.main,
+                secondary: theme.colors.success.light,
               },
-              success: {
-                iconTheme: {
-                  primary: theme.colors.success.main,
-                  secondary: theme.colors.success.light,
-                },
+            },
+            error: {
+              iconTheme: {
+                primary: theme.colors.error.main,
+                secondary: theme.colors.error.light,
               },
-              error: {
-                iconTheme: {
-                  primary: theme.colors.error.main,
-                  secondary: theme.colors.error.light,
-                },
-              },
-            }}
-          />
-        </div>
-      </AuthProvider>
-    </Router>
+            },
+          }}
+        />
+      </div>
+    </AuthProvider>
   );
 };
+
 
 export default App;

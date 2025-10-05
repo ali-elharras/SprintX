@@ -31,6 +31,47 @@ const Navbar = () => {
     }
   };
 
+  const getInitials = (name) => {
+    if (!name) return "";
+    return name
+      .split(" ")
+      .map((word) => word.charAt(0))
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const getStatusBadge = () => {
+    if (isVendor && vendor && vendor.verificationStatus) {
+      const statusColors = {
+        pending: theme.colors.status.pending,
+        approved: theme.colors.status.approved,
+        rejected: theme.colors.status.rejected,
+        under_review: theme.colors.status.active,
+      };
+
+      const statusColor =
+        statusColors[vendor.verificationStatus] || theme.colors.neutral.gray500;
+
+      return (
+        <div
+          style={{
+            ...theme.components.badge.base,
+            backgroundColor: statusColor + "20",
+            color: statusColor,
+            border: `1px solid ${statusColor}`,
+            fontSize: theme.typography.fontSize.xs,
+            textTransform: "uppercase",
+            letterSpacing: theme.typography.letterSpacing.wide,
+          }}
+        >
+          {vendor.verificationStatus.replace("_", " ")}
+        </div>
+      );
+    }
+    return null;
+  };
+
   const getAccountDisplayInfo = () => {
     if (isVendor && vendor) {
       return {
@@ -54,6 +95,8 @@ const Navbar = () => {
   const roleColor = accountInfo
     ? getRoleColor(accountInfo.role)
     : theme.colors.primary.main;
+
+  const statusBadge = getStatusBadge();
 
   const navbarStyles = {
     ...theme.components.navbar,
@@ -118,46 +161,6 @@ const Navbar = () => {
     textTransform: "capitalize",
   };
 
-  const getInitials = (name) => {
-    return name
-      .split(" ")
-      .map((word) => word.charAt(0))
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const getStatusBadge = () => {
-    if (isVendor && vendor) {
-      const statusColors = {
-        pending: theme.colors.status.pending,
-        approved: theme.colors.status.approved,
-        rejected: theme.colors.status.rejected,
-        under_review: theme.colors.status.active,
-      };
-
-      const statusColor =
-        statusColors[vendor.verificationStatus] || theme.colors.neutral.gray500;
-
-      return (
-        <div
-          style={{
-            ...theme.components.badge.base,
-            backgroundColor: statusColor + "20",
-            color: statusColor,
-            border: `1px solid ${statusColor}`,
-            fontSize: theme.typography.fontSize.xs,
-            textTransform: "uppercase",
-            letterSpacing: theme.typography.letterSpacing.wide,
-          }}
-        >
-          {vendor.verificationStatus.replace("_", " ")}
-        </div>
-      );
-    }
-    return null;
-  };
-
   if (!accountInfo) {
     return null;
   }
@@ -188,9 +191,9 @@ const Navbar = () => {
             <div style={nameStyles}>{accountInfo.name}</div>
             <div style={subtitleStyles}>
               {accountInfo.subtitle}
-              {getStatusBadge() && (
+              {statusBadge && (
                 <span style={{ marginLeft: theme.spacing[2] }}>
-                  {getStatusBadge()}
+                  {statusBadge}
                 </span>
               )}
             </div>
