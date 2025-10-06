@@ -14,6 +14,7 @@ router.post("/create-user", createAdminOrEventOffice);
 // Delete admin or event office account
 router.delete("/delete-user/:id",deleteAdminOrEventOffice);
 
+//getting all users route
 router.get("/users", getAllUsers);
 
 module.exports = router;
