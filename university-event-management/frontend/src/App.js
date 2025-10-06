@@ -82,9 +82,55 @@ const PublicRoute = ({ children }) => {
 };
 
 const AdminRoute = ({ children }) => {
-  const { isAdmin, isEventsOffice, isVendor } = useAuth();
+  const { user, isLoading } = useAuth();
 
-  if (!isAdmin && !isEventsOffice && !isVendor) {
+  if (isLoading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: theme.typography.fontFamily.primary,
+          fontSize: theme.typography.fontSize.lg,
+          color: theme.colors.text.secondary,
+        }}
+      >
+        Loading...
+      </div>
+    );
+  }
+
+  if (!user || (user.role !== 'admin' && user.role !== 'event-office')) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+};
+
+const VendorRoute = ({ children }) => {
+  const { isVendor, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: theme.typography.fontFamily.primary,
+          fontSize: theme.typography.fontSize.lg,
+          color: theme.colors.text.secondary,
+        }}
+      >
+        Loading...
+      </div>
+    );
+  }
+
+  if (!isVendor) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -164,7 +210,9 @@ const router = createBrowserRouter([
     path: "/vendor-dashboard",
     element: (
       <ProtectedRoute>
-        <VendorDashboard />
+        <VendorRoute>
+          <VendorDashboard />
+        </VendorRoute>
       </ProtectedRoute>
     ),
   },

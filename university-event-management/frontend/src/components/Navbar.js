@@ -169,7 +169,74 @@ const Navbar = () => {
 
       {/* Navigation Links */}
       <div style={{ display: "flex", gap: theme.spacing[6] }}>
-        {isVendor ? (
+        {user && (user.role === 'admin' || user.role === 'event-office') ? (
+          <>
+            <button
+              onClick={() => navigate("/dashboard")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color: location.pathname === "/dashboard"
+                  ? theme.colors.primary.main
+                  : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom: location.pathname === "/dashboard"
+                  ? `2px solid ${theme.colors.primary.main}`
+                  : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/dashboard") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/dashboard") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              Dashboard
+            </button>
+            <button
+              onClick={() => navigate("/admin-dashboard")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color: location.pathname === "/admin-dashboard"
+                  ? theme.colors.primary.main
+                  : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom: location.pathname === "/admin-dashboard"
+                  ? `2px solid ${theme.colors.primary.main}`
+                  : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/admin-dashboard") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/admin-dashboard") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              Admin Dashboard
+            </button>
+          </>
+        ) : isVendor ? (
           <>
             <button
               onClick={() => navigate("/dashboard")}
@@ -355,22 +422,22 @@ const Navbar = () => {
                   borderBottom: location.pathname === "/my-registrations"
                     ? `2px solid ${theme.colors.primary.main}`
                     : "2px solid transparent",
-                  transition: "all 0.2s ease",
-                  fontFamily: theme.typography.fontFamily.primary,
-                }}
-                onMouseEnter={(e) => {
-                  if (location.pathname !== "/my-registrations") {
-                    e.target.style.color = theme.colors.primary.main;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (location.pathname !== "/my-registrations") {
-                    e.target.style.color = theme.colors.text.secondary;
-                  }
-                }}
-              >
-                My Registrations
-              </button>
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/my-registrations") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/my-registrations") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              My Registrations
+            </button>
             )}
 
             <button
