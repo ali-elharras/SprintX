@@ -44,8 +44,6 @@ const vendorSchema = new mongoose.Schema(
     businessRegistrationNumber: {
       type: String,
       required: false, // Made optional per requirements
-      unique: true,
-      sparse: true, // Allow multiple null values for unique field
       trim: true,
     },
     taxId: {
@@ -264,7 +262,6 @@ vendorSchema.virtual("fullAddress").get(function () {
 
 // Index for better query performance
 vendorSchema.index({ email: 1 });
-vendorSchema.index({ businessRegistrationNumber: 1 });
 vendorSchema.index({ verificationStatus: 1 });
 vendorSchema.index({ interestedEventTypes: 1 });
 vendorSchema.index({ "address.city": 1 });
