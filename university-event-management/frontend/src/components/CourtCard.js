@@ -18,8 +18,10 @@ const CourtCard = ({ court, showBooking = true, onBookingClick }) => {
   const loadTodayAvailability = async () => {
     try {
       setLoading(true);
-      const today = new Date().toISOString().split('T')[0];
-      const response = await courtAPI.getCourtAvailability(court._id, today);
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const dateToFetch = tomorrow.toISOString().split('T')[0];
+      const response = await courtAPI.getCourtAvailability(court._id, dateToFetch);
       setTodayAvailability(response.data.data);
     } catch (error) {
       console.error("Error loading court availability:", error);

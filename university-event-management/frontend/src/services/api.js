@@ -1,15 +1,19 @@
 import axios from "axios";
 
-// Create axios instance with base configuration
+// ============================================
+// AXIOS INSTANCE SETUP
+// ============================================
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || "http://localhost:5000/api",
+  baseURL: process.env.REACT_APP_API_URL || "http://localhost:5080/api",
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Request interceptor to add auth token
+// ============================================
+// REQUEST INTERCEPTOR (Attach JWT)
+// ============================================
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -18,40 +22,30 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor to handle common errors
+// ============================================
+// RESPONSE INTERCEPTOR (Handle common errors)
+// ============================================
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   (error) => {
-    // Handle common error responses
     if (error.response?.status === 401) {
-      // Check user type before clearing storage
       const wasVendor = localStorage.getItem("userType") === "vendor";
-
-      // Unauthorized - clear token and user data
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       localStorage.removeItem("vendor");
       localStorage.removeItem("userType");
 
-      // Only redirect if user is not already on a login page
-      // For login attempts, let the login page handle the error
       if (
         window.location.pathname !== "/login" &&
         window.location.pathname !== "/vendor-login"
       ) {
-        // Redirect to appropriate login based on user type that was logged in
         window.location.href = wasVendor ? "/vendor-login" : "/login";
       }
     }
 
-    // Return formatted error
     const errorMessage =
       error.response?.data?.message || error.message || "An error occurred";
     return Promise.reject({
@@ -65,73 +59,119 @@ api.interceptors.response.use(
 export default api;
 
 // ============================================
-// EVENT API ENDPOINTS
+// BAZAAR & APPLICATION SERVICES (from HEAD)
 // ============================================
 
+export const eventServices = {
+  getUpcomingBazaars: async () => {
+    try {
+      const response = await api.get("/events/bazaars/upcoming");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
+
+export const applicationServices = {
+  applyToBazaar: async (bazaarId, applicationData) => {
+    try {
+      const response = await api.post(
+        `/applications/bazaar/${bazaarId}`,
+        applicationData
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  applyForBooth: async (applicationData) => {
+    try {
+      const response = await api.post("/applications/booth", applicationData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getMyParticipations: async () => {
+    try {
+      const response = await api.get("/applications/my-participations");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getMyRequests: async () => {
+    try {
+      const response = await api.get("/applications/my-requests");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getAllApplications: async () => {
+    try {
+      const response = await api.get("/applications");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateApplicationStatus: async (applicationType, applicationId, status) => {
+    try {
+      const response = await api.put(
+        `/applications/${applicationType}/${applicationId}/status`,
+        { status }
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
+
+// ============================================
+// EVENT API ENDPOINTS (from main)
+// ============================================
 export const eventAPI = {
-  // Get all events
   getEvents: (params = {}) => {
     const queryParams = new URLSearchParams(params).toString();
     return api.get(`/events${queryParams ? `?${queryParams}` : ""}`);
   },
 
-  // Get single event by ID
   getEvent: (id) => api.get(`/events/${id}`),
-
-  // Get events by type
   getEventsByType: (type) => api.get(`/events/type/${type}`),
-
-  // Create new event (Admin/Events Office only)
   createEvent: (eventData) => api.post("/events", eventData),
-
-  // Update event (Admin/Events Office only)
   updateEvent: (id, eventData) => api.put(`/events/${id}`, eventData),
-
-  // Delete event (Admin/Events Office only)
   deleteEvent: (id) => api.delete(`/events/${id}`),
 };
 
 // ============================================
 // REGISTRATION API ENDPOINTS
 // ============================================
-
 export const registrationAPI = {
-  // Register for an event
   registerForEvent: (registrationData) =>
     api.post("/registrations", registrationData),
 
-  // Get current user's registrations with optional filtering
   getMyRegistrations: (params = {}) => {
-    const queryParams = new URLSearchParams();
-
-    // Add each parameter if it exists
-    Object.keys(params).forEach((key) => {
-      if (
-        params[key] !== undefined &&
-        params[key] !== null &&
-        params[key] !== ""
-      ) {
-        queryParams.append(key, params[key]);
-      }
-    });
-
-    const queryString = queryParams.toString();
-    return api.get(`/registrations/my${queryString ? `?${queryString}` : ""}`);
+    const queryParams = new URLSearchParams(params).toString();
+    return api.get(`/registrations/my${queryParams ? `?${queryParams}` : ""}`);
   },
 
-  // Get registrations for a specific event (Admin/Events Office only)
   getEventRegistrations: (eventId) =>
     api.get(`/registrations/event/${eventId}`),
 
-  // Cancel a registration
   cancelRegistration: (registrationId) =>
     api.delete(`/registrations/${registrationId}`),
 
-  // Update registration status (Admin/Events Office only)
   updateRegistrationStatus: (registrationId, status) =>
     api.put(`/registrations/${registrationId}/status`, { status }),
 
-  // Check-in participant (Admin/Events Office only)
   checkInParticipant: (registrationId) =>
     api.post(`/registrations/${registrationId}/checkin`),
 };
@@ -139,100 +179,65 @@ export const registrationAPI = {
 // ============================================
 // COURT API ENDPOINTS
 // ============================================
-
 export const courtAPI = {
-  // Get all courts
   getCourts: (params = {}) => {
     const queryParams = new URLSearchParams(params).toString();
     return api.get(`/courts${queryParams ? `?${queryParams}` : ""}`);
   },
 
-  // Get single court by ID
   getCourt: (id) => api.get(`/courts/${id}`),
-
-  // Get courts by type
   getCourtsByType: (type) => api.get(`/courts/type/${type}`),
-
-  // Get court availability for specific date
   getCourtAvailability: (courtId, date) =>
     api.get(`/courts/${courtId}/availability/${date}`),
 
-  // Get weekly availability for a court
   getWeeklyAvailability: (courtId, startDate = null) => {
     const params = startDate ? `?startDate=${startDate}` : "";
     return api.get(`/courts/${courtId}/weekly-availability${params}`);
   },
 
-  // Get court statistics
   getCourtStats: () => api.get("/courts/stats"),
-
-  // Create new court (Admin only)
   createCourt: (courtData) => api.post("/courts", courtData),
-
-  // Update court (Admin/Manager only)
   updateCourt: (id, courtData) => api.put(`/courts/${id}`, courtData),
-
-  // Delete court (Admin only)
   deleteCourt: (id) => api.delete(`/courts/${id}`),
 };
 
 // ============================================
-// GYM API FUNCTIONS
+// GYM API ENDPOINTS
 // ============================================
+export const gymAPI = {
+  getSessions: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return api.get(`/gym/sessions${queryString ? `?${queryString}` : ""}`);
+  },
 
-// Get all gym sessions
-export const getGymSessions = (params = {}) => {
-  const queryString = new URLSearchParams(params).toString();
-  return api.get(`/gym/sessions${queryString ? `?${queryString}` : ""}`);
-};
+  getSessionsByMonth: (year, month, params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return api.get(
+      `/gym/sessions/month/${year}/${month}${
+        queryString ? `?${queryString}` : ""
+      }`
+    );
+  },
 
-// Get gym sessions by month
-export const getGymSessionsByMonth = (year, month, params = {}) => {
-  const queryString = new URLSearchParams(params).toString();
-  return api.get(
-    `/gym/sessions/month/${year}/${month}${
-      queryString ? `?${queryString}` : ""
-    }`
-  );
-};
+  getSessionsByDate: (date) => api.get(`/gym/sessions/date/${date}`),
+  getSession: (id) => api.get(`/gym/sessions/${id}`),
+  getSessionTypes: () => api.get("/gym/types"),
 
-// Get gym sessions by date
-export const getGymSessionsByDate = (date) => {
-  return api.get(`/gym/sessions/date/${date}`);
-};
+  register: (sessionId, data) =>
+    api.post(`/gym/sessions/${sessionId}/register`, data),
 
-// Get single gym session
-export const getGymSession = (id) => {
-  return api.get(`/gym/sessions/${id}`);
-};
+  getMyRegistrations: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return api.get(`/gym/registrations${queryString ? `?${queryString}` : ""}`);
+  },
 
-// Get gym session types
-export const getGymSessionTypes = () => {
-  return api.get("/gym/types");
-};
+  cancelRegistration: (registrationId, reason) =>
+    api.delete(`/gym/registrations/${registrationId}`, { data: { reason } }),
 
-// Register for gym session
-export const registerForGymSession = (sessionId, registrationData) => {
-  return api.post(`/gym/sessions/${sessionId}/register`, registrationData);
-};
-
-// Get user's gym registrations
-export const getUserGymRegistrations = (params = {}) => {
-  const queryString = new URLSearchParams(params).toString();
-  return api.get(`/gym/registrations${queryString ? `?${queryString}` : ""}`);
-};
-
-// Cancel gym registration
-export const cancelGymRegistration = (registrationId, reason) => {
-  return api.delete(`/gym/registrations/${registrationId}`, {
-    data: { reason },
-  });
-};
-
-// Get gym schedule overview
-export const getGymScheduleOverview = (params = {}) => {
-  const queryString = new URLSearchParams(params).toString();
-  return api.get(
-    `/gym/schedule/overview${queryString ? `?${queryString}` : ""}`
-  );
+  getScheduleOverview: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return api.get(
+      `/gym/schedule/overview${queryString ? `?${queryString}` : ""}`
+    );
+  },
 };

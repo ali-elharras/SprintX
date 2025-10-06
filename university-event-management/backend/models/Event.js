@@ -3,11 +3,11 @@ const mongoose = require("mongoose");
 const eventSchema = new mongoose.Schema(
   {
     // Basic Event Information
-    title: {
+    name: {
       type: String,
-      required: [true, "Event title is required"],
+      required: [true, "Event name is required"],
       trim: true,
-      maxlength: [200, "Event title cannot exceed 200 characters"],
+      maxlength: [200, "Event name cannot exceed 200 characters"],
     },
     description: {
       type: String,
@@ -20,7 +20,8 @@ const eventSchema = new mongoose.Schema(
       required: [true, "Event type is required"],
       enum: {
         values: ["workshop", "trip", "bazaar", "competition", "conference"],
-        message: "Event type must be one of: workshop, trip, bazaar, competition, conference",
+        message:
+          "Event type must be one of: workshop, trip, bazaar, competition, conference",
       },
     },
 
@@ -83,7 +84,7 @@ const eventSchema = new mongoose.Schema(
     },
     eligibleDepartments: {
       type: [String],
-      default: [], // Empty array means all departments
+      default: [],
     },
 
     // Event Management
@@ -124,7 +125,7 @@ const eventSchema = new mongoose.Schema(
       default: [],
     },
     images: {
-      type: [String], // Array of image URLs
+      type: [String],
       default: [],
     },
 
@@ -156,7 +157,7 @@ const eventSchema = new mongoose.Schema(
       maxlength: [200, "Instructor name cannot exceed 200 characters"],
     },
     duration: {
-      type: Number, // Duration in hours
+      type: Number,
       required: function () {
         return this.type === "workshop";
       },
@@ -170,7 +171,9 @@ const eventSchema = new mongoose.Schema(
   }
 );
 
-// Virtual for registration status
+// === Virtuals ===
+
+// Is registration still open?
 eventSchema.virtual("isRegistrationOpen").get(function () {
   if (!this.registrationRequired) return false;
   const now = new Date();
@@ -181,19 +184,19 @@ eventSchema.virtual("isRegistrationOpen").get(function () {
   );
 });
 
-// Virtual for available spots
+// Available spots left
 eventSchema.virtual("availableSpots").get(function () {
   if (!this.registrationRequired) return null;
   return this.maxParticipants - this.currentParticipants;
 });
 
-// Virtual for registration deadline status
+// Registration expired?
 eventSchema.virtual("isRegistrationExpired").get(function () {
   if (!this.registrationRequired) return false;
   return new Date() > this.registrationDeadline;
 });
 
-// Indexes for better performance
+// === Indexes ===
 eventSchema.index({ type: 1 });
 eventSchema.index({ startDate: 1 });
 eventSchema.index({ status: 1 });
@@ -202,7 +205,7 @@ eventSchema.index({ organizer: 1 });
 eventSchema.index({ eligibleRoles: 1 });
 eventSchema.index({ tags: 1 });
 
-// Static method to find upcoming events
+// === Static Methods ===
 eventSchema.statics.findUpcoming = function () {
   return this.find({
     status: "published",
@@ -210,7 +213,6 @@ eventSchema.statics.findUpcoming = function () {
   }).sort({ startDate: 1 });
 };
 
-// Static method to find events by type
 eventSchema.statics.findByType = function (type) {
   return this.find({
     type,
@@ -218,22 +220,16 @@ eventSchema.statics.findByType = function (type) {
   }).sort({ startDate: 1 });
 };
 
-// Method to check if user can register
+// === Instance Methods ===
 eventSchema.methods.canUserRegister = function (user) {
-  // Check if registration is required and open
   if (!this.isRegistrationOpen) return false;
-
-  // Check role eligibility
   if (!this.eligibleRoles.includes(user.role)) return false;
-
-  // Check department eligibility (if specified)
   if (
     this.eligibleDepartments.length > 0 &&
     !this.eligibleDepartments.includes(user.department)
   ) {
     return false;
   }
-
   return true;
 };
 
