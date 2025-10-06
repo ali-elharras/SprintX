@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
-import { registerForGymSession } from "../services/api";
+import { gymAPI } from "../services/api";
 import theme from "../theme";
 
 const GymSessionCard = ({ session, onRegister }) => {
@@ -30,7 +30,7 @@ const GymSessionCard = ({ session, onRegister }) => {
   const getSkillLevelDisplay = (level) => {
     const levels = {
       beginner: "Beginner",
-      intermediate: "Intermediate", 
+      intermediate: "Intermediate",
       advanced: "Advanced",
       all_levels: "All Levels",
     };
@@ -58,7 +58,7 @@ const GymSessionCard = ({ session, onRegister }) => {
 
     try {
       setIsRegistering(true);
-      await registerForGymSession(session._id, {
+      await gymAPI.register(session._id, {
         registrationType: "regular",
       });
       toast.success("Successfully registered for gym session!");
@@ -252,7 +252,7 @@ const GymSessionCard = ({ session, onRegister }) => {
     },
   };
 
-  const availableSpots = session.maxParticipants - session.currentParticipants;
+  // const availableSpots = session.maxParticipants - session.currentParticipants; // Removed unused variable
   const capacityPercentage = (session.currentParticipants / session.maxParticipants) * 100;
 
   const getRegisterButtonStyle = () => {
@@ -264,7 +264,7 @@ const GymSessionCard = ({ session, onRegister }) => {
         cursor: "not-allowed",
       };
     }
-    
+
     if (session.isFull && session.waitlistEnabled) {
       return {
         ...styles.registerButton,
@@ -272,7 +272,7 @@ const GymSessionCard = ({ session, onRegister }) => {
         color: theme.colors.text.white,
       };
     }
-    
+
     return {
       ...styles.registerButton,
       background: getSessionTypeColor(session.type),
@@ -337,11 +337,11 @@ const GymSessionCard = ({ session, onRegister }) => {
             <div style={styles.detailLabel}>Status</div>
             <div style={{
               ...styles.statusBadge,
-              backgroundColor: session.status === "active" 
-                ? theme.colors.success.light 
+              backgroundColor: session.status === "active"
+                ? theme.colors.success.light
                 : theme.colors.neutral.gray200,
-              color: session.status === "active" 
-                ? theme.colors.success.dark 
+              color: session.status === "active"
+                ? theme.colors.success.dark
                 : theme.colors.text.secondary,
             }}>
               {session.status}
@@ -389,14 +389,14 @@ const GymSessionCard = ({ session, onRegister }) => {
                 {session.description}
               </div>
             )}
-            
+
             {session.prerequisites && (
               <div style={{ marginBottom: theme.spacing[3] }}>
                 <strong>Prerequisites:</strong><br />
                 {session.prerequisites}
               </div>
             )}
-            
+
             {session.benefits && session.benefits.length > 0 && (
               <div style={{ marginBottom: theme.spacing[3] }}>
                 <strong>Benefits:</strong><br />
@@ -407,20 +407,20 @@ const GymSessionCard = ({ session, onRegister }) => {
                 </ul>
               </div>
             )}
-            
+
             {session.equipment && session.equipment.length > 0 && (
               <div style={{ marginBottom: theme.spacing[3] }}>
                 <strong>Equipment Provided:</strong><br />
                 {session.equipment.join(", ")}
               </div>
             )}
-            
+
             {session.calories && (
               <div style={{ marginBottom: theme.spacing[3] }}>
                 <strong>Estimated Calories Burned:</strong> {session.calories}
               </div>
             )}
-            
+
             {session.instructor.bio && (
               <div>
                 <strong>About the Instructor:</strong><br />

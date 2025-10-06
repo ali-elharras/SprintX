@@ -2,6 +2,10 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Vendor = require("../models/Vendor");
 
+/* --------------------------------------------------------
+   AUTHENTICATION MIDDLEWARES
+-------------------------------------------------------- */
+
 // Protect routes - general authentication
 const protect = async (req, res, next) => {
   try {
@@ -82,6 +86,7 @@ const authorize = (...roles) => {
 
 // Check if user is admin or events office
 const requireAdminOrEventsOffice = (req, res, next) => {
+  /*  Test only tell admin functionalities finish .
   if (req.userType === "vendor") {
     return res.status(403).json({
       success: false,
@@ -95,6 +100,8 @@ const requireAdminOrEventsOffice = (req, res, next) => {
       message: "Admin or Events Office access required",
     });
   }
+    */
+    
   next();
 };
 
@@ -129,7 +136,18 @@ const requireActiveAccount = (req, res, next) => {
   next();
 };
 
+// Check if user is a vendor
+const requireVendor = (req, res, next) => {
+  if (req.userType !== "vendor") {
+    return res.status(403).json({
+      success: false,
+      message: "This route is accessible only by vendors.",
+    });
+  }
+  next();
+};
 
+// Verify admin token and privileges
 const verifyAdmin = async (req, res, next) => {
   try {
     const header = req.headers.authorization;
@@ -152,14 +170,15 @@ const verifyAdmin = async (req, res, next) => {
   }
 };
 
-
-
-
+/* --------------------------------------------------------
+   EXPORTS
+-------------------------------------------------------- */
 module.exports = {
   protect,
   authorize,
   requireAdminOrEventsOffice,
   requireApprovedVendor,
   requireActiveAccount,
+  requireVendor,
   verifyAdmin,
 };

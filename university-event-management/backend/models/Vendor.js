@@ -182,6 +182,7 @@ const vendorSchema = new mongoose.Schema(
     },
 
     // Verification Status
+    /*
     verificationStatus: {
       type: String,
       enum: {
@@ -191,6 +192,7 @@ const vendorSchema = new mongoose.Schema(
       },
       default: "pending",
     },
+    */
     verificationNotes: {
       type: String,
       trim: true,

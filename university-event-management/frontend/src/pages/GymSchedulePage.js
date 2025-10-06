@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import Navbar from "../components/Navbar";
 import GymScheduleCalendar from "../components/GymScheduleCalendar";
 import GymSessionCard from "../components/GymSessionCard";
-import { getGymSessions, getGymSessionsByMonth, getGymSessionTypes } from "../services/api";
+import { gymAPI } from "../services/api";
 import theme from "../theme";
 
 const GymSchedulePage = () => {
@@ -14,7 +14,7 @@ const GymSchedulePage = () => {
   const [viewMode, setViewMode] = useState("calendar"); // "calendar" or "list"
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-  
+
   // Filters
   const [filters, setFilters] = useState({
     type: "",
@@ -24,18 +24,9 @@ const GymSchedulePage = () => {
     availableOnly: false,
   });
 
-  useEffect(() => {
-    fetchSessionTypes();
-    fetchSessions();
-  }, [currentMonth, currentYear]);
-
-  useEffect(() => {
-    applyFilters();
-  }, [sessions, filters]);
-
-  const fetchSessionTypes = async () => {
+  const fetchSessionTypes = useCallback(async () => {
     try {
-      const response = await getGymSessionTypes();
+      const response = await gymAPI.getSessionTypes();
       if (response.data.success) {
         setSessionTypes(response.data.data);
       }
@@ -43,19 +34,19 @@ const GymSchedulePage = () => {
       console.error("Error fetching session types:", error);
       toast.error("Failed to load session types");
     }
-  };
+  }, []);
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     try {
       setLoading(true);
       let response;
-      
+
       if (viewMode === "calendar") {
-        response = await getGymSessionsByMonth(currentYear, currentMonth);
+        response = await gymAPI.getSessionsByMonth(currentYear, currentMonth);
       } else {
-        response = await getGymSessions();
+        response = await gymAPI.getSessions();
       }
-      
+
       if (response.data.success) {
         setSessions(response.data.data.sessions || response.data.data);
       }
@@ -65,9 +56,9 @@ const GymSchedulePage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [viewMode, currentYear, currentMonth]);
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...sessions];
 
     if (filters.type) {
@@ -79,13 +70,13 @@ const GymSchedulePage = () => {
     }
 
     if (filters.instructor) {
-      filtered = filtered.filter(session => 
+      filtered = filtered.filter(session =>
         session.instructor.name.toLowerCase().includes(filters.instructor.toLowerCase())
       );
     }
 
     if (filters.dayOfWeek) {
-      filtered = filtered.filter(session => 
+      filtered = filtered.filter(session =>
         session.dayOfWeek === parseInt(filters.dayOfWeek)
       );
     }
@@ -95,7 +86,16 @@ const GymSchedulePage = () => {
     }
 
     setFilteredSessions(filtered);
-  };
+  }, [sessions, filters]);
+
+  useEffect(() => {
+    fetchSessionTypes();
+    fetchSessions();
+  }, [currentMonth, currentYear, fetchSessionTypes, fetchSessions]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [sessions, filters, applyFilters]);
 
   const handleFilterChange = (filterName, value) => {
     setFilters(prev => ({
@@ -287,7 +287,7 @@ const GymSchedulePage = () => {
         <div style={styles.header}>
           <h1 style={styles.title}>Gym Schedule</h1>
           <p style={styles.subtitle}>
-            Discover and join our comprehensive fitness program. From yoga to kickboxing, 
+            Discover and join our comprehensive fitness program. From yoga to kickboxing,
             find the perfect workout for your lifestyle and fitness goals.
           </p>
         </div>

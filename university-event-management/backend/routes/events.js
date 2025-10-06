@@ -7,17 +7,21 @@ const {
   updateEvent,
   deleteEvent,
   getEventsByType,
+  getUpcomingBazaars,
+  seedBazaar,
 } = require("../controllers/eventController");
 const { protect, authorize } = require("../middleware/auth");
 
 const router = express.Router();
 
-// Validation rules for event creation
+// =============================
+// Validation Rules for Creation
+// =============================
 const createEventValidation = [
-  body("title")
+  body("name")
     .trim()
     .isLength({ min: 1, max: 200 })
-    .withMessage("Title is required and must be between 1 and 200 characters"),
+    .withMessage("Name is required and must be between 1 and 200 characters"),
   body("description")
     .trim()
     .isLength({ min: 1, max: 2000 })
@@ -67,7 +71,7 @@ const createEventValidation = [
     .withMessage("Eligible roles must be an array")
     .custom((value) => {
       const validRoles = ["student", "staff", "ta", "professor"];
-      const isValid = value.every(role => validRoles.includes(role));
+      const isValid = value.every((role) => validRoles.includes(role));
       if (!isValid) {
         throw new Error("Invalid role in eligible roles");
       }
@@ -79,17 +83,42 @@ const createEventValidation = [
     .withMessage("Cost cannot be negative"),
 ];
 
-// Public routes
+// =============================
+// Public Routes
+// =============================
 router.get("/", getEvents);
 router.get("/type/:type", getEventsByType);
 router.get("/:id", getEvent);
 
-// Protected routes (require authentication)
+// =============================
+// Bazaar Routes
+// =============================
+router.get("/bazaars/upcoming", getUpcomingBazaars);
+
+// =============================
+// Protected & Admin Routes
+// =============================
 router.use(protect);
 
-// Admin/Events Office only routes
-router.post("/", authorize("admin", "events_office"), createEventValidation, createEvent);
-router.put("/:id", authorize("admin", "events_office"), updateEvent);
-router.delete("/:id", authorize("admin", "events_office"), deleteEvent);
+// Admin or Events Office
+router.post(
+  "/",
+  authorize("admin", "events_office"),
+  createEventValidation,
+  createEvent
+);
+router.put(
+  "/:id",
+  authorize("admin", "events_office"),
+  updateEvent
+);
+router.delete(
+  "/:id",
+  authorize("admin", "events_office"),
+  deleteEvent
+);
+
+// Temporary route for seeding (testing only)
+router.post("/seed/bazaar", authorize("admin"), seedBazaar);
 
 module.exports = router;
