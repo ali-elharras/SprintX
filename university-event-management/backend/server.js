@@ -9,8 +9,6 @@ require("dotenv").config();
 const conferenceRoutes = require("./routes/conference.js");
 const { errorHandler } = require("./middleware/errorHandler");
 
-const { errorHandler } = require("./middleware/errorHandler");
-
 // ===== Route Imports =====
 const authRoutes = require("./routes/auth");
 const eventRoutes = require("./routes/events");

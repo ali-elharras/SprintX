@@ -514,8 +514,9 @@ const CourtCard = ({ court, showBooking = true, onBookingClick }) => {
         <div
           style={{
             display: "flex",
+            flexDirection: showBooking && court.status === "active" ? "row" : "column",
             gap: theme.spacing[3],
-            alignItems: "center",
+            alignItems: "stretch",
             marginTop: "auto",
           }}
         >
@@ -523,7 +524,13 @@ const CourtCard = ({ court, showBooking = true, onBookingClick }) => {
             <Button
               variant="primary"
               onClick={() => setShowCalendar(true)}
-              style={{ flex: 1 }}
+              style={{ 
+                flex: 1,
+                width: "100%",
+                minHeight: "44px",
+                padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                whiteSpace: "nowrap",
+              }}
             >
               View Availability
             </Button>
@@ -534,7 +541,15 @@ const CourtCard = ({ court, showBooking = true, onBookingClick }) => {
               // TODO: Navigate to court details page
               console.log("View details for court:", court._id);
             }}
-            style={{ flex: showBooking && court.status === "active" ? "none" : 1 }}
+            style={{ 
+              flex: showBooking && court.status === "active" ? 0 : 1,
+              flexShrink: 0,
+              width: showBooking && court.status === "active" ? "auto" : "100%",
+              minWidth: showBooking && court.status === "active" ? "130px" : "auto",
+              minHeight: "44px",
+              padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+              whiteSpace: "nowrap",
+            }}
           >
             View Details
           </Button>

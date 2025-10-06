@@ -359,15 +359,22 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess }) =>
         <div
           style={{
             display: "flex",
+            flexDirection: showRegistration && canRegister() ? "row" : "column",
             gap: theme.spacing[3],
-            alignItems: "center",
+            alignItems: "stretch",
           }}
         >
           {showRegistration && canRegister() && (
             <Button
               variant="primary"
               onClick={() => setShowRegistrationForm(true)}
-              style={{ flex: 1 }}
+              style={{ 
+                flex: 1,
+                width: "100%",
+                minHeight: "44px",
+                padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                whiteSpace: "nowrap",
+              }}
             >
               Register Now
             </Button>
@@ -378,7 +385,13 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess }) =>
               // TODO: Navigate to event details page
               console.log("View details for event:", event._id);
             }}
-            style={{ flex: showRegistration && canRegister() ? "none" : 1 }}
+            style={{ 
+              flex: 1,
+              width: "100%",
+              minHeight: "44px",
+              padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+              whiteSpace: "nowrap",
+            }}
           >
             View Details
           </Button>
