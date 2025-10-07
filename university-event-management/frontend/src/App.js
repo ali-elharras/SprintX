@@ -216,6 +216,26 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  {
+    path: "/conferences/create",
+    element: (
+      <ProtectedRoute>
+        <AdminRoute>
+          <CreateConference />
+        </AdminRoute>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/conferences/edit/:id",
+    element: (
+      <ProtectedRoute>
+        <AdminRoute>
+          <EditConference />
+        </AdminRoute>
+      </ProtectedRoute>
+    ),  
+  },
 
   // 404 Fallback
   {

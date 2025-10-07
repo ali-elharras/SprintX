@@ -28,7 +28,7 @@ const ConferenceForm = ({ conference, isEdit = false }) => {
         await conferenceService.createConference(formData);
         toast.success('Conference created successfully!');
       }
-      navigate('/conferences');
+      navigate('/events');
     } catch (error) {
       toast.error(error.message || 'Failed to process conference');
       console.error('Error:', error);
@@ -123,7 +123,7 @@ const ConferenceForm = ({ conference, isEdit = false }) => {
             type="button"
             variant="secondary"
             className="px-6 py-2"
-            onClick={() => navigate('/conferences')}
+            onClick={() => navigate('/events')}
           >
             Cancel
           </Button>

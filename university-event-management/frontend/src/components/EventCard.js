@@ -168,7 +168,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess }) =>
             margin: 0,
           }}
         >
-          {event.title}
+          {event.name}
         </h3>
       </div>
 
