@@ -4,6 +4,7 @@ import theme, { getStatusColor } from "../theme";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import toast from "react-hot-toast";
+import Navbar from "../components/Navbar";
 
 const styles = {
   container: {
@@ -387,6 +388,7 @@ const AdminDashboard = () => {
 
   return (
     <>
+      <Navbar />
       <style>{cssKeyframes}</style>
       <div style={styles.container}>
         <div style={styles.backgroundPattern}></div>
