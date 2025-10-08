@@ -14,17 +14,21 @@ const getUpcomingBazaars = async (req, res, next) => {
   try {
     const bazaars = await Event.find({
       startDate: { $gte: new Date() },
-    }).sort({ startDate: "asc" });
+      type: "bazaar",
+      status: "published",
+    }).sort({ startDate: 1 });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: bazaars.length,
       data: bazaars,
     });
   } catch (error) {
+    console.error("Error fetching upcoming bazaars:", error);
     next(error);
   }
 };
+
 
 // @desc    Seed a sample bazaar (Temporary)
 // @route   POST /api/events/seed/bazaar
