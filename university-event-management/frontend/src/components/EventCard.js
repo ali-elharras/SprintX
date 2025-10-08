@@ -202,7 +202,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess }) =>
               color: theme.colors.text.secondary,
             }}
           >
-            <span>🕒</span>
+            <span>🕐</span>
             <span>{formatTime(event.startDate)}</span>
           </div>
           <div
@@ -361,59 +361,39 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess }) =>
         <div
           style={{
             display: "flex",
-            flexDirection: showRegistration && canRegister() ? "row" : "column",
             gap: theme.spacing[3],
             alignItems: "stretch",
           }}
         >
           {showRegistration && canRegister() && (
-            <Button
-              variant="primary"
-              onClick={() => setShowRegistrationForm(true)}
-              style={{ 
-                flex: 1,
-                width: "100%",
-                minHeight: "44px",
-                padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                whiteSpace: "nowrap",
-              }}
-            >
-              Register Now
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            onClick={() => {
-              // TODO: Navigate to event details page
-              console.log("View details for event:", event._id);
-            }}
-            style={{ 
-              flex: 1,
-              width: "100%",
-              minHeight: "44px",
-              padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-              whiteSpace: "nowrap",
-            }}
-          >
-            View Details
-          </Button>
             <div style={{ flex: 1 }}>
               <Button
                 variant="primary"
                 onClick={() => setShowRegistrationForm(true)}
-                style={{ width: "100%" }}
+                style={{ 
+                  width: "100%",
+                  minHeight: "44px",
+                  padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                  whiteSpace: "nowrap",
+                }}
               >
                 Register Now
               </Button>
             </div>
-          <div style={{ flex: showRegistration && canRegister() ? 1 : 1 }}>
+          )}
+          <div style={{ flex: 1 }}>
             <Button
               variant="outline"
               onClick={() => {
                 // TODO: Navigate to event details page
                 console.log("View details for event:", event._id);
               }}
-              style={{ width: "100%" }}
+              style={{ 
+                width: "100%",
+                minHeight: "44px",
+                padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                whiteSpace: "nowrap",
+              }}
             >
               View Details
             </Button>
