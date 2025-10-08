@@ -16,7 +16,6 @@ const MyRegistrations = () => {
   const [registrations, setRegistrations] = useState({ upcoming: [], past: [] });
   const [summary, setSummary] = useState({});
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("upcoming");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
@@ -47,9 +46,6 @@ const MyRegistrations = () => {
   const fetchRegistrations = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
-      console.log("Fetching registrations...");
-      
       const params = {};
       if (search) params.search = search;
       if (filter !== "all") params.filter = filter;
@@ -58,24 +54,15 @@ const MyRegistrations = () => {
       params.sortOrder = sortOrder;
 
       const response = await registrationAPI.getMyRegistrations(params);
-      console.log("Registrations response:", response);
-      
-      setRegistrations(response.data?.data || { upcoming: [], past: [] });
-      setSummary(response.data?.data?.summary || {});
+      setRegistrations(response.data.data);
+      setSummary(response.data.data.summary);
     } catch (error) {
       console.error("Error fetching registrations:", error);
-      setError(error);
-      toast.error("Failed to load your registrations. Please try again.");
+      toast.error("Failed to load your registrations");
     } finally {
       setLoading(false);
     }
   }, [search, filter, instructor, sortBy, sortOrder]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchRegistrations();
-    }
-  }, [isAuthenticated, fetchRegistrations, refreshTrigger]);
 
   // Handle registration cancellation
   const handleCancelRegistration = async (registrationId) => {
@@ -92,6 +79,12 @@ const MyRegistrations = () => {
       toast.error(error.message || "Failed to cancel registration");
     }
   };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchRegistrations();
+    }
+  }, [isAuthenticated, fetchRegistrations, refreshTrigger]);
 
   // Styles
   const containerStyles = {
@@ -318,37 +311,6 @@ const MyRegistrations = () => {
         {loading && (
           <Card style={emptyStateStyles}>
             <div>Loading your registrations...</div>
-          </Card>
-        )}
-
-        {/* Error State */}
-        {error && !loading && (
-          <Card style={{
-            ...emptyStateStyles,
-            border: `2px solid ${theme.colors.status.error}`,
-          }}>
-            <div
-              style={{
-                fontSize: theme.typography.fontSize["2xl"],
-                marginBottom: theme.spacing[4],
-                color: theme.colors.status.error,
-              }}
-            >
-              ⚠️
-            </div>
-            <h3 style={{ 
-              fontSize: theme.typography.fontSize.xl, 
-              color: theme.colors.text.primary, 
-              marginBottom: theme.spacing[4] 
-            }}>
-              Failed to Load Registrations
-            </h3>
-            <p style={{ marginBottom: theme.spacing[6] }}>
-              {error.message || "There was an error loading your registrations. Please try again."}
-            </p>
-            <Button variant="primary" onClick={fetchRegistrations}>
-              Retry
-            </Button>
           </Card>
         )}
 

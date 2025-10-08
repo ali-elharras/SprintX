@@ -1,50 +1,11 @@
 import axios from "axios";
 
 // ============================================
-// CREATE CANCELLATION TOKEN MANAGER
-// ============================================
-export const createCancelTokenSource = () => axios.CancelToken.source();
-
-// ============================================
-// RETRY LOGIC UTILITY
-// ============================================
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-export const retryRequest = async (requestFn, maxRetries = 3, baseDelay = 1000) => {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await requestFn();
-    } catch (error) {
-      // Don't retry if request was cancelled
-      if (axios.isCancel(error)) {
-        throw error;
-      }
-
-      // Don't retry on authentication errors or client errors
-      if (error.response?.status >= 400 && error.response?.status < 500) {
-        throw error;
-      }
-
-      // If this is the last attempt, throw the error
-      if (attempt === maxRetries) {
-        throw error;
-      }
-
-      // Wait before retrying with exponential backoff
-      const delay = baseDelay * Math.pow(2, attempt - 1);
-      await sleep(delay);
-      
-      console.log(`Retrying request (attempt ${attempt + 1}/${maxRetries}) after ${delay}ms...`);
-    }
-  }
-};
-
-// ============================================
 // AXIOS INSTANCE SETUP
 // ============================================
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || "http://localhost:8080/api",
-  timeout: 30000, // Increased timeout to 30 seconds
+  timeout: 10000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -70,22 +31,6 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Don't process cancelled requests
-    if (axios.isCancel(error)) {
-      return Promise.reject(error);
-    }
-
-    // Handle network errors
-    if (!error.response) {
-      console.error("Network error:", error.message);
-      return Promise.reject({
-        message: "Network error. Please check your connection and try again.",
-        status: 0,
-        isNetworkError: true,
-      });
-    }
-
-    // Handle 401 authentication errors
     if (error.response?.status === 401) {
       const wasVendor = localStorage.getItem("userType") === "vendor";
       localStorage.removeItem("token");
@@ -101,22 +46,12 @@ api.interceptors.response.use(
       }
     }
 
-    // Handle server errors with user-friendly messages
-    let errorMessage;
-    if (error.response?.status >= 500) {
-      errorMessage = "Server error. Please try again in a moment.";
-    } else if (error.response?.status === 429) {
-      errorMessage = "Too many requests. Please wait a moment before trying again.";
-    } else {
-      errorMessage = error.response?.data?.message || error.message || "An error occurred";
-    }
-
+    const errorMessage =
+      error.response?.data?.message || error.message || "An error occurred";
     return Promise.reject({
       message: errorMessage,
       status: error.response?.status,
       data: error.response?.data,
-      isServerError: error.response?.status >= 500,
-      isRateLimit: error.response?.status === 429,
     });
   }
 );
@@ -128,14 +63,10 @@ export default api;
 // ============================================
 
 export const eventServices = {
-  getUpcomingBazaars: async (cancelToken = null) => {
+  getUpcomingBazaars: async () => {
     try {
-      return await retryRequest(async () => {
-        const response = await api.get("/events/bazaars/upcoming", {
-          ...(cancelToken && { cancelToken: cancelToken.token })
-        });
-        return response.data;
-      });
+      const response = await api.get("/events/bazaars/upcoming");
+      return response.data;
     } catch (error) {
       throw error;
     }
@@ -208,29 +139,13 @@ export const applicationServices = {
 // EVENT API ENDPOINTS (from main)
 // ============================================
 export const eventAPI = {
-  getEvents: (params = {}, cancelToken = null) => {
+  getEvents: (params = {}) => {
     const queryParams = new URLSearchParams(params).toString();
-    return retryRequest(async () => {
-      return api.get(`/events${queryParams ? `?${queryParams}` : ""}`, {
-        ...(cancelToken && { cancelToken: cancelToken.token })
-      });
-    });
+    return api.get(`/events${queryParams ? `?${queryParams}` : ""}`);
   },
 
-  getEvent: (id, cancelToken = null) => 
-    retryRequest(async () => 
-      api.get(`/events/${id}`, { 
-        ...(cancelToken && { cancelToken: cancelToken.token })
-      })
-    ),
-
-  getEventsByType: (type, cancelToken = null) => 
-    retryRequest(async () => 
-      api.get(`/events/type/${type}`, { 
-        ...(cancelToken && { cancelToken: cancelToken.token })
-      })
-    ),
-
+  getEvent: (id) => api.get(`/events/${id}`),
+  getEventsByType: (type) => api.get(`/events/type/${type}`),
   createEvent: (eventData) => api.post("/events", eventData),
   updateEvent: (id, eventData) => api.put(`/events/${id}`, eventData),
   deleteEvent: (id) => api.delete(`/events/${id}`),
@@ -243,21 +158,13 @@ export const registrationAPI = {
   registerForEvent: (registrationData) =>
     api.post("/registrations", registrationData),
 
-  getMyRegistrations: (params = {}, cancelToken = null) => {
+  getMyRegistrations: (params = {}) => {
     const queryParams = new URLSearchParams(params).toString();
-    return retryRequest(async () => {
-      return api.get(`/registrations/my${queryParams ? `?${queryParams}` : ""}`, {
-        ...(cancelToken && { cancelToken: cancelToken.token })
-      });
-    });
+    return api.get(`/registrations/my${queryParams ? `?${queryParams}` : ""}`);
   },
 
-  getEventRegistrations: (eventId, cancelToken = null) =>
-    retryRequest(async () =>
-      api.get(`/registrations/event/${eventId}`, { 
-        ...(cancelToken && { cancelToken: cancelToken.token })
-      })
-    ),
+  getEventRegistrations: (eventId) =>
+    api.get(`/registrations/event/${eventId}`),
 
   cancelRegistration: (registrationId) =>
     api.delete(`/registrations/${registrationId}`),
