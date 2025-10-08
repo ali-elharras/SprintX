@@ -57,8 +57,8 @@ const userSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       match: [
-        /^[0-9\-_\.]+$/,
-        "University ID can only contain numbers and symbols (-, _, .)",
+        /^[A-Za-z0-9\-_\.]+$/,
+        "University ID can only contain letters, numbers, and symbols (-, _, .)",
       ],
     },
     department: {

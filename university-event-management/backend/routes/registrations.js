@@ -31,9 +31,9 @@ const registrationValidation = [
     .withMessage("Valid email is required"),
   body("universityId")
     .trim()
-    .matches(/^[A-Za-z0-9]+$/)
+    .matches(/^[A-Za-z0-9\-]+$/)
     .isLength({ min: 1, max: 20 })
-    .withMessage("University/Staff ID is required and can only contain letters and numbers"),
+    .withMessage("University/Staff ID is required and can only contain letters, numbers, and dashes"),
   body("role")
     .isIn(["student", "staff", "ta", "professor"])
     .withMessage("Invalid role"),

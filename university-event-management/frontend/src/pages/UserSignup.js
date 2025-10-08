@@ -78,8 +78,8 @@ const userSchema = yup.object({
     .string()
     .required("University ID is required")
     .matches(
-      /^[0-9\-_\.]+$/,
-      "University ID can only contain numbers and symbols (-, _, .)"
+      /^[A-Za-z0-9\-_\.]+$/,
+      "University ID can only contain letters, numbers, and symbols (-, _, .)"
     ),
   department: yup
     .string()
