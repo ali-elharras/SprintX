@@ -46,10 +46,16 @@ const userSchema = new mongoose.Schema(
           "professor",
           "admin",
           "events_office",
+          "pending", // <-- add this
         ],
         message:
-          "Role must be one of: student, staff, ta, professor, admin, events_office",
+          "Role must be one of: student, staff, ta, professor, admin, events_office, pending",
       },
+    },
+    requestedRole: {
+      type: String,
+      enum: ["staff", "ta", "professor"],
+      required: false,
     },
     universityId: {
       type: String,

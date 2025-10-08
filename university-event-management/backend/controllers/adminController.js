@@ -12,7 +12,10 @@ const createAdminOrEventOffice = async (req, res) => {
       return res.status(400).json({ message: "All required fields must be provided" });
     }
 
-    
+    // Only allow admin or event_office roles
+    if (!["admin", "event_office"].includes(role)) {
+      return res.status(400).json({ message: "Role must be admin or event_office" });
+    }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -29,10 +32,11 @@ const createAdminOrEventOffice = async (req, res) => {
       universityId,
       role,
       isVerified: true, // Admins/Event office are verified immediately
+      isActive: true,   // Explicitly set active
     });
 
     return res.status(201).json({
-      message: `${role === "admin" ? "Admin" : "Event office"} created successfully`,
+      message: `${role === "admin" ? "Admin" : "Event Office"} created successfully`,
       user: {
         id: newUser._id,
         fullName: `${newUser.firstName} ${newUser.lastName}`,
@@ -42,7 +46,7 @@ const createAdminOrEventOffice = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating admin/event office:", error);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -101,8 +105,42 @@ const getAllUsers = async (req, res) => {
 };
 
 
+const getPendingAcademics = async (req, res) => {
+  try {
+    const users = await User.find({
+      isActive: false,
+      role: "pending",
+      requestedRole: { $in: ["staff", "ta", "professor"] }
+    }, "firstName lastName email universityId requestedRole createdAt");
+    res.status(200).json(users);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching pending academics" });
+  }
+};
+
+const approveAcademic = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body; // staff, ta, professor
+    if (!["staff", "ta", "professor"].includes(role)) {
+      return res.status(400).json({ message: "Invalid role" });
+    }
+    const user = await User.findByIdAndUpdate(
+      id,
+      { role, isActive: true, requestedRole: undefined },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.status(200).json({ message: "User approved and role assigned" });
+  } catch (err) {
+    res.status(500).json({ message: "Error approving user" });
+  }
+};
+
 module.exports = {
   createAdminOrEventOffice,
   deleteAdminOrEventOffice,
   getAllUsers,
+  getPendingAcademics,
+  approveAcademic,
 };

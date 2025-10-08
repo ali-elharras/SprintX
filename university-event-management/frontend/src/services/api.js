@@ -334,3 +334,36 @@ export const gymAPI = {
     );
   },
 };
+
+
+export const adminAPI = {
+  // ✅ Fetch all users
+  getAllUsers: async () => {
+    try {
+      const response = await api.get("/admin/users");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // ✅ Create Admin or Event Office
+  createUser: async (userData) => {
+    try {
+      const response = await api.post("/admin/create-user", userData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // ✅ Delete Admin or Event Office
+  deleteUser: async (id) => {
+    try {
+      const response = await api.delete(`/admin/delete-user/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};

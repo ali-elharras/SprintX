@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { applicationServices } from "../services/api";
-import theme, { getStatusColor } from "../theme";
-import Button from "../components/Button";
-import Card from "../components/Card";
+import theme from "../theme"; // removed getStatusColor
+// import Button from "../components/Button"; // removed unused
+// import Card from "../components/Card"; // removed unused
 import toast from "react-hot-toast";
 import Navbar from "../components/Navbar";
 
@@ -296,12 +296,214 @@ const cssKeyframes = `
 }
 `;
 
+const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8080/api";
+
+const initialUserForm = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  password: "",
+  universityId: "",
+  role: "admin",
+};
+
+const UserManagementModal = ({
+  show,
+  onClose,
+  userForm,
+  handleUserFormChange,
+  handleCreateUser,
+  userCreating,
+  users,
+  userLoading,
+  handleDeleteUser,
+  userMgmtModalStyles,
+  modalKeyframes,
+}) => {
+  if (!show) return null;
+  return (
+    <div style={userMgmtModalStyles.overlay} onClick={onClose}>
+      <style>{modalKeyframes}</style>
+      <div
+        style={userMgmtModalStyles.modal}
+        onClick={e => e.stopPropagation()}
+        tabIndex={-1}
+      >
+        <div style={userMgmtModalStyles.header}>
+          <h2 style={userMgmtModalStyles.title}>User Management</h2>
+          <button
+            style={userMgmtModalStyles.closeBtn}
+            aria-label="Close"
+            onClick={onClose}
+            title="Close"
+          >
+            ×
+          </button>
+        </div>
+        <div style={userMgmtModalStyles.body}>
+          <div style={userMgmtModalStyles.sectionSubtitle}>
+            Create, view, and manage Admin & Event Office users.
+          </div>
+          <form onSubmit={handleCreateUser} style={userMgmtModalStyles.form}>
+            <div>
+              <label style={userMgmtModalStyles.label}>First Name</label>
+              <input
+                style={userMgmtModalStyles.input}
+                name="firstName"
+                placeholder="First Name"
+                value={userForm.firstName}
+                onChange={handleUserFormChange}
+                required
+              />
+            </div>
+            <div>
+              <label style={userMgmtModalStyles.label}>Last Name</label>
+              <input
+                style={userMgmtModalStyles.input}
+                name="lastName"
+                placeholder="Last Name"
+                value={userForm.lastName}
+                onChange={handleUserFormChange}
+                required
+              />
+            </div>
+            <div>
+              <label style={userMgmtModalStyles.label}>Email</label>
+              <input
+                style={userMgmtModalStyles.input}
+                name="email"
+                placeholder="Email"
+                value={userForm.email}
+                onChange={handleUserFormChange}
+                required
+                type="email"
+              />
+            </div>
+            <div>
+              <label style={userMgmtModalStyles.label}>Password</label>
+              <input
+                style={userMgmtModalStyles.input}
+                name="password"
+                placeholder="Password"
+                value={userForm.password}
+                onChange={handleUserFormChange}
+                required
+                type="password"
+              />
+            </div>
+            <div>
+              <label style={userMgmtModalStyles.label}>University ID</label>
+              <input
+                style={userMgmtModalStyles.input}
+                name="universityId"
+                placeholder="University ID"
+                value={userForm.universityId}
+                onChange={handleUserFormChange}
+                required
+              />
+            </div>
+            <div>
+              <label style={userMgmtModalStyles.label}>Role</label>
+              <select
+                style={userMgmtModalStyles.select}
+                name="role"
+                value={userForm.role}
+                onChange={handleUserFormChange}
+              >
+                <option value="admin">Admin</option>
+                <option value="event_office">Event Office</option>
+              </select>
+            </div>
+            <button
+              type="submit"
+              style={{
+                ...userMgmtModalStyles.button,
+                ...(userCreating ? userMgmtModalStyles.buttonDisabled : {}),
+              }}
+              disabled={userCreating}
+            >
+              {userCreating ? "Creating..." : "Create User"}
+            </button>
+          </form>
+          <div style={{ fontWeight: 600, color: "#1e293b", margin: "18px 0 8px" }}>
+            All Admin & Event Office Users
+          </div>
+          <div style={userMgmtModalStyles.tableWrapper}>
+            {userLoading ? (
+              <div style={{ padding: 24 }}>Loading users...</div>
+            ) : (
+              <table style={userMgmtModalStyles.table}>
+                <thead>
+                  <tr>
+                    <th style={userMgmtModalStyles.th}>Name</th>
+                    <th style={userMgmtModalStyles.th}>Email</th>
+                    <th style={userMgmtModalStyles.th}>Role</th>
+                    <th style={userMgmtModalStyles.th}>University ID</th>
+                    <th style={userMgmtModalStyles.th}>Status</th>
+                    <th style={userMgmtModalStyles.th}>Verified</th>
+                    <th style={userMgmtModalStyles.th}>Created</th>
+                    <th style={userMgmtModalStyles.th}>Delete</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users
+                    .filter((u) => u.role === "admin" || u.role === "event_office")
+                    .map((user) => (
+                      <tr
+                        key={user.id}
+                        style={userMgmtModalStyles.trHover}
+                        onMouseOver={e => e.currentTarget.style.background = "#f1f5f9"}
+                        onMouseOut={e => e.currentTarget.style.background = "#fff"}
+                      >
+                        <td style={userMgmtModalStyles.td}>{user.fullName}</td>
+                        <td style={userMgmtModalStyles.td}>{user.email}</td>
+                        <td style={userMgmtModalStyles.td}>{user.role === "admin" ? "Admin" : "Event Office"}</td>
+                        <td style={userMgmtModalStyles.td}>{user.universityId}</td>
+                        <td style={userMgmtModalStyles.td}>{user.status}</td>
+                        <td style={userMgmtModalStyles.td}>
+                          {user.verified ? (
+                            <span style={userMgmtModalStyles.verifiedBadge}>Verified</span>
+                          ) : (
+                            <span style={userMgmtModalStyles.notVerifiedBadge}>Not Verified</span>
+                          )}
+                        </td>
+                        <td style={userMgmtModalStyles.td}>{user.createdAt}</td>
+                        <td style={userMgmtModalStyles.td}>
+                          <button
+                            type="button"
+                            style={userMgmtModalStyles.deleteBtn}
+                            onMouseOver={e => e.currentTarget.style.background = "#b91c1c"}
+                            onMouseOut={e => e.currentTarget.style.background = "#ef4444"}
+                            onClick={() => handleDeleteUser(user.id)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const AdminDashboard = () => {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
+
+  // User management state
+  const [users, setUsers] = useState([]);
+  const [userForm, setUserForm] = useState(initialUserForm);
+  const [userLoading, setUserLoading] = useState(false);
+  const [userCreating, setUserCreating] = useState(false);
+  const [showUserMgmt, setShowUserMgmt] = useState(false);
 
   const fetchApplications = async () => {
     try {
@@ -352,6 +554,69 @@ const AdminDashboard = () => {
     rejected: applications.filter(app => app.status === "rejected").length,
   };
 
+  // User management handlers
+  const fetchUsers = async () => {
+    setUserLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/users`);
+      const data = await res.json();
+      setUsers(data);
+    } catch {
+      toast.error("Failed to fetch users");
+    }
+    setUserLoading(false);
+  };
+
+  useEffect(() => {
+    fetchUsers();
+    // eslint-disable-next-line
+  }, []);
+
+  const handleUserFormChange = (e) => {
+    setUserForm({ ...userForm, [e.target.name]: e.target.value });
+  };
+
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    setUserCreating(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/create-user`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userForm),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || "User created");
+        setUserForm(initialUserForm);
+        fetchUsers();
+      } else {
+        toast.error(data.message || "Error creating user");
+      }
+    } catch {
+      toast.error("Error creating user");
+    }
+    setUserCreating(false);
+  };
+
+  const handleDeleteUser = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/admin/delete-user/${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || "User deleted");
+        fetchUsers();
+      } else {
+        toast.error(data.message || "Error deleting user");
+      }
+    } catch {
+      toast.error("Error deleting user");
+    }
+  };
+
   if (loading) {
     return (
       <>
@@ -390,9 +655,44 @@ const AdminDashboard = () => {
     <>
       <Navbar />
       <style>{cssKeyframes}</style>
+      <UserManagementModal
+        show={showUserMgmt}
+        onClose={() => setShowUserMgmt(false)}
+        userForm={userForm}
+        handleUserFormChange={handleUserFormChange}
+        handleCreateUser={handleCreateUser}
+        userCreating={userCreating}
+        users={users}
+        userLoading={userLoading}
+        handleDeleteUser={handleDeleteUser}
+        userMgmtModalStyles={userMgmtModalStyles}
+        modalKeyframes={modalKeyframes}
+      />
       <div style={styles.container}>
         <div style={styles.backgroundPattern}></div>
         <div style={styles.contentWrapper}>
+          {/* User Management Button */}
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 32 }}>
+            <button
+              style={{
+                background: "#2563eb",
+                color: "#fff",
+                border: "none",
+                borderRadius: 12,
+                padding: "12px 32px",
+                fontWeight: 700,
+                fontSize: 17,
+                boxShadow: "0 2px 8px rgba(37,99,235,0.08)",
+                cursor: "pointer",
+                transition: "background 0.2s, transform 0.1s",
+                letterSpacing: "0.5px",
+              }}
+              onClick={() => setShowUserMgmt(true)}
+            >
+              User Management
+            </button>
+          </div>
+
           {/* Header */}
           <div style={styles.headerContainer}>
             <div style={styles.headerGlow}></div>
@@ -566,5 +866,197 @@ const AdminDashboard = () => {
     </>
   );
 };
+
+const userMgmtModalStyles = {
+  overlay: {
+    position: "fixed",
+    top: 0, left: 0, right: 0, bottom: 0,
+    background: "rgba(30,41,59,0.25)",
+    zIndex: 1000,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modal: {
+    background: "#fff",
+    borderRadius: 20,
+    padding: 0,
+    boxShadow: "0 8px 48px rgba(0,0,0,0.18)",
+    border: "1px solid #e5e7eb",
+    maxWidth: 900,
+    width: "95vw",
+    maxHeight: "90vh",
+    overflowY: "auto",
+    position: "relative",
+    animation: "fadeInModal 0.2s",
+  },
+  header: {
+    padding: "28px 36px 0 36px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  title: {
+    fontSize: "2rem",
+    fontWeight: 700,
+    color: "#1e293b",
+    letterSpacing: "-1px",
+    margin: 0,
+  },
+  closeBtn: {
+    background: "none",
+    border: "none",
+    fontSize: 32,
+    color: "#64748b",
+    cursor: "pointer",
+    fontWeight: 700,
+    transition: "color 0.2s",
+    marginLeft: 12,
+    marginTop: -8,
+  },
+  body: {
+    padding: "0 36px 36px 36px",
+  },
+  sectionSubtitle: {
+    color: "#64748b",
+    fontSize: "1.08rem",
+    marginBottom: 28,
+    marginTop: 8,
+  },
+  form: {
+    display: "flex",
+    gap: 18,
+    flexWrap: "wrap",
+    alignItems: "flex-end",
+    marginBottom: 32,
+    background: "#f8fafc",
+    borderRadius: 12,
+    padding: "18px 16px",
+    boxShadow: "0 2px 8px rgba(30,41,59,0.04)",
+  },
+  label: {
+    fontWeight: 600,
+    color: "#334155",
+    fontSize: 14,
+    marginBottom: 4,
+    display: "block",
+  },
+  input: {
+    padding: "10px 14px",
+    borderRadius: 10,
+    border: "1.5px solid #cbd5e1",
+    fontSize: 15,
+    outline: "none",
+    minWidth: 160,
+    background: "#fff",
+    transition: "border 0.2s",
+    marginBottom: 0,
+  },
+  select: {
+    padding: "10px 14px",
+    borderRadius: 10,
+    border: "1.5px solid #cbd5e1",
+    fontSize: 15,
+    outline: "none",
+    background: "#fff",
+    minWidth: 140,
+    marginBottom: 0,
+  },
+  button: {
+    padding: "10px 24px",
+    borderRadius: 10,
+    border: "none",
+    background: "#2563eb",
+    color: "#fff",
+    fontWeight: 600,
+    fontSize: 15,
+    cursor: "pointer",
+    boxShadow: "0 2px 8px rgba(37,99,235,0.08)",
+    transition: "background 0.2s, transform 0.1s",
+    marginLeft: 8,
+  },
+  buttonDisabled: {
+    background: "#93c5fd",
+    cursor: "not-allowed",
+    opacity: 0.7,
+  },
+  tableWrapper: {
+    overflowX: "auto",
+    borderRadius: 12,
+    border: "1px solid #e5e7eb",
+    background: "#f9fafb",
+    marginTop: 8,
+    boxShadow: "0 2px 8px rgba(30,41,59,0.04)",
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    fontSize: 15,
+    minWidth: 700,
+  },
+  th: {
+    background: "#f1f5f9",
+    color: "#334155",
+    fontWeight: 700,
+    padding: "12px 10px",
+    borderBottom: "2px solid #e5e7eb",
+    textAlign: "left",
+    letterSpacing: "0.5px",
+  },
+  td: {
+    padding: "12px 10px",
+    borderBottom: "1px solid #e5e7eb",
+    color: "#334155",
+    background: "#fff",
+    verticalAlign: "middle",
+  },
+  trHover: {
+    transition: "background 0.15s",
+    cursor: "pointer",
+  },
+  deleteBtn: {
+    background: "#ef4444",
+    color: "#fff",
+    border: "none",
+    borderRadius: 8,
+    padding: "7px 16px",
+    fontWeight: 600,
+    fontSize: 14,
+    cursor: "pointer",
+    transition: "background 0.2s",
+  },
+  deleteBtnHover: {
+    background: "#b91c1c",
+  },
+  verifiedBadge: {
+    display: "inline-block",
+    background: "#d1fae5",
+    color: "#065f46",
+    borderRadius: 8,
+    padding: "2px 10px",
+    fontWeight: 600,
+    fontSize: 13,
+    marginLeft: 4,
+  },
+  notVerifiedBadge: {
+    display: "inline-block",
+    background: "#fee2e2",
+    color: "#991b1b",
+    borderRadius: 8,
+    padding: "2px 10px",
+    fontWeight: 600,
+    fontSize: 13,
+    marginLeft: 4,
+  },
+};
+
+const modalKeyframes = `
+@keyframes fadeInModal {
+  from { opacity: 0; transform: translateY(30px);}
+  to { opacity: 1; transform: translateY(0);}
+}
+`;
 
 export default AdminDashboard;
