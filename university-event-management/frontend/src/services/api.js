@@ -233,6 +233,7 @@ export const eventAPI = {
 
   createEvent: (eventData) => api.post("/events", eventData),
   updateEvent: (id, eventData) => api.put(`/events/${id}`, eventData),
+  updateEventStatus: (id, status) => api.put(`/events/${id}/status`, { status }),
   deleteEvent: (id) => api.delete(`/events/${id}`),
 };
 

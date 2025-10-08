@@ -223,6 +223,46 @@ const updateEvent = async (req, res) => {
   }
 };
 
+// @desc    Update only the status of an event (e.g., publish, reject)
+// @route   PUT /api/events/:id/status
+// @access  Private (Admin/Events Office)
+const updateEventStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ success: false, message: "Status is required" });
+    }
+
+    const allowedStatuses = ["pending", "published", "rejected", "cancelled", "upcoming"];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status" });
+    }
+
+    const event = await Event.findById(req.params.id);
+
+    if (!event) {
+      return res.status(404).json({ success: false, message: "Event not found" });
+    }
+
+    // Only Events Office or admin can change status
+    if (!["admin", "events_office"].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: "Not authorized to update event status" });
+    }
+
+    // For reject action we only update the status field and do not delete the record
+    event.status = status;
+    await event.save();
+
+    await event.populate("organizer", "firstName lastName email");
+
+    res.status(200).json({ success: true, message: "Event status updated", data: event });
+  } catch (error) {
+    console.error("Error updating event status:", error);
+    res.status(500).json({ success: false, message: "Error updating event status", error: error.message });
+  }
+};
+
 // @desc    Delete event
 // @route   DELETE /api/events/:id
 // @access  Private (Admin/Events Office/Organizer)

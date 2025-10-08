@@ -79,6 +79,8 @@ const EventsPage = () => {
   const [selectedPending, setSelectedPending] = useState(null);
   // Candidate pending workshop to publish (for confirmation modal)
   const [publishCandidate, setPublishCandidate] = useState(null);
+  // Candidate pending workshop to reject (for confirmation modal)
+  const [rejectCandidate, setRejectCandidate] = useState(null);
 
   // Fetch events
   const fetchEvents = async () => {
@@ -279,7 +281,7 @@ const EventsPage = () => {
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", gap: theme.spacing[3] }}>
+                    <div style={{ display: "flex", gap: theme.spacing[3] }}>
                     <Button
                       variant="primary"
                       onClick={() => {
@@ -295,6 +297,16 @@ const EventsPage = () => {
                       onClick={() => setSelectedPending(w)}
                     >
                       View Details
+                    </Button>
+
+                    <Button
+                      variant="danger"
+                      onClick={() => {
+                        // Ask for confirmation before rejecting
+                        setRejectCandidate(w);
+                      }}
+                    >
+                      Reject
                     </Button>
                   </div>
                 </div>
@@ -610,6 +622,76 @@ const EventsPage = () => {
                   }}
                 >
                   Confirm
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Reject confirmation modal */}
+        {rejectCandidate && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              position: "fixed",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(0,0,0,0.35)",
+              zIndex: 10000,
+            }}
+            onClick={() => setRejectCandidate(null)}
+          >
+            <div
+              style={{
+                width: "520px",
+                maxWidth: "95%",
+                background: theme.colors.background.paper,
+                borderRadius: theme.borderRadius.lg,
+                padding: theme.spacing[5],
+                boxShadow: theme.shadows.lg,
+                transition: "transform 180ms ease, opacity 180ms ease",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 style={{ marginTop: 0, marginBottom: theme.spacing[2] }}>
+                Confirm rejection
+              </h3>
+              <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[4] }}>
+                Rejecting this workshop will mark it as <strong>rejected</strong> and remove it from the pending approvals list.
+                This does not delete the workshop from the database and it will not appear in any public views.
+              </p>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing[3] }}>
+                <Button variant="outline" onClick={() => setRejectCandidate(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={async () => {
+                    const w = rejectCandidate;
+
+                    // Remove locally
+                    setPendingWorkshops((prev) => prev.filter((p) => p.id !== w.id));
+
+                    // If this pending has a backend id, call API to mark rejected
+                    if (w._id) {
+                      try {
+                        await eventAPI.updateEventStatus(w._id, "rejected");
+                        toast.success(`Rejected "${w.name}"`);
+                      } catch (err) {
+                        console.error("Failed to mark event as rejected:", err);
+                        toast.error("Failed to reject event on server. See console for details.");
+                      }
+                    } else {
+                      toast.success(`Rejected "${w.name}"`);
+                    }
+
+                    setRejectCandidate(null);
+                  }}
+                >
+                  Confirm Rejection
                 </Button>
               </div>
             </div>
