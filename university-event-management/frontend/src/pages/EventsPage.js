@@ -12,6 +12,7 @@ const EventsPage = () => {
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     type: "",
     search: "",
@@ -19,6 +20,29 @@ const EventsPage = () => {
   });
 
   // Fetch events
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log("Fetching events...");
+      
+      const response = await eventAPI.getEvents({
+        status: "published",
+        upcoming: "true",
+      });
+      
+      console.log("Events response:", response);
+      // The response structure is response.data.data due to the backend API structure
+      setEvents(response.data?.data || []);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+      setError(error);
+      toast.error("Failed to load events. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchEvents();
   }, []);
@@ -27,22 +51,6 @@ const EventsPage = () => {
   useEffect(() => {
     applyFilters();
   }, [events, filters]);
-
-  const fetchEvents = async () => {
-    try {
-      setLoading(true);
-      const response = await eventAPI.getEvents({
-        status: "published",
-        upcoming: "true",
-      });
-      setEvents(response.data.data || []);
-    } catch (error) {
-      console.error("Error fetching events:", error);
-      toast.error("Failed to load events");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const applyFilters = () => {
     let filtered = [...events];
@@ -96,18 +104,21 @@ const EventsPage = () => {
 
   if (loading) {
     return (
-      <div
-        style={{
-          minHeight: "50vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: theme.typography.fontSize.lg,
-          color: theme.colors.text.secondary,
-        }}
-      >
-        Loading events...
-      </div>
+      <>
+        <Navbar />
+        <div
+          style={{
+            minHeight: "50vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: theme.typography.fontSize.lg,
+            color: theme.colors.text.secondary,
+          }}
+        >
+          Loading events...
+        </div>
+      </>
     );
   }
 
@@ -277,6 +288,52 @@ const EventsPage = () => {
             }}
           >
             Showing {filteredEvents.length} of {events.length} events
+          </div>
+        )}
+
+        {/* Error state */}
+        {error && !loading && (
+          <div
+            style={{
+              background: theme.colors.background.paper,
+              padding: theme.spacing[8],
+              borderRadius: theme.borderRadius.lg,
+              boxShadow: theme.shadows.md,
+              textAlign: "center",
+              border: `2px solid ${theme.colors.status.error}`,
+            }}
+          >
+            <div
+              style={{
+                fontSize: theme.typography.fontSize["2xl"],
+                marginBottom: theme.spacing[4],
+                color: theme.colors.status.error,
+              }}
+            >
+              ⚠️
+            </div>
+            <h3
+              style={{
+                fontSize: theme.typography.fontSize.xl,
+                fontWeight: theme.typography.fontWeight.semibold,
+                color: theme.colors.text.primary,
+                marginBottom: theme.spacing[2],
+              }}
+            >
+              Failed to Load Events
+            </h3>
+            <p
+              style={{
+                fontSize: theme.typography.fontSize.base,
+                color: theme.colors.text.secondary,
+                marginBottom: theme.spacing[4],
+              }}
+            >
+              {error.message || "There was an error loading events. Please try again."}
+            </p>
+            <Button variant="primary" onClick={fetchEvents}>
+              Retry
+            </Button>
           </div>
         )}
       </div>
