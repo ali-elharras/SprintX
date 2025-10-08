@@ -100,7 +100,7 @@ const eventSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["draft", "pending", "published", "rejected", "cancelled", "completed"],
+      enum: ["draft", "pending", "needs_revision", "published", "rejected", "cancelled", "completed"],
       default: "draft",
     },
 
@@ -162,6 +162,21 @@ const eventSchema = new mongoose.Schema(
         return this.type === "workshop";
       },
       min: [0.5, "Duration must be at least 0.5 hours"],
+    },
+    // Requests for edits from Events Office back to the organizer (professor)
+    editRequests: {
+      type: [
+        {
+          message: { type: String, required: true },
+          requestedBy: {
+            id: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false },
+            name: { type: String },
+          },
+          requestedAt: { type: Date, default: Date.now },
+          status: { type: String, enum: ["needs_revision"], default: "needs_revision" },
+        },
+      ],
+      default: [],
     },
   },
   {

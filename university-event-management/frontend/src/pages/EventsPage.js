@@ -81,6 +81,9 @@ const EventsPage = () => {
   const [publishCandidate, setPublishCandidate] = useState(null);
   // Candidate pending workshop to reject (for confirmation modal)
   const [rejectCandidate, setRejectCandidate] = useState(null);
+  // Candidate pending workshop to request edits for (opens small message modal)
+  const [requestEditsCandidate, setRequestEditsCandidate] = useState(null);
+  const [requestEditsMessage, setRequestEditsMessage] = useState("");
 
   // Fetch events
   const fetchEvents = async () => {
@@ -300,6 +303,17 @@ const EventsPage = () => {
                     </Button>
 
                     <Button
+                      variant="outline"
+                      onClick={() => {
+                        // Open small input modal to request edits
+                        setRequestEditsCandidate(w);
+                        setRequestEditsMessage("");
+                      }}
+                    >
+                      Request Edits
+                    </Button>
+
+                    <Button
                       variant="danger"
                       onClick={() => {
                         // Ask for confirmation before rejecting
@@ -311,6 +325,112 @@ const EventsPage = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+        {/* Request Edits modal */}
+        {requestEditsCandidate && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              position: "fixed",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(0,0,0,0.35)",
+              zIndex: 10000,
+            }}
+            onClick={() => setRequestEditsCandidate(null)}
+          >
+            <div
+              style={{
+                width: "560px",
+                maxWidth: "95%",
+                background: theme.colors.background.paper,
+                borderRadius: theme.borderRadius.lg,
+                padding: theme.spacing[5],
+                boxShadow: theme.shadows.lg,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 style={{ marginTop: 0, marginBottom: theme.spacing[2] }}>
+                Request Edits for "{requestEditsCandidate.name}"
+              </h3>
+              <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[2] }}>
+                Provide a short message that will be sent back to the professor explaining what needs to be changed. This will mark the workshop as "needs revision" and remove it from the pending approvals list.
+              </p>
+
+              <Input
+                label="Edit message"
+                name="requestEditsMessage"
+                value={requestEditsMessage}
+                onChange={(e) => setRequestEditsMessage(e.target.value)}
+                placeholder="Please make the agenda clearer and include contact info..."
+              />
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing[3] }}>
+                <Button variant="outline" onClick={() => setRequestEditsCandidate(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={async () => {
+                    const w = requestEditsCandidate;
+
+                    // Minimal validation
+                    if (!requestEditsMessage || requestEditsMessage.trim().length < 3) {
+                      toast.error("Please enter a short message to request edits.");
+                      return;
+                    }
+
+                    // Store edit request locally (for now) so professor can later view it.
+                    try {
+                      const key = "event_edit_requests";
+                      const existing = JSON.parse(localStorage.getItem(key) || "{}");
+                      existing[w.id || w._id || `local-${Date.now()}`] = {
+                        eventId: w._id || w.id,
+                        message: requestEditsMessage.trim(),
+                        requestedBy: {
+                          name: auth.user?.firstName ? `${auth.user.firstName} ${auth.user.lastName}` : "Events Office",
+                          id: auth.user?.id || null,
+                        },
+                        requestedAt: new Date().toISOString(),
+                        status: "needs_revision",
+                      };
+                      localStorage.setItem(key, JSON.stringify(existing));
+                    } catch (err) {
+                      console.error("Failed to persist edit request locally:", err);
+                    }
+
+                    // Remove from pending list locally
+                    setPendingWorkshops((prev) => prev.filter((p) => p.id !== w.id));
+
+                    // If this has a backend id, attempt to update status to 'rejected' or 'needs_revision' via API
+                    // Since backend doesn't yet have a 'needs_revision' status in the controller allowed list,
+                    // we'll set status to 'rejected' for backend but keep a local note. This simulates the flow
+                    // until backend support is added.
+                    if (w._id) {
+                      try {
+                        // Send needs_revision with message to backend
+                        await eventAPI.updateEventStatus(w._id, "needs_revision", requestEditsMessage.trim());
+                        toast.success(`Requested edits for "${w.name}" (professor notified)`);
+                      } catch (err) {
+                        console.error("Failed to update event status on server:", err);
+                        toast.error("Edit request saved locally. Server update failed.");
+                      }
+                    } else {
+                      toast.success(`Requested edits for "${w.name}"`);
+                    }
+
+                    setRequestEditsCandidate(null);
+                    setRequestEditsMessage("");
+                  }}
+                >
+                  Send Request
+                </Button>
+              </div>
             </div>
           </div>
         )}

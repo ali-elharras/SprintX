@@ -223,18 +223,18 @@ const updateEvent = async (req, res) => {
   }
 };
 
-// @desc    Update only the status of an event (e.g., publish, reject)
+// @desc    Update only the status of an event (e.g., publish, reject, needs_revision)
 // @route   PUT /api/events/:id/status
 // @access  Private (Admin/Events Office)
 const updateEventStatus = async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, message } = req.body;
 
     if (!status) {
       return res.status(400).json({ success: false, message: "Status is required" });
     }
 
-    const allowedStatuses = ["pending", "published", "rejected", "cancelled", "upcoming"];
+    const allowedStatuses = ["pending", "published", "rejected", "cancelled", "upcoming", "needs_revision"];
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({ success: false, message: "Invalid status" });
     }
@@ -250,7 +250,27 @@ const updateEventStatus = async (req, res) => {
       return res.status(403).json({ success: false, message: "Not authorized to update event status" });
     }
 
-    // For reject action we only update the status field and do not delete the record
+    // When requesting edits, attach message into editRequests and set status to needs_revision
+    if (status === "needs_revision") {
+      if (!message || message.trim().length < 3) {
+        return res.status(400).json({ success: false, message: "Message is required when requesting edits" });
+      }
+
+      event.editRequests.push({
+        message: message.trim(),
+        requestedBy: { id: req.user.id, name: `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() },
+        requestedAt: new Date(),
+        status: "needs_revision",
+      });
+
+      event.status = "needs_revision";
+      await event.save();
+      await event.populate("organizer", "firstName lastName email");
+
+      return res.status(200).json({ success: true, message: "Edit request saved", data: event });
+    }
+
+    // For other status updates we only update the status field
     event.status = status;
     await event.save();
 
