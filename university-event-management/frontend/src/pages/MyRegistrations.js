@@ -192,7 +192,15 @@ const MyRegistrations = () => {
 
   // Get current events to display
   const currentEvents = registrations[activeTab] || [];
-
+  const isPastEvent = (event) => {
+    if (!event || !event.endDate) {
+      // If there's no event data or end date, consider it not past
+      return false;
+    }
+    const now = new Date();
+    const eventEnd = new Date(event.endDate);
+    return eventEnd < now;
+  };
   // Redirect if not authenticated
   if (!isAuthenticated) {
     return (
