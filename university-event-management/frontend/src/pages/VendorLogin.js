@@ -9,21 +9,15 @@ import { useAuth } from "../context/AuthContext";
 import theme from "../theme";
 import Card from "../components/Card";
 import Input from "../components/Input";
-import Select from "../components/Select";
 import Button from "../components/Button";
 
-// Function to detect university role from email
-const getUniversityRole = (email) => {
-  const match = email.match(
-    /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor|admin|eventsoffice)\.[a-zA-Z0-9.-]+$/
-  );
-  if (match) {
-    const role = match[1];
-    if (role === "eventsoffice") return "Events Office";
-    if (role === "ta") return "TA";
-    return role.charAt(0).toUpperCase() + role.slice(1);
-  }
-  return null;
+// Function to detect if email is vendor email
+const isVendorEmail = (email) => {
+  const vendorPattern =
+    /^[a-zA-Z0-9._%+-]+@(?!student\.|staff\.|ta\.|professor\.|admin\.|eventsoffice\.).+$/;
+  const universityPattern =
+    /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor|admin|eventsoffice)\.[a-zA-Z0-9.-]+$/;
+  return vendorPattern.test(email) && !universityPattern.test(email);
 };
 
 // Validation schema
@@ -35,10 +29,10 @@ const loginSchema = yup.object({
   password: yup.string().required("Password is required"),
 });
 
-const Login = () => {
+const VendorLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { loginUser, loginVendor, isLoading } = useAuth();
+  const { loginVendor, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get the intended destination from location state
@@ -58,7 +52,7 @@ const Login = () => {
   });
 
   const watchedEmail = watch("email");
-  const detectedRole = getUniversityRole(watchedEmail);
+  const isValidVendorEmail = isVendorEmail(watchedEmail);
 
   const onSubmit = async (data) => {
     try {
@@ -68,35 +62,32 @@ const Login = () => {
       const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       if (!emailPattern.test(data.email)) {
         toast.error(
-          "Please enter a valid email address with domain extension (e.g., name@domain.com)"
+          "Please enter a valid email address with domain extension (e.g., name@company.com)"
         );
         setIsSubmitting(false);
         return;
       }
 
-      // Validate that this is a university email
+      // Validate that this is not a university email
       const universityPattern =
         /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor|admin|eventsoffice)\.[a-zA-Z0-9.-]+$/;
-      if (!universityPattern.test(data.email)) {
+      if (universityPattern.test(data.email)) {
         toast.error(
-          "Please use your university email address (@student, @staff, @ta, @professor, @admin, or @eventsoffice). For company emails, use Company Access."
+          "Please use your company email address. University emails should use the University Member login."
         );
         setIsSubmitting(false);
         return;
       }
 
-      // This is now university member login only
-      const result = await loginUser({
+      const result = await loginVendor({
         email: data.email,
         password: data.password,
       });
 
       if (result.success) {
-        const accountData = result.data.user;
+        const accountData = result.data.vendor;
 
-        toast.success(
-          `Welcome back, ${accountData.firstName} ${accountData.lastName}!`
-        );
+        toast.success(`Welcome back, ${accountData.companyName}!`);
 
         // Navigate to intended destination or dashboard
         navigate(from, { replace: true });
@@ -113,14 +104,31 @@ const Login = () => {
     }
   };
 
+  // Red/Orange theme overrides
+  const vendorTheme = {
+    ...theme,
+    colors: {
+      ...theme.colors,
+      primary: {
+        main: "#ea580c", // orange-600
+        light: "#fb923c", // orange-400
+        dark: "#c2410c", // orange-700
+      },
+      background: {
+        gradient:
+          "linear-gradient(135deg, #fed7d7 0%, #fb923c 50%, #ea580c 100%)", // red-orange gradient
+      },
+    },
+  };
+
   const containerStyles = {
     minHeight: "100vh",
-    background: theme.colors.background.gradient,
+    background: vendorTheme.colors.background.gradient,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: theme.spacing[4],
-    fontFamily: theme.typography.fontFamily.primary,
+    padding: vendorTheme.spacing[4],
+    fontFamily: vendorTheme.typography.fontFamily.primary,
   };
 
   const cardStyles = {
@@ -131,67 +139,63 @@ const Login = () => {
 
   const headerStyles = {
     textAlign: "center",
-    marginBottom: theme.spacing[8],
+    marginBottom: vendorTheme.spacing[8],
   };
 
   const titleStyles = {
-    fontSize: theme.typography.fontSize["4xl"],
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing[2],
+    fontSize: vendorTheme.typography.fontSize["4xl"],
+    fontWeight: vendorTheme.typography.fontWeight.bold,
+    color: vendorTheme.colors.text.primary,
+    marginBottom: vendorTheme.spacing[2],
   };
 
   const subtitleStyles = {
-    fontSize: theme.typography.fontSize.lg,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing[4],
+    fontSize: vendorTheme.typography.fontSize.lg,
+    color: vendorTheme.colors.text.secondary,
+    marginBottom: vendorTheme.spacing[4],
   };
 
   const formStyles = {
     display: "grid",
-    gap: theme.spacing[5],
+    gap: vendorTheme.spacing[5],
   };
 
   const linkStyles = {
     textAlign: "center",
-    marginTop: theme.spacing[6],
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
+    marginTop: vendorTheme.spacing[6],
+    fontSize: vendorTheme.typography.fontSize.sm,
+    color: vendorTheme.colors.text.secondary,
   };
 
   const linkAnchorStyles = {
-    color: theme.colors.primary.main,
+    color: vendorTheme.colors.primary.main,
     textDecoration: "none",
-    fontWeight: theme.typography.fontWeight.medium,
+    fontWeight: vendorTheme.typography.fontWeight.medium,
   };
 
   const dividerStyles = {
     display: "flex",
     alignItems: "center",
-    margin: `${theme.spacing[6]} 0`,
-    color: theme.colors.text.secondary,
-    fontSize: theme.typography.fontSize.sm,
+    margin: `${vendorTheme.spacing[6]} 0`,
+    color: vendorTheme.colors.text.secondary,
+    fontSize: vendorTheme.typography.fontSize.sm,
   };
 
   const dividerLineStyles = {
     flex: 1,
     height: "1px",
-    backgroundColor: theme.colors.border.light,
+    backgroundColor: vendorTheme.colors.border.light,
   };
-
-  const title = "GUC Events Login";
-  const subtitle =
-    "Access your account to discover and participate in campus events";
 
   return (
     <div style={containerStyles}>
-      {/* Vendor Access Button */}
+      {/* University Access Button */}
       <Link
-        to="/vendor-login"
+        to="/login"
         style={{
           position: "absolute",
-          top: theme.spacing[6],
-          right: theme.spacing[6],
+          top: vendorTheme.spacing[6],
+          right: vendorTheme.spacing[6],
           textDecoration: "none",
         }}
       >
@@ -200,49 +204,36 @@ const Login = () => {
           variant="ghost"
           size="sm"
           style={{
-            fontSize: theme.typography.fontSize.sm,
-            padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+            fontSize: vendorTheme.typography.fontSize.sm,
+            padding: `${vendorTheme.spacing[2]} ${vendorTheme.spacing[4]}`,
             color: "#000000",
             backgroundColor: "rgba(255, 255, 255, 0.1)",
             backdropFilter: "blur(10px)",
-            border: `1px solid ${theme.colors.border.light}`,
+            border: `1px solid ${vendorTheme.colors.border.light}`,
           }}
         >
-          Company Access
+          University Member Access
         </Button>
       </Link>
 
       <Card style={cardStyles}>
         <div style={headerStyles}>
-          <h1 style={titleStyles}>{title}</h1>
-          <p style={subtitleStyles}>{subtitle}</p>
+          <h1 style={titleStyles}>Vendor Login</h1>
+          <p style={subtitleStyles}>
+            Access your vendor dashboard to manage event participation
+          </p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} style={formStyles}>
           {/* Email */}
           <Input
-            label="Email Address"
+            label="Company Email Address"
             type="email"
-            placeholder="Enter your university email"
+            placeholder="Enter your company email"
             required
             error={errors.email?.message}
             {...register("email")}
           />
-
-          {/* Show detected role only when actually detected */}
-          {detectedRole && (
-            <div
-              style={{
-                fontSize: theme.typography.fontSize.sm,
-                color: theme.colors.primary.main,
-                marginTop: `-${theme.spacing[3]}`,
-                marginBottom: theme.spacing[2],
-                fontWeight: theme.typography.fontWeight.medium,
-              }}
-            >
-              ✓ Detected: {detectedRole}
-            </div>
-          )}
 
           {/* Password */}
           <Input
@@ -261,7 +252,14 @@ const Login = () => {
             size="lg"
             loading={isSubmitting || isLoading}
             disabled={isSubmitting || isLoading}
-            style={{ marginTop: theme.spacing[4] }}
+            style={{
+              marginTop: vendorTheme.spacing[4],
+              background: vendorTheme.colors.primary.main,
+              backgroundColor: vendorTheme.colors.primary.main,
+              borderColor: vendorTheme.colors.primary.main,
+              color: "white",
+              backgroundImage: "none",
+            }}
           >
             {isSubmitting || isLoading ? "Signing In..." : "Sign In"}
           </Button>
@@ -269,34 +267,34 @@ const Login = () => {
           {/* Divider */}
           <div style={dividerStyles}>
             <div style={dividerLineStyles}></div>
-            <span style={{ margin: `0 ${theme.spacing[4]}` }}>
+            <span style={{ margin: `0 ${vendorTheme.spacing[4]}` }}>
               Don't have an account?
             </span>
             <div style={dividerLineStyles}></div>
           </div>
 
           {/* Registration Link */}
-          <Link to="/signup/user" style={{ textDecoration: "none" }}>
+          <Link to="/signup/vendor" style={{ textDecoration: "none" }}>
             <Button
               type="button"
               variant="outline"
               size="md"
-              style={{ width: "100%" }}
+              style={{
+                width: "100%",
+                borderColor: vendorTheme.colors.primary.main,
+                color: vendorTheme.colors.primary.main,
+                background: "transparent",
+                backgroundColor: "transparent",
+                backgroundImage: "none",
+              }}
             >
-              Register as University Member
+              Register as Vendor
             </Button>
           </Link>
-
-          {/* Help Links */}
-          <div style={linkStyles}>
-            <Link to="/forgot-password" style={linkAnchorStyles}>
-              Forgot your password?
-            </Link>
-          </div>
         </form>
       </Card>
     </div>
   );
 };
 
-export default Login;
+export default VendorLogin;

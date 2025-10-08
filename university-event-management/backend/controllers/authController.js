@@ -6,18 +6,23 @@ const Vendor = require("../models/Vendor");
 // Helper function to determine if email is a vendor email
 const isVendorEmail = (email) => {
   const vendorPattern =
-    /^[a-zA-Z0-9._%+-]+@(?!student\.|staff\.|ta\.|professor\.).+$/;
+    /^[a-zA-Z0-9._%+-]+@(?!student\.|staff\.|ta\.|professor\.|admin\.|eventsoffice\.).+$/;
   const universityPattern =
-    /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor)\.[a-zA-Z0-9.-]+$/;
+    /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor|admin|eventsoffice)\.[a-zA-Z0-9.-]+$/;
   return vendorPattern.test(email) && !universityPattern.test(email);
 };
 
 // Helper function to extract role from university email
 const getRoleFromEmail = (email) => {
   const match = email.match(
-    /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor)\.[a-zA-Z0-9.-]+$/
+    /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor|admin|eventsoffice)\.[a-zA-Z0-9.-]+$/
   );
-  return match ? match[1] : null;
+  if (match) {
+    // Map email domain to database role
+    const domainRole = match[1];
+    return domainRole === "eventsoffice" ? "events_office" : domainRole;
+  }
+  return null;
 };
 
 // Generate JWT Token
@@ -60,7 +65,16 @@ const registerUser = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message:
-          "Invalid university email domain. Please use @student, @staff, @ta, or @professor domain.",
+          "Invalid university email domain. Please use @student, @staff, @ta, or @professor domain for registration.",
+      });
+    }
+
+    // Block registration for admin and events office - these are login-only accounts
+    if (emailRole === "admin" || emailRole === "events_office") {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Registration not allowed for this email domain. Please contact your administrator.",
       });
     }
 
@@ -200,23 +214,48 @@ const registerVendor = async (req, res, next) => {
       }
     }
 
-    // Create vendor
-    const vendor = await Vendor.create({
+    // Create vendor data object, excluding empty strings for optional fields
+    const vendorData = {
       companyName,
-      contactPersonFirstName,
-      contactPersonLastName,
       email,
       password,
-      businessRegistrationNumber,
-      industry,
-      companySize,
-      phoneNumber,
-      website,
-      address,
-      description,
-      servicesOffered: servicesOffered || [],
-      interestedEventTypes,
-    });
+      interestedEventTypes: interestedEventTypes || [],
+    };
+
+    // Only add optional fields if they have actual values (not empty strings)
+    if (contactPersonFirstName && contactPersonFirstName.trim()) {
+      vendorData.contactPersonFirstName = contactPersonFirstName;
+    }
+    if (contactPersonLastName && contactPersonLastName.trim()) {
+      vendorData.contactPersonLastName = contactPersonLastName;
+    }
+    if (businessRegistrationNumber && businessRegistrationNumber.trim()) {
+      vendorData.businessRegistrationNumber = businessRegistrationNumber;
+    }
+    if (industry && industry.trim()) {
+      vendorData.industry = industry;
+    }
+    if (companySize && companySize.trim()) {
+      vendorData.companySize = companySize;
+    }
+    if (phoneNumber && phoneNumber.trim()) {
+      vendorData.phoneNumber = phoneNumber;
+    }
+    if (website && website.trim()) {
+      vendorData.website = website;
+    }
+    if (description && description.trim()) {
+      vendorData.description = description;
+    }
+    if (address) {
+      vendorData.address = address;
+    }
+    if (servicesOffered && servicesOffered.length > 0) {
+      vendorData.servicesOffered = servicesOffered;
+    }
+
+    // Create vendor
+    const vendor = await Vendor.create(vendorData);
 
     // Generate token
     const token = generateToken(vendor._id, "vendor");
@@ -271,8 +310,15 @@ const login = async (req, res, next) => {
       account = await Vendor.findByEmail(email).select("+password");
       accountType = "vendor";
     } else {
+      // This includes student, staff, ta, professor, admin, and events_office
       account = await User.findByEmail(email).select("+password");
       accountType = "user";
+
+      // Log for debugging new email types
+      const userRole = getRoleFromEmail(email);
+      if (userRole === "admin" || userRole === "events_office") {
+        console.log(`🔐 [LOGIN] ${userRole} login attempt for: ${email}`);
+      }
     }
 
     // Check if account exists

@@ -1,6 +1,81 @@
 const Event = require("../models/Event");
+const User = require("../models/User");
 const Registration = require("../models/Registration");
 const { validationResult } = require("express-validator");
+
+/* --------------------------------------------------------
+   BAZAAR-SPECIFIC CONTROLLERS
+-------------------------------------------------------- */
+
+// @desc    Get all upcoming bazaars
+// @route   GET /api/events/bazaars/upcoming
+// @access  Private (for Vendors)
+const getUpcomingBazaars = async (req, res, next) => {
+  try {
+    const bazaars = await Event.find({
+      startDate: { $gte: new Date() },
+      type: "bazaar",
+      status: "published",
+    }).sort({ startDate: 1 });
+
+    return res.status(200).json({
+      success: true,
+      count: bazaars.length,
+      data: bazaars,
+    });
+  } catch (error) {
+    console.error("Error fetching upcoming bazaars:", error);
+    next(error);
+  }
+};
+
+
+// @desc    Seed a sample bazaar (Temporary)
+// @route   POST /api/events/seed/bazaar
+// @access  Public
+const seedBazaar = async (req, res, next) => {
+  try {
+    // Create a dummy admin user if it doesn't exist
+    let admin = await User.findOne({ email: "admin@events.internal" });
+    if (!admin) {
+      admin = await User.create({
+        firstName: "Admin",
+        lastName: "User",
+        email: "admin@events.internal",
+        password: "AdminPassword123",
+        role: "admin",
+        universityId: "admin001",
+      });
+    }
+
+    // Create a sample bazaar
+    const today = new Date();
+    const futureDate = new Date(today.setDate(today.getDate() + 30));
+
+    const bazaar = await Event.create({
+      name: "Annual Spring Bazaar",
+      description: "A wonderful bazaar with lots of vendors and activities.",
+      eventType: "bazaar",
+      startDate: futureDate,
+      endDate: new Date(futureDate.getTime() + 86400000), // 1-day duration
+      location: "University Main Courtyard",
+      status: "upcoming",
+      organizer: admin._id,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Sample bazaar created successfully.",
+      data: bazaar,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/* --------------------------------------------------------
+   GENERAL EVENT CONTROLLERS
+-------------------------------------------------------- */
 
 // @desc    Get all events
 // @route   GET /api/events
@@ -8,21 +83,21 @@ const { validationResult } = require("express-validator");
 const getEvents = async (req, res) => {
   try {
     const { type, status = "published", upcoming = false } = req.query;
-    
+
     let query = { status };
-    
+
     if (type) {
       query.type = type;
     }
-    
+
     if (upcoming === "true") {
       query.startDate = { $gte: new Date() };
     }
-    
+
     const events = await Event.find(query)
       .populate("organizer", "firstName lastName email")
       .sort({ startDate: 1 });
-    
+
     res.status(200).json({
       success: true,
       count: events.length,
@@ -43,16 +118,18 @@ const getEvents = async (req, res) => {
 // @access  Public
 const getEvent = async (req, res) => {
   try {
-    const event = await Event.findById(req.params.id)
-      .populate("organizer", "firstName lastName email phone");
-    
+    const event = await Event.findById(req.params.id).populate(
+      "organizer",
+      "firstName lastName email phone"
+    );
+
     if (!event) {
       return res.status(404).json({
         success: false,
         message: "Event not found",
       });
     }
-    
+
     res.status(200).json({
       success: true,
       data: event,
@@ -110,14 +187,14 @@ const createEvent = async (req, res) => {
 const updateEvent = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
-    
+
     if (!event) {
       return res.status(404).json({
         success: false,
         message: "Event not found",
       });
     }
-    
+
     // Check if user is authorized to update this event
     if (
       event.organizer.toString() !== req.user.id &&
@@ -128,13 +205,13 @@ const updateEvent = async (req, res) => {
         message: "Not authorized to update this event",
       });
     }
-    
+
     const updatedEvent = await Event.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
     ).populate("organizer", "firstName lastName email");
-    
+
     res.status(200).json({
       success: true,
       message: "Event updated successfully",
@@ -150,20 +227,80 @@ const updateEvent = async (req, res) => {
   }
 };
 
+// @desc    Update only the status of an event (e.g., publish, reject, needs_revision)
+// @route   PUT /api/events/:id/status
+// @access  Private (Admin/Events Office)
+const updateEventStatus = async (req, res) => {
+  try {
+    const { status, message } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ success: false, message: "Status is required" });
+    }
+
+    const allowedStatuses = ["pending", "published", "rejected", "cancelled", "upcoming", "needs_revision"];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status" });
+    }
+
+    const event = await Event.findById(req.params.id);
+
+    if (!event) {
+      return res.status(404).json({ success: false, message: "Event not found" });
+    }
+
+    // Only Events Office or admin can change status
+    if (!["admin", "events_office"].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: "Not authorized to update event status" });
+    }
+
+    // When requesting edits, attach message into editRequests and set status to needs_revision
+    if (status === "needs_revision") {
+      if (!message || message.trim().length < 3) {
+        return res.status(400).json({ success: false, message: "Message is required when requesting edits" });
+      }
+
+      event.editRequests.push({
+        message: message.trim(),
+        requestedBy: { id: req.user.id, name: `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() },
+        requestedAt: new Date(),
+        status: "needs_revision",
+      });
+
+      event.status = "needs_revision";
+      await event.save();
+      await event.populate("organizer", "firstName lastName email");
+
+      return res.status(200).json({ success: true, message: "Edit request saved", data: event });
+    }
+
+    // For other status updates we only update the status field
+    event.status = status;
+    await event.save();
+
+    await event.populate("organizer", "firstName lastName email");
+
+    res.status(200).json({ success: true, message: "Event status updated", data: event });
+  } catch (error) {
+    console.error("Error updating event status:", error);
+    res.status(500).json({ success: false, message: "Error updating event status", error: error.message });
+  }
+};
+
 // @desc    Delete event
 // @route   DELETE /api/events/:id
 // @access  Private (Admin/Events Office/Organizer)
 const deleteEvent = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
-    
+
     if (!event) {
       return res.status(404).json({
         success: false,
         message: "Event not found",
       });
     }
-    
+
     // Check if user is authorized to delete this event
     if (
       event.organizer.toString() !== req.user.id &&
@@ -174,9 +311,9 @@ const deleteEvent = async (req, res) => {
         message: "Not authorized to delete this event",
       });
     }
-    
+
     await Event.findByIdAndDelete(req.params.id);
-    
+
     res.status(200).json({
       success: true,
       message: "Event deleted successfully",
@@ -197,9 +334,11 @@ const deleteEvent = async (req, res) => {
 const getEventsByType = async (req, res) => {
   try {
     const { type } = req.params;
-    const events = await Event.findByType(type)
-      .populate("organizer", "firstName lastName email");
-    
+    const events = await Event.findByType(type).populate(
+      "organizer",
+      "firstName lastName email"
+    );
+
     res.status(200).json({
       success: true,
       count: events.length,
@@ -215,7 +354,12 @@ const getEventsByType = async (req, res) => {
   }
 };
 
+/* --------------------------------------------------------
+   EXPORTS
+-------------------------------------------------------- */
 module.exports = {
+  getUpcomingBazaars,
+  seedBazaar,
   getEvents,
   getEvent,
   createEvent,
