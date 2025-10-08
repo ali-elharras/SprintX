@@ -1,6 +1,7 @@
 const Event = require("../models/Event");
 const User = require("../models/User");
 const Registration = require("../models/Registration");
+const Conference = require("../models/Conference");
 const { validationResult } = require("express-validator");
 
 /* --------------------------------------------------------
@@ -80,24 +81,71 @@ const getEvents = async (req, res) => {
   try {
     const { type, status = "published", upcoming = false } = req.query;
 
-    let query = { status };
+    // Fetch regular events
+    let eventQuery = { status };
+    let conferenceQuery = {}; // Conferences don't have status field
 
     if (type) {
-      query.type = type;
+      eventQuery.type = type;
+      // If specifically asking for conferences, only return conferences
+      if (type === "conference") {
+        const conferences = await Conference.find(conferenceQuery).sort({ date: 1 });
+        return res.status(200).json({
+          success: true,
+          count: conferences.length,
+          data: conferences.map(conf => ({
+            ...conf.toObject(),
+            type: "conference",
+            name: conf.title, // Map title to name for consistency
+            startDate: conf.date,
+            endDate: conf.date, // Conferences are single-day
+            registrationRequired: true,
+            status: "published" // Assume conferences are always published
+          }))
+        });
+      }
     }
 
     if (upcoming === "true") {
-      query.startDate = { $gte: new Date() };
+      eventQuery.startDate = { $gte: new Date() };
+      conferenceQuery.date = { $gte: new Date() };
     }
 
-    const events = await Event.find(query)
-      .populate("organizer", "firstName lastName email")
-      .sort({ startDate: 1 });
+    // Fetch both regular events and conferences
+    const [events, conferences] = await Promise.all([
+      Event.find(eventQuery)
+        .populate("organizer", "firstName lastName email")
+        .sort({ startDate: 1 }),
+      upcoming === "true" 
+        ? Conference.find({ date: { $gte: new Date() } }).sort({ date: 1 })
+        : Conference.find().sort({ date: 1 })
+    ]);
+
+    // Combine and transform the data
+    const allEvents = [
+      ...events,
+      ...conferences.map(conf => ({
+        ...conf.toObject(),
+        _id: conf._id,
+        type: "conference",
+        name: conf.title, // Map title to name for consistency
+        startDate: conf.date,
+        endDate: conf.date, // Conferences are single-day
+        registrationRequired: true,
+        status: "published", // Assume conferences are always published
+        maxParticipants: conf.capacity,
+        currentParticipants: 0, // You might want to track this separately
+        cost: 0 // Default cost for conferences
+      }))
+    ];
+
+    // Sort combined results by date
+    allEvents.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
 
     res.status(200).json({
       success: true,
-      count: events.length,
-      data: events,
+      count: allEvents.length,
+      data: allEvents,
     });
   } catch (error) {
     console.error("Error fetching events:", error);

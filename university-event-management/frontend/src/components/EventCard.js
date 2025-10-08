@@ -1,10 +1,17 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import theme, { getEventTypeColor } from "../theme";
 import Button from "./Button";
 import RegistrationForm from "./RegistrationForm";
+import { useAuth } from "../context/AuthContext";
+import { conferenceAPI } from "../services/api";
+import toast from "react-hot-toast";
 
-const EventCard = ({ event, showRegistration = true, onRegistrationSuccess }) => {
+const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate }) => {
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const navigate = useNavigate();
+  const { isEventsOffice, user } = useAuth();
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -82,12 +89,36 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess }) =>
     );
   };
 
-  const statusInfo = getStatusInfo();
+  const handleEditConference = () => {
+    navigate(`/conferences/edit/${event._id}`);
+  };
+
+  const handleDeleteConference = async () => {
+    if (!window.confirm("Are you sure you want to delete this conference? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      await conferenceAPI.deleteConference(event._id);
+      toast.success("Conference deleted successfully!");
+      if (onEventUpdate) {
+        onEventUpdate(); // Refresh the events list
+      }
+    } catch (error) {
+      console.error("Error deleting conference:", error);
+      toast.error(error.response?.data?.message || "Failed to delete conference");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleRegistrationSuccess = (registrationData) => {
     setShowRegistrationForm(false);
     onRegistrationSuccess && onRegistrationSuccess(registrationData);
   };
+
+  const statusInfo = getStatusInfo();
 
   if (showRegistrationForm) {
     return (
@@ -168,7 +199,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess }) =>
             margin: 0,
           }}
         >
-          {event.name}
+          {event.title || event.name}
         </h3>
       </div>
 
@@ -365,39 +396,61 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess }) =>
             alignItems: "stretch",
           }}
         >
-          {showRegistration && canRegister() && (
-            <div style={{ flex: 1 }}>
-              <Button
-                variant="primary"
-                onClick={() => setShowRegistrationForm(true)}
-                style={{ 
-                  width: "100%",
-                  minHeight: "44px",
-                  padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Register Now
-              </Button>
-            </div>
+          {/* Events Office buttons for conferences */}
+          {isEventsOffice && event.type === "conference" ? (
+            <>
+              <div style={{ flex: 1 }}>
+                <Button
+                  variant="primary"
+                  onClick={handleEditConference}
+                  style={{ 
+                    width: "100%",
+                    minHeight: "44px",
+                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Edit Conference
+                </Button>
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  variant="danger"
+                  onClick={handleDeleteConference}
+                  disabled={isDeleting}
+                  style={{ 
+                    width: "100%",
+                    minHeight: "44px",
+                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                    whiteSpace: "nowrap",
+                    opacity: isDeleting ? 0.6 : 1,
+                  }}
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </Button>
+              </div>
+            </>
+          ) : (
+            /* Regular user buttons for all events */
+            <>
+              {showRegistration && canRegister() && (
+                <div style={{ flex: 1 }}>
+                  <Button
+                    variant="primary"
+                    onClick={() => setShowRegistrationForm(true)}
+                    style={{ 
+                      width: "100%",
+                      minHeight: "44px",
+                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Register Now
+                  </Button>
+                </div>
+              )}
+            </>
           )}
-          <div style={{ flex: 1 }}>
-            <Button
-              variant="outline"
-              onClick={() => {
-                // TODO: Navigate to event details page
-                console.log("View details for event:", event._id);
-              }}
-              style={{ 
-                width: "100%",
-                minHeight: "44px",
-                padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                whiteSpace: "nowrap",
-              }}
-            >
-              View Details
-            </Button>
-          </div>
         </div>
       </div>
     </div>

@@ -6,7 +6,6 @@ const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
-const conferenceRoutes = require("./routes/conference.js");
 const { errorHandler } = require("./middleware/errorHandler");
 
 // ===== Route Imports =====
@@ -18,6 +17,7 @@ const adminRoutes = require("./routes/admin");
 const registrationRoutes = require("./routes/registrations");
 const courtRoutes = require("./routes/courts");
 const gymRoutes = require("./routes/gym");
+const conferenceRoutes = require("./routes/conference.js");
 
 const app = express();
 
@@ -67,6 +67,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/registrations", registrationRoutes);
 app.use("/api/courts", courtRoutes);
 app.use("/api/gym", gymRoutes);
+app.use("/api/conferences", conferenceRoutes);
 
 // ===== Health Check =====
 app.get("/api/health", (req, res) => {

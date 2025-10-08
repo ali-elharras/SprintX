@@ -5,8 +5,13 @@ const {
     deleteConference,
     getConference,
 } = require("../controllers/conferenceController.js");
+const { protect, requireAdminOrEventsOffice } = require("../middleware/auth");
 
 const router = express.Router();
+
+// Apply authentication and authorization to all conference routes
+router.use(protect);
+router.use(requireAdminOrEventsOffice);
 
 // Route to create a new conference
 router.post("/", createConference);
