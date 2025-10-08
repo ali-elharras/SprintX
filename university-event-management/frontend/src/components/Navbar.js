@@ -126,8 +126,8 @@ const Navbar = () => {
   };
 
   const avatarStyles = {
-    width: "40px",
-    height: "40px",
+    width: "44px",
+    height: "44px",
     borderRadius: "50%",
     backgroundColor: roleColor,
     display: "flex",
@@ -135,13 +135,16 @@ const Navbar = () => {
     justifyContent: "center",
     color: theme.colors.text.white,
     fontWeight: theme.typography.fontWeight.semibold,
-    fontSize: theme.typography.fontSize.sm,
+    fontSize: theme.typography.fontSize.base,
+    flexShrink: 0,
   };
 
   const userDetailsStyles = {
     display: "flex",
     flexDirection: "column",
     alignItems: "flex-start",
+    gap: theme.spacing[1],
+    minWidth: "0",
   };
 
   const nameStyles = {
@@ -149,6 +152,8 @@ const Navbar = () => {
     fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.text.primary,
     margin: 0,
+    lineHeight: 1.2,
+    whiteSpace: "nowrap",
   };
 
   const subtitleStyles = {
@@ -156,6 +161,8 @@ const Navbar = () => {
     color: theme.colors.text.secondary,
     margin: 0,
     textTransform: "capitalize",
+    lineHeight: 1.2,
+    whiteSpace: "nowrap",
   };
 
   if (!accountInfo) {
@@ -485,7 +492,7 @@ const Navbar = () => {
               <img
                 src={accountInfo.avatar}
                 alt={accountInfo.name}
-                style={{ width: "100%", height: "100%", borderRadius: "50%" }}
+                style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }}
               />
             ) : (
               getInitials(accountInfo.name)

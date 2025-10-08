@@ -19,6 +19,7 @@ const MyRegistrations = () => {
   const [activeTab, setActiveTab] = useState("upcoming");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [instructor, setInstructor] = useState("");
   const [sortBy, setSortBy] = useState("startDate");
   const [sortOrder, setSortOrder] = useState("asc");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -48,6 +49,7 @@ const MyRegistrations = () => {
       const params = {};
       if (search) params.search = search;
       if (filter !== "all") params.filter = filter;
+      if (instructor) params.instructor = instructor;
       params.sortBy = sortBy;
       params.sortOrder = sortOrder;
 
@@ -60,7 +62,7 @@ const MyRegistrations = () => {
     } finally {
       setLoading(false);
     }
-  }, [search, filter, sortBy, sortOrder]);
+  }, [search, filter, instructor, sortBy, sortOrder]);
 
   // Handle registration cancellation
   const handleCancelRegistration = async (registrationId) => {
@@ -135,7 +137,9 @@ const MyRegistrations = () => {
 
   const filtersStyles = {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gridTemplateColumns: filter === "workshop" 
+      ? "repeat(auto-fit, minmax(180px, 1fr))" 
+      : "repeat(auto-fit, minmax(200px, 1fr))",
     gap: theme.spacing[4],
     marginBottom: theme.spacing[6],
   };
@@ -251,7 +255,7 @@ const MyRegistrations = () => {
           <div style={filtersStyles}>
             <Input
               label="Search Events"
-              placeholder="Search by title, type, or location..."
+              placeholder="Search by title, type, location, or instructor..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -261,6 +265,14 @@ const MyRegistrations = () => {
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
             />
+            {filter === "workshop" && (
+              <Input
+                label="Instructor Name"
+                placeholder="Search by instructor..."
+                value={instructor}
+                onChange={(e) => setInstructor(e.target.value)}
+              />
+            )}
             <Select
               label="Sort by"
               options={sortOptions}

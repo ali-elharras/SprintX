@@ -19,6 +19,7 @@ const EventsPage = () => {
   const [filters, setFilters] = useState({
     type: "",
     search: "",
+    instructor: "",
     upcoming: true,
   });
 
@@ -50,9 +51,27 @@ const EventsPage = () => {
   const applyFilters = () => {
     let filtered = [...events];
 
+    console.log("All events:", events);
+    console.log("Current filters:", filters);
+
     // Filter by type
     if (filters.type) {
       filtered = filtered.filter((event) => event.type === filters.type);
+      console.log("After type filter:", filtered);
+    }
+
+    // Filter by instructor (only applies if instructor search is entered)
+    if (filters.instructor) {
+      const instructorTerm = filters.instructor.toLowerCase();
+      console.log("Searching for instructor:", instructorTerm);
+      filtered = filtered.filter(
+        (event) => {
+          console.log("Event instructor:", event.instructor);
+          return event.instructor &&
+            event.instructor.toLowerCase().includes(instructorTerm);
+        }
+      );
+      console.log("After instructor filter:", filtered);
     }
 
     // Filter by search term
@@ -62,16 +81,20 @@ const EventsPage = () => {
         (event) =>
           event.name.toLowerCase().includes(searchTerm) ||
           event.description.toLowerCase().includes(searchTerm) ||
-          event.location.toLowerCase().includes(searchTerm)
+          event.location.toLowerCase().includes(searchTerm) ||
+          (event.instructor && event.instructor.toLowerCase().includes(searchTerm))
       );
+      console.log("After search filter:", filtered);
     }
 
     // Filter upcoming events
     if (filters.upcoming) {
       const now = new Date();
       filtered = filtered.filter((event) => new Date(event.startDate) > now);
+      console.log("After upcoming filter:", filtered);
     }
 
+    console.log("Final filtered events:", filtered);
     setFilteredEvents(filtered);
   };
 
@@ -134,16 +157,39 @@ const EventsPage = () => {
             margin: "0 auto",
           }}
         >
-          {/* Page Header */}
-          <div style={{ marginBottom: theme.spacing[8] }}>
-            <h1
-              style={{
-                fontSize: theme.typography.fontSize["3xl"],
-                fontWeight: theme.typography.fontWeight.bold,
-                color: theme.colors.text.primary,
-                marginBottom: theme.spacing[2],
-                textAlign: "center",
-              }}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: filters.type === "workshop" 
+                ? "1fr 1fr 1fr auto auto" 
+                : "1fr 1fr auto auto",
+              gap: theme.spacing[4],
+              alignItems: "end",
+            }}
+          >
+            <Input
+              label="Search Events"
+              placeholder="Search by title, description, location, or instructor..."
+              value={filters.search}
+              onChange={(e) => handleFilterChange("search", e.target.value)}
+            />
+            <Select
+              label="Event Type"
+              options={eventTypeOptions}
+              value={filters.type}
+              onChange={(e) => handleFilterChange("type", e.target.value)}
+            />
+            {filters.type === "workshop" && (
+              <Input
+                label="Instructor Name"
+                placeholder="Search by instructor..."
+                value={filters.instructor}
+                onChange={(e) => handleFilterChange("instructor", e.target.value)}
+              />
+            )}
+            <Button
+              variant={filters.upcoming ? "primary" : "secondary"}
+              onClick={() => handleFilterChange("upcoming", !filters.upcoming)}
             >
               University Events
             </h1>
@@ -215,6 +261,35 @@ const EventsPage = () => {
                 </Button>
               )}
             </div>
+            <h3
+              style={{
+                fontSize: theme.typography.fontSize.xl,
+                fontWeight: theme.typography.fontWeight.semibold,
+                color: theme.colors.text.primary,
+                marginBottom: theme.spacing[2],
+              }}
+            >
+              No Events Found
+            </h3>
+            <p
+              style={{
+                fontSize: theme.typography.fontSize.base,
+                color: theme.colors.text.secondary,
+                marginBottom: theme.spacing[4],
+              }}
+            >
+              {filters.search || filters.type || filters.instructor
+                ? "Try adjusting your filters to see more events."
+                : "There are no upcoming events at the moment."}
+            </p>
+            <Button
+              variant="outline"
+              onClick={() =>
+                setFilters({ type: "", search: "", instructor: "", upcoming: true })
+              }
+            >
+              Clear Filters
+            </Button>
           </div>
 
           {/* Events Grid */}
