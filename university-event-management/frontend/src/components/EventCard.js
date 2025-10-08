@@ -7,7 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import { conferenceAPI } from "../services/api";
 import toast from "react-hot-toast";
 
-const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate }) => {
+const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference }) => {
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
@@ -89,8 +89,10 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
     );
   };
 
-  const handleEditConference = () => {
-    navigate(`/conferences/edit/${event._id}`);
+  const handleEditClick = () => {
+    if (onEditConference && event.type === "conference") {
+      onEditConference(event);
+    }
   };
 
   const handleDeleteConference = async () => {
@@ -402,7 +404,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
               <div style={{ flex: 1 }}>
                 <Button
                   variant="primary"
-                  onClick={handleEditConference}
+                  onClick={handleEditClick}
                   style={{ 
                     width: "100%",
                     minHeight: "44px",

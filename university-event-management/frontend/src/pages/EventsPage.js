@@ -7,6 +7,7 @@ import Button from "../components/Button";
 import Input from "../components/Input";
 import Select from "../components/Select";
 import Navbar from "../components/Navbar";
+import ConferenceModal from "./ConferenceModal";
 import { eventAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
@@ -16,6 +17,11 @@ const EventsPage = () => {
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [conferenceModal, setConferenceModal] = useState({
+    isOpen: false,
+    conference: null,
+    isEdit: false
+  });
   const [filters, setFilters] = useState({
     type: "",
     search: "",
@@ -102,7 +108,31 @@ const EventsPage = () => {
   };
 
   const handleCreateConference = () => {
-    navigate("/conferences/create");
+    setConferenceModal({
+      isOpen: true,
+      conference: null,
+      isEdit: false
+    });
+  };
+
+  const handleEditConference = (conference) => {
+    setConferenceModal({
+      isOpen: true,
+      conference: conference,
+      isEdit: true
+    });
+  };
+
+  const handleConferenceModalClose = () => {
+    setConferenceModal({
+      isOpen: false,
+      conference: null,
+      isEdit: false
+    });
+  };
+
+  const handleConferenceSuccess = () => {
+    fetchEvents(); // Refresh events list
   };
 
   const eventTypeOptions = [
@@ -261,7 +291,8 @@ const EventsPage = () => {
                   key={event._id}
                   event={event}
                   onRegistrationSuccess={handleRegistrationSuccess}
-                  onEventUpdate={fetchEvents} // Add this line to refresh after delete
+                  onEventUpdate={fetchEvents}
+                  onEditConference={event.type === "conference" ? handleEditConference : undefined}
                 />
               ))}
             </div>
@@ -338,8 +369,16 @@ const EventsPage = () => {
           )}
         </div>
       </div>
+
+      {/* Conference Modal */}
+      <ConferenceModal
+        isOpen={conferenceModal.isOpen}
+        onClose={handleConferenceModalClose}
+        conference={conferenceModal.conference}
+        onSuccess={handleConferenceSuccess}
+      />
     </>
   );
 };
 
-export default EventsPage;
+export default EventsPage; 
