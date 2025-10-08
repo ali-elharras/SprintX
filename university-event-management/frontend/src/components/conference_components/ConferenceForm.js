@@ -23,14 +23,35 @@ const ConferenceForm = ({ conference, isEdit = false }) => {
     try {
       if (isEdit) {
         await conferenceService.updateConference(conference._id, formData);
-        toast.success('Conference updated successfully!');
+        toast.success('Conference updated successfully!', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
       } else {
         await conferenceService.createConference(formData);
-        toast.success('Conference created successfully!');
+        toast.success('Conference created successfully!', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
       }
       navigate('/events');
     } catch (error) {
-      toast.error(error.message || 'Failed to process conference');
+      toast.error(`${error.message || 'Failed to process conference'}`, {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       console.error('Error:', error);
     }
   };
