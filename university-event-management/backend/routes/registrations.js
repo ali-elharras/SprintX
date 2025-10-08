@@ -12,6 +12,32 @@ const { protect, authorize } = require("../middleware/auth");
 
 const router = express.Router();
 
+// Optional authentication middleware - tries to authenticate but doesn't fail if no token
+const optionalAuth = async (req, res, next) => {
+  try {
+    const token = req.header("Authorization")?.replace("Bearer ", "");
+    
+    if (token) {
+      const jwt = require("jsonwebtoken");
+      const User = require("../models/User");
+      
+      // Verify token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
+      // Get user from token
+      const user = await User.findById(decoded.id).select("-password");
+      if (user) {
+        req.user = user;
+      }
+    }
+    
+    next();
+  } catch (error) {
+    // If authentication fails, continue without user
+    next();
+  }
+};
+
 // Validation rules for registration
 const registrationValidation = [
   body("eventId")
@@ -82,8 +108,8 @@ const registrationValidation = [
     .withMessage("Relationship cannot exceed 50 characters"),
 ];
 
-// Public routes (no authentication required for registration)
-router.post("/", registrationValidation, registerForEvent);
+// Registration route with optional authentication
+router.post("/", optionalAuth, registrationValidation, registerForEvent);
 
 // Protected routes (require authentication)
 router.use(protect);

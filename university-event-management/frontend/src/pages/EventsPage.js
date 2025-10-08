@@ -154,7 +154,6 @@ const EventsPage = () => {
   };
 
   const handleRegistrationSuccess = () => {
-    toast.success("Registration successful!");
     // Refresh events to update participant counts
     fetchEvents();
   };
