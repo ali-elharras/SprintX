@@ -7,7 +7,7 @@ import Input from "../components/Input";
 import Select from "../components/Select";
 import Navbar from "../components/Navbar";
 import LoadingScreen from "../components/LoadingScreen";
-import { eventAPI } from "../services/api";
+import api, { eventAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
 const EventsPage = () => {
@@ -85,6 +85,19 @@ const EventsPage = () => {
   // Candidate pending workshop to request edits for (opens small message modal)
   const [requestEditsCandidate, setRequestEditsCandidate] = useState(null);
   const [requestEditsMessage, setRequestEditsMessage] = useState("");
+
+  // State for creating a new bazaar
+  const [createBazaarOpen, setCreateBazaarOpen] = useState(false);
+  const [bazaarData, setBazaarData] = useState({
+    name: "",
+    description: "",
+    startDate: "",
+    endDate: "",
+    location: "University Courtyard",
+    theme: "",
+    maxParticipants: "50",
+    registrationDeadline: "",
+  });
 
   // Fetch events
   const fetchEvents = async () => {
@@ -184,6 +197,18 @@ const EventsPage = () => {
 
   return (
     <>
+      <style>{`
+        @keyframes slide-down {
+          from {
+            transform: translateY(-20%);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
       <Navbar />
       <div
         style={{
@@ -466,6 +491,19 @@ const EventsPage = () => {
             <Button variant="outline" onClick={fetchEvents}>
               Refresh
             </Button>
+{auth.isEventsOffice && (
+    <Button
+        variant="primary"
+        onClick={() => setCreateBazaarOpen(true)}
+        style={{
+            background: 'linear-gradient(135deg, #6B73FF 0%, #000DFF 100%)',
+            color: 'white',
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+        }}
+    >
+        + Create Bazaar
+    </Button>
+)}
           </div>
         </div>
 
@@ -813,6 +851,165 @@ const EventsPage = () => {
         )}
       </div>
       </div>
+      {/* Create Bazaar Panel */}
+      {createBazaarOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            zIndex: 20000,
+            display: "flex",
+            justifyContent: "center",
+            paddingTop: theme.spacing[6],
+          }}
+          onClick={() => setCreateBazaarOpen(false)}
+        >
+          <div
+            style={{
+              width: "800px",
+              maxWidth: "95%",
+              background: theme.colors.background.paper,
+              borderRadius: theme.borderRadius.lg,
+              boxShadow: theme.shadows.lg,
+              padding: theme.spacing[6],
+              animation: "slide-down 0.3s ease-out",
+              maxHeight: "90vh",
+              overflowY: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ marginTop: 0, marginBottom: theme.spacing[4] }}>
+              Create New Bazaar
+            </h2>
+            
+            <div style={{ display: "grid", gap: theme.spacing[4] }}>
+              <Input
+                label="Bazaar Name"
+                placeholder="e.g., Annual Spring Fair"
+                value={bazaarData.name}
+                onChange={(e) => setBazaarData({ ...bazaarData, name: e.target.value })}
+              />
+              <Input
+                label="Theme"
+                placeholder="e.g., 80s Retro, Sci-Fi, etc."
+                value={bazaarData.theme}
+                onChange={(e) => setBazaarData({ ...bazaarData, theme: e.target.value })}
+              />
+              <div>
+                <label style={{ display: 'block', marginBottom: theme.spacing[2], color: theme.colors.text.secondary }}>Description</label>
+                <textarea
+                  rows="4"
+                  placeholder="A brief summary of the bazaar, what vendors can expect, and any special attractions."
+                  value={bazaarData.description}
+                  onChange={(e) => setBazaarData({ ...bazaarData, description: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: theme.spacing[3],
+                    fontSize: theme.typography.fontSize.base,
+                    border: `1px solid ${theme.colors.border}`,
+                    borderRadius: theme.borderRadius,
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing[4] }}>
+                <Input
+                  label="Start Date"
+                  type="datetime-local"
+                  value={bazaarData.startDate}
+                  onChange={(e) => setBazaarData({ ...bazaarData, startDate: e.target.value })}
+                />
+                <Input
+                  label="End Date"
+                  type="datetime-local"
+                  value={bazaarData.endDate}
+                  onChange={(e) => setBazaarData({ ...bazaarData, endDate: e.target.value })}
+                />
+              </div>
+              <Input
+                label="Location"
+                value={bazaarData.location}
+                onChange={(e) => setBazaarData({ ...bazaarData, location: e.target.value })}
+              />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing[4] }}>
+                <Input
+                  label="Max Participants"
+                  type="number"
+                  placeholder="50"
+                  min="1"
+                  value={bazaarData.maxParticipants}
+                  onChange={(e) => setBazaarData({ ...bazaarData, maxParticipants: e.target.value })}
+                />
+                <Input
+                  label="Registration Deadline"
+                  type="datetime-local"
+                  value={bazaarData.registrationDeadline}
+                  onChange={(e) => setBazaarData({ ...bazaarData, registrationDeadline: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing[3], marginTop: theme.spacing[5] }}>
+              <Button variant="outline" onClick={() => setCreateBazaarOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  console.log("Saving bazaar as draft:", bazaarData);
+                  toast.success("Bazaar saved as a draft.");
+                  setCreateBazaarOpen(false);
+                }}
+              >
+                Save Draft
+              </Button>
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  try {
+                    if (!bazaarData.name || !bazaarData.description || !bazaarData.theme || !bazaarData.startDate || !bazaarData.endDate || !bazaarData.maxParticipants || !bazaarData.registrationDeadline) {
+                      toast.error("Please fill all required fields: Name, Description, Theme, Dates, Max Participants, and Registration Deadline.");
+                      return;
+                    }
+
+                    if (new Date(bazaarData.registrationDeadline) >= new Date(bazaarData.startDate)) {
+                      toast.error("Registration deadline must be set before the event's start date.");
+                      return;
+                    }
+
+                    const eventData = {
+                      name: bazaarData.name,
+                      description: bazaarData.description,
+                      startDate: new Date(bazaarData.startDate).toISOString(),
+                      endDate: new Date(bazaarData.endDate).toISOString(),
+                      location: bazaarData.location,
+                      maxParticipants: Number(bazaarData.maxParticipants),
+                      registrationDeadline: new Date(bazaarData.registrationDeadline).toISOString(),
+                      registrationRequired: true,
+                      tags: bazaarData.theme ? [bazaarData.theme] : [],
+                    };
+
+                    await api.post("/bazaars", eventData);
+
+                    toast.success(`Bazaar "${bazaarData.name}" created as a draft!`);
+                    setCreateBazaarOpen(false);
+                    setBazaarData({ name: "", description: "", theme: "", startDate: "", endDate: "", location: "University Courtyard", maxParticipants: "50", registrationDeadline: "" });
+                    fetchEvents();
+                  } catch (error) {
+                    console.error("Failed to create bazaar:", error);
+                    toast.error(error.data?.message || error.message || "Failed to create bazaar. Please try again.");
+                  }
+                }}
+              >
+                Publish Bazaar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
