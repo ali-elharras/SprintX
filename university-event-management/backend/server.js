@@ -17,6 +17,7 @@ const adminRoutes = require("./routes/admin");
 const registrationRoutes = require("./routes/registrations");
 const courtRoutes = require("./routes/courts");
 const gymRoutes = require("./routes/gym");
+const workshopRoutes = require("./routes/workshop");
 
 const app = express();
 
@@ -66,6 +67,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/registrations", registrationRoutes);
 app.use("/api/courts", courtRoutes);
 app.use("/api/gym", gymRoutes);
+app.use("/api/workshops", workshopRoutes); 
 
 // ===== Health Check =====
 app.get("/api/health", (req, res) => {
