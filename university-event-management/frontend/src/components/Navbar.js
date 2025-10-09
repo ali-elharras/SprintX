@@ -235,6 +235,38 @@ const Navbar = () => {
             >
               Admin Dashboard
             </button>
+            <button
+              onClick={() => navigate("/admin-users")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color: location.pathname === "/admin-users"
+                  ? theme.colors.primary.main
+                  : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom: location.pathname === "/admin-users"
+                  ? `2px solid ${theme.colors.primary.main}`
+                  : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/admin-users") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/admin-users") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              Admin Users
+            </button>
           </>
         ) : isVendor ? (
           <>

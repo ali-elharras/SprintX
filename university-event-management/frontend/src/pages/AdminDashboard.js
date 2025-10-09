@@ -671,27 +671,7 @@ const AdminDashboard = () => {
       <div style={styles.container}>
         <div style={styles.backgroundPattern}></div>
         <div style={styles.contentWrapper}>
-          {/* User Management Button */}
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 32 }}>
-            <button
-              style={{
-                background: "#2563eb",
-                color: "#fff",
-                border: "none",
-                borderRadius: 12,
-                padding: "12px 32px",
-                fontWeight: 700,
-                fontSize: 17,
-                boxShadow: "0 2px 8px rgba(37,99,235,0.08)",
-                cursor: "pointer",
-                transition: "background 0.2s, transform 0.1s",
-                letterSpacing: "0.5px",
-              }}
-              onClick={() => setShowUserMgmt(true)}
-            >
-              User Management
-            </button>
-          </div>
+          {/* User Management button removed; navigate via Admin Users page */}
 
           {/* Header */}
           <div style={styles.headerContainer}>

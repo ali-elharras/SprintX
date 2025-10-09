@@ -366,4 +366,24 @@ export const adminAPI = {
       throw error;
     }
   },
+
+  // ✅ Get unverified academics (staff/ta/professor)
+  getPendingAcademics: async () => {
+    try {
+      const response = await api.get("/admin/pending-academics");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // ✅ Approve an academic: assign role and verify
+  approveAcademic: async (id, role) => {
+    try {
+      const response = await api.patch(`/admin/approve-academic/${id}`, { role });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 };

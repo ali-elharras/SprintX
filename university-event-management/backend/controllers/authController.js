@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const { validationResult } = require("express-validator");
 const User = require("../models/User");
 const Vendor = require("../models/Vendor");
+const crypto = require("crypto");
 
 // Helper function to determine if email is a vendor email
 const isVendorEmail = (email) => {
@@ -121,6 +122,11 @@ const registerUser = async (req, res, next) => {
     if (role === "student") {
       userData.yearOfStudy = yearOfStudy;
     }
+
+    // Verification policy:
+    // - Students are auto-verified
+    // - Staff/TA/Professor require admin verification (isVerified remains false)
+    userData.isVerified = role === "student";
 
     const user = await User.create(userData);
 
@@ -285,6 +291,41 @@ const registerVendor = async (req, res, next) => {
   }
 };
 
+// @desc    Verify email via token (after admin approval)
+// @route   GET /api/auth/verify-email/:token
+// @access  Public
+const verifyEmail = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    if (!token) {
+      return res.status(400).json({ success: false, message: "Verification token is required" });
+    }
+
+    // Look up user by verificationToken and ensure not expired
+    const user = await User.findOne({
+      verificationToken: token,
+      verificationTokenExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: "Invalid or expired verification token" });
+    }
+
+    // Mark verified and clear token
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    user.verificationTokenExpires = undefined;
+    await user.save();
+
+    // Redirect to frontend login page with success flag
+    const frontend = process.env.FRONTEND_URL || "http://localhost:3000";
+    const redirectUrl = `${frontend.replace(/\/$/, "")}/login?verified=1`;
+    return res.redirect(302, redirectUrl);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 // @desc    Login user/vendor
 // @route   POST /api/auth/login
 // @access  Public
@@ -334,6 +375,19 @@ const login = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: "Account is inactive. Please contact support.",
+      });
+    }
+
+    // Enforce verification for academics (staff/ta/professor)
+    if (
+      accountType === "user" &&
+      ["staff", "ta", "professor"].includes(account.role) &&
+      !account.isVerified
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Your account is awaiting verification by an administrator. You'll be able to log in once verified.",
       });
     }
 
@@ -751,4 +805,5 @@ module.exports = {
   forgotPassword,
   verifyResetToken,
   resetPassword,
+  verifyEmail,
 };
