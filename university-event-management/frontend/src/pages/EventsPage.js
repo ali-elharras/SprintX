@@ -920,12 +920,31 @@ const EventsPage = () => {
                   label="Start Date"
                   type="datetime-local"
                   value={bazaarData.startDate}
-                  onChange={(e) => setBazaarData({ ...bazaarData, startDate: e.target.value })}
+                  onChange={(e) => {
+                    const newStartDate = e.target.value;
+                    const updatedData = { ...bazaarData, startDate: newStartDate };
+
+                    // If the new start date makes the end date invalid, clear it.
+                    if (updatedData.endDate && newStartDate > updatedData.endDate) {
+                      updatedData.endDate = "";
+                    }
+
+                    // If the registration deadline is now invalid (i.e., not before the start date), clear it.
+                    if (
+                      updatedData.registrationDeadline &&
+                      newStartDate <= updatedData.registrationDeadline
+                    ) {
+                      updatedData.registrationDeadline = "";
+                    }
+
+                    setBazaarData(updatedData);
+                  }}
                 />
                 <Input
                   label="End Date"
                   type="datetime-local"
                   value={bazaarData.endDate}
+                  min={bazaarData.startDate} // Prevent selecting an end date before the start date
                   onChange={(e) => setBazaarData({ ...bazaarData, endDate: e.target.value })}
                 />
               </div>
@@ -947,6 +966,7 @@ const EventsPage = () => {
                   label="Registration Deadline"
                   type="datetime-local"
                   value={bazaarData.registrationDeadline}
+                  max={bazaarData.startDate}
                   onChange={(e) => setBazaarData({ ...bazaarData, registrationDeadline: e.target.value })}
                 />
               </div>
@@ -959,12 +979,11 @@ const EventsPage = () => {
               <Button
                 variant="secondary"
                 onClick={() => {
-                  console.log("Saving bazaar as draft:", bazaarData);
-                  toast.success("Bazaar saved as a draft.");
-                  setCreateBazaarOpen(false);
+                  setBazaarData({ name: "", description: "", theme: "", startDate: "", endDate: "", location: "University Courtyard", maxParticipants: "50", registrationDeadline: "" });
+                  toast.success("Form fields cleared");
                 }}
               >
-                Save Draft
+                Clear Draft
               </Button>
               <Button
                 variant="primary"
