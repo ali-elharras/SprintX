@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import Navbar from "../components/Navbar";
 
 // --- Styles (Standard CSS) ---
 const styles = `
@@ -593,6 +594,8 @@ const Workshops = () => {
   }, [searchTerm, workshops]); 
 
   return (
+    <>
+    <Navbar />
     <div className="container">
       {/* Inject Styles */}
       <style>{styles}</style>
@@ -647,6 +650,7 @@ const Workshops = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 
