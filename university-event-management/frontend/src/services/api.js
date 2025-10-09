@@ -320,6 +320,12 @@ export const gymAPI = {
   register: (sessionId, data) =>
     api.post(`/gym/sessions/${sessionId}/register`, data),
 
+  // Admin / Events Office: create a new gym session
+  createSession: (sessionData) => api.post(`/gym/sessions`, sessionData),
+
+  // Admin / Events Office: update existing gym session
+  updateSession: (id, sessionData) => api.put(`/gym/sessions/${id}`, sessionData),
+
   getMyRegistrations: (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
     return api.get(`/gym/registrations${queryString ? `?${queryString}` : ""}`);
