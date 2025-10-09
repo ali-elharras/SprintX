@@ -82,7 +82,7 @@ const ResetPassword = () => {
         toast.success(
           "Password reset successfully! You can now login with your new password."
         );
-        navigate("/login");
+        navigate("/");
       } else {
         toast.error(
           response.message || "Failed to reset password. Please try again."
@@ -211,7 +211,7 @@ const ResetPassword = () => {
 
           <div style={linkStyles}>
             Remember your password?{" "}
-            <Link to="/login" style={linkAnchorStyles}>
+            <Link to="/" style={linkAnchorStyles}>
               Back to Login
             </Link>
           </div>
@@ -259,7 +259,7 @@ const ResetPassword = () => {
 
           <div style={linkStyles}>
             Remember your password?{" "}
-            <Link to="/login" style={linkAnchorStyles}>
+            <Link to="/" style={linkAnchorStyles}>
               Back to Login
             </Link>
           </div>

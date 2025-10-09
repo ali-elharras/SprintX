@@ -310,8 +310,7 @@ const VendorSignup = () => {
         dark: "#c2410c", // orange-700
       },
       background: {
-        gradient:
-          "linear-gradient(135deg, #fed7d7 0%, #fb923c 50%, #ea580c 100%)", // red-orange gradient
+        gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", // purple gradient to match main theme
       },
     },
   };
@@ -697,7 +696,7 @@ const VendorSignup = () => {
           {/* Links */}
           <div style={linkStyles}>
             Already have an account?{" "}
-            <Link to="/vendor-login" style={linkAnchorStyles}>
+            <Link to="/" style={linkAnchorStyles}>
               Sign in here
             </Link>
           </div>

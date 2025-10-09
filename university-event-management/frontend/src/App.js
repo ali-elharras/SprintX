@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import theme from "./theme";
 
 // Pages (combined from both branches)
+import UserTypeSelection from "./components/UserTypeSelection";
 import Login from "./pages/Login";
 import VendorLogin from "./pages/VendorLogin";
 import UserSignup from "./pages/UserSignup";
@@ -24,7 +25,8 @@ import EventsPage from "./pages/EventsPage";
 import CourtsPage from "./pages/CourtsPage";
 import MyRegistrations from "./pages/MyRegistrations";
 import GymSchedulePage from "./pages/GymSchedulePage";
-
+import CreateWorkshop from "./pages/CreateWorkshop";
+import Workshops from "./pages/Workshops";
 // ---------------------------
 // Protected Route Components
 // ---------------------------
@@ -51,7 +53,7 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return children;
@@ -102,7 +104,7 @@ const AdminRoute = ({ children }) => {
     );
   }
 
-  if (!user || (user.role !== 'admin' && user.role !== 'event-office')) {
+  if (!user || (user.role !== "admin" && user.role !== "event-office")) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -144,7 +146,7 @@ const VendorRoute = ({ children }) => {
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Navigate to="/dashboard" replace />,
+    element: <UserTypeSelection />,
   },
 
   // Public Routes
@@ -257,6 +259,22 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <GymSchedulePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/create-workshop",
+    element: (
+      <ProtectedRoute>
+        <CreateWorkshop />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/workshops",
+    element: (
+      <ProtectedRoute>
+        <Workshops />
       </ProtectedRoute>
     ),
   },

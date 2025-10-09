@@ -9,19 +9,13 @@ import Button from "../components/Button";
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const {
-    logout,
-    isUser,
-    isVendor,
-    user,
-    vendor,
-  } = useAuth();
+  const { logout, isUser, isVendor, user, vendor } = useAuth();
 
   const handleLogout = async () => {
     try {
       await logout();
       toast.success("Logged out successfully");
-      navigate("/login");
+      navigate("/");
     } catch (error) {
       console.error("Logout error:", error);
       toast.error("Logout failed. Please try again.");
@@ -169,7 +163,7 @@ const Navbar = () => {
 
       {/* Navigation Links */}
       <div style={{ display: "flex", gap: theme.spacing[6] }}>
-        {user && (user.role === 'admin' || user.role === 'event-office') ? (
+        {user && (user.role === "admin" || user.role === "event-office") ? (
           <>
             <button
               onClick={() => navigate("/dashboard")}
@@ -178,15 +172,17 @@ const Navbar = () => {
                 border: "none",
                 fontSize: theme.typography.fontSize.base,
                 fontWeight: theme.typography.fontWeight.medium,
-                color: location.pathname === "/dashboard"
-                  ? theme.colors.primary.main
-                  : theme.colors.text.secondary,
+                color:
+                  location.pathname === "/dashboard"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
                 cursor: "pointer",
                 padding: theme.spacing[2],
                 textDecoration: "none",
-                borderBottom: location.pathname === "/dashboard"
-                  ? `2px solid ${theme.colors.primary.main}`
-                  : "2px solid transparent",
+                borderBottom:
+                  location.pathname === "/dashboard"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
                 transition: "all 0.2s ease",
                 fontFamily: theme.typography.fontFamily.primary,
               }}
@@ -210,15 +206,17 @@ const Navbar = () => {
                 border: "none",
                 fontSize: theme.typography.fontSize.base,
                 fontWeight: theme.typography.fontWeight.medium,
-                color: location.pathname === "/admin-dashboard"
-                  ? theme.colors.primary.main
-                  : theme.colors.text.secondary,
+                color:
+                  location.pathname === "/admin-dashboard"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
                 cursor: "pointer",
                 padding: theme.spacing[2],
                 textDecoration: "none",
-                borderBottom: location.pathname === "/admin-dashboard"
-                  ? `2px solid ${theme.colors.primary.main}`
-                  : "2px solid transparent",
+                borderBottom:
+                  location.pathname === "/admin-dashboard"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
                 transition: "all 0.2s ease",
                 fontFamily: theme.typography.fontFamily.primary,
               }}
@@ -245,15 +243,17 @@ const Navbar = () => {
                 border: "none",
                 fontSize: theme.typography.fontSize.base,
                 fontWeight: theme.typography.fontWeight.medium,
-                color: location.pathname === "/dashboard"
-                  ? theme.colors.primary.main
-                  : theme.colors.text.secondary,
+                color:
+                  location.pathname === "/dashboard"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
                 cursor: "pointer",
                 padding: theme.spacing[2],
                 textDecoration: "none",
-                borderBottom: location.pathname === "/dashboard"
-                  ? `2px solid ${theme.colors.primary.main}`
-                  : "2px solid transparent",
+                borderBottom:
+                  location.pathname === "/dashboard"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
                 transition: "all 0.2s ease",
                 fontFamily: theme.typography.fontFamily.primary,
               }}
@@ -277,15 +277,17 @@ const Navbar = () => {
                 border: "none",
                 fontSize: theme.typography.fontSize.base,
                 fontWeight: theme.typography.fontWeight.medium,
-                color: location.pathname === "/vendor-dashboard"
-                  ? theme.colors.primary.main
-                  : theme.colors.text.secondary,
+                color:
+                  location.pathname === "/vendor-dashboard"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
                 cursor: "pointer",
                 padding: theme.spacing[2],
                 textDecoration: "none",
-                borderBottom: location.pathname === "/vendor-dashboard"
-                  ? `2px solid ${theme.colors.primary.main}`
-                  : "2px solid transparent",
+                borderBottom:
+                  location.pathname === "/vendor-dashboard"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
                 transition: "all 0.2s ease",
                 fontFamily: theme.typography.fontFamily.primary,
               }}
@@ -303,8 +305,42 @@ const Navbar = () => {
               Vendor Dashboard
             </button>
           </>
-        ) : (
-          <>
+) : (
+  <>
+    {isUser && user && user.role === 'professor' && (
+      <button
+        onClick={() => navigate("/workshops")}
+        style={{
+          background: "none",
+          border: "none",
+          fontSize: theme.typography.fontSize.base,
+          fontWeight: theme.typography.fontWeight.medium,
+          color: location.pathname === "/workshops"
+            ? theme.colors.primary.main
+            : theme.colors.text.secondary,
+          cursor: "pointer",
+          padding: theme.spacing[2],
+          textDecoration: "none",
+          borderBottom: location.pathname === "/workshops"
+            ? `2px solid ${theme.colors.primary.main}`
+            : "2px solid transparent",
+          transition: "all 0.2s ease",
+          fontFamily: theme.typography.fontFamily.primary,
+        }}
+        onMouseEnter={(e) => {
+          if (location.pathname !== "/workshops") {
+            e.target.style.color = theme.colors.primary.main;
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (location.pathname !== "/workshops") {
+            e.target.style.color = theme.colors.text.secondary;
+          }
+        }}
+      >
+        Workshops
+      </button>
+    )}
             <button
               onClick={() => navigate("/events")}
               style={{
@@ -312,15 +348,17 @@ const Navbar = () => {
                 border: "none",
                 fontSize: theme.typography.fontSize.base,
                 fontWeight: theme.typography.fontWeight.medium,
-                color: location.pathname === "/events"
-                  ? theme.colors.primary.main
-                  : theme.colors.text.secondary,
+                color:
+                  location.pathname === "/events"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
                 cursor: "pointer",
                 padding: theme.spacing[2],
                 textDecoration: "none",
-                borderBottom: location.pathname === "/events"
-                  ? `2px solid ${theme.colors.primary.main}`
-                  : "2px solid transparent",
+                borderBottom:
+                  location.pathname === "/events"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
                 transition: "all 0.2s ease",
                 fontFamily: theme.typography.fontFamily.primary,
               }}
@@ -345,15 +383,17 @@ const Navbar = () => {
                 border: "none",
                 fontSize: theme.typography.fontSize.base,
                 fontWeight: theme.typography.fontWeight.medium,
-                color: location.pathname === "/courts"
-                  ? theme.colors.primary.main
-                  : theme.colors.text.secondary,
+                color:
+                  location.pathname === "/courts"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
                 cursor: "pointer",
                 padding: theme.spacing[2],
                 textDecoration: "none",
-                borderBottom: location.pathname === "/courts"
-                  ? `2px solid ${theme.colors.primary.main}`
-                  : "2px solid transparent",
+                borderBottom:
+                  location.pathname === "/courts"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
                 transition: "all 0.2s ease",
                 fontFamily: theme.typography.fontFamily.primary,
               }}
@@ -378,15 +418,17 @@ const Navbar = () => {
                 border: "none",
                 fontSize: theme.typography.fontSize.base,
                 fontWeight: theme.typography.fontWeight.medium,
-                color: location.pathname === "/gym-schedule"
-                  ? theme.colors.primary.main
-                  : theme.colors.text.secondary,
+                color:
+                  location.pathname === "/gym-schedule"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
                 cursor: "pointer",
                 padding: theme.spacing[2],
                 textDecoration: "none",
-                borderBottom: location.pathname === "/gym-schedule"
-                  ? `2px solid ${theme.colors.primary.main}`
-                  : "2px solid transparent",
+                borderBottom:
+                  location.pathname === "/gym-schedule"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
                 transition: "all 0.2s ease",
                 fontFamily: theme.typography.fontFamily.primary,
               }}
@@ -413,31 +455,33 @@ const Navbar = () => {
                   border: "none",
                   fontSize: theme.typography.fontSize.base,
                   fontWeight: theme.typography.fontWeight.medium,
-                  color: location.pathname === "/my-registrations"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
+                  color:
+                    location.pathname === "/my-registrations"
+                      ? theme.colors.primary.main
+                      : theme.colors.text.secondary,
                   cursor: "pointer",
                   padding: theme.spacing[2],
                   textDecoration: "none",
-                  borderBottom: location.pathname === "/my-registrations"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/my-registrations") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/my-registrations") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              My Registrations
-            </button>
+                  borderBottom:
+                    location.pathname === "/my-registrations"
+                      ? `2px solid ${theme.colors.primary.main}`
+                      : "2px solid transparent",
+                  transition: "all 0.2s ease",
+                  fontFamily: theme.typography.fontFamily.primary,
+                }}
+                onMouseEnter={(e) => {
+                  if (location.pathname !== "/my-registrations") {
+                    e.target.style.color = theme.colors.primary.main;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (location.pathname !== "/my-registrations") {
+                    e.target.style.color = theme.colors.text.secondary;
+                  }
+                }}
+              >
+                My Registrations
+              </button>
             )}
 
             <button
@@ -447,15 +491,17 @@ const Navbar = () => {
                 border: "none",
                 fontSize: theme.typography.fontSize.base,
                 fontWeight: theme.typography.fontWeight.medium,
-                color: location.pathname === "/dashboard"
-                  ? theme.colors.primary.main
-                  : theme.colors.text.secondary,
+                color:
+                  location.pathname === "/dashboard"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
                 cursor: "pointer",
                 padding: theme.spacing[2],
                 textDecoration: "none",
-                borderBottom: location.pathname === "/dashboard"
-                  ? `2px solid ${theme.colors.primary.main}`
-                  : "2px solid transparent",
+                borderBottom:
+                  location.pathname === "/dashboard"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
                 transition: "all 0.2s ease",
                 fontFamily: theme.typography.fontFamily.primary,
               }}
