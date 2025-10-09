@@ -24,7 +24,8 @@ import EventsPage from "./pages/EventsPage";
 import CourtsPage from "./pages/CourtsPage";
 import MyRegistrations from "./pages/MyRegistrations";
 import GymSchedulePage from "./pages/GymSchedulePage";
-
+import CreateWorkshop from "./pages/CreateWorkshop";
+import Workshops from "./pages/Workshops";
 // ---------------------------
 // Protected Route Components
 // ---------------------------
@@ -257,6 +258,22 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <GymSchedulePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/create-workshop",
+    element: (
+      <ProtectedRoute>
+        <CreateWorkshop />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/workshops",
+    element: (
+      <ProtectedRoute>
+        <Workshops />
       </ProtectedRoute>
     ),
   },
