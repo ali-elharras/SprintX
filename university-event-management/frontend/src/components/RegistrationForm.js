@@ -28,8 +28,8 @@ const registrationSchema = yup.object({
     .string()
     .required("University/Staff ID is required")
     .matches(
-      /^[A-Za-z0-9]+$/,
-      "University/Staff ID can only contain letters and numbers"
+      /^[A-Za-z0-9\-]+$/,
+      "University/Staff ID can only contain letters, numbers, and dashes"
     )
     .max(20, "University/Staff ID cannot exceed 20 characters"),
 });

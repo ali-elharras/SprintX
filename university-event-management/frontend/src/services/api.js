@@ -148,6 +148,7 @@ export const eventAPI = {
   getEventsByType: (type) => api.get(`/events/type/${type}`),
   createEvent: (eventData) => api.post("/events", eventData),
   updateEvent: (id, eventData) => api.put(`/events/${id}`, eventData),
+  updateEventStatus: (id, status, message = null) => api.put(`/events/${id}/status`, message ? { status, message } : { status }),
   deleteEvent: (id) => api.delete(`/events/${id}`),
 };
 

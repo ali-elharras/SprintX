@@ -3,6 +3,7 @@ import { toast } from "react-hot-toast";
 import Navbar from "../components/Navbar";
 import GymScheduleCalendar from "../components/GymScheduleCalendar";
 import GymSessionCard from "../components/GymSessionCard";
+import LoadingScreen from "../components/LoadingScreen";
 import { gymAPI } from "../services/api";
 import theme from "../theme";
 
@@ -54,7 +55,7 @@ const GymSchedulePage = () => {
       console.error("Error fetching gym sessions:", error);
       toast.error("Failed to load gym sessions");
     } finally {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 2000);
     }
   }, [viewMode, currentYear, currentMonth]);
 
@@ -270,11 +271,7 @@ const GymSchedulePage = () => {
     return (
       <div style={styles.container}>
         <Navbar />
-        <div style={styles.content}>
-          <div style={styles.loadingContainer}>
-            Loading gym schedule...
-          </div>
-        </div>
+        <LoadingScreen type="gym" />
       </div>
     );
   }

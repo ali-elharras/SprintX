@@ -44,9 +44,9 @@ const userRegistrationValidation = [
   body("universityId")
     .trim()
     .isLength({ min: 1 })
-    .matches(/^[0-9\-_\.]+$/)
+    .matches(/^[A-Za-z0-9\-_\.]+$/)
     .withMessage(
-      "University ID is required and can only contain numbers and symbols (-, _, .)"
+      "University ID is required and can only contain letters, numbers, and symbols (-, _, .)"
     ),
   body("department")
     .optional()

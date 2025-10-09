@@ -15,17 +15,21 @@ const getUpcomingBazaars = async (req, res, next) => {
   try {
     const bazaars = await Event.find({
       startDate: { $gte: new Date() },
-    }).sort({ startDate: "asc" });
+      type: "bazaar",
+      status: "published",
+    }).sort({ startDate: 1 });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: bazaars.length,
       data: bazaars,
     });
   } catch (error) {
+    console.error("Error fetching upcoming bazaars:", error);
     next(error);
   }
 };
+
 
 // @desc    Seed a sample bazaar (Temporary)
 // @route   POST /api/events/seed/bazaar
@@ -268,6 +272,66 @@ const updateEvent = async (req, res) => {
       message: "Error updating event",
       error: error.message,
     });
+  }
+};
+
+// @desc    Update only the status of an event (e.g., publish, reject, needs_revision)
+// @route   PUT /api/events/:id/status
+// @access  Private (Admin/Events Office)
+const updateEventStatus = async (req, res) => {
+  try {
+    const { status, message } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ success: false, message: "Status is required" });
+    }
+
+    const allowedStatuses = ["pending", "published", "rejected", "cancelled", "upcoming", "needs_revision"];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status" });
+    }
+
+    const event = await Event.findById(req.params.id);
+
+    if (!event) {
+      return res.status(404).json({ success: false, message: "Event not found" });
+    }
+
+    // Only Events Office or admin can change status
+    if (!["admin", "events_office"].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: "Not authorized to update event status" });
+    }
+
+    // When requesting edits, attach message into editRequests and set status to needs_revision
+    if (status === "needs_revision") {
+      if (!message || message.trim().length < 3) {
+        return res.status(400).json({ success: false, message: "Message is required when requesting edits" });
+      }
+
+      event.editRequests.push({
+        message: message.trim(),
+        requestedBy: { id: req.user.id, name: `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() },
+        requestedAt: new Date(),
+        status: "needs_revision",
+      });
+
+      event.status = "needs_revision";
+      await event.save();
+      await event.populate("organizer", "firstName lastName email");
+
+      return res.status(200).json({ success: true, message: "Edit request saved", data: event });
+    }
+
+    // For other status updates we only update the status field
+    event.status = status;
+    await event.save();
+
+    await event.populate("organizer", "firstName lastName email");
+
+    res.status(200).json({ success: true, message: "Event status updated", data: event });
+  } catch (error) {
+    console.error("Error updating event status:", error);
+    res.status(500).json({ success: false, message: "Error updating event status", error: error.message });
   }
 };
 

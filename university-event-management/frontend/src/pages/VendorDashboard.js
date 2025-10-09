@@ -366,7 +366,7 @@ const ParticipationItem = ({ participation }) => (
         {participation.bazaar?.name || participation.bazaar?.title || "Booth Event"}
       </p>
       <p style={styles.applicationDate}>
-        Event Date: {new Date(participation.bazaar.startDate).toLocaleDateString()}
+        Event Date: {participation.bazaar ? new Date(participation.bazaar.startDate).toLocaleDateString() : new Date(participation.createdAt).toLocaleDateString()}
       </p>
     </div>
     <span style={styles.statusBadge(participation.status)}>
