@@ -178,3 +178,45 @@ exports.getBazaarById = async (req, res) => {
     });
   }
 };
+
+// ================================
+// @desc    Delete a bazaar (only if it hasn’t started yet)
+// @route   DELETE /api/bazaars/:id
+// @access  Private (Events Office)
+// ================================
+exports.deleteBazaar = async (req, res) => {
+  try {
+    const bazaar = await Event.findById(req.params.id);
+
+    if (!bazaar) {
+      return res.status(404).json({ success: false, message: "Bazaar not found" });
+    }
+
+    if (bazaar.type !== "bazaar") {
+      return res.status(400).json({ success: false, message: "This event is not a bazaar" });
+    }
+
+    const now = new Date();
+    if (bazaar.startDate <= now) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot delete a bazaar that has already started",
+      });
+    }
+
+    await Event.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      message: "Bazaar deleted successfully",
+      data: {},
+    });
+  } catch (error) {
+    console.error("❌ Error deleting bazaar:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while deleting bazaar",
+      error: error.message,
+    });
+  }
+};
