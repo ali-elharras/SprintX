@@ -19,6 +19,7 @@ const courtRoutes = require("./routes/courts");
 const gymRoutes = require("./routes/gym");
 const bazaarRoutes = require("./routes/bazaar");
 
+const workshopRoutes = require("./routes/workshop");
 
 const app = express();
 
@@ -70,6 +71,7 @@ app.use("/api/courts", courtRoutes);
 app.use("/api/gym", gymRoutes);
 app.use("/api/bazaars", bazaarRoutes);
 
+app.use("/api/workshops", workshopRoutes); 
 
 // ===== Health Check =====
 app.get("/api/health", (req, res) => {
