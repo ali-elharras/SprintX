@@ -7,6 +7,7 @@ import Input from "../components/Input";
 import Select from "../components/Select";
 import Navbar from "../components/Navbar";
 import CourtAvailabilityCalendar from "../components/CourtAvailabilityCalendar";
+import LoadingScreen from "../components/LoadingScreen";
 import { courtAPI } from "../services/api";
 
 const CourtsPage = () => {
@@ -44,7 +45,7 @@ const CourtsPage = () => {
       console.error("Error fetching courts:", error);
       toast.error("Failed to load courts");
     } finally {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 2000);
     }
   };
 
@@ -119,15 +120,12 @@ const CourtsPage = () => {
     return (
       <div
         style={{
-          minHeight: "50vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: theme.typography.fontSize.lg,
-          color: theme.colors.text.secondary,
+          minHeight: "100vh",
+          background: theme.colors.background.default,
         }}
       >
-        Loading courts...
+        <Navbar />
+        <LoadingScreen type="courts" />
       </div>
     );
   }

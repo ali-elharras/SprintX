@@ -6,6 +6,7 @@ import Button from "../components/Button";
 import Input from "../components/Input";
 import Select from "../components/Select";
 import Navbar from "../components/Navbar";
+import LoadingScreen from "../components/LoadingScreen";
 import { eventAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
@@ -105,7 +106,7 @@ const EventsPage = () => {
       setError(error);
       toast.error("Failed to load events. Please try again.");
     } finally {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 2000);
     }
   };
 
@@ -169,21 +170,15 @@ const EventsPage = () => {
 
   if (loading) {
     return (
-      <>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: theme.colors.background.default,
+        }}
+      >
         <Navbar />
-        <div
-          style={{
-            minHeight: "50vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: theme.typography.fontSize.lg,
-            color: theme.colors.text.secondary,
-          }}
-        >
-          Loading events...
-        </div>
-      </>
+        <LoadingScreen type="events" />
+      </div>
     );
   }
 
