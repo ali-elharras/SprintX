@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import theme from "./theme";
 
 // Pages (combined from both branches)
+import UserTypeSelection from "./components/UserTypeSelection";
 import Login from "./pages/Login";
 import VendorLogin from "./pages/VendorLogin";
 import UserSignup from "./pages/UserSignup";
@@ -51,7 +52,7 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return children;
@@ -102,7 +103,7 @@ const AdminRoute = ({ children }) => {
     );
   }
 
-  if (!user || (user.role !== 'admin' && user.role !== 'event-office')) {
+  if (!user || (user.role !== "admin" && user.role !== "event-office")) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -144,7 +145,7 @@ const VendorRoute = ({ children }) => {
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Navigate to="/dashboard" replace />,
+    element: <UserTypeSelection />,
   },
 
   // Public Routes

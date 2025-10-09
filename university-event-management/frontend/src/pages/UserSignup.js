@@ -381,7 +381,7 @@ const UserSignup = () => {
           {/* Login Link */}
           <div style={linkStyles}>
             Already have an account?{" "}
-            <Link to="/login" style={linkAnchorStyles}>
+            <Link to="/" style={linkAnchorStyles}>
               Sign in here
             </Link>
           </div>
