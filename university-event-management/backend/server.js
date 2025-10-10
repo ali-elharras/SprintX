@@ -18,8 +18,8 @@ const registrationRoutes = require("./routes/registrations");
 const courtRoutes = require("./routes/courts");
 const gymRoutes = require("./routes/gym");
 const bazaarRoutes = require("./routes/bazaar");
-
 const workshopRoutes = require("./routes/workshop");
+
 
 const app = express();
 
@@ -71,7 +71,10 @@ app.use("/api/courts", courtRoutes);
 app.use("/api/gym", gymRoutes);
 app.use("/api/bazaars", bazaarRoutes);
 
-app.use("/api/workshops", workshopRoutes); 
+// Workshop routes (professors create -> saved as pending, Events Office can publish)
+app.use("/api/workshops", workshopRoutes);
+
+// Workshop routes removed as feature deprecated
 
 // ===== Health Check =====
 app.get("/api/health", (req, res) => {

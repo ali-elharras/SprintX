@@ -211,6 +211,11 @@ eventSchema.virtual("isRegistrationExpired").get(function () {
   return new Date() > this.registrationDeadline;
 });
 
+// Backwards-compatible alias: some front-end components expect `title`
+eventSchema.virtual('title').get(function () {
+  return this.name;
+});
+
 // === Indexes ===
 eventSchema.index({ type: 1 });
 eventSchema.index({ startDate: 1 });

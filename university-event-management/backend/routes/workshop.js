@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const workshopController = require('../controllers/workshopController');
+const { protect, requireAdminOrEventsOffice } = require('../middleware/auth');
 
 // Route for getting all workshops and creating a new one
 router.route('/')
@@ -11,5 +12,8 @@ router.route('/')
 router.route('/:id')
     .patch(workshopController.updateWorkshop) // Use PATCH for partial updates
     .delete(workshopController.deleteWorkshop);
+
+// Publish a pending workshop into the events collection
+router.post('/:id/publish', protect, requireAdminOrEventsOffice, workshopController.publishWorkshop);
 
 module.exports = router;

@@ -94,4 +94,17 @@ const workshopSchema = new mongoose.Schema(
 workshopSchema.index({ startDate: 1, location: 1 });
 workshopSchema.index({ registrationDeadline: 1 });
 
+// Status to indicate whether professor-submitted workshop is pending approval
+workshopSchema.add({
+  status: {
+    type: String,
+    enum: ["pending", "published", "rejected", "needs_revision"],
+    default: "pending",
+  },
+  // link to the published Event (if published)
+  publishedEventId: {
+    type: String,
+  },
+});
+
 module.exports = mongoose.model("Workshop", workshopSchema);
