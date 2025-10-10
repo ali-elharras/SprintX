@@ -147,8 +147,9 @@ const getAllApplications = async (req, res, next) => {
             boothQuery.status = status;
         }
 
-        const bazaarApplications = await BazaarApplication.find(bazaarQuery).populate("vendor", "companyName email").populate("bazaar", "name startDate");
-        const boothApplications = await BoothApplication.find(boothQuery).populate("vendor", "companyName email");
+        const bazaarApplications = await BazaarApplication.find(bazaarQuery, 'vendor bazaar attendees boothSize status').populate("vendor", "companyName email").populate("bazaar", "title startDate");
+        const boothApplications = await BoothApplication.find(boothQuery, 'vendor attendees duration location boothSize status').populate("vendor", "companyName email");
+        
 
         res.status(200).json({
             success: true,

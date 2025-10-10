@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { applicationServices } from "../services/api";
-import theme from "../theme"; // removed getStatusColor
-// import Button from "../components/Button"; // removed unused
-// import Card from "../components/Card"; // removed unused
+import theme from "../theme";
 import toast from "react-hot-toast";
 import Navbar from "../components/Navbar";
 
@@ -136,42 +134,50 @@ const styles = {
     cursor: "pointer",
     transition: "all 0.3s ease",
   }),
-  tableCard: {
+  cardsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))",
+    gap: theme.spacing[6],
+    marginBottom: theme.spacing[8],
+  },
+  applicationCard: {
     background: theme.colors.neutral.white,
     borderRadius: "20px",
-    padding: 0,
+    padding: theme.spacing[6],
     boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
     border: `1px solid ${theme.colors.border.light}`,
+    transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+    position: "relative",
     overflow: "hidden",
   },
-  tableContainer: {
-    overflowX: "auto",
+  cardTopBar: (color) => ({
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: "6px",
+    background: `linear-gradient(90deg, ${color} 0%, ${color}80 100%)`,
+  }),
+  cardHeader: {
+    marginBottom: theme.spacing[4],
+    paddingTop: theme.spacing[2],
   },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-  thead: {
-    background: theme.colors.neutral.gray50,
-  },
-  th: {
-    padding: theme.spacing[4],
-    textAlign: "left",
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.text.secondary,
-    textTransform: "uppercase",
-    letterSpacing: theme.typography.letterSpacing.wide,
-    borderBottom: `2px solid ${theme.colors.border.light}`,
-  },
-  tr: {
-    transition: "all 0.2s ease",
-    borderBottom: `1px solid ${theme.colors.border.light}`,
-  },
-  td: {
-    padding: theme.spacing[4],
-    fontSize: theme.typography.fontSize.base,
+  companyName: {
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
+    marginBottom: theme.spacing[2],
+  },
+  bazaarTitle: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing[3],
+  },
+  badgeContainer: {
+    display: "flex",
+    gap: theme.spacing[2],
+    flexWrap: "wrap",
+    marginBottom: theme.spacing[4],
   },
   statusBadge: (status) => {
     const statusColors = {
@@ -204,9 +210,47 @@ const styles = {
     border: `2px solid ${type === 'bazaar' ? "#C4B5FD" : "#93C5FD"}`,
     display: "inline-block",
   }),
-  actionsCell: {
+  cardDetails: {
+    marginBottom: theme.spacing[4],
+  },
+  detailRow: {
     display: "flex",
-    gap: theme.spacing[2],
+    justifyContent: "space-between",
+    padding: `${theme.spacing[2]} 0`,
+    borderBottom: `1px solid ${theme.colors.border.light}`,
+  },
+  detailLabel: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+  detailValue: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.primary,
+    fontWeight: theme.typography.fontWeight.semibold,
+    textAlign: "right",
+  },
+  attendeesSection: {
+    marginTop: theme.spacing[3],
+    padding: theme.spacing[3],
+    background: theme.colors.neutral.gray50,
+    borderRadius: "12px",
+  },
+  attendeesTitle: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing[2],
+  },
+  attendeeItem: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.text.primary,
+    padding: `${theme.spacing[1]} 0`,
+  },
+  cardActions: {
+    display: "flex",
+    gap: theme.spacing[3],
+    marginTop: theme.spacing[4],
   },
   actionButton: (variant) => {
     const variants = {
@@ -226,16 +270,17 @@ const styles = {
     const colors = variants[variant] || variants.approve;
     
     return {
-      padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
-      borderRadius: "10px",
+      flex: 1,
+      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+      borderRadius: "12px",
       border: `2px solid ${colors.border}`,
       background: colors.bg,
       color: colors.color,
       fontSize: theme.typography.fontSize.sm,
-      fontWeight: theme.typography.fontWeight.semibold,
+      fontWeight: theme.typography.fontWeight.bold,
       cursor: "pointer",
       transition: "all 0.3s ease",
-      whiteSpace: "nowrap",
+      textAlign: "center",
     };
   },
   disabledButton: {
@@ -245,6 +290,9 @@ const styles = {
   emptyState: {
     textAlign: "center",
     padding: `${theme.spacing[12]} ${theme.spacing[6]}`,
+    background: theme.colors.neutral.white,
+    borderRadius: "20px",
+    boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
   },
   emptyStateIcon: {
     fontSize: "64px",
@@ -282,13 +330,14 @@ const cssKeyframes = `
   box-shadow: 0 12px 40px rgba(0,0,0,0.12) !important;
 }
 
-.table-row:hover {
-  background: ${theme.colors.neutral.gray50} !important;
+.application-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.15) !important;
 }
 
 .action-button:hover:not(:disabled) {
-  transform: scale(1.05);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15) !important;
 }
 
 .filter-button:hover {
@@ -296,214 +345,12 @@ const cssKeyframes = `
 }
 `;
 
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8080/api";
-
-const initialUserForm = {
-  firstName: "",
-  lastName: "",
-  email: "",
-  password: "",
-  universityId: "",
-  role: "admin",
-};
-
-const UserManagementModal = ({
-  show,
-  onClose,
-  userForm,
-  handleUserFormChange,
-  handleCreateUser,
-  userCreating,
-  users,
-  userLoading,
-  handleDeleteUser,
-  userMgmtModalStyles,
-  modalKeyframes,
-}) => {
-  if (!show) return null;
-  return (
-    <div style={userMgmtModalStyles.overlay} onClick={onClose}>
-      <style>{modalKeyframes}</style>
-      <div
-        style={userMgmtModalStyles.modal}
-        onClick={e => e.stopPropagation()}
-        tabIndex={-1}
-      >
-        <div style={userMgmtModalStyles.header}>
-          <h2 style={userMgmtModalStyles.title}>User Management</h2>
-          <button
-            style={userMgmtModalStyles.closeBtn}
-            aria-label="Close"
-            onClick={onClose}
-            title="Close"
-          >
-            ×
-          </button>
-        </div>
-        <div style={userMgmtModalStyles.body}>
-          <div style={userMgmtModalStyles.sectionSubtitle}>
-            Create, view, and manage Admin & Event Office users.
-          </div>
-          <form onSubmit={handleCreateUser} style={userMgmtModalStyles.form}>
-            <div>
-              <label style={userMgmtModalStyles.label}>First Name</label>
-              <input
-                style={userMgmtModalStyles.input}
-                name="firstName"
-                placeholder="First Name"
-                value={userForm.firstName}
-                onChange={handleUserFormChange}
-                required
-              />
-            </div>
-            <div>
-              <label style={userMgmtModalStyles.label}>Last Name</label>
-              <input
-                style={userMgmtModalStyles.input}
-                name="lastName"
-                placeholder="Last Name"
-                value={userForm.lastName}
-                onChange={handleUserFormChange}
-                required
-              />
-            </div>
-            <div>
-              <label style={userMgmtModalStyles.label}>Email</label>
-              <input
-                style={userMgmtModalStyles.input}
-                name="email"
-                placeholder="Email"
-                value={userForm.email}
-                onChange={handleUserFormChange}
-                required
-                type="email"
-              />
-            </div>
-            <div>
-              <label style={userMgmtModalStyles.label}>Password</label>
-              <input
-                style={userMgmtModalStyles.input}
-                name="password"
-                placeholder="Password"
-                value={userForm.password}
-                onChange={handleUserFormChange}
-                required
-                type="password"
-              />
-            </div>
-            <div>
-              <label style={userMgmtModalStyles.label}>University ID</label>
-              <input
-                style={userMgmtModalStyles.input}
-                name="universityId"
-                placeholder="University ID"
-                value={userForm.universityId}
-                onChange={handleUserFormChange}
-                required
-              />
-            </div>
-            <div>
-              <label style={userMgmtModalStyles.label}>Role</label>
-              <select
-                style={userMgmtModalStyles.select}
-                name="role"
-                value={userForm.role}
-                onChange={handleUserFormChange}
-              >
-                <option value="admin">Admin</option>
-                <option value="event_office">Event Office</option>
-              </select>
-            </div>
-            <button
-              type="submit"
-              style={{
-                ...userMgmtModalStyles.button,
-                ...(userCreating ? userMgmtModalStyles.buttonDisabled : {}),
-              }}
-              disabled={userCreating}
-            >
-              {userCreating ? "Creating..." : "Create User"}
-            </button>
-          </form>
-          <div style={{ fontWeight: 600, color: "#1e293b", margin: "18px 0 8px" }}>
-            All Admin & Event Office Users
-          </div>
-          <div style={userMgmtModalStyles.tableWrapper}>
-            {userLoading ? (
-              <div style={{ padding: 24 }}>Loading users...</div>
-            ) : (
-              <table style={userMgmtModalStyles.table}>
-                <thead>
-                  <tr>
-                    <th style={userMgmtModalStyles.th}>Name</th>
-                    <th style={userMgmtModalStyles.th}>Email</th>
-                    <th style={userMgmtModalStyles.th}>Role</th>
-                    <th style={userMgmtModalStyles.th}>University ID</th>
-                    <th style={userMgmtModalStyles.th}>Status</th>
-                    <th style={userMgmtModalStyles.th}>Verified</th>
-                    <th style={userMgmtModalStyles.th}>Created</th>
-                    <th style={userMgmtModalStyles.th}>Delete</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users
-                    .filter((u) => u.role === "admin" || u.role === "event_office")
-                    .map((user) => (
-                      <tr
-                        key={user.id}
-                        style={userMgmtModalStyles.trHover}
-                        onMouseOver={e => e.currentTarget.style.background = "#f1f5f9"}
-                        onMouseOut={e => e.currentTarget.style.background = "#fff"}
-                      >
-                        <td style={userMgmtModalStyles.td}>{user.fullName}</td>
-                        <td style={userMgmtModalStyles.td}>{user.email}</td>
-                        <td style={userMgmtModalStyles.td}>{user.role === "admin" ? "Admin" : "Event Office"}</td>
-                        <td style={userMgmtModalStyles.td}>{user.universityId}</td>
-                        <td style={userMgmtModalStyles.td}>{user.status}</td>
-                        <td style={userMgmtModalStyles.td}>
-                          {user.verified ? (
-                            <span style={userMgmtModalStyles.verifiedBadge}>Verified</span>
-                          ) : (
-                            <span style={userMgmtModalStyles.notVerifiedBadge}>Not Verified</span>
-                          )}
-                        </td>
-                        <td style={userMgmtModalStyles.td}>{user.createdAt}</td>
-                        <td style={userMgmtModalStyles.td}>
-                          <button
-                            type="button"
-                            style={userMgmtModalStyles.deleteBtn}
-                            onMouseOver={e => e.currentTarget.style.background = "#b91c1c"}
-                            onMouseOut={e => e.currentTarget.style.background = "#ef4444"}
-                            onClick={() => handleDeleteUser(user.id)}
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const AdminDashboard = () => {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
-
-  // User management state
-  const [users, setUsers] = useState([]);
-  const [userForm, setUserForm] = useState(initialUserForm);
-  const [userLoading, setUserLoading] = useState(false);
-  const [userCreating, setUserCreating] = useState(false);
-  const [showUserMgmt, setShowUserMgmt] = useState(false);
 
   const fetchApplications = async () => {
     try {
@@ -554,67 +401,13 @@ const AdminDashboard = () => {
     rejected: applications.filter(app => app.status === "rejected").length,
   };
 
-  // User management handlers
-  const fetchUsers = async () => {
-    setUserLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/admin/users`);
-      const data = await res.json();
-      setUsers(data);
-    } catch {
-      toast.error("Failed to fetch users");
-    }
-    setUserLoading(false);
-  };
-
-  useEffect(() => {
-    fetchUsers();
-    // eslint-disable-next-line
-  }, []);
-
-  const handleUserFormChange = (e) => {
-    setUserForm({ ...userForm, [e.target.name]: e.target.value });
-  };
-
-  const handleCreateUser = async (e) => {
-    e.preventDefault();
-    setUserCreating(true);
-    try {
-      const res = await fetch(`${API_BASE}/admin/create-user`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(userForm),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success(data.message || "User created");
-        setUserForm(initialUserForm);
-        fetchUsers();
-      } else {
-        toast.error(data.message || "Error creating user");
-      }
-    } catch {
-      toast.error("Error creating user");
-    }
-    setUserCreating(false);
-  };
-
-  const handleDeleteUser = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
-    try {
-      const res = await fetch(`${API_BASE}/admin/delete-user/${id}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success(data.message || "User deleted");
-        fetchUsers();
-      } else {
-        toast.error(data.message || "Error deleting user");
-      }
-    } catch {
-      toast.error("Error deleting user");
-    }
+  const getStatusColor = (status) => {
+    const colors = {
+      pending: "#F59E0B",
+      approved: "#10B981",
+      rejected: "#EF4444",
+    };
+    return colors[status?.toLowerCase()] || "#6B7280";
   };
 
   if (loading) {
@@ -655,24 +448,9 @@ const AdminDashboard = () => {
     <>
       <Navbar />
       <style>{cssKeyframes}</style>
-      <UserManagementModal
-        show={showUserMgmt}
-        onClose={() => setShowUserMgmt(false)}
-        userForm={userForm}
-        handleUserFormChange={handleUserFormChange}
-        handleCreateUser={handleCreateUser}
-        userCreating={userCreating}
-        users={users}
-        userLoading={userLoading}
-        handleDeleteUser={handleDeleteUser}
-        userMgmtModalStyles={userMgmtModalStyles}
-        modalKeyframes={modalKeyframes}
-      />
       <div style={styles.container}>
         <div style={styles.backgroundPattern}></div>
         <div style={styles.contentWrapper}>
-          {/* User Management button removed; navigate via Admin Users page */}
-
           {/* Header */}
           <div style={styles.headerContainer}>
             <div style={styles.headerGlow}></div>
@@ -764,279 +542,103 @@ const AdminDashboard = () => {
             </button>
           </div>
 
-          {/* Table */}
-          <div style={styles.tableCard}>
-            {filteredApplications.length > 0 ? (
-              <div style={styles.tableContainer}>
-                <table style={styles.table}>
-                  <thead style={styles.thead}>
-                    <tr>
-                      <th style={styles.th}>Applicant</th>
-                      <th style={styles.th}>Event</th>
-                      <th style={styles.th}>Type</th>
-                      <th style={styles.th}>Status</th>
-                      <th style={styles.th}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredApplications.map((app) => (
-                      <tr key={app._id} className="table-row" style={styles.tr}>
-                        <td style={styles.td}>
-                          <div style={{fontWeight: theme.typography.fontWeight.semibold}}>
-                            {app.vendor?.companyName || "N/A"}
+          {/* Cards Grid */}
+          {filteredApplications.length > 0 ? (
+            <div style={styles.cardsGrid}>
+              {filteredApplications.map((app) => (
+                <div key={app._id} className="application-card" style={styles.applicationCard}>
+                  <div style={styles.cardTopBar(getStatusColor(app.status))}></div>
+                  
+                  <div style={styles.cardHeader}>
+                    <div style={styles.companyName}>
+                      {app.vendor?.companyName || "N/A"}
+                    </div>
+                    <div style={styles.bazaarTitle}>
+                      {app.applicationType === 'bazaar' 
+                        ? app.bazaar?.title || app.bazaar?.startDate?.substring(0, 10) || "N/A" 
+                        : "Standalone Booth"}
+                    </div>
+                    <div style={styles.badgeContainer}>
+                      <span style={styles.statusBadge(app.status)}>
+                        {app.status}
+                      </span>
+                      <span style={styles.typeBadge(app.applicationType)}>
+                        {app.applicationType}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={styles.cardDetails}>
+                    <div style={styles.detailRow}>
+                      <span style={styles.detailLabel}>Booth Size</span>
+                      <span style={styles.detailValue}>{app.boothSize || 'N/A'}</span>
+                    </div>
+                    {app.applicationType === 'booth' && app.duration && (
+                      <div style={styles.detailRow}>
+                        <span style={styles.detailLabel}>Duration</span>
+                        <span style={styles.detailValue}>{app.duration} days</span>
+                      </div>
+                    )}
+                    {app.applicationType === 'booth' && app.location && (
+                      <div style={styles.detailRow}>
+                        <span style={styles.detailLabel}>Location</span>
+                        <span style={styles.detailValue}>{app.location}</span>
+                      </div>
+                    )}
+                    
+                    {app.attendees?.length > 0 && (
+                      <div style={styles.attendeesSection}>
+                        <div style={styles.attendeesTitle}>
+                          Attendees ({app.attendees.length})
+                        </div>
+                        {app.attendees.map((attendee, idx) => (
+                          <div key={idx} style={styles.attendeeItem}>
+                            • {attendee.name} ({attendee.email})
                           </div>
-                        </td>
-                        <td style={styles.td}>
-                          {app.applicationType === 'bazaar' 
-                            ? app.bazaar?.name || app.bazaar?.startDate?.substring(0, 10) || "N/A" 
-                            : "Standalone Booth"}
-                        </td>
-                        <td style={styles.td}>
-                          <span style={styles.typeBadge(app.applicationType)}>
-                            {app.applicationType}
-                          </span>
-                        </td>
-                        <td style={styles.td}>
-                          <span style={styles.statusBadge(app.status)}>
-                            {app.status}
-                          </span>
-                        </td>
-                        <td style={styles.td}>
-                          <div style={styles.actionsCell}>
-                            <button
-                              className="action-button"
-                              style={{
-                                ...styles.actionButton("approve"),
-                                ...(app.status === "approved" ? styles.disabledButton : {})
-                              }}
-                              onClick={() => handleUpdateStatus(app.applicationType, app._id, "approved")}
-                              disabled={app.status === "approved"}
-                            >
-                              ✓ Approve
-                            </button>
-                            <button
-                              className="action-button"
-                              style={{
-                                ...styles.actionButton("reject"),
-                                ...(app.status === "rejected" ? styles.disabledButton : {})
-                              }}
-                              onClick={() => handleUpdateStatus(app.applicationType, app._id, "rejected")}
-                              disabled={app.status === "rejected"}
-                            >
-                              ✕ Reject
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div style={styles.emptyState}>
-                <div style={styles.emptyStateIcon}>📋</div>
-                <p style={styles.emptyStateText}>
-                  No applications found matching your filters
-                </p>
-              </div>
-            )}
-          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={styles.cardActions}>
+                    <button
+                      className="action-button"
+                      style={{
+                        ...styles.actionButton("approve"),
+                        ...(app.status === "approved" ? styles.disabledButton : {})
+                      }}
+                      onClick={() => handleUpdateStatus(app.applicationType, app._id, "approved")}
+                      disabled={app.status === "approved"}
+                    >
+                      ✓ Approve
+                    </button>
+                    <button
+                      className="action-button"
+                      style={{
+                        ...styles.actionButton("reject"),
+                        ...(app.status === "rejected" ? styles.disabledButton : {})
+                      }}
+                      onClick={() => handleUpdateStatus(app.applicationType, app._id, "rejected")}
+                      disabled={app.status === "rejected"}
+                    >
+                      ✕ Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={styles.emptyState}>
+              <div style={styles.emptyStateIcon}>📋</div>
+              <p style={styles.emptyStateText}>
+                No applications found matching your filters
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </>
   );
 };
-
-const userMgmtModalStyles = {
-  overlay: {
-    position: "fixed",
-    top: 0, left: 0, right: 0, bottom: 0,
-    background: "rgba(30,41,59,0.25)",
-    zIndex: 1000,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modal: {
-    background: "#fff",
-    borderRadius: 20,
-    padding: 0,
-    boxShadow: "0 8px 48px rgba(0,0,0,0.18)",
-    border: "1px solid #e5e7eb",
-    maxWidth: 900,
-    width: "95vw",
-    maxHeight: "90vh",
-    overflowY: "auto",
-    position: "relative",
-    animation: "fadeInModal 0.2s",
-  },
-  header: {
-    padding: "28px 36px 0 36px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  title: {
-    fontSize: "2rem",
-    fontWeight: 700,
-    color: "#1e293b",
-    letterSpacing: "-1px",
-    margin: 0,
-  },
-  closeBtn: {
-    background: "none",
-    border: "none",
-    fontSize: 32,
-    color: "#64748b",
-    cursor: "pointer",
-    fontWeight: 700,
-    transition: "color 0.2s",
-    marginLeft: 12,
-    marginTop: -8,
-  },
-  body: {
-    padding: "0 36px 36px 36px",
-  },
-  sectionSubtitle: {
-    color: "#64748b",
-    fontSize: "1.08rem",
-    marginBottom: 28,
-    marginTop: 8,
-  },
-  form: {
-    display: "flex",
-    gap: 18,
-    flexWrap: "wrap",
-    alignItems: "flex-end",
-    marginBottom: 32,
-    background: "#f8fafc",
-    borderRadius: 12,
-    padding: "18px 16px",
-    boxShadow: "0 2px 8px rgba(30,41,59,0.04)",
-  },
-  label: {
-    fontWeight: 600,
-    color: "#334155",
-    fontSize: 14,
-    marginBottom: 4,
-    display: "block",
-  },
-  input: {
-    padding: "10px 14px",
-    borderRadius: 10,
-    border: "1.5px solid #cbd5e1",
-    fontSize: 15,
-    outline: "none",
-    minWidth: 160,
-    background: "#fff",
-    transition: "border 0.2s",
-    marginBottom: 0,
-  },
-  select: {
-    padding: "10px 14px",
-    borderRadius: 10,
-    border: "1.5px solid #cbd5e1",
-    fontSize: 15,
-    outline: "none",
-    background: "#fff",
-    minWidth: 140,
-    marginBottom: 0,
-  },
-  button: {
-    padding: "10px 24px",
-    borderRadius: 10,
-    border: "none",
-    background: "#2563eb",
-    color: "#fff",
-    fontWeight: 600,
-    fontSize: 15,
-    cursor: "pointer",
-    boxShadow: "0 2px 8px rgba(37,99,235,0.08)",
-    transition: "background 0.2s, transform 0.1s",
-    marginLeft: 8,
-  },
-  buttonDisabled: {
-    background: "#93c5fd",
-    cursor: "not-allowed",
-    opacity: 0.7,
-  },
-  tableWrapper: {
-    overflowX: "auto",
-    borderRadius: 12,
-    border: "1px solid #e5e7eb",
-    background: "#f9fafb",
-    marginTop: 8,
-    boxShadow: "0 2px 8px rgba(30,41,59,0.04)",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-    fontSize: 15,
-    minWidth: 700,
-  },
-  th: {
-    background: "#f1f5f9",
-    color: "#334155",
-    fontWeight: 700,
-    padding: "12px 10px",
-    borderBottom: "2px solid #e5e7eb",
-    textAlign: "left",
-    letterSpacing: "0.5px",
-  },
-  td: {
-    padding: "12px 10px",
-    borderBottom: "1px solid #e5e7eb",
-    color: "#334155",
-    background: "#fff",
-    verticalAlign: "middle",
-  },
-  trHover: {
-    transition: "background 0.15s",
-    cursor: "pointer",
-  },
-  deleteBtn: {
-    background: "#ef4444",
-    color: "#fff",
-    border: "none",
-    borderRadius: 8,
-    padding: "7px 16px",
-    fontWeight: 600,
-    fontSize: 14,
-    cursor: "pointer",
-    transition: "background 0.2s",
-  },
-  deleteBtnHover: {
-    background: "#b91c1c",
-  },
-  verifiedBadge: {
-    display: "inline-block",
-    background: "#d1fae5",
-    color: "#065f46",
-    borderRadius: 8,
-    padding: "2px 10px",
-    fontWeight: 600,
-    fontSize: 13,
-    marginLeft: 4,
-  },
-  notVerifiedBadge: {
-    display: "inline-block",
-    background: "#fee2e2",
-    color: "#991b1b",
-    borderRadius: 8,
-    padding: "2px 10px",
-    fontWeight: 600,
-    fontSize: 13,
-    marginLeft: 4,
-  },
-};
-
-const modalKeyframes = `
-@keyframes fadeInModal {
-  from { opacity: 0; transform: translateY(30px);}
-  to { opacity: 1; transform: translateY(0);}
-}
-`;
 
 export default AdminDashboard;
