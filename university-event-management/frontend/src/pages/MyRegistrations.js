@@ -150,10 +150,10 @@ const MyRegistrations = () => {
 
   const [summary, setSummary] = useState({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("upcoming");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-  const [instructor, setInstructor] = useState("");
   const [sortBy, setSortBy] = useState("startDate");
   const [sortOrder, setSortOrder] = useState("asc");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -441,9 +441,7 @@ const MyRegistrations = () => {
   });
   const filtersStyles = {
     display: "grid",
-    gridTemplateColumns: filter === "workshop" 
-      ? "repeat(auto-fit, minmax(180px, 1fr))" 
-      : "repeat(auto-fit, minmax(200px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
     gap: theme.spacing[4],
     marginBottom: theme.spacing[6],
   };
@@ -737,14 +735,6 @@ const MyRegistrations = () => {
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
             />
-            {filter === "workshop" && (
-              <Input
-                label="Instructor Name"
-                placeholder="Search by instructor..."
-                value={instructor}
-                onChange={(e) => setInstructor(e.target.value)}
-              />
-            )}
             <Select
               label="Sort by"
               options={sortOptions}

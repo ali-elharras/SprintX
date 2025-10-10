@@ -120,7 +120,7 @@ export default api;
 // ============================================
 
 export const eventServices = {
-  getUpcomingBazaars: async () => {
+  getUpcomingBazaars: async (cancelToken = null) => {
     try {
       return await retryRequest(async () => {
         const response = await api.get("/events/bazaars/upcoming", {
@@ -200,7 +200,7 @@ export const applicationServices = {
 // EVENT API ENDPOINTS (from main)
 // ============================================
 export const eventAPI = {
-  getEvents: (params = {}) => {
+  getEvents: (params = {}, cancelToken = null) => {
     const queryParams = new URLSearchParams(params).toString();
     return retryRequest(async () => {
       return api.get(`/events${queryParams ? `?${queryParams}` : ""}`, {
@@ -237,7 +237,7 @@ export const registrationAPI = {
   registerForEvent: (registrationData) =>
     api.post("/registrations", registrationData),
 
-  getMyRegistrations: (params = {}) => {
+  getMyRegistrations: (params = {}, cancelToken = null) => {
     const queryParams = new URLSearchParams(params).toString();
     return retryRequest(async () => {
       return api.get(

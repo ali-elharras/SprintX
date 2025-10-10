@@ -535,24 +535,6 @@ const CourtCard = ({ court, showBooking = true, onBookingClick }) => {
               View Availability
             </Button>
           )}
-          <Button
-            variant="outline"
-            onClick={() => {
-              // TODO: Navigate to court details page
-              console.log("View details for court:", court._id);
-            }}
-            style={{ 
-              flex: showBooking && court.status === "active" ? 0 : 1,
-              flexShrink: 0,
-              width: showBooking && court.status === "active" ? "auto" : "100%",
-              minWidth: showBooking && court.status === "active" ? "130px" : "auto",
-              minHeight: "44px",
-              padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-              whiteSpace: "nowrap",
-            }}
-          >
-            View Details
-          </Button>
         </div>
       </div>
       
