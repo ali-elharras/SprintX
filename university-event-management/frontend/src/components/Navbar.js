@@ -307,7 +307,7 @@ const Navbar = () => {
           </>
 ) : (
   <>
-    {isUser && user && user.role === 'professor' && (
+    {isUser && user && user.role === 'staff' && (
       <button
         onClick={() => navigate("/workshops")}
         style={{

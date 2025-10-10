@@ -238,6 +238,7 @@ const CreateWorkshop = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState(null);
+  const [validationError, setValidationError] = useState('');
   const [isButtonHovered, setIsButtonHovered] = useState(false);
 
   const handleChange = (e) => {
@@ -251,7 +252,27 @@ const CreateWorkshop = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmissionError(null);
+    setValidationError('');
     setIsSubmitting(true);
+
+    // Validation: registrationDeadline must be <= startDate
+    const startDate = new Date(workshopData.startDate);
+    const regDeadline = new Date(workshopData.registrationDeadline);
+    if (regDeadline > startDate) {
+      setValidationError('Registration deadline must be on or before the start date.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Validation: endDate must be after startDate
+    const endDate = new Date(workshopData.endDate);
+    if (endDate <= startDate) {
+      setValidationError('End date must be after start date.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // You can add more required field checks here if needed
 
     const professorsArray = workshopData.professors
       .split(',')
@@ -315,6 +336,7 @@ const CreateWorkshop = () => {
           <h1 style={headerStyles}>Create New Workshop</h1>
           <div style={formContainerStyles}>
             {submissionError && <div style={errorStyles}>{submissionError}</div>}
+            {validationError && <div style={errorStyles}>{validationError}</div>}
 
             <form onSubmit={handleSubmit} style={formGridStyles}>
               {/* Basic Info */}
@@ -434,12 +456,12 @@ const CreateWorkshop = () => {
                     value={workshopData.facultyResponsible}
                     onChange={handleChange}
                   >
-                    <option value="MET">Media Engineering and Technology</option>
-                    <option value="IET">Information Engineering and Technology</option>
-                    <option value="MGT">Management Technology</option>
-                    <option value="PHAR">Pharmacy and Biotechnology</option>
-                    <option value="LAW">Law and Legal Studies</option>
-                    <option value="ART">Applied Sciences and Arts</option>
+                    <option value="MET">MET</option>
+                    <option value="IET">IET</option>
+                    <option value="MGT">MGT</option>
+                    <option value="PHAR">PHAR</option>
+                    <option value="ARCH">ARCH</option>
+                    <option value="ART">ART</option>
                     <option value="Other">Other</option>
                   </Select>
                 </div>
