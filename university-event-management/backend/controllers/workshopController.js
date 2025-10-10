@@ -67,6 +67,53 @@ exports.deleteWorkshop = async (req, res) => {
     }
 };
 
+// POST /api/workshops/:id/request-edit - Request edits for a pending workshop (Admin/Events Office)
+exports.requestEditWorkshop = async (req, res) => {
+    try {
+        const { message } = req.body;
+        
+        if (!message || message.trim() === '') {
+            return res.status(400).json({ success: false, message: 'Edit request message is required' });
+        }
+        
+        const workshopId = req.params.id;
+        const workshop = await Workshop.findById(workshopId);
+        
+        if (!workshop) {
+            return res.status(404).json({ success: false, message: 'Workshop not found' });
+        }
+        
+        if (workshop.status === 'published') {
+            return res.status(400).json({ success: false, message: 'Cannot request edits for a published workshop' });
+        }
+        
+        // Create an edit request entry
+        const editRequest = {
+            message,
+            requestedBy: {
+                id: req.user?.id,
+                name: req.user ? `${req.user.firstName} ${req.user.lastName}` : 'Events Office'
+            },
+            requestedAt: new Date(),
+            status: 'needs_revision'
+        };
+        
+        // Add the edit request to the workshop and update status
+        workshop.editRequests.push(editRequest);
+        workshop.status = 'needs_revision';
+        await workshop.save();
+        
+        res.status(200).json({
+            success: true,
+            message: 'Edit request sent successfully',
+            workshop
+        });
+    } catch (error) {
+        console.error('Error requesting workshop edits:', error);
+        res.status(500).json({ success: false, message: 'Error requesting workshop edits: ' + error.message });
+    }
+};
+
 // POST /api/workshops/:id/publish - Publish a pending workshop as an Event (Admin/Events Office)
 exports.publishWorkshop = async (req, res) => {
     try {

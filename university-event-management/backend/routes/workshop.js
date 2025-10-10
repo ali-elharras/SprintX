@@ -16,4 +16,7 @@ router.route('/:id')
 // Publish a pending workshop into the events collection
 router.post('/:id/publish', protect, requireAdminOrEventsOffice, workshopController.publishWorkshop);
 
+// Request edits for a pending workshop
+router.post('/:id/request-edit', protect, requireAdminOrEventsOffice, workshopController.requestEditWorkshop);
+
 module.exports = router;

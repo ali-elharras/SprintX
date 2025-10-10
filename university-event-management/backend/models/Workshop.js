@@ -105,6 +105,21 @@ workshopSchema.add({
   publishedEventId: {
     type: String,
   },
+  // Edit requests from Events Office to professors
+  editRequests: {
+    type: [
+      {
+        message: { type: String, required: true },
+        requestedBy: {
+          id: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false },
+          name: { type: String },
+        },
+        requestedAt: { type: Date, default: Date.now },
+        status: { type: String, enum: ["needs_revision"], default: "needs_revision" },
+      },
+    ],
+    default: [],
+  },
 });
 
 module.exports = mongoose.model("Workshop", workshopSchema);

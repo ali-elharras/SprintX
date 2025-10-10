@@ -23,6 +23,11 @@ const EventsPage = () => {
   // State for confirmation modal
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [workshopToReject, setWorkshopToReject] = useState(null);
+  
+  // State for edit request modal
+  const [editRequestModalOpen, setEditRequestModalOpen] = useState(false);
+  const [workshopToEdit, setWorkshopToEdit] = useState(null);
+  const [editRequestMessage, setEditRequestMessage] = useState("");
 
   // State for creating a new bazaar
   const [createBazaarOpen, setCreateBazaarOpen] = useState(false);
@@ -44,11 +49,20 @@ const EventsPage = () => {
       const response = await eventAPI.getEvents({ status: "published", upcoming: "true" });
       setEvents(response.data?.data || []);
 
-      // If current user is Events Office, also fetch pending workshops
+      // If current user is Events Office, also fetch pending and needs_revision workshops
       if (auth?.isEventsOffice) {
         try {
-          const pendingResp = await api.get('/workshops?status=pending');
-          setPendingWorkshops(pendingResp.data || []);
+          // Fetch both pending and needs_revision workshops
+          const [pendingResp, revisionResp] = await Promise.all([
+            api.get('/workshops?status=pending'),
+            api.get('/workshops?status=needs_revision')
+          ]);
+          
+          // Combine both types of workshops
+          const pendingWorkshops = pendingResp.data || [];
+          const revisionWorkshops = revisionResp.data || [];
+          
+          setPendingWorkshops([...pendingWorkshops, ...revisionWorkshops]);
         } catch (err) {
           console.warn('Could not fetch pending workshops', err);
           setPendingWorkshops([]);
@@ -135,12 +149,90 @@ const EventsPage = () => {
           {auth.isEventsOffice && pendingWorkshops.length > 0 && (
             <div style={{ marginBottom: theme.spacing[8] }}>
               <h2 style={{ fontSize: theme.typography.fontSize.xl, marginBottom: theme.spacing[4] }}>Workshops Waiting for Approval</h2>
+              <div style={{ display: 'flex', gap: theme.spacing[3], marginBottom: theme.spacing[4] }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing[2] }}>
+                  <div style={{ 
+                    width: '12px', 
+                    height: '12px', 
+                    borderRadius: '50%', 
+                    backgroundColor: theme.colors.primary.light 
+                  }}></div>
+                  <span style={{ fontSize: theme.typography.fontSize.sm }}>Pending</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing[2] }}>
+                  <div style={{ 
+                    width: '12px', 
+                    height: '12px', 
+                    borderRadius: '50%', 
+                    backgroundColor: theme.colors.warning.main 
+                  }}></div>
+                  <span style={{ fontSize: theme.typography.fontSize.sm }}>Needs Revision</span>
+                </div>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: theme.spacing[6] }}>
                 {pendingWorkshops.map((w) => (
-                  <div key={w._id} style={{ background: theme.colors.background.paper, padding: theme.spacing[4], borderRadius: theme.borderRadius.lg, boxShadow: theme.shadows.md }}>
+                  <div key={w._id} style={{ 
+                    background: theme.colors.background.paper, 
+                    padding: theme.spacing[4], 
+                    borderRadius: theme.borderRadius.lg, 
+                    boxShadow: theme.shadows.md,
+                    position: 'relative'
+                  }}>
+                    {/* Status badge */}
+                    {w.status === 'needs_revision' && (
+                      <div style={{
+                        position: 'absolute',
+                        top: theme.spacing[2],
+                        right: theme.spacing[2],
+                        backgroundColor: theme.colors.warning.main,
+                        color: theme.colors.warning.contrastText,
+                        fontSize: theme.typography.fontSize.xs,
+                        fontWeight: theme.typography.fontWeight.medium,
+                        padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+                        borderRadius: theme.borderRadius.full,
+                      }}>
+                        Needs Revision
+                      </div>
+                    )}
                     <h3 style={{ marginTop: 0 }}>{w.workshopName}</h3>
                     <p style={{ color: theme.colors.text.secondary }}>{w.shortDescription}</p>
                     <p style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.secondary }}>Start: {new Date(w.startDate).toLocaleString()}</p>
+                    
+                    {/* Show edit requests if they exist */}
+                    {w.editRequests && w.editRequests.length > 0 && (
+                      <div style={{
+                        marginTop: theme.spacing[3],
+                        padding: theme.spacing[3],
+                        backgroundColor: theme.colors.background.default,
+                        borderRadius: theme.borderRadius.base,
+                        borderLeft: `4px solid ${theme.colors.warning.main}`
+                      }}>
+                        <p style={{ 
+                          fontSize: theme.typography.fontSize.sm, 
+                          fontWeight: theme.typography.fontWeight.medium,
+                          marginTop: 0, 
+                          marginBottom: theme.spacing[2] 
+                        }}>
+                          Latest Edit Request:
+                        </p>
+                        <p style={{ 
+                          fontSize: theme.typography.fontSize.sm,
+                          marginTop: 0,
+                          marginBottom: theme.spacing[1]
+                        }}>
+                          {w.editRequests[w.editRequests.length-1].message}
+                        </p>
+                        <p style={{ 
+                          fontSize: theme.typography.fontSize.xs,
+                          color: theme.colors.text.secondary,
+                          margin: 0 
+                        }}>
+                          Requested by: {w.editRequests[w.editRequests.length-1].requestedBy?.name || 'Events Office'}
+                          {w.editRequests[w.editRequests.length-1].requestedAt && 
+                           ` on ${new Date(w.editRequests[w.editRequests.length-1].requestedAt).toLocaleString()}`}
+                        </p>
+                      </div>
+                    )}
                     <div style={{ marginTop: theme.spacing[4], display: 'flex', justifyContent: 'flex-end', gap: theme.spacing[3] }}>
                       <Button variant="primary" onClick={async () => {
                         try {
@@ -200,6 +292,19 @@ const EventsPage = () => {
                       }}>Accept and Publish</Button>
                       <Button 
                         variant="outline" 
+                        style={{
+                          color: theme.colors.primary.main,
+                          borderColor: theme.colors.primary.main,
+                          backgroundColor: 'transparent'
+                        }}
+                        onClick={() => {
+                          // Open edit request modal and set current workshop
+                          setWorkshopToEdit(w);
+                          setEditRequestModalOpen(true);
+                        }}
+                      >Request Edit</Button>
+                      <Button 
+                        variant="outline" 
                         style={{ 
                           color: theme.colors.status.error, 
                           borderColor: theme.colors.status.error,
@@ -250,6 +355,105 @@ const EventsPage = () => {
         </div>
       </div>
 
+      {/* Edit Request Modal */}
+      {editRequestModalOpen && workshopToEdit && (
+        <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 20000, display: "flex", justifyContent: "center", alignItems: "center" }} onClick={() => setEditRequestModalOpen(false)}>
+          <div style={{ width: "600px", maxWidth: "95%", background: theme.colors.background.paper, borderRadius: theme.borderRadius.lg, boxShadow: theme.shadows.lg, padding: theme.spacing[6], animation: "slide-down 0.3s ease-out" }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ marginTop: 0, marginBottom: theme.spacing[4], color: theme.colors.primary.main }}>Request Workshop Edits</h2>
+            <p style={{ marginBottom: theme.spacing[4], fontSize: theme.typography.fontSize.base }}>
+              Please provide feedback for <strong>{workshopToEdit.workshopName}</strong>. 
+              This will mark the workshop as "needs_revision" and send your feedback to the professor.
+            </p>
+            
+            <div>
+              <label style={{ display: 'block', marginBottom: theme.spacing[2], color: theme.colors.text.secondary, fontWeight: theme.typography.fontWeight.medium }}>
+                Edit Request Details:
+              </label>
+              <textarea 
+                rows="4" 
+                placeholder="Please provide specific details about what needs to be changed or improved..." 
+                value={editRequestMessage}
+                onChange={(e) => setEditRequestMessage(e.target.value)}
+                style={{ 
+                  width: '100%', 
+                  padding: theme.spacing[3], 
+                  fontSize: theme.typography.fontSize.base, 
+                  border: `1px solid ${theme.colors.border}`, 
+                  borderRadius: theme.borderRadius.base, 
+                  boxSizing: 'border-box',
+                  fontFamily: 'inherit'
+                }} 
+              />
+            </div>
+            
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing[3], marginTop: theme.spacing[5] }}>
+              <Button variant="outline" onClick={() => {
+                setEditRequestModalOpen(false);
+                setWorkshopToEdit(null);
+                setEditRequestMessage("");
+              }}>Cancel</Button>
+              <Button 
+                variant="primary"
+                disabled={!editRequestMessage.trim()}
+                onClick={async () => {
+                  try {
+                    if (!editRequestMessage.trim()) {
+                      toast.error("Please provide feedback for the edit request.");
+                      return;
+                    }
+                    
+                    const toastId = toast.loading('Sending edit request...');
+                    
+                    // Send edit request using the dedicated endpoint
+                    await api.post(`/workshops/${workshopToEdit._id}/request-edit`, {
+                      message: editRequestMessage
+                    });
+                    
+                    toast.dismiss(toastId);
+                    toast.success('Edit request sent successfully.');
+                    
+                    // Update UI to reflect the status change and add the new edit request
+                    setPendingWorkshops((prev) => prev.map(w => 
+                      w._id === workshopToEdit._id 
+                      ? { 
+                          ...w, 
+                          status: 'needs_revision',
+                          editRequests: [
+                            ...(w.editRequests || []),
+                            {
+                              message: editRequestMessage,
+                              requestedBy: {
+                                id: auth.user?.id,
+                                name: auth.user ? `${auth.user.firstName} ${auth.user.lastName}` : 'Events Office'
+                              },
+                              requestedAt: new Date(),
+                              status: 'needs_revision'
+                            }
+                          ]
+                        }
+                      : w
+                    ));
+                    
+                    // Close modal and reset state
+                    setEditRequestModalOpen(false);
+                    setWorkshopToEdit(null);
+                    setEditRequestMessage("");
+                    
+                    // Refresh the workshops list to ensure everything is updated
+                    fetchEvents();
+                  } catch (err) {
+                    console.error('Edit request error:', err);
+                    toast.error('Failed to send edit request. Please try again.');
+                  }
+                }}
+              >
+                Send Request
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Reject Workshop Modal */}
       {rejectModalOpen && workshopToReject && (
         <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 20000, display: "flex", justifyContent: "center", alignItems: "center" }} onClick={() => setRejectModalOpen(false)}>
