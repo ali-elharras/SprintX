@@ -1,6 +1,53 @@
 import axios from "axios";
 
 // ============================================
+// CREATE CANCELLATION TOKEN MANAGER
+// ============================================
+export const createCancelTokenSource = () => axios.CancelToken.source();
+
+// ============================================
+// RETRY LOGIC UTILITY
+// ============================================
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const retryRequest = async (
+  requestFn,
+  maxRetries = 3,
+  baseDelay = 1000
+) => {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await requestFn();
+    } catch (error) {
+      // Don't retry if request was cancelled
+      if (axios.isCancel(error)) {
+        throw error;
+      }
+
+      // Don't retry on authentication errors or client errors
+      if (error.response?.status >= 400 && error.response?.status < 500) {
+        throw error;
+      }
+
+      // If this is the last attempt, throw the error
+      if (attempt === maxRetries) {
+        throw error;
+      }
+
+      // Wait before retrying with exponential backoff
+      const delay = baseDelay * Math.pow(2, attempt - 1);
+      await sleep(delay);
+
+      console.log(
+        `Retrying request (attempt ${
+          attempt + 1
+        }/${maxRetries}) after ${delay}ms...`
+      );
+    }
+  }
+};
+
+// ============================================
 // AXIOS INSTANCE SETUP
 // ============================================
 const api = axios.create({
@@ -39,15 +86,25 @@ api.interceptors.response.use(
       localStorage.removeItem("userType");
 
       if (
-        window.location.pathname !== "/login" &&
+        window.location.pathname !== "/" &&
         window.location.pathname !== "/vendor-login"
       ) {
-        window.location.href = wasVendor ? "/vendor-login" : "/login";
+        window.location.href = wasVendor ? "/vendor-login" : "/";
       }
     }
 
-    const errorMessage =
-      error.response?.data?.message || error.message || "An error occurred";
+    // Handle server errors with user-friendly messages
+    let errorMessage;
+    if (error.response?.status >= 500) {
+      errorMessage = "Server error. Please try again in a moment.";
+    } else if (error.response?.status === 429) {
+      errorMessage =
+        "Too many requests. Please wait a moment before trying again.";
+    } else {
+      errorMessage =
+        error.response?.data?.message || error.message || "An error occurred";
+    }
+
     return Promise.reject({
       message: errorMessage,
       status: error.response?.status,
@@ -65,8 +122,12 @@ export default api;
 export const eventServices = {
   getUpcomingBazaars: async () => {
     try {
-      const response = await api.get("/events/bazaars/upcoming");
-      return response.data;
+      return await retryRequest(async () => {
+        const response = await api.get("/events/bazaars/upcoming", {
+          ...(cancelToken && { cancelToken: cancelToken.token }),
+        });
+        return response.data;
+      });
     } catch (error) {
       throw error;
     }
@@ -141,14 +202,31 @@ export const applicationServices = {
 export const eventAPI = {
   getEvents: (params = {}) => {
     const queryParams = new URLSearchParams(params).toString();
-    return api.get(`/events${queryParams ? `?${queryParams}` : ""}`);
+    return retryRequest(async () => {
+      return api.get(`/events${queryParams ? `?${queryParams}` : ""}`, {
+        ...(cancelToken && { cancelToken: cancelToken.token }),
+      });
+    });
   },
 
-  getEvent: (id) => api.get(`/events/${id}`),
-  getEventsByType: (type) => api.get(`/events/type/${type}`),
+  getEvent: (id, cancelToken = null) =>
+    retryRequest(async () =>
+      api.get(`/events/${id}`, {
+        ...(cancelToken && { cancelToken: cancelToken.token }),
+      })
+    ),
+
+  getEventsByType: (type, cancelToken = null) =>
+    retryRequest(async () =>
+      api.get(`/events/type/${type}`, {
+        ...(cancelToken && { cancelToken: cancelToken.token }),
+      })
+    ),
+
   createEvent: (eventData) => api.post("/events", eventData),
   updateEvent: (id, eventData) => api.put(`/events/${id}`, eventData),
-  updateEventStatus: (id, status, message = null) => api.put(`/events/${id}/status`, message ? { status, message } : { status }),
+  updateEventStatus: (id, status, message = null) =>
+    api.put(`/events/${id}/status`, message ? { status, message } : { status }),
   deleteEvent: (id) => api.delete(`/events/${id}`),
 };
 
@@ -161,11 +239,22 @@ export const registrationAPI = {
 
   getMyRegistrations: (params = {}) => {
     const queryParams = new URLSearchParams(params).toString();
-    return api.get(`/registrations/my${queryParams ? `?${queryParams}` : ""}`);
+    return retryRequest(async () => {
+      return api.get(
+        `/registrations/my${queryParams ? `?${queryParams}` : ""}`,
+        {
+          ...(cancelToken && { cancelToken: cancelToken.token }),
+        }
+      );
+    });
   },
 
-  getEventRegistrations: (eventId) =>
-    api.get(`/registrations/event/${eventId}`),
+  getEventRegistrations: (eventId, cancelToken = null) =>
+    retryRequest(async () =>
+      api.get(`/registrations/event/${eventId}`, {
+        ...(cancelToken && { cancelToken: cancelToken.token }),
+      })
+    ),
 
   cancelRegistration: (registrationId) =>
     api.delete(`/registrations/${registrationId}`),
@@ -226,6 +315,13 @@ export const gymAPI = {
 
   register: (sessionId, data) =>
     api.post(`/gym/sessions/${sessionId}/register`, data),
+
+  // Admin / Events Office: create a new gym session
+  createSession: (sessionData) => api.post(`/gym/sessions`, sessionData),
+
+  // Admin / Events Office: update existing gym session
+  updateSession: (id, sessionData) =>
+    api.put(`/gym/sessions/${id}`, sessionData),
 
   getMyRegistrations: (params = {}) => {
     const queryString = new URLSearchParams(params).toString();

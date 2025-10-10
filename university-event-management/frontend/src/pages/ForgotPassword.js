@@ -175,7 +175,7 @@ const ForgotPassword = () => {
 
           <div style={linkStyles}>
             Remember your password?{" "}
-            <Link to="/login" style={linkAnchorStyles}>
+            <Link to="/" style={linkAnchorStyles}>
               Back to Login
             </Link>
           </div>
@@ -217,7 +217,7 @@ const ForgotPassword = () => {
 
           <div style={linkStyles}>
             Remember your password?{" "}
-            <Link to="/login" style={linkAnchorStyles}>
+            <Link to="/" style={linkAnchorStyles}>
               Back to Login
             </Link>
           </div>

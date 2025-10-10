@@ -1,28 +1,38 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Navbar from '../components/Navbar';
 
-// A simplified theme object inspired by the reference code and image.
+// --- Configuration ---
+const API_URL = 'http://localhost:5000/api/workshops';
+
+// A simplified theme object (Ensured to be complete)
 const theme = {
   colors: {
-    primary: '#6A5ACD', // A shade of purple from the welcome card
-    primaryDark: '#5A4BAD', // A slightly darker purple for hover
+    primary: '#4f46e5', // Indigo-600
+    primaryDark: '#3e38c2', // Darker indigo
     background: {
-      default: '#F8F9FA', // Light grey background
+      default: '#f9fafb',
       card: '#FFFFFF',
     },
     text: {
-      primary: '#212529',
+      primary: '#111827',
       secondary: '#6C757D',
       white: '#FFFFFF',
+      danger: '#dc3545',
+      placeholder: '#9ca3af',
     },
-    border: '#DEE2E6',
-    inputFocus: '#80bdff',
+    border: '#e5e7eb',
+    inputFocus: '#a5b4fc',
   },
   spacing: {
+    1: '0.25rem',
     2: '0.5rem',
     3: '0.75rem',
     4: '1rem',
     5: '1.25rem',
     6: '1.5rem',
+    8: '2rem',
+    10: '2.5rem',
   },
   typography: {
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
@@ -42,12 +52,174 @@ const theme = {
   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
 };
 
+// --- Custom Input Components ---
+const InputBaseStyles = {
+  padding: theme.spacing[3],
+  border: `1px solid ${theme.colors.border}`,
+  borderRadius: theme.borderRadius,
+  fontSize: theme.typography.fontSize.base,
+  color: theme.colors.text.primary,
+  transition: 'border-color 0.2s, box-shadow 0.2s',
+  width: '100%',
+  boxSizing: 'border-box',
+  fontFamily: theme.typography.fontFamily,
+};
 
-/**
- * A React component for creating a new workshop, styled to match the
- * Campus Events Hub design.
- */
+const FocusStyles = {
+  borderColor: theme.colors.primary,
+  boxShadow: `0 0 0 3px ${theme.colors.inputFocus}90`,
+  outline: 'none',
+};
+
+const Input = ({ type = 'text', style, ...props }) => {
+  const [isFocused, setIsFocused] = useState(false);
+  return (
+    <input
+      type={type}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      style={{
+        ...InputBaseStyles,
+        ...style,
+        ...(isFocused ? FocusStyles : {}),
+      }}
+      {...props}
+    />
+  );
+};
+
+const Textarea = ({ style, rows = 3, ...props }) => {
+  const [isFocused, setIsFocused] = useState(false);
+  return (
+    <textarea
+      rows={rows}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      style={{
+        ...InputBaseStyles,
+        resize: 'vertical',
+        ...style,
+        ...(isFocused ? FocusStyles : {}),
+      }}
+      {...props}
+    />
+  );
+};
+
+const Select = ({ style, ...props }) => {
+  const [isFocused, setIsFocused] = useState(false);
+  return (
+    <select
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      style={{
+        ...InputBaseStyles,
+        ...style,
+        WebkitAppearance: 'none',
+        MozAppearance: 'none',
+        appearance: 'none',
+        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: `right ${theme.spacing[3]} center`,
+        paddingRight: '2.5rem',
+        ...(isFocused ? FocusStyles : {}),
+      }}
+      {...props}
+    />
+  );
+};
+
+// --- Style Definitions ---
+const pageStyles = {
+  minHeight: '100vh',
+  backgroundColor: theme.colors.background.default,
+  padding: `${theme.spacing[8]} 0`,
+  fontFamily: theme.typography.fontFamily,
+};
+
+const containerStyles = {
+  maxWidth: '60rem',
+  margin: '0 auto',
+  padding: `0 ${theme.spacing[4]}`,
+};
+
+const formContainerStyles = {
+  backgroundColor: theme.colors.background.card,
+  padding: theme.spacing[6],
+  borderRadius: '1rem',
+  boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
+  border: `1px solid ${theme.colors.border}`,
+};
+
+const headerStyles = {
+  fontSize: theme.typography.fontSize['2xl'],
+  fontWeight: theme.typography.fontWeight.bold,
+  color: theme.colors.text.primary,
+  marginBottom: theme.spacing[6],
+  textAlign: 'center',
+};
+
+const formGridStyles = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: theme.spacing[5],
+};
+
+const formGroupStyles = {
+  display: 'flex',
+  flexDirection: 'column',
+};
+
+const labelStyles = {
+  marginBottom: theme.spacing[2],
+  fontSize: '0.95rem',
+  fontWeight: theme.typography.fontWeight.semibold,
+  color: '#374151',
+};
+
+const submitButtonStyles = {
+  marginTop: theme.spacing[6],
+  padding: `${theme.spacing[3]} ${theme.spacing[6]}`,
+  fontSize: theme.typography.fontSize.lg,
+  fontWeight: theme.typography.fontWeight.bold,
+  color: theme.colors.text.white,
+  backgroundColor: theme.colors.primary,
+  borderRadius: '0.75rem',
+  border: 'none',
+  cursor: 'pointer',
+  transition: 'all 0.25s ease',
+  boxShadow: '0 4px 12px rgba(79,70,229,0.25)',
+  width: '100%',
+};
+
+const submitButtonHoverStyles = {
+  backgroundColor: theme.colors.primaryDark,
+  transform: 'translateY(-2px)',
+  boxShadow: '0 6px 14px rgba(79,70,229,0.35)',
+};
+
+const submitButtonDisabledStyles = {
+  opacity: 0.6,
+  cursor: 'not-allowed',
+  transform: 'none',
+  backgroundColor: theme.colors.primary,
+};
+
+const errorStyles = {
+  backgroundColor: '#fef2f2',
+  color: theme.colors.text.danger,
+  padding: theme.spacing[3],
+  borderRadius: theme.borderRadius,
+  marginBottom: theme.spacing[4],
+  border: `1px solid ${theme.colors.text.danger}`,
+  fontWeight: theme.typography.fontWeight.semibold,
+  fontSize: '0.95rem',
+};
+// --- END Style Definitions ---
+
 const CreateWorkshop = () => {
+  const navigate = useNavigate();
+
   const [workshopData, setWorkshopData] = useState({
     workshopName: '',
     location: 'GUC Cairo',
@@ -61,220 +233,362 @@ const CreateWorkshop = () => {
     fundingSource: 'GUC',
     extraResources: '',
     capacity: '',
-    registrationDeadline: ''
+    registrationDeadline: '',
   });
 
-  // State to track if the submit button is being hovered over
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState(null);
+  const [validationError, setValidationError] = useState('');
   const [isButtonHovered, setIsButtonHovered] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setWorkshopData(prevState => ({
+    setWorkshopData((prevState) => ({
       ...prevState,
-      [name]: value
+      [name]: value,
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Workshop Data Submitted:', workshopData);
-    alert('Workshop created successfully! Check the console for the form data.');
-    // Reset form after submission
-    setWorkshopData({
-        workshopName: '', location: 'GUC Cairo', startDate: '', endDate: '',
-        shortDescription: '', fullAgenda: '', facultyResponsible: 'MET',
-        professors: '', requiredBudget: '', fundingSource: 'GUC',
-        extraResources: '', capacity: '', registrationDeadline: ''
-    });
-  };
+    setSubmissionError(null);
+    setValidationError('');
+    setIsSubmitting(true);
 
-  // --- Style Objects ---
+    // Validation: registrationDeadline must be <= startDate
+    const startDate = new Date(workshopData.startDate);
+    const regDeadline = new Date(workshopData.registrationDeadline);
+    if (regDeadline > startDate) {
+      setValidationError('Registration deadline must be on or before the start date.');
+      setIsSubmitting(false);
+      return;
+    }
 
-  const pageStyles = {
-    backgroundColor: theme.colors.background.default,
-    fontFamily: theme.typography.fontFamily,
-    color: theme.colors.text.primary,
-    minHeight: '100vh',
-    padding: theme.spacing[6],
-  };
+    // Validation: endDate must be after startDate
+    const endDate = new Date(workshopData.endDate);
+    if (endDate <= startDate) {
+      setValidationError('End date must be after start date.');
+      setIsSubmitting(false);
+      return;
+    }
 
-  const containerStyles = {
-    maxWidth: '800px',
-    margin: '0 auto',
-  };
+    // You can add more required field checks here if needed
 
-  const formContainerStyles = {
-    backgroundColor: theme.colors.background.card,
-    borderRadius: theme.borderRadius,
-    boxShadow: theme.boxShadow,
-    padding: theme.spacing[6],
-  };
+    const professorsArray = workshopData.professors
+      .split(',')
+      .map((name) => name.trim())
+      .filter((name) => name.length > 0);
 
-  const headerStyles = {
-    fontSize: theme.typography.fontSize['2xl'],
-    fontWeight: theme.typography.fontWeight.bold,
-    marginBottom: theme.spacing[6],
-    textAlign: 'center',
-  };
+    const payload = {
+      workshopName: workshopData.workshopName,
+      shortDescription: workshopData.shortDescription,
+      fullAgenda: workshopData.fullAgenda,
+      location: workshopData.location,
+      startDate: workshopData.startDate,
+      endDate: workshopData.endDate,
+      facultyResponsible: workshopData.facultyResponsible,
+      professorsParticipating: professorsArray,
+      capacity: Number(workshopData.capacity),
+      registrationDeadline: workshopData.registrationDeadline,
+      requiredBudget: Number(workshopData.requiredBudget),
+      fundingSource: workshopData.fundingSource,
+      extraRequiredResources: workshopData.extraResources,
+    };
 
-  const formGridStyles = {
-    display: 'grid',
-    gridTemplateColumns: '1fr',
-    gap: theme.spacing[5],
-  };
-  
-  const formGroupStyles = {
-    display: 'flex',
-    flexDirection: 'column',
-  };
-  
-  const labelStyles = {
-    display: 'block',
-    marginBottom: theme.spacing[2],
-    fontWeight: theme.typography.fontWeight.semibold,
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.text.secondary,
-  };
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
 
-  const inputStyles = {
-    width: '100%',
-    padding: theme.spacing[3],
-    fontSize: theme.typography.fontSize.base,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius,
-    boxSizing: 'border-box',
-    transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-  };
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `Server responded with status ${response.status}.`;
 
-  const submitButtonStyles = {
-    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-    backgroundColor: theme.colors.primary,
-    color: theme.colors.text.white,
-    border: 'none',
-    borderRadius: theme.borderRadius,
-    cursor: 'pointer',
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.semibold,
-    marginTop: theme.spacing[4],
-    boxShadow: theme.boxShadow,
-    // Smooth transition for all properties
-    transition: 'transform 0.2s ease-in-out, background-color 0.2s ease, box-shadow 0.2s ease',
-  };
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (e) {
+          errorMessage = errorText;
+        }
 
-  // Additional styles to apply on hover
-  const submitButtonHoverStyles = {
-    transform: 'translateY(-3px)',
-    boxShadow: '0 6px 12px -2px rgba(0, 0, 0, 0.15), 0 4px 8px -2px rgba(0, 0, 0, 0.1)',
-    backgroundColor: theme.colors.primaryDark,
-  };
+        throw new Error(errorMessage);
+      }
 
+      alert('✅ Workshop created successfully and saved to the database!');
+      navigate('/workshops');
+    } catch (error) {
+      console.error('Submission Error:', error.message);
+      setSubmissionError(`Error submitting workshop: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
-    <div style={pageStyles}>
-      <div style={containerStyles}>
-        <h1 style={headerStyles}>Create New Workshop</h1>
-        <div style={formContainerStyles}>
-          <form onSubmit={handleSubmit} style={formGridStyles}>
-            
-            <div style={formGroupStyles}>
-              <label htmlFor="workshopName" style={labelStyles}>Workshop Name</label>
-              <input type="text" id="workshopName" name="workshopName" value={workshopData.workshopName} onChange={handleChange} required style={inputStyles} />
-            </div>
+    <>
+      <Navbar />
+      <div style={pageStyles}>
+        <div style={containerStyles}>
+          <h1 style={headerStyles}>Create New Workshop</h1>
+          <div style={formContainerStyles}>
+            {submissionError && <div style={errorStyles}>{submissionError}</div>}
+            {validationError && <div style={errorStyles}>{validationError}</div>}
 
-            <div style={formGroupStyles}>
-              <label htmlFor="location" style={labelStyles}>Location</label>
-              <select id="location" name="location" value={workshopData.location} onChange={handleChange} style={inputStyles}>
-                <option value="GUC Cairo">GUC Cairo</option>
-                <option value="GUC Berlin">GUC Berlin</option>
-              </select>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: theme.spacing[4] }}>
-              <div style={formGroupStyles}>
-                <label htmlFor="startDate" style={labelStyles}>Start Date & Time</label>
-                <input type="datetime-local" id="startDate" name="startDate" value={workshopData.startDate} onChange={handleChange} required style={inputStyles} />
-              </div>
-              <div style={formGroupStyles}>
-                <label htmlFor="endDate" style={labelStyles}>End Date & Time</label>
-                <input type="datetime-local" id="endDate" name="endDate" value={workshopData.endDate} onChange={handleChange} required style={inputStyles} />
-              </div>
-            </div>
-
-            <div style={formGroupStyles}>
-              <label htmlFor="shortDescription" style={labelStyles}>Short Description</label>
-              <textarea id="shortDescription" name="shortDescription" value={workshopData.shortDescription} onChange={handleChange} rows="3" style={inputStyles} />
-            </div>
-
-            <div style={formGroupStyles}>
-              <label htmlFor="fullAgenda" style={labelStyles}>Full Agenda</label>
-              <textarea id="fullAgenda" name="fullAgenda" value={workshopData.fullAgenda} onChange={handleChange} rows="5" style={inputStyles} />
-            </div>
-
-            <div style={formGroupStyles}>
-              <label htmlFor="facultyResponsible" style={labelStyles}>Faculty Responsible</label>
-              <select id="facultyResponsible" name="facultyResponsible" value={workshopData.facultyResponsible} onChange={handleChange} style={inputStyles}>
-                <option value="MET">Media Engineering and Technology</option>
-                <option value="IET">Information Engineering and Technology</option>
-                <option value="MGT">Management Technology</option>
-                <option value="PHT">Pharmacy and Biotechnology</option>
-                <option value="LAW">Law and Legal Studies</option>
-                <option value="AET">Applied Sciences and Arts</option>
-              </select>
-            </div>
-
-            <div style={formGroupStyles}>
-              <label htmlFor="professors" style={labelStyles}>Professor(s) Participating</label>
-              <input type="text" id="professors" name="professors" value={workshopData.professors} onChange={handleChange} style={inputStyles} placeholder="e.g., Dr. John Doe, Dr. Jane Smith"/>
-            </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: theme.spacing[4] }}>
-              <div style={formGroupStyles}>
-                <label htmlFor="requiredBudget" style={labelStyles}>Required Budget ($)</label>
-                <input type="number" id="requiredBudget" name="requiredBudget" value={workshopData.requiredBudget} onChange={handleChange} min="0" style={inputStyles} />
-              </div>
-              <div style={formGroupStyles}>
-                <label htmlFor="fundingSource" style={labelStyles}>Funding Source</label>
-                <select id="fundingSource" name="fundingSource" value={workshopData.fundingSource} onChange={handleChange} style={inputStyles}>
-                  <option value="GUC">GUC</option>
-                  <option value="external">External</option>
-                </select>
-              </div>
-            </div>
-
-            <div style={formGroupStyles}>
-              <label htmlFor="extraResources" style={labelStyles}>Extra Required Resources</label>
-              <textarea id="extraResources" name="extraResources" value={workshopData.extraResources} onChange={handleChange} rows="3" style={inputStyles} placeholder="e.g., Projectors, specific software, lab access"/>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: theme.spacing[4] }}>
+            <form onSubmit={handleSubmit} style={formGridStyles}>
+              {/* Basic Info */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                  gap: theme.spacing[4],
+                }}
+              >
                 <div style={formGroupStyles}>
-                  <label htmlFor="capacity" style={labelStyles}>Capacity</label>
-                  <input type="number" id="capacity" name="capacity" value={workshopData.capacity} onChange={handleChange} min="1" style={inputStyles} />
+                  <label htmlFor="workshopName" style={labelStyles}>
+                    Workshop Name
+                  </label>
+                  <Input
+                    id="workshopName"
+                    name="workshopName"
+                    value={workshopData.workshopName}
+                    onChange={handleChange}
+                    required
+                  />
                 </div>
                 <div style={formGroupStyles}>
-                  <label htmlFor="registrationDeadline" style={labelStyles}>Registration Deadline</label>
-                  <input type="date" id="registrationDeadline" name="registrationDeadline" value={workshopData.registrationDeadline} onChange={handleChange} required style={inputStyles} />
+                  <label htmlFor="location" style={labelStyles}>
+                    Location
+                  </label>
+                  <Select
+                    id="location"
+                    name="location"
+                    value={workshopData.location}
+                    onChange={handleChange}
+                  >
+                    <option value="GUC Cairo">GUC Cairo</option>
+                    <option value="GUC Berlin">GUC Berlin</option>
+                  </Select>
                 </div>
-            </div>
+              </div>
 
-            <button 
-              type="submit" 
-              style={{
-                ...submitButtonStyles,
-                // Apply hover styles conditionally
-                ...(isButtonHovered ? submitButtonHoverStyles : {})
-              }}
-              // Set hover state to true on mouse enter
-              onMouseEnter={() => setIsButtonHovered(true)}
-              // Set hover state to false on mouse leave
-              onMouseLeave={() => setIsButtonHovered(false)}
-            >
-              Create Workshop
-            </button>
-          </form>
+              {/* Date/Time */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                  gap: theme.spacing[4],
+                }}
+              >
+                <div style={formGroupStyles}>
+                  <label htmlFor="startDate" style={labelStyles}>
+                    Start Date & Time
+                  </label>
+                  <Input
+                    type="datetime-local"
+                    id="startDate"
+                    name="startDate"
+                    value={workshopData.startDate}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div style={formGroupStyles}>
+                  <label htmlFor="endDate" style={labelStyles}>
+                    End Date & Time
+                  </label>
+                  <Input
+                    type="datetime-local"
+                    id="endDate"
+                    name="endDate"
+                    value={workshopData.endDate}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Descriptions */}
+              <div style={formGroupStyles}>
+                <label htmlFor="shortDescription" style={labelStyles}>
+                  Short Description
+                </label>
+                <Textarea
+                  id="shortDescription"
+                  name="shortDescription"
+                  value={workshopData.shortDescription}
+                  onChange={handleChange}
+                  rows="3"
+                />
+              </div>
+
+              <div style={formGroupStyles}>
+                <label htmlFor="fullAgenda" style={labelStyles}>
+                  Full Agenda
+                </label>
+                <Textarea
+                  id="fullAgenda"
+                  name="fullAgenda"
+                  value={workshopData.fullAgenda}
+                  onChange={handleChange}
+                  rows="5"
+                />
+              </div>
+
+              {/* Faculty/Professors */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                  gap: theme.spacing[4],
+                }}
+              >
+                <div style={formGroupStyles}>
+                  <label htmlFor="facultyResponsible" style={labelStyles}>
+                    Faculty Responsible
+                  </label>
+                  <Select
+                    id="facultyResponsible"
+                    name="facultyResponsible"
+                    value={workshopData.facultyResponsible}
+                    onChange={handleChange}
+                  >
+                    <option value="MET">MET</option>
+                    <option value="IET">IET</option>
+                    <option value="MGT">MGT</option>
+                    <option value="PHAR">PHAR</option>
+                    <option value="ARCH">ARCH</option>
+                    <option value="ART">ART</option>
+                    <option value="Other">Other</option>
+                  </Select>
+                </div>
+                <div style={formGroupStyles}>
+                  <label htmlFor="professors" style={labelStyles}>
+                    Professor(s) Participating (Comma-separated)
+                  </label>
+                  <Input
+                    id="professors"
+                    name="professors"
+                    value={workshopData.professors}
+                    onChange={handleChange}
+                    placeholder="e.g., Dr. John Doe, Dr. Jane Smith"
+                  />
+                </div>
+              </div>
+
+              {/* Finance */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                  gap: theme.spacing[4],
+                }}
+              >
+                <div style={formGroupStyles}>
+                  <label htmlFor="requiredBudget" style={labelStyles}>
+                    Required Budget ($)
+                  </label>
+                  <Input
+                    type="number"
+                    id="requiredBudget"
+                    name="requiredBudget"
+                    value={workshopData.requiredBudget}
+                    onChange={handleChange}
+                    min="0"
+                  />
+                </div>
+                <div style={formGroupStyles}>
+                  <label htmlFor="fundingSource" style={labelStyles}>
+                    Funding Source
+                  </label>
+                  <Select
+                    id="fundingSource"
+                    name="fundingSource"
+                    value={workshopData.fundingSource}
+                    onChange={handleChange}
+                  >
+                    <option value="GUC">GUC</option>
+                    <option value="External">External</option>
+                    <option value="Joint">Joint</option>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Resources & Deadline */}
+              <div style={formGroupStyles}>
+                <label htmlFor="extraResources" style={labelStyles}>
+                  Extra Required Resources
+                </label>
+                <Textarea
+                  id="extraResources"
+                  name="extraResources"
+                  value={workshopData.extraResources}
+                  onChange={handleChange}
+                  rows="3"
+                  placeholder="e.g., Projectors, specific software, lab access"
+                />
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                  gap: theme.spacing[4],
+                }}
+              >
+                <div style={formGroupStyles}>
+                  <label htmlFor="capacity" style={labelStyles}>
+                    Capacity
+                  </label>
+                  <Input
+                    type="number"
+                    id="capacity"
+                    name="capacity"
+                    value={workshopData.capacity}
+                    onChange={handleChange}
+                    min="1"
+                  />
+                </div>
+                <div style={formGroupStyles}>
+                  <label htmlFor="registrationDeadline" style={labelStyles}>
+                    Registration Deadline
+                  </label>
+                  <Input
+                    type="date"
+                    id="registrationDeadline"
+                    name="registrationDeadline"
+                    value={workshopData.registrationDeadline}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                style={{
+                  ...submitButtonStyles,
+                  ...(isSubmitting
+                    ? submitButtonDisabledStyles
+                    : isButtonHovered
+                    ? submitButtonHoverStyles
+                    : {}),
+                }}
+                onMouseEnter={() => setIsButtonHovered(true)}
+                onMouseLeave={() => setIsButtonHovered(false)}
+              >
+                {isSubmitting ? 'Submitting...' : 'Create Workshop'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

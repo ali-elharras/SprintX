@@ -18,6 +18,8 @@ const registrationRoutes = require("./routes/registrations");
 const courtRoutes = require("./routes/courts");
 const gymRoutes = require("./routes/gym");
 const conferenceRoutes = require("./routes/conference.js");
+const bazaarRoutes = require("./routes/bazaar");
+const workshopRoutes = require("./routes/workshop");
 
 const app = express();
 
@@ -68,6 +70,8 @@ app.use("/api/registrations", registrationRoutes);
 app.use("/api/courts", courtRoutes);
 app.use("/api/gym", gymRoutes);
 app.use("/api/conferences", conferenceRoutes);
+app.use("/api/bazaars", bazaarRoutes);
+app.use("/api/workshops", workshopRoutes); 
 
 // ===== Health Check =====
 app.get("/api/health", (req, res) => {
