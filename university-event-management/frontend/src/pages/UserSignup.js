@@ -156,7 +156,7 @@ const UserSignup = () => {
   const watchedEmail = watch("email") || "";
   const detectedRole = getRoleFromEmail(watchedEmail);
 
-  const yearOptions = Array.from({ length: 10 }, (_, i) => ({
+  const yearOptions = Array.from({ length: 5 }, (_, i) => ({
     value: i + 1,
     label: `Year ${i + 1}`,
   }));

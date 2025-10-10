@@ -8,9 +8,13 @@ export const createCancelTokenSource = () => axios.CancelToken.source();
 // ============================================
 // RETRY LOGIC UTILITY
 // ============================================
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export const retryRequest = async (requestFn, maxRetries = 3, baseDelay = 1000) => {
+export const retryRequest = async (
+  requestFn,
+  maxRetries = 3,
+  baseDelay = 1000
+) => {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await requestFn();
@@ -33,8 +37,12 @@ export const retryRequest = async (requestFn, maxRetries = 3, baseDelay = 1000) 
       // Wait before retrying with exponential backoff
       const delay = baseDelay * Math.pow(2, attempt - 1);
       await sleep(delay);
-      
-      console.log(`Retrying request (attempt ${attempt + 1}/${maxRetries}) after ${delay}ms...`);
+
+      console.log(
+        `Retrying request (attempt ${
+          attempt + 1
+        }/${maxRetries}) after ${delay}ms...`
+      );
     }
   }
 };
@@ -94,10 +102,10 @@ api.interceptors.response.use(
       localStorage.removeItem("userType");
 
       if (
-        window.location.pathname !== "/login" &&
+        window.location.pathname !== "/" &&
         window.location.pathname !== "/vendor-login"
       ) {
-        window.location.href = wasVendor ? "/vendor-login" : "/login";
+        window.location.href = wasVendor ? "/vendor-login" : "/";
       }
     }
 
@@ -106,9 +114,11 @@ api.interceptors.response.use(
     if (error.response?.status >= 500) {
       errorMessage = "Server error. Please try again in a moment.";
     } else if (error.response?.status === 429) {
-      errorMessage = "Too many requests. Please wait a moment before trying again.";
+      errorMessage =
+        "Too many requests. Please wait a moment before trying again.";
     } else {
-      errorMessage = error.response?.data?.message || error.message || "An error occurred";
+      errorMessage =
+        error.response?.data?.message || error.message || "An error occurred";
     }
 
     return Promise.reject({
@@ -132,7 +142,7 @@ export const eventServices = {
     try {
       return await retryRequest(async () => {
         const response = await api.get("/events/bazaars/upcoming", {
-          ...(cancelToken && { cancelToken: cancelToken.token })
+          ...(cancelToken && { cancelToken: cancelToken.token }),
         });
         return response.data;
       });
@@ -212,28 +222,29 @@ export const eventAPI = {
     const queryParams = new URLSearchParams(params).toString();
     return retryRequest(async () => {
       return api.get(`/events${queryParams ? `?${queryParams}` : ""}`, {
-        ...(cancelToken && { cancelToken: cancelToken.token })
+        ...(cancelToken && { cancelToken: cancelToken.token }),
       });
     });
   },
 
-  getEvent: (id, cancelToken = null) => 
-    retryRequest(async () => 
-      api.get(`/events/${id}`, { 
-        ...(cancelToken && { cancelToken: cancelToken.token })
+  getEvent: (id, cancelToken = null) =>
+    retryRequest(async () =>
+      api.get(`/events/${id}`, {
+        ...(cancelToken && { cancelToken: cancelToken.token }),
       })
     ),
 
-  getEventsByType: (type, cancelToken = null) => 
-    retryRequest(async () => 
-      api.get(`/events/type/${type}`, { 
-        ...(cancelToken && { cancelToken: cancelToken.token })
+  getEventsByType: (type, cancelToken = null) =>
+    retryRequest(async () =>
+      api.get(`/events/type/${type}`, {
+        ...(cancelToken && { cancelToken: cancelToken.token }),
       })
     ),
 
   createEvent: (eventData) => api.post("/events", eventData),
   updateEvent: (id, eventData) => api.put(`/events/${id}`, eventData),
-  updateEventStatus: (id, status, message = null) => api.put(`/events/${id}/status`, message ? { status, message } : { status }),
+  updateEventStatus: (id, status, message = null) =>
+    api.put(`/events/${id}/status`, message ? { status, message } : { status }),
   deleteEvent: (id) => api.delete(`/events/${id}`),
 };
 
@@ -247,16 +258,19 @@ export const registrationAPI = {
   getMyRegistrations: (params = {}, cancelToken = null) => {
     const queryParams = new URLSearchParams(params).toString();
     return retryRequest(async () => {
-      return api.get(`/registrations/my${queryParams ? `?${queryParams}` : ""}`, {
-        ...(cancelToken && { cancelToken: cancelToken.token })
-      });
+      return api.get(
+        `/registrations/my${queryParams ? `?${queryParams}` : ""}`,
+        {
+          ...(cancelToken && { cancelToken: cancelToken.token }),
+        }
+      );
     });
   },
 
   getEventRegistrations: (eventId, cancelToken = null) =>
     retryRequest(async () =>
-      api.get(`/registrations/event/${eventId}`, { 
-        ...(cancelToken && { cancelToken: cancelToken.token })
+      api.get(`/registrations/event/${eventId}`, {
+        ...(cancelToken && { cancelToken: cancelToken.token }),
       })
     ),
 
@@ -324,7 +338,8 @@ export const gymAPI = {
   createSession: (sessionData) => api.post(`/gym/sessions`, sessionData),
 
   // Admin / Events Office: update existing gym session
-  updateSession: (id, sessionData) => api.put(`/gym/sessions/${id}`, sessionData),
+  updateSession: (id, sessionData) =>
+    api.put(`/gym/sessions/${id}`, sessionData),
 
   getMyRegistrations: (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
