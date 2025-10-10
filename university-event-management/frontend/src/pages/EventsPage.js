@@ -9,6 +9,7 @@ import Navbar from "../components/Navbar";
 import LoadingScreen from "../components/LoadingScreen";
 import api, { eventAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import Modal from "../components/Modal";
 
 const EventsPage = () => {
   const auth = useAuth();
@@ -18,6 +19,10 @@ const EventsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({ type: "", search: "", upcoming: true });
+  
+  // State for confirmation modal
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [workshopToReject, setWorkshopToReject] = useState(null);
 
   // State for creating a new bazaar
   const [createBazaarOpen, setCreateBazaarOpen] = useState(false);
@@ -136,7 +141,7 @@ const EventsPage = () => {
                     <h3 style={{ marginTop: 0 }}>{w.workshopName}</h3>
                     <p style={{ color: theme.colors.text.secondary }}>{w.shortDescription}</p>
                     <p style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.secondary }}>Start: {new Date(w.startDate).toLocaleString()}</p>
-                    <div style={{ marginTop: theme.spacing[4], display: 'flex', justifyContent: 'flex-end' }}>
+                    <div style={{ marginTop: theme.spacing[4], display: 'flex', justifyContent: 'flex-end', gap: theme.spacing[3] }}>
                       <Button variant="primary" onClick={async () => {
                         try {
                           const toastId = toast.loading('Publishing workshop...');
@@ -193,6 +198,19 @@ const EventsPage = () => {
                           toast.error(errorMsg);
                         }
                       }}>Accept and Publish</Button>
+                      <Button 
+                        variant="outline" 
+                        style={{ 
+                          color: theme.colors.status.error, 
+                          borderColor: theme.colors.status.error,
+                          backgroundColor: 'transparent'
+                        }}
+                        onClick={() => {
+                          // Open confirmation modal and set current workshop
+                          setWorkshopToReject(w);
+                          setRejectModalOpen(true);
+                        }}
+                      >Reject</Button>
                     </div>
                   </div>
                 ))}
@@ -231,6 +249,53 @@ const EventsPage = () => {
 
         </div>
       </div>
+
+      {/* Reject Workshop Modal */}
+      {rejectModalOpen && workshopToReject && (
+        <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 20000, display: "flex", justifyContent: "center", alignItems: "center" }} onClick={() => setRejectModalOpen(false)}>
+          <div style={{ width: "500px", maxWidth: "95%", background: theme.colors.background.paper, borderRadius: theme.borderRadius.lg, boxShadow: theme.shadows.lg, padding: theme.spacing[6], animation: "slide-down 0.3s ease-out" }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ marginTop: 0, marginBottom: theme.spacing[4], color: theme.colors.status.error }}>Reject Workshop</h2>
+            <p style={{ marginBottom: theme.spacing[4], fontSize: theme.typography.fontSize.base }}>
+              Are you sure you want to reject <strong>{workshopToReject.workshopName}</strong>? This action cannot be undone.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing[3], marginTop: theme.spacing[5] }}>
+              <Button variant="outline" onClick={() => {
+                setRejectModalOpen(false);
+                setWorkshopToReject(null);
+              }}>Cancel</Button>
+              <Button 
+                variant="primary" 
+                style={{ 
+                  backgroundColor: theme.colors.status.error, 
+                  borderColor: theme.colors.status.error 
+                }}
+                onClick={async () => {
+                  try {
+                    const toastId = toast.loading('Rejecting workshop...');
+                    // Delete the workshop from database
+                    await api.delete(`/workshops/${workshopToReject._id}`);
+                    
+                    toast.dismiss(toastId);
+                    toast.success('Workshop rejected and removed.');
+                    
+                    // Remove from UI immediately
+                    setPendingWorkshops((prev) => prev.filter((p) => p._id !== workshopToReject._id));
+                    
+                    // Close modal and reset state
+                    setRejectModalOpen(false);
+                    setWorkshopToReject(null);
+                  } catch (err) {
+                    console.error('Reject error:', err);
+                    toast.error('Failed to reject workshop. Please try again.');
+                  }
+                }}
+              >
+                Confirm Reject
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {createBazaarOpen && (
         <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 20000, display: "flex", justifyContent: "center", paddingTop: theme.spacing[6] }} onClick={() => setCreateBazaarOpen(false)}>
