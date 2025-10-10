@@ -24,7 +24,7 @@ const conferenceSchema = new mongoose.Schema({
         type: Number,
         required: [true, 'Capacity is required'],
         min: [1, 'Capacity must be at least 1']
-    }
+    },
 }, {
     timestamps: true
 });

@@ -1,5 +1,3 @@
-// File: /university-event-management/university-event-management/backend/controllers/conferenceController.js
-
 const Conference = require("../models/Conference.js") ;
 
 // Get a single conference by ID

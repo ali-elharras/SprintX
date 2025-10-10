@@ -104,7 +104,7 @@ const getEvents = async (req, res) => {
             startDate: conf.date,
             endDate: conf.date, // Conferences are single-day
             registrationRequired: true,
-            status: "published" // Assume conferences are always published
+            status: "published",// Assume conferences are always published
           }))
         });
       }
