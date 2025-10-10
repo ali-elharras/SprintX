@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 
 // --- Configuration ---
@@ -219,6 +220,7 @@ const errorStyles = {
 
 const CreateWorkshop = () => {
   const navigate = useNavigate();
+  const { token } = useAuth(); // Get authentication token
 
   const [workshopData, setWorkshopData] = useState({
     workshopName: '',
@@ -300,6 +302,7 @@ const CreateWorkshop = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`, // Add authentication token
         },
         body: JSON.stringify(payload),
       });
@@ -319,6 +322,7 @@ const CreateWorkshop = () => {
       }
 
       alert('✅ Workshop created successfully and saved to the database!');
+      // Navigate to workshops page to see the pending workshop
       navigate('/workshops');
     } catch (error) {
       console.error('Submission Error:', error.message);

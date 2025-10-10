@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import theme, { getRoleColor } from "../theme";
 import Button from "../components/Button";
+import NotificationCenter from "../components/NotificationCenter";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -556,6 +557,13 @@ const Navbar = () => {
 
       {/* Account Section */}
       <div style={accountSectionStyles}>
+        {/* Notification Center for Professors/Staff */}
+        {(user?.role === 'professor' || user?.role === 'staff') && (
+          <div style={{ marginRight: theme.spacing[4] }}>
+            <NotificationCenter />
+          </div>
+        )}
+        
         <div style={userInfoStyles}>
           {/* Avatar */}
           <div style={avatarStyles}>

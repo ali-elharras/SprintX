@@ -105,6 +105,12 @@ workshopSchema.add({
   publishedEventId: {
     type: String,
   },
+  // Reference to the professor who created this workshop
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: false, // Optional for backwards compatibility
+  },
   // Edit requests from Events Office to professors
   editRequests: {
     type: [

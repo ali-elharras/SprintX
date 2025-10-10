@@ -19,6 +19,7 @@ const courtRoutes = require("./routes/courts");
 const gymRoutes = require("./routes/gym");
 const bazaarRoutes = require("./routes/bazaar");
 const workshopRoutes = require("./routes/workshop");
+const notificationRoutes = require("./routes/notifications");
 
 
 const app = express();
@@ -73,6 +74,9 @@ app.use("/api/bazaars", bazaarRoutes);
 
 // Workshop routes (professors create -> saved as pending, Events Office can publish)
 app.use("/api/workshops", workshopRoutes);
+
+// Notification routes (for professors to receive workshop updates)
+app.use("/api/notifications", notificationRoutes);
 
 // Workshop routes removed as feature deprecated
 

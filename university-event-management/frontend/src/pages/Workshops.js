@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import Navbar from '../components/Navbar';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 // --- STYLES as a JavaScript Object (Centralized Styles) ---
 const themeColors = {
@@ -107,6 +108,54 @@ const FacultyBadge = ({ faculty }) => {
     );
 };
 
+// Status Badge Component for Workshop Status
+const StatusBadge = ({ status }) => {
+    const getStatusStyle = () => {
+        switch (status) {
+            case 'pending':
+                return { backgroundColor: '#fef3c7', color: '#d97706' }; // Yellow
+            case 'published':
+                return { backgroundColor: '#dcfce7', color: '#16a34a' }; // Green
+            case 'rejected':
+                return { backgroundColor: '#fecaca', color: '#dc2626' }; // Red
+            case 'needs_revision':
+                return { backgroundColor: '#dbeafe', color: '#2563eb' }; // Blue
+            default:
+                return { backgroundColor: '#f3f4f6', color: '#6b7280' }; // Gray
+        }
+    };
+
+    const getStatusLabel = () => {
+        switch (status) {
+            case 'pending':
+                return '⏳ Pending for Approval';
+            case 'published':
+                return '✅ Published';
+            case 'rejected':
+                return '❌ Rejected';
+            case 'needs_revision':
+                return '📝 Needs Revision';
+            default:
+                return status;
+        }
+    };
+
+    const baseStyle = {
+        padding: '0.25rem 0.75rem',
+        fontSize: '0.75rem',
+        fontWeight: 600,
+        borderRadius: '9999px',
+        display: 'inline-block',
+        marginLeft: '0.5rem',
+    };
+
+    return (
+        <span style={{ ...baseStyle, ...getStatusStyle() }}>
+            {getStatusLabel()}
+        </span>
+    );
+};
+
 // Icons (using inline SVG for single-file component) - No change here
 const IconMap = {
     // ... (Your SVG definitions) ...
@@ -167,23 +216,26 @@ const WorkshopCard = ({ workshop, onEdit, onDelete }) => { // Added onDelete pro
     const borderStyle = styleSheet[getBorderClassKey(workshop.facultyResponsible)] || {};
     const uniqueId = workshop._id || workshop.id;
     
+    // Determine if workshop is rejected
+    const isRejected = workshop.status === 'rejected';
+    
     // Base styles for card elements
     const cardBaseStyle = {
-        backgroundColor: 'white',
+        backgroundColor: isRejected ? '#fef2f2' : 'white', // Light red background for rejected
         padding: '1.5rem',
         borderRadius: '1rem',
         // Hover simulation: Change box shadow and scale slightly on hover
         boxShadow: isHovered 
             ? '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
             : '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05)',
-        border: '1px solid #e5e7eb',
+        border: isRejected ? '2px solid #ef4444' : '1px solid #e5e7eb', // Red border for rejected
         transition: 'box-shadow 0.3s, transform 0.3s',
         transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
         display: 'flex',
         flexDirection: 'column',
-        borderTopWidth: '6px', 
+        borderTopWidth: isRejected ? '6px' : '6px', 
         borderTopStyle: 'solid',
-        borderTopColor: '#9ca3af',
+        borderTopColor: isRejected ? '#dc2626' : '#9ca3af', // Dark red top border for rejected
         cursor: 'default'
     };
 
@@ -193,19 +245,60 @@ const WorkshopCard = ({ workshop, onEdit, onDelete }) => { // Added onDelete pro
 
     return (
         <div 
-            style={{ ...cardBaseStyle, ...borderStyle }}
+            style={{ 
+                ...cardBaseStyle, 
+                // Only apply faculty borderStyle if not rejected
+                ...(isRejected ? {} : borderStyle)
+            }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: themeColors.gray900, lineHeight: 1.4 }}>
-                    {workshop.workshopName}
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: themeColors.gray900, lineHeight: 1.4, marginRight: '0.5rem' }}>
+                        {workshop.workshopName}
+                    </h3>
+                    {workshop.status && <StatusBadge status={workshop.status} />}
+                </div>
                 <FacultyBadge faculty={workshop.facultyResponsible} />
             </div>
             <p style={{ fontSize: '0.875rem', color: '#4b5563', marginBottom: '1rem' }}>
                 {workshop.shortDescription}
             </p>
+            
+            {/* Edit Requests Section - Only show if there are edit requests */}
+            {workshop.editRequests && workshop.editRequests.length > 0 && workshop.status === 'needs_revision' && (
+                <div style={{ 
+                    backgroundColor: '#fef3c7', 
+                    border: '1px solid #fbbf24', 
+                    borderRadius: '0.5rem', 
+                    padding: '0.75rem', 
+                    marginBottom: '1rem' 
+                }}>
+                    <h4 style={{ 
+                        fontSize: '0.875rem', 
+                        fontWeight: 600, 
+                        color: '#92400e', 
+                        marginBottom: '0.5rem',
+                        display: 'flex',
+                        alignItems: 'center'
+                    }}>
+                        ✏️ Edit Request
+                    </h4>
+                    {workshop.editRequests.map((editReq, index) => (
+                        <div key={index} style={{ marginBottom: index < workshop.editRequests.length - 1 ? '0.5rem' : 0 }}>
+                            <p style={{ fontSize: '0.875rem', color: '#78350f', marginBottom: '0.25rem' }}>
+                                <strong>Message:</strong> {editReq.message}
+                            </p>
+                            {editReq.requestedBy && editReq.requestedBy.name && (
+                                <p style={{ fontSize: '0.75rem', color: '#92400e' }}>
+                                    Requested by: {editReq.requestedBy.name}
+                                </p>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
             
             <div style={{ flexGrow: 1 }}> 
                 
@@ -593,16 +686,26 @@ const Workshops = () => {
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [editingWorkshop, setEditingWorkshop] = useState(null);
     const navigate = useNavigate();
+    const { token, user } = useAuth(); // Get auth token and user info
 
     // Use environment variable or constant for API URL
     const API_URL = 'http://localhost:5000/api/workshops'; 
     
-    // --- Data Fetching Logic (Unchanged) ---
+    // --- Data Fetching Logic with Authentication ---
     const fetchWorkshops = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await fetch(API_URL);
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            
+            // Add authentication token if available
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            const response = await fetch(API_URL, { headers });
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
@@ -615,7 +718,7 @@ const Workshops = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [API_URL]);
+    }, [API_URL, token]);
 
     useEffect(() => {
         fetchWorkshops();
@@ -636,12 +739,32 @@ const Workshops = () => {
         setIsLoading(true);
         setError(null);
         try {
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            // If workshop is being resubmitted after edit request, change status to pending
+            const updatedFields = { ...changedFields };
+            if (editingWorkshop.status === 'needs_revision') {
+                updatedFields.status = 'pending';
+            }
+            
             const response = await fetch(`${API_URL}/${editingWorkshop._id}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(changedFields),
+                headers,
+                body: JSON.stringify(updatedFields),
             });
             if (!response.ok) throw new Error('Failed to update workshop');
+            
+            // Show success message for resubmission
+            if (editingWorkshop.status === 'needs_revision') {
+                alert('✅ Workshop resubmitted successfully! It is now pending approval from the Events Office.');
+            }
+            
             setEditModalOpen(false);
             setEditingWorkshop(null);
             fetchWorkshops();
@@ -663,13 +786,23 @@ const Workshops = () => {
         setIsLoading(true); // Can show loading state, but often deletion is quick
 
         try {
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
             const response = await fetch(`${API_URL}/${id}`, {
                 method: 'DELETE',
+                headers,
             });
 
             if (!response.ok) {
                 throw new Error(`Failed to delete workshop: ${response.statusText}`);
             }
+
+            // Notify other tabs/windows about the deletion via localStorage
+            // This will trigger the EventsPage to refresh and remove the deleted workshop
+            localStorage.setItem('workshop_deleted', Date.now().toString());
 
             // On successful deletion, refetch the list to update the UI
             fetchWorkshops(); 
@@ -680,7 +813,7 @@ const Workshops = () => {
             setIsLoading(false); // Stop loading on error
         }
         // Note: fetchWorkshops will set isLoading(false) on success
-    }, [API_URL, fetchWorkshops]); // Dependencies: API_URL and fetchWorkshops
+    }, [API_URL, fetchWorkshops, token]); // Dependencies: API_URL, fetchWorkshops, and token
 
     // --- Filtering Logic (Unchanged) ---
     const filteredWorkshops = useMemo(() => {

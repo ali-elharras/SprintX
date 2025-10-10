@@ -18,11 +18,13 @@ const EventsPage = () => {
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filters, setFilters] = useState({ type: "", search: "", upcoming: true });
+  // Changed upcoming: false by default to show all published events (users can toggle to upcoming only)
+  const [filters, setFilters] = useState({ type: "", search: "", upcoming: false });
   
   // State for confirmation modal
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [workshopToReject, setWorkshopToReject] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
   
   // State for edit request modal
   const [editRequestModalOpen, setEditRequestModalOpen] = useState(false);
@@ -46,7 +48,8 @@ const EventsPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await eventAPI.getEvents({ status: "published", upcoming: "true" });
+      // Removed upcoming: "true" filter to show all published events including workshops with any date
+      const response = await eventAPI.getEvents({ status: "published" });
       setEvents(response.data?.data || []);
 
       // If current user is Events Office, also fetch pending and needs_revision workshops
@@ -79,6 +82,30 @@ const EventsPage = () => {
 
   useEffect(() => {
     fetchEvents();
+    
+    // Refresh events when window gains focus (user returns to tab/window)
+    // This ensures deleted workshops are removed from Events tab even if deleted from another tab
+    const handleFocus = () => {
+      fetchEvents();
+    };
+    
+    // Listen for workshop deletion events from other tabs via localStorage
+    const handleStorageChange = (e) => {
+      if (e.key === 'workshop_deleted' && e.newValue) {
+        console.log('Workshop deleted in another tab, refreshing events...');
+        fetchEvents();
+        // Clear the flag
+        localStorage.removeItem('workshop_deleted');
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -176,9 +203,28 @@ const EventsPage = () => {
                     padding: theme.spacing[4], 
                     borderRadius: theme.borderRadius.lg, 
                     boxShadow: theme.shadows.md,
-                    position: 'relative'
+                    position: 'relative',
+                    // Add blue border for pending status, orange for needs revision
+                    border: `3px solid ${w.status === 'needs_revision' ? theme.colors.warning.main : theme.colors.primary.light}`,
+                    // Optional: Add subtle blue background tint for pending workshops
+                    backgroundColor: w.status === 'pending' ? `${theme.colors.primary.light}08` : theme.colors.background.paper
                   }}>
-                    {/* Status badge */}
+                    {/* Status badges */}
+                    {w.status === 'pending' && (
+                      <div style={{
+                        position: 'absolute',
+                        top: theme.spacing[2],
+                        right: theme.spacing[2],
+                        backgroundColor: theme.colors.primary.light,
+                        color: '#ffffff',
+                        fontSize: theme.typography.fontSize.xs,
+                        fontWeight: theme.typography.fontWeight.medium,
+                        padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+                        borderRadius: theme.borderRadius.full,
+                      }}>
+                        Pending Approval
+                      </div>
+                    )}
                     {w.status === 'needs_revision' && (
                       <div style={{
                         position: 'absolute',
@@ -333,7 +379,7 @@ const EventsPage = () => {
               <div style={{ fontSize: theme.typography.fontSize["4xl"], marginBottom: theme.spacing[4] }}>📅</div>
               <h3 style={{ fontSize: theme.typography.fontSize.xl, fontWeight: theme.typography.fontWeight.semibold, color: theme.colors.text.primary, marginBottom: theme.spacing[2] }}>No Events Found</h3>
               <p style={{ fontSize: theme.typography.fontSize.base, color: theme.colors.text.secondary, marginBottom: theme.spacing[4] }}>{filters.search || filters.type ? "Try adjusting your filters to see more events." : "There are no upcoming events at the moment."}</p>
-              <Button variant="outline" onClick={() => setFilters({ type: "", search: "", upcoming: true })}>Clear Filters</Button>
+              <Button variant="outline" onClick={() => setFilters({ type: "", search: "", upcoming: false })}>Clear Filters</Button>
             </div>
           )}
 
@@ -460,12 +506,28 @@ const EventsPage = () => {
           <div style={{ width: "500px", maxWidth: "95%", background: theme.colors.background.paper, borderRadius: theme.borderRadius.lg, boxShadow: theme.shadows.lg, padding: theme.spacing[6], animation: "slide-down 0.3s ease-out" }} onClick={(e) => e.stopPropagation()}>
             <h2 style={{ marginTop: 0, marginBottom: theme.spacing[4], color: theme.colors.status.error }}>Reject Workshop</h2>
             <p style={{ marginBottom: theme.spacing[4], fontSize: theme.typography.fontSize.base }}>
-              Are you sure you want to reject <strong>{workshopToReject.workshopName}</strong>? This action cannot be undone.
+              Are you sure you want to reject <strong>{workshopToReject.workshopName}</strong>? The professor will be notified.
             </p>
+            <textarea
+              placeholder="Optional: Provide a reason for rejection..."
+              style={{
+                width: '100%',
+                minHeight: '100px',
+                padding: theme.spacing[3],
+                border: `2px solid ${theme.colors.border.main}`,
+                borderRadius: theme.borderRadius.base,
+                fontSize: theme.typography.fontSize.base,
+                fontFamily: theme.typography.fontFamily.primary,
+                resize: 'vertical',
+                marginBottom: theme.spacing[4]
+              }}
+              onChange={(e) => setRejectReason(e.target.value)}
+            />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing[3], marginTop: theme.spacing[5] }}>
               <Button variant="outline" onClick={() => {
                 setRejectModalOpen(false);
                 setWorkshopToReject(null);
+                setRejectReason('');
               }}>Cancel</Button>
               <Button 
                 variant="primary" 
@@ -476,11 +538,14 @@ const EventsPage = () => {
                 onClick={async () => {
                   try {
                     const toastId = toast.loading('Rejecting workshop...');
-                    // Delete the workshop from database
-                    await api.delete(`/workshops/${workshopToReject._id}`);
+                    
+                    // Use reject endpoint instead of delete
+                    await api.post(`/workshops/${workshopToReject._id}/reject`, {
+                      reason: rejectReason || undefined
+                    });
                     
                     toast.dismiss(toastId);
-                    toast.success('Workshop rejected and removed.');
+                    toast.success('Workshop rejected. Professor has been notified.');
                     
                     // Remove from UI immediately
                     setPendingWorkshops((prev) => prev.filter((p) => p._id !== workshopToReject._id));
@@ -488,6 +553,7 @@ const EventsPage = () => {
                     // Close modal and reset state
                     setRejectModalOpen(false);
                     setWorkshopToReject(null);
+                    setRejectReason('');
                   } catch (err) {
                     console.error('Reject error:', err);
                     toast.error('Failed to reject workshop. Please try again.');
