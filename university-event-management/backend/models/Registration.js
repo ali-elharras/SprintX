@@ -44,8 +44,8 @@ const registrationSchema = new mongoose.Schema(
       required: [true, "University/Staff ID is required"],
       trim: true,
       match: [
-        /^[A-Za-z0-9]+$/,
-        "University/Staff ID can only contain letters and numbers",
+        /^[A-Za-z0-9\-]+$/,
+        "University/Staff ID can only contain letters, numbers, and dashes",
       ],
     },
 

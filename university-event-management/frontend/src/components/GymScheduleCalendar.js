@@ -1,8 +1,19 @@
 import React, { useState } from "react";
 import theme from "../theme";
+import { useAuth } from "../context/AuthContext";
+import EditSessionModal from "./EditSessionModal";
+import Modal from "./Modal";
+import { toast } from "react-hot-toast";
+import { gymAPI } from "../services/api";
+import GymSessionDetailsModal from "./GymSessionDetailsModal";
 
-const GymScheduleCalendar = ({ sessions, year, month }) => {
+const GymScheduleCalendar = ({ sessions, year, month, registeredSessionIds = new Set(), onCancelRegistration, getRegistrationForSession, onRegistered }) => {
   const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedSessionModal, setSelectedSessionModal] = useState(null);
+  const [isDetailEditOpen, setIsDetailEditOpen] = useState(false);
+  const [registerTarget, setRegisterTarget] = useState(null);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const auth = useAuth();
 
   const getDaysInMonth = (year, month) => {
     return new Date(year, month, 0).getDate();
@@ -217,19 +228,64 @@ const GymScheduleCalendar = ({ sessions, year, month }) => {
 
   const renderSessionItem = (session, index, maxVisible = 2) => {
     if (index >= maxVisible) return null;
+    return (
+      <SessionTile key={`${session._id}-${index}`} session={session} color={getSessionTypeColor(session.type)} title={`${session.title} - ${formatTime(session.startTime)} with ${session.instructor.name}`} shortTitle={session.title.length > 15 ? session.title.substring(0, 15) + '...' : session.title} />
+    );
+  };
+
+  const SessionTile = ({ session, color, title, shortTitle }) => {
+    const { isAdmin, isEventsOffice } = useAuth();
+    const [isEditOpen, setIsEditOpen] = useState(false);
+    const isRegistered = registeredSessionIds && registeredSessionIds.has && registeredSessionIds.has(session._id);
 
     return (
-      <div
-        key={`${session._id}-${index}`}
-        style={{
-          ...styles.sessionItem,
-          backgroundColor: getSessionTypeColor(session.type),
-        }}
-        title={`${session.title} - ${formatTime(session.startTime)} with ${session.instructor.name}`}
-      >
-        {formatTime(session.startTime)} {session.title.length > 15 ? session.title.substring(0, 15) + '...' : session.title}
+      <div style={{ position: 'relative' }}>
+        <div
+          style={{
+            ...styles.sessionItem,
+            backgroundColor: color,
+          }}
+          title={title}
+          onClick={() => setSelectedSessionModal(session)}
+        >
+          {formatTime(session.startTime)} {shortTitle}
+        </div>
+
+        {(isAdmin || isEventsOffice) && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setIsEditOpen(true); }}
+            title="Edit session"
+            style={{
+              position: 'absolute',
+              top: -6,
+              right: -6,
+              borderRadius: 999,
+              border: 'none',
+              width: 26,
+              height: 26,
+              background: theme.colors.background.default,
+              color: theme.colors.text.primary,
+              cursor: 'pointer',
+              boxShadow: theme.shadows.sm,
+            }}
+          >✎</button>
+        )}
+
+        {isRegistered && (
+          <div style={{ position: 'absolute', bottom: -6, left: -6, backgroundColor: theme.colors.success.dark, color: theme.colors.text.white, padding: '2px 6px', borderRadius: theme.borderRadius.md, fontSize: theme.typography.fontSize.xs }}>
+            ✓
+          </div>
+        )}
+
+        <EditSessionModal session={session} isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} onSaved={() => { /* parent can refetch via prop if needed */ }} />
       </div>
     );
+  };
+
+  // Details modal for selected session (opened by clicking a tile or list row)
+  const handleCloseDetails = () => {
+    setSelectedSessionModal(null);
+    setIsDetailEditOpen(false);
   };
 
   return (
@@ -333,6 +389,24 @@ const GymScheduleCalendar = ({ sessions, year, month }) => {
                         {session.room && ` (${session.room})`} • 
                         {session.maxParticipants - session.currentParticipants} spots available
                       </div>
+                      <div style={{ marginTop: theme.spacing[2], display: 'flex', gap: theme.spacing[2] }}>
+                        <button onClick={() => setSelectedSessionModal(session)} style={{ ...theme.components.button.secondary }}>Details</button>
+                        {(() => {
+                          const alreadyRegistered = registeredSessionIds && registeredSessionIds.has && registeredSessionIds.has(session._id);
+                          return (
+                            <button
+                              onClick={() => { if (!alreadyRegistered) setRegisterTarget(session); }}
+                              style={{
+                                ...theme.components.button.primary,
+                                ...(alreadyRegistered ? { backgroundColor: theme.colors.neutral.gray300, color: theme.colors.text.disabled, cursor: 'not-allowed' } : {}),
+                              }}
+                              disabled={alreadyRegistered}
+                            >
+                              {alreadyRegistered ? 'Registered' : (session.isFull ? 'Join Waitlist' : 'Register')}
+                            </button>
+                          );
+                        })()}
+                      </div>
                     </div>
                   </div>
                 ))
@@ -340,6 +414,43 @@ const GymScheduleCalendar = ({ sessions, year, month }) => {
           </div>
         </div>
       )}
+
+      <GymSessionDetailsModal
+        session={selectedSessionModal}
+        isOpen={!!selectedSessionModal}
+        onClose={handleCloseDetails}
+        onSaved={() => { handleCloseDetails(); /* parent can refetch if needed */ }}
+        isAdminOrEventsOffice={auth.isAdmin || auth.isEventsOffice}
+        onCancelRegistration={onCancelRegistration}
+        getRegistrationForSession={getRegistrationForSession}
+      />
+
+      {/* Register confirmation modal for inline list */}
+      <Modal isOpen={!!registerTarget} onClose={() => setRegisterTarget(null)} ariaLabel={registerTarget ? `Register for ${registerTarget.title}` : 'Register'}>
+        {registerTarget && (
+          <div>
+            <h3 style={styles.selectedDateTitle}>Register for {registerTarget.title}</h3>
+            <p>Do you want to register for the session on {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][registerTarget.dayOfWeek]} at {formatTime(registerTarget.startTime)}?</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: theme.spacing[2] }}>
+              <button onClick={() => setRegisterTarget(null)} style={{ ...theme.components.button.secondary }}>Cancel</button>
+              <button onClick={async () => {
+                try {
+                  setIsRegistering(true);
+                  await gymAPI.register(registerTarget._id, { registrationType: 'regular' });
+                  if (typeof onRegistered === 'function') await onRegistered();
+                  toast.success('Registered successfully');
+                  setRegisterTarget(null);
+                } catch (err) {
+                  console.error('Register failed', err);
+                  toast.error(err.response?.data?.message || 'Registration failed');
+                } finally {
+                  setIsRegistering(false);
+                }
+              }} style={{ ...theme.components.button.primary }} disabled={isRegistering}>{isRegistering ? 'Registering...' : (registerTarget && registerTarget.isFull ? 'Join Waitlist' : 'Register')}</button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

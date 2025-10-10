@@ -3,11 +3,18 @@ import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { gymAPI } from "../services/api";
 import theme from "../theme";
+import Modal from "./Modal";
+import EditSessionModal from "./EditSessionModal";
+import GymSessionDetailsModal from "./GymSessionDetailsModal";
 
-const GymSessionCard = ({ session, onRegister }) => {
-  const { user } = useAuth();
+const GymSessionCard = ({ session, onUpdated, isRegistered = false, registration = null, onRegister }) => {
+  const { user, isAdmin, isEventsOffice } = useAuth();
+  const auth = { isAdmin, isEventsOffice };
   const [isRegistering, setIsRegistering] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
+  // details are handled via modal now
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
 
   const getSessionTypeColor = (type) => {
     const colors = {
@@ -58,12 +65,13 @@ const GymSessionCard = ({ session, onRegister }) => {
 
     try {
       setIsRegistering(true);
-      await gymAPI.register(session._id, {
-        registrationType: "regular",
-      });
-      toast.success("Successfully registered for gym session!");
-      if (onRegister) {
-        onRegister(session._id);
+      await gymAPI.register(session._id, { registrationType: 'regular' });
+      toast.success('Successfully registered for gym session!');
+      if (typeof onRegister === 'function') {
+        await onRegister(session._id);
+      }
+      if (typeof onUpdated === 'function') {
+        await onUpdated(session._id);
       }
     } catch (error) {
       console.error("Registration error:", error);
@@ -294,34 +302,23 @@ const GymSessionCard = ({ session, onRegister }) => {
     return isRegistering ? "Registering..." : "Register";
   };
 
+  // registered state comes from server
+  const effectiveRegistered = Boolean(isRegistered);
+
   return (
     <div style={styles.card}>
       <div style={styles.header}>
-        <div style={styles.typeTag}>
-          {session.type.replace("_", " ")}
-        </div>
+        <div style={styles.typeTag}>{session.type.replace("_", " ")}</div>
+        {effectiveRegistered && (
+          <div style={{ position: 'absolute', top: theme.spacing[3], left: theme.spacing[3], backgroundColor: theme.colors.success.dark, color: theme.colors.text.white, padding: '4px 8px', borderRadius: theme.borderRadius.md, fontSize: theme.typography.fontSize.xs }}>
+            Registered
+          </div>
+        )}
         <h3 style={styles.title}>{session.title}</h3>
-        <p style={styles.instructor}>with {session.instructor.name}</p>
+        <p style={styles.instructor}>with {session.instructor?.name}</p>
       </div>
 
       <div style={styles.body}>
-        <div style={styles.scheduleInfo}>
-          <div style={styles.dayTime}>
-            <div style={styles.day}>{getDayName(session.dayOfWeek)}</div>
-            <div style={styles.time}>
-              {formatTime(session.startTime)} - {formatTime(session.endTime)}
-            </div>
-          </div>
-          <div style={styles.duration}>
-            <strong>{session.duration}</strong><br />
-            minutes
-          </div>
-          <div style={styles.location}>
-            <strong>{session.location}</strong>
-            {session.room && <><br />{session.room}</>}
-          </div>
-        </div>
-
         <div style={styles.details}>
           <div style={styles.detailItem}>
             <div style={styles.detailLabel}>Skill Level</div>
@@ -329,23 +326,15 @@ const GymSessionCard = ({ session, onRegister }) => {
           </div>
           <div style={styles.detailItem}>
             <div style={styles.detailLabel}>Cost</div>
-            <div style={styles.detailValue}>
-              {session.cost === 0 ? "Free" : `$${session.cost}`}
-            </div>
+            <div style={styles.detailValue}>{session.cost === 0 ? "Free" : `$${session.cost}`}</div>
           </div>
           <div style={styles.detailItem}>
             <div style={styles.detailLabel}>Status</div>
             <div style={{
               ...styles.statusBadge,
-              backgroundColor: session.status === "active"
-                ? theme.colors.success.light
-                : theme.colors.neutral.gray200,
-              color: session.status === "active"
-                ? theme.colors.success.dark
-                : theme.colors.text.secondary,
-            }}>
-              {session.status}
-            </div>
+              backgroundColor: session.status === "active" ? theme.colors.success.light : theme.colors.neutral.gray200,
+              color: session.status === "active" ? theme.colors.success.dark : theme.colors.text.secondary,
+            }}>{session.status}</div>
           </div>
         </div>
 
@@ -355,80 +344,55 @@ const GymSessionCard = ({ session, onRegister }) => {
             <span>{session.currentParticipants} / {session.maxParticipants}</span>
           </div>
           <div style={styles.progressBar}>
-            <div
-              style={{
-                ...styles.progressFill,
-                width: `${capacityPercentage}%`,
-                backgroundColor: getProgressBarColor(),
-              }}
-            />
+            <div style={{ ...styles.progressFill, width: `${capacityPercentage}%`, backgroundColor: getProgressBarColor() }} />
           </div>
         </div>
 
         <div style={styles.buttons}>
           <button
             style={getRegisterButtonStyle()}
-            onClick={handleRegister}
-            disabled={!canUserRegister() || isRegistering}
+            onClick={() => {
+              if (effectiveRegistered) return;
+              setIsRegisterOpen(true);
+            }}
+            disabled={isRegistering || effectiveRegistered || !canUserRegister()}
           >
-            {getRegisterButtonText()}
+            {effectiveRegistered ? "Registered" : getRegisterButtonText()}
           </button>
-          <button
-            style={styles.detailsButton}
-            onClick={() => setShowDetails(!showDetails)}
-          >
-            {showDetails ? "Less" : "Details"}
-          </button>
+
+          {(auth.isAdmin || auth.isEventsOffice) && (
+            <button style={{ ...styles.detailsButton, backgroundColor: theme.colors.background.paper }} onClick={() => setIsEditOpen(true)}>Edit</button>
+          )}
+
+          {!(auth.isAdmin || auth.isEventsOffice) && (
+            <button style={styles.detailsButton} onClick={() => setIsDetailsOpen(true)}>Details</button>
+          )}
         </div>
 
-        {showDetails && (
-          <div style={styles.expandedDetails}>
-            {session.description && (
-              <div style={{ marginBottom: theme.spacing[3] }}>
-                <strong>Description:</strong><br />
-                {session.description}
-              </div>
-            )}
+        {/* Edit modal */}
+        <EditSessionModal session={session} isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} onSaved={(id) => { if (typeof onUpdated === 'function') onUpdated(id); }} />
 
-            {session.prerequisites && (
-              <div style={{ marginBottom: theme.spacing[3] }}>
-                <strong>Prerequisites:</strong><br />
-                {session.prerequisites}
-              </div>
-            )}
+        {/* Details modal */}
+        <GymSessionDetailsModal session={session} isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} isAdminOrEventsOffice={auth.isAdmin || auth.isEventsOffice} onSaved={(id) => { if (typeof onUpdated === 'function') onUpdated(id); }} />
 
-            {session.benefits && session.benefits.length > 0 && (
-              <div style={{ marginBottom: theme.spacing[3] }}>
-                <strong>Benefits:</strong><br />
-                <ul style={{ margin: 0, paddingLeft: theme.spacing[4] }}>
-                  {session.benefits.map((benefit, index) => (
-                    <li key={index}>{benefit}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {session.equipment && session.equipment.length > 0 && (
-              <div style={{ marginBottom: theme.spacing[3] }}>
-                <strong>Equipment Provided:</strong><br />
-                {session.equipment.join(", ")}
-              </div>
-            )}
-
-            {session.calories && (
-              <div style={{ marginBottom: theme.spacing[3] }}>
-                <strong>Estimated Calories Burned:</strong> {session.calories}
-              </div>
-            )}
-
-            {session.instructor.bio && (
-              <div>
-                <strong>About the Instructor:</strong><br />
-                {session.instructor.bio}
-              </div>
-            )}
+        {/* Register confirmation modal */}
+        <Modal isOpen={isRegisterOpen} onClose={() => setIsRegisterOpen(false)} ariaLabel={`Register for ${session.title}`}>
+          <div>
+            <h3 style={{ ...theme.typography.h4 }}>Register for {session.title}</h3>
+            <p>Do you want to register for this session on {getDayName(session.dayOfWeek)} at {formatTime(session.startTime)}?</p>
+            <div style={{ marginTop: theme.spacing[3], display: 'flex', gap: theme.spacing[2], justifyContent: 'flex-end' }}>
+              <button onClick={() => setIsRegisterOpen(false)} style={{ ...theme.components.button.secondary }}>Cancel</button>
+              <button onClick={async () => {
+                try {
+                  await handleRegister();
+                  setIsRegisterOpen(false);
+                } catch (err) {
+                  console.error(err);
+                }
+              }} style={{ ...theme.components.button.primary }}>{getRegisterButtonText()}</button>
+            </div>
           </div>
-        )}
+        </Modal>
       </div>
     </div>
   );

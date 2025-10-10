@@ -78,8 +78,8 @@ const userSchema = yup.object({
     .string()
     .required("University ID is required")
     .matches(
-      /^[0-9\-_\.]+$/,
-      "University ID can only contain numbers and symbols (-, _, .)"
+      /^[A-Za-z0-9\-_\.]+$/,
+      "University ID can only contain letters, numbers, and symbols (-, _, .)"
     ),
   department: yup
     .string()
@@ -156,7 +156,7 @@ const UserSignup = () => {
   const watchedEmail = watch("email") || "";
   const detectedRole = getRoleFromEmail(watchedEmail);
 
-  const yearOptions = Array.from({ length: 10 }, (_, i) => ({
+  const yearOptions = Array.from({ length: 5 }, (_, i) => ({
     value: i + 1,
     label: `Year ${i + 1}`,
   }));
@@ -381,7 +381,7 @@ const UserSignup = () => {
           {/* Login Link */}
           <div style={linkStyles}>
             Already have an account?{" "}
-            <Link to="/login" style={linkAnchorStyles}>
+            <Link to="/" style={linkAnchorStyles}>
               Sign in here
             </Link>
           </div>

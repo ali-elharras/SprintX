@@ -112,6 +112,11 @@ router.put(
   authorize("admin", "events_office"),
   updateEvent
 );
+// Update only status (publish/reject) - Admin or Events Office
+router.put("/:id/status", authorize("admin", "events_office"), (req, res, next) => {
+  // delegate to controller
+  return require("../controllers/eventController").updateEventStatus(req, res, next);
+});
 router.delete(
   "/:id",
   authorize("admin", "events_office"),

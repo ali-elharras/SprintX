@@ -508,6 +508,124 @@ const getGymScheduleOverview = async (req, res) => {
     });
   }
 };
+// @desc    Create a new gym session
+// @route   POST /api/gym/sessions
+// @access  Private (admin or events_office)
+const createGymSession = async (req, res) => {
+  try {
+    // Basic validation
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    const {
+      title,
+      description,
+      type,
+      instructor,
+      dayOfWeek,
+      startTime,
+      endTime,
+      duration,
+      startDate,
+      endDate,
+      location,
+      room,
+      maxParticipants,
+      registrationRequired = true,
+      waitlistEnabled = false,
+      skillLevel = "all_levels",
+    } = req.body;
+
+    // Let Mongoose handle schema validation so we return model-specific messages
+
+    const gymSession = new GymSession({
+      title,
+      description,
+      type,
+      instructor,
+      dayOfWeek,
+      startTime,
+      endTime,
+      duration,
+      startDate,
+      endDate,
+      location,
+      room,
+      maxParticipants,
+      registrationRequired,
+      waitlistEnabled,
+      skillLevel,
+      createdBy: req.user._id || req.user.id,
+    });
+
+    await gymSession.save();
+
+    res.status(201).json({ success: true, message: "Gym session created", data: gymSession });
+  } catch (error) {
+    console.error("Error creating gym session:", error);
+    // If validation error from Mongoose, return 400 with detailed messages
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map((err) => ({ message: err.message, field: err.path }));
+      return res.status(400).json({ success: false, errors });
+    }
+
+    res.status(500).json({ success: false, message: "Error creating gym session", error: error.message });
+  }
+};
+
+// @desc    Update an existing gym session
+// @route   PUT /api/gym/sessions/:id
+// @access  Private (admin or events_office)
+const updateGymSession = async (req, res) => {
+  try {
+    const sessionId = req.params.id;
+
+    // Validate request errors from express-validator
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    const updateData = req.body;
+
+    // Load existing session and apply only the changed fields (shallow-merge objects)
+    const session = await GymSession.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Gym session not found' });
+    }
+
+    // Apply updates: for plain objects do a shallow merge, for arrays/scalars replace entirely
+    Object.keys(updateData).forEach((key) => {
+      const val = updateData[key];
+
+      // If both current value and incoming value are plain objects, shallow merge
+      const current = session[key];
+      const isPlainObject = (v) => v && typeof v === 'object' && !Array.isArray(v) && !(v instanceof Date);
+
+      if (isPlainObject(current) && isPlainObject(val)) {
+        // merge shallowly so unspecified nested fields are preserved
+        session[key] = { ...(typeof current.toObject === 'function' ? current.toObject() : current), ...val };
+      } else {
+        // otherwise, replace (covers arrays, scalars, nulls)
+        session[key] = val;
+      }
+    });
+
+    // Save with validators
+    const saved = await session.save();
+
+    res.status(200).json({ success: true, message: 'Gym session updated', data: saved });
+  } catch (error) {
+    console.error('Error updating gym session:', error);
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map((err) => ({ message: err.message, field: err.path }));
+      return res.status(400).json({ success: false, errors });
+    }
+    res.status(500).json({ success: false, message: 'Error updating gym session', error: error.message });
+  }
+};
 
 module.exports = {
   getGymSessions,
@@ -519,4 +637,7 @@ module.exports = {
   getUserGymRegistrations,
   cancelGymRegistration,
   getGymScheduleOverview,
+  createGymSession,
+  updateGymSession,
 };
+

@@ -24,5 +24,8 @@
   "license": "ISC",
   "devDependencies": {
     "concurrently": "^8.2.0"
+  },
+  "dependencies": {
+    "lottie-react": "^2.4.1"
   }
 }
