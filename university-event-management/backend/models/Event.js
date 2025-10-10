@@ -132,17 +132,11 @@ const eventSchema = new mongoose.Schema(
     // Special fields for trips
     itinerary: {
       type: String,
-      required: function () {
-        return this.type === "trip";
-      },
       trim: true,
       maxlength: [3000, "Itinerary cannot exceed 3000 characters"],
     },
     transportation: {
       type: String,
-      required: function () {
-        return this.type === "trip";
-      },
       trim: true,
       maxlength: [500, "Transportation details cannot exceed 500 characters"],
     },

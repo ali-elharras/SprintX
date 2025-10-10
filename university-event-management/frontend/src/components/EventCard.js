@@ -3,7 +3,7 @@ import theme, { getEventTypeColor } from "../theme";
 import Button from "./Button";
 import RegistrationForm from "./RegistrationForm";
 
-const EventCard = ({ event, showRegistration = true, onRegistrationSuccess }) => {
+const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEdit }) => {
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
 
   const formatDate = (dateString) => {
@@ -363,14 +363,24 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess }) =>
             alignItems: "center",
           }}
         >
-          {showRegistration && canRegister() && (
+          {onEdit ? (
             <Button
               variant="primary"
-              onClick={() => setShowRegistrationForm(true)}
+              onClick={() => onEdit(event)}
               style={{ flex: 1 }}
             >
-              Register Now
+              Edit
             </Button>
+          ) : (
+            showRegistration && canRegister() && (
+              <Button
+                variant="primary"
+                onClick={() => setShowRegistrationForm(true)}
+                style={{ flex: 1 }}
+              >
+                Register Now
+              </Button>
+            )
           )}
           <Button
             variant="outline"

@@ -27,6 +27,7 @@ import MyRegistrations from "./pages/MyRegistrations";
 import GymSchedulePage from "./pages/GymSchedulePage";
 import CreateWorkshop from "./pages/CreateWorkshop";
 import Workshops from "./pages/Workshops";
+import TripsPage from "./pages/TripsPage";
 // ---------------------------
 // Protected Route Components
 // ---------------------------
@@ -104,7 +105,7 @@ const AdminRoute = ({ children }) => {
     );
   }
 
-  if (!user || (user.role !== "admin" && user.role !== "event-office")) {
+  if (!user || (user.role !== "admin" && user.role !== "events_office" && user.role !== "event-office")) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -267,6 +268,16 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <CreateWorkshop />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/trips",
+    element: (
+      <ProtectedRoute>
+        <AdminRoute>
+          <TripsPage />
+        </AdminRoute>
       </ProtectedRoute>
     ),
   },
