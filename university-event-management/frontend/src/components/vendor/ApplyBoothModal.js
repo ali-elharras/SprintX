@@ -72,7 +72,8 @@ const styles = {
 
 const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
   const [boothSize, setBoothSize] = useState("2x2");
-  const [duration, setDuration] = useState("1 week");
+  const [startDate, setStartDate] = useState("");
+  const [durationWeeks, setDurationWeeks] = useState(1); // Duration in weeks
   const [location, setLocation] = useState("");
   const [attendees, setAttendees] = useState([{ name: "", email: "" }]);
 
@@ -85,11 +86,7 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
   };
 
   const addAttendeeRow = () => {
-    if (attendees.length < 5) {
-      setAttendees([...attendees, { name: "", email: "" }]);
-    } else {
-      toast.error("You can add a maximum of 5 attendees.");
-    }
+    setAttendees([...attendees, { name: "", email: "" }]);
   };
 
   const removeAttendeeRow = (index) => {
@@ -108,7 +105,23 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
         toast.error("Please specify a location for the booth.");
         return;
     }
-    onSubmit({ boothSize, duration, location, attendees: finalAttendees });
+    if (!startDate) {
+      toast.error("Please select a start date.");
+      return;
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(start);
+    end.setDate(start.getDate() + (durationWeeks * 7)); // Calculate end date based on weeks
+
+    onSubmit({ 
+      boothSize, 
+      startDate: start.toISOString(), 
+      endDate: end.toISOString(), 
+      durationWeeks, 
+      location, 
+      attendees: finalAttendees 
+    });
   };
 
   return (
@@ -132,19 +145,33 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label} htmlFor="duration">
-              Setup Duration
+            <label style={styles.label} htmlFor="startDate">
+              Start Date
+            </label>
+            <input
+              id="startDate"
+              type="date"
+              style={styles.input}
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              required
+            />
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label} htmlFor="durationWeeks">
+              Duration (weeks)
             </label>
             <select
-              id="duration"
+              id="durationWeeks"
               style={styles.select}
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
+              value={durationWeeks}
+              onChange={(e) => setDurationWeeks(parseInt(e.target.value))}
             >
-              <option value="1 week">1 week</option>
-              <option value="2 weeks">2 weeks</option>
-              <option value="3 weeks">3 weeks</option>
-              <option value="4 weeks">4 weeks</option>
+              <option value={1}>1 week</option>
+              <option value={2}>2 weeks</option>
+              <option value={3}>3 weeks</option>
+              <option value={4}>4 weeks</option>
             </select>
           </div>
 
@@ -190,9 +217,11 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
                 )}
               </div>
             ))}
-            <button type="button" style={styles.addButton} onClick={addAttendeeRow}>
-              Add Attendee
-            </button>
+            {attendees.length < 5 && (
+              <button type="button" style={styles.addButton} onClick={addAttendeeRow}>
+                Add Attendee
+              </button>
+            )}
           </div>
 
           <button type="submit" style={styles.button}>

@@ -83,11 +83,7 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
   };
 
   const addAttendeeRow = () => {
-    if (attendees.length < 5) {
-      setAttendees([...attendees, { name: "", email: "" }]);
-    } else {
-      toast.error("You can add a maximum of 5 attendees.");
-    }
+    setAttendees([...attendees, { name: "", email: "" }]);
   };
 
   const removeAttendeeRow = (index) => {
@@ -153,9 +149,11 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
                 )}
               </div>
             ))}
-            <button type="button" style={styles.addButton} onClick={addAttendeeRow}>
-              Add Attendee
-            </button>
+            {attendees.length < 5 && (
+              <button type="button" style={styles.addButton} onClick={addAttendeeRow}>
+                Add Attendee
+              </button>
+            )}
           </div>
 
           <button type="submit" style={styles.button}>

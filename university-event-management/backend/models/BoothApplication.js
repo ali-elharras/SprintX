@@ -28,10 +28,19 @@ const boothApplicationSchema = new mongoose.Schema(
         "A maximum of 5 attendees are allowed",
       ],
     },
-    duration: {
-      type: String,
-      required: [true, "Duration is required"],
-      enum: ["1 week", "2 weeks", "3 weeks", "4 weeks"],
+    startDate: {
+      type: Date,
+      required: [true, "Start date is required"],
+    },
+    endDate: {
+      type: Date,
+      required: [true, "End date is required"],
+    },
+    durationWeeks: {
+      type: Number,
+      required: [true, "Duration in weeks is required"],
+      min: [1, "Duration must be at least 1 week"],
+      max: [4, "Duration cannot exceed 4 weeks"],
     },
     location: {
       type: String,

@@ -573,10 +573,22 @@ const AdminDashboard = () => {
                       <span style={styles.detailLabel}>Booth Size</span>
                       <span style={styles.detailValue}>{app.boothSize || 'N/A'}</span>
                     </div>
-                    {app.applicationType === 'booth' && app.duration && (
+                    {app.applicationType === 'booth' && app.startDate && (
+                      <div style={styles.detailRow}>
+                        <span style={styles.detailLabel}>Start Date</span>
+                        <span style={styles.detailValue}>{new Date(app.startDate).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                    {app.applicationType === 'booth' && app.endDate && (
+                      <div style={styles.detailRow}>
+                        <span style={styles.detailLabel}>End Date</span>
+                        <span style={styles.detailValue}>{new Date(app.endDate).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                    {app.applicationType === 'booth' && app.durationWeeks && (
                       <div style={styles.detailRow}>
                         <span style={styles.detailLabel}>Duration</span>
-                        <span style={styles.detailValue}>{app.duration} days</span>
+                        <span style={styles.detailValue}>{app.durationWeeks} week(s)</span>
                       </div>
                     )}
                     {app.applicationType === 'booth' && app.location && (

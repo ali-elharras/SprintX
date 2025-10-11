@@ -48,13 +48,28 @@ const applyToBazaar = async (req, res, next) => {
 // @access  Private (Vendor)
 const applyForBooth = async (req, res, next) => {
   try {
-    const { attendees, duration, location, boothSize } = req.body;
+    const { attendees, startDate, endDate, durationWeeks, location, boothSize } = req.body;
     const vendorId = req.vendor._id;
+
+    // Check for existing pending booth application for this vendor
+    const existingPendingApplication = await BoothApplication.findOne({
+      vendor: vendorId,
+      status: "pending",
+    });
+
+    if (existingPendingApplication) {
+      return res.status(400).json({
+        success: false,
+        message: "You already have a pending booth application. Please wait for it to be approved or rejected before applying for another.",
+      });
+    }
 
     const application = await BoothApplication.create({
       vendor: vendorId,
       attendees,
-      duration,
+      startDate,
+      endDate,
+      durationWeeks,
       location,
       boothSize,
     });
@@ -148,7 +163,7 @@ const getAllApplications = async (req, res, next) => {
         }
 
         const bazaarApplications = await BazaarApplication.find(bazaarQuery, 'vendor bazaar attendees boothSize status').populate("vendor", "companyName email").populate("bazaar", "title startDate");
-        const boothApplications = await BoothApplication.find(boothQuery, 'vendor attendees duration location boothSize status').populate("vendor", "companyName email");
+        const boothApplications = await BoothApplication.find(boothQuery, 'vendor attendees startDate endDate durationWeeks location boothSize status').populate("vendor", "companyName email");
         
 
         res.status(200).json({
