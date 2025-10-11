@@ -30,7 +30,7 @@ require("dotenv").config();
     );
 
     if (!hasPartial) {
-      console.log("🛠️ Creating partial unique index on universityId for non-admin users");
+      console.log("🛠️ Creating partial unique index on universityId for users with universityId");
       await User.createIndex(
         { universityId: 1 },
         {
@@ -38,7 +38,6 @@ require("dotenv").config();
           unique: true,
           partialFilterExpression: {
             universityId: { $exists: true, $type: "string" },
-            role: { $nin: ["admin", "events_office"] },
           },
         }
       );

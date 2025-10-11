@@ -34,7 +34,12 @@ const createAdminOrEventOffice = async (req, res) => {
       isVerified: true, // Admins/Event office are verified immediately
       isActive: true,   // Explicitly set active
     };
-    if (universityId) payload.universityId = universityId;
+    
+    // Only set universityId if it's provided and not empty
+    if (universityId && universityId.trim()) {
+      payload.universityId = universityId.trim();
+    }
+    // Note: We don't set universityId at all if not provided, so it remains undefined
 
     const newUser = await User.create(payload);
 

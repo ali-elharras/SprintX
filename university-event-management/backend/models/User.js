@@ -162,14 +162,13 @@ userSchema.index({ email: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ department: 1 });
 
-// Enforce unique universityId only for non-admin users and when universityId exists
+// Enforce unique universityId only when universityId exists and has a value
 userSchema.index(
   { universityId: 1 },
   {
     unique: true,
     partialFilterExpression: {
       universityId: { $exists: true, $type: "string" },
-      role: { $nin: ["admin", "events_office"] },
     },
   }
 );
