@@ -1,5 +1,6 @@
 const Registration = require("../models/Registration");
 const Event = require("../models/Event");
+const Conference = require("../models/Conference");
 const User = require("../models/User");
 const { validationResult } = require("express-validator");
 
@@ -26,8 +27,16 @@ const registerForEvent = async (req, res) => {
       universityId
     } = req.body;
 
-    // Find the event
-    const event = await Event.findById(eventId);
+    // Try to find event in Event model first
+    let event = await Event.findById(eventId);
+    let isConference = false;
+    
+    // If not found in Event model, try Conference model
+    if (!event) {
+      event = await Conference.findById(eventId);
+      isConference = true;
+    }
+    
     if (!event) {
       return res.status(404).json({
         success: false,
@@ -35,8 +44,31 @@ const registerForEvent = async (req, res) => {
       });
     }
 
+    // For conferences, adapt to match event structure
+    let eventData = event;
+    if (isConference) {
+      eventData = {
+        _id: event._id,
+        title: event.title,
+        description: event.description,
+        type: "conference",
+        startDate: event.date,
+        endDate: event.date,
+        location: event.location,
+        cost: 0,
+        registrationRequired: true,
+        isRegistrationOpen: true,
+        maxParticipants: event.capacity,
+        currentParticipants: await Registration.countDocuments({
+          event: eventId,
+          status: { $in: ["confirmed", "pending"] }
+        }),
+        status: "published"
+      };
+    }
+
     // Check if event allows registration
-    if (!event.registrationRequired) {
+    if (eventData.registrationRequired === false) {
       return res.status(400).json({
         success: false,
         message: "This event does not require registration",
@@ -44,7 +76,7 @@ const registerForEvent = async (req, res) => {
     }
 
     // Check if registration is still open
-    if (!event.isRegistrationOpen) {
+    if (eventData.isRegistrationOpen === false) {
       return res.status(400).json({
         success: false,
         message: "Registration is closed for this event",
@@ -52,7 +84,7 @@ const registerForEvent = async (req, res) => {
     }
 
     // Check if event has available spots
-    if (event.currentParticipants >= event.maxParticipants) {
+    if (eventData.currentParticipants >= eventData.maxParticipants) {
       return res.status(400).json({
         success: false,
         message: "Event is full",
@@ -90,22 +122,39 @@ const registerForEvent = async (req, res) => {
     }
 
     // Set payment information if event has cost
-    if (event.cost > 0) {
+    if (eventData.cost > 0) {
       registrationData.paymentStatus = "pending";
-      registrationData.paymentAmount = event.cost;
+      registrationData.paymentAmount = eventData.cost;
     }
 
     // Create registration
     const registration = await Registration.create(registrationData);
 
-    // Populate the registration with event details
-    await registration.populate("event", "title type startDate location cost");
+    // For regular events, update participant count
+    if (!isConference) {
+      await Event.findByIdAndUpdate(eventId, {
+        $inc: { currentParticipants: 1 }
+      });
+    }
 
-    res.status(201).json({
-      success: true,
-      message: "Registration successful",
-      data: registration,
-    });
+    // Populate the registration with appropriate data
+    if (isConference) {
+      // Manually attach conference data for response
+      const populatedRegistration = registration.toObject();
+      populatedRegistration.event = eventData;
+      res.status(201).json({
+        success: true,
+        message: "Registration successful",
+        data: populatedRegistration,
+      });
+    } else {
+      await registration.populate("event", "title type startDate endDate location cost maxParticipants currentParticipants");
+      res.status(201).json({
+        success: true,
+        message: "Registration successful",
+        data: registration,
+      });
+    }
   } catch (error) {
     console.error("Error registering for event:", error);
     
@@ -140,18 +189,50 @@ const getMyRegistrations = async (req, res) => {
       ]
     };
 
-    // Find registrations and populate event details
-    let registrationsQuery = Registration.find(query)
-      .populate({
-        path: "event",
-        select: "title type startDate endDate location cost status description maxParticipants currentParticipants",
-        match: { status: { $ne: "cancelled" } } // Only include active events
-      });
+    // Find registrations
+    let registrations = await Registration.find(query);
 
-    const registrations = await registrationsQuery.exec();
+    // Populate event data from appropriate models
+    const populatedRegistrations = await Promise.all(
+      registrations.map(async (registration) => {
+        // Try Event model first
+        let event = await Event.findById(registration.event);
+        
+        // If not found in Event model, try Conference model
+        if (!event) {
+          const conference = await Conference.findById(registration.event);
+          if (conference) {
+            // Convert conference to event-like structure
+            event = {
+              _id: conference._id,
+              title: conference.title,
+              description: conference.description,
+              type: "conference",
+              startDate: conference.date,
+              endDate: conference.date,
+              location: conference.location,
+              cost: 0,
+              maxParticipants: conference.capacity,
+              currentParticipants: await Registration.countDocuments({
+                event: conference._id,
+                status: { $in: ["confirmed", "pending"] }
+              }),
+              status: "published"
+            };
+          }
+        }
 
-    // Filter out registrations where event was deleted or cancelled
-    const validRegistrations = registrations.filter(reg => reg.event);
+        if (event) {
+          const regObj = registration.toObject();
+          regObj.event = event;
+          return regObj;
+        }
+        return null;
+      })
+    );
+
+    // Filter out null values (where event was not found)
+    const validRegistrations = populatedRegistrations.filter(reg => reg !== null);
 
     // Categorize events into upcoming and past
     const now = new Date();
@@ -173,7 +254,7 @@ const getMyRegistrations = async (req, res) => {
       const term = searchTerm.toLowerCase();
       return events.filter(reg => 
         reg.event.title.toLowerCase().includes(term) ||
-        reg.event.type.toLowerCase().includes(term) ||
+        (reg.event.type && reg.event.type.toLowerCase().includes(term)) ||
         reg.event.location.toLowerCase().includes(term)
       );
     };
@@ -262,8 +343,16 @@ const getEventRegistrations = async (req, res) => {
   try {
     const { eventId } = req.params;
     
-    // Find the event
-    const event = await Event.findById(eventId);
+    // Try to find the event in Event model first
+    let event = await Event.findById(eventId);
+    let isConference = false;
+    
+    // If not found in Event model, try Conference model
+    if (!event) {
+      event = await Conference.findById(eventId);
+      isConference = true;
+    }
+    
     if (!event) {
       return res.status(404).json({
         success: false,
@@ -272,17 +361,28 @@ const getEventRegistrations = async (req, res) => {
     }
     
     // Check if user is authorized to view registrations
-    if (
-      event.organizer.toString() !== req.user.id &&
-      !["admin", "events_office"].includes(req.user.role)
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to view event registrations",
-      });
+    // For conferences, allow events_office and admin
+    if (isConference) {
+      if (!["admin", "events_office"].includes(req.user.role)) {
+        return res.status(403).json({
+          success: false,
+          message: "Not authorized to view event registrations",
+        });
+      }
+    } else {
+      // For regular events, check organizer and roles
+      if (
+        event.organizer.toString() !== req.user.id &&
+        !["admin", "events_office"].includes(req.user.role)
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "Not authorized to view event registrations",
+        });
+      }
     }
     
-    const registrations = await Registration.findByEvent(eventId)
+    const registrations = await Registration.find({ event: eventId })
       .sort({ registrationDate: -1 });
     
     res.status(200).json({
@@ -327,7 +427,26 @@ const cancelRegistration = async (req, res) => {
     }
     
     // Check if registration can be cancelled
-    const event = await Event.findById(registration.event);
+    let event;
+    const eventFromEvent = await Event.findById(registration.event);
+    if (eventFromEvent) {
+      event = eventFromEvent;
+    } else {
+      const eventFromConference = await Conference.findById(registration.event);
+      if (eventFromConference) {
+        event = {
+          startDate: eventFromConference.date
+        };
+      }
+    }
+    
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+    
     const now = new Date();
     const eventStart = new Date(event.startDate);
     
@@ -373,17 +492,41 @@ const updateRegistrationStatus = async (req, res) => {
     }
     
     // Find the event to check authorization
-    const event = await Event.findById(registration.event);
+    let event = await Event.findById(registration.event);
+    let isConference = false;
+    
+    if (!event) {
+      event = await Conference.findById(registration.event);
+      isConference = true;
+    }
+    
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
     
     // Check if user is authorized to update registration status
-    if (
-      event.organizer.toString() !== req.user.id &&
-      !["admin", "events_office"].includes(req.user.role)
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to update registration status",
-      });
+    if (isConference) {
+      // For conferences, allow events_office and admin
+      if (!["admin", "events_office"].includes(req.user.role)) {
+        return res.status(403).json({
+          success: false,
+          message: "Not authorized to update registration status",
+        });
+      }
+    } else {
+      // For regular events, check organizer and roles
+      if (
+        event.organizer.toString() !== req.user.id &&
+        !["admin", "events_office"].includes(req.user.role)
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "Not authorized to update registration status",
+        });
+      }
     }
     
     registration.status = status;
@@ -419,17 +562,41 @@ const checkInParticipant = async (req, res) => {
     }
     
     // Find the event to check authorization
-    const event = await Event.findById(registration.event);
+    let event = await Event.findById(registration.event);
+    let isConference = false;
+    
+    if (!event) {
+      event = await Conference.findById(registration.event);
+      isConference = true;
+    }
+    
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
     
     // Check if user is authorized to check in participants
-    if (
-      event.organizer.toString() !== req.user.id &&
-      !["admin", "events_office"].includes(req.user.role)
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to check in participants",
-      });
+    if (isConference) {
+      // For conferences, allow events_office and admin
+      if (!["admin", "events_office"].includes(req.user.role)) {
+        return res.status(403).json({
+          success: false,
+          message: "Not authorized to check in participants",
+        });
+      }
+    } else {
+      // For regular events, check organizer and roles
+      if (
+        event.organizer.toString() !== req.user.id &&
+        !["admin", "events_office"].includes(req.user.role)
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "Not authorized to check in participants",
+        });
+      }
     }
     
     registration.checkedIn = true;

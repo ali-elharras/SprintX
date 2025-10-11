@@ -17,6 +17,7 @@ const adminRoutes = require("./routes/admin");
 const registrationRoutes = require("./routes/registrations");
 const courtRoutes = require("./routes/courts");
 const gymRoutes = require("./routes/gym");
+const conferenceRoutes = require("./routes/conference.js");
 const bazaarRoutes = require("./routes/bazaar");
 const workshopRoutes = require("./routes/workshop");
 const notificationRoutes = require("./routes/notifications");
@@ -27,14 +28,8 @@ const app = express();
 // ===== Security & Performance Middleware =====
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // Increased limit to 500 requests per windowMs to handle page switching
+  max: 100, // limit each IP to 100 requests per windowMs
   message: "Too many requests from this IP, please try again later.",
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  skip: (req, res) => {
-    // Skip rate limiting for health checks
-    return req.path === '/api/health';
-  }
 });
 
 app.use(helmet()); // Add secure headers
@@ -44,8 +39,10 @@ app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:3000",
     credentials: true,
-  })
-);
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    exposedHeaders: ['Authorization']
+}));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
@@ -61,6 +58,10 @@ mongoose
     process.exit(1);
   });
 
+// Routes
+app.use("/api/conferences", conferenceRoutes);
+
+// Health check endpoint
 // ===== API Routes =====
 app.use("/api/auth", authRoutes);
 app.use("/api/events", eventRoutes);
@@ -70,6 +71,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/registrations", registrationRoutes);
 app.use("/api/courts", courtRoutes);
 app.use("/api/gym", gymRoutes);
+app.use("/api/conferences", conferenceRoutes);
 app.use("/api/bazaars", bazaarRoutes);
 
 // Workshop routes (professors create -> saved as pending, Events Office can publish)

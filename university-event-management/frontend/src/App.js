@@ -5,6 +5,8 @@ import {
   Navigate,
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import theme from "./theme";
@@ -355,7 +357,7 @@ const App = () => {
       >
         <RouterProvider router={router} />
 
-        {/* Toast Notifications */}
+        {/* React Hot Toast - For general notifications */}
         <Toaster
           position="top-right"
           toastOptions={{
@@ -381,6 +383,23 @@ const App = () => {
                 secondary: theme.colors.error.light,
               },
             },
+          }}
+        />
+
+        {/* React Toastify - For conference operations */}
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+          style={{
+            fontFamily: theme.typography.fontFamily.primary,
           }}
         />
       </div>

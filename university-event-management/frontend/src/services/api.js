@@ -52,7 +52,7 @@ export const retryRequest = async (
 // ============================================
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || "http://localhost:8080/api",
-  timeout: 30000, // Increased timeout to 30 seconds
+  timeout: 10000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -78,22 +78,6 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Don't process cancelled requests
-    if (axios.isCancel(error)) {
-      return Promise.reject(error);
-    }
-
-    // Handle network errors
-    if (!error.response) {
-      console.error("Network error:", error.message);
-      return Promise.reject({
-        message: "Network error. Please check your connection and try again.",
-        status: 0,
-        isNetworkError: true,
-      });
-    }
-
-    // Handle 401 authentication errors
     if (error.response?.status === 401) {
       const wasVendor = localStorage.getItem("userType") === "vendor";
       localStorage.removeItem("token");
@@ -125,8 +109,6 @@ api.interceptors.response.use(
       message: errorMessage,
       status: error.response?.status,
       data: error.response?.data,
-      isServerError: error.response?.status >= 500,
-      isRateLimit: error.response?.status === 429,
     });
   }
 );
@@ -357,6 +339,22 @@ export const gymAPI = {
   },
 };
 
+// ============================================
+// Conference API ENDPOINTS
+// ============================================
+
+export const conferenceAPI = {
+    // Create new conference
+    createConference: (conferenceData) => api.post('/conferences', conferenceData),
+    
+    // Update conference
+    updateConference: (id, conferenceData) => api.put(`/conferences/${id}`, conferenceData),
+    
+    // Delete conference
+    deleteConference: (id) => api.delete(`/conferences/${id}`),
+
+    getConference: (id) => api.get(`/conferences/${id}`),
+};
 
 export const adminAPI = {
   // ✅ Fetch all users
