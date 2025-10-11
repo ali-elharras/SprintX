@@ -100,8 +100,8 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
             textAlign: "center",
           }}
         >
-          {event.type.charAt(0).toUpperCase() + event.type.slice(1)} •{" "}
-          {new Date(event.startDate).toLocaleDateString()} • {event.location}
+          {event.type.charAt(0).toUpperCase() + event.type.slice(1)} â€¢{" "}
+          {new Date(event.startDate).toLocaleDateString()} â€¢ {event.location}
         </p>
         {event.cost > 0 && (
           <p

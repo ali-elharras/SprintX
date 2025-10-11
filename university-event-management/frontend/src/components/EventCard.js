@@ -1,10 +1,17 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import theme, { getEventTypeColor } from "../theme";
 import Button from "./Button";
 import RegistrationForm from "./RegistrationForm";
+import { useAuth } from "../context/AuthContext";
+import { conferenceAPI } from "../services/api";
+import toast from "react-hot-toast";
 
-const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEdit }) => {
+const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit }) => {
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const navigate = useNavigate();
+  const { isEventsOffice, user } = useAuth();
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -82,12 +89,38 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEd
     );
   };
 
-  const statusInfo = getStatusInfo();
+  const handleEditClick = () => {
+    if (onEditConference && event.type === "conference") {
+      onEditConference(event);
+    }
+  };
+
+  const handleDeleteConference = async () => {
+    if (!window.confirm("Are you sure you want to delete this conference? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      await conferenceAPI.deleteConference(event._id);
+      toast.success("Conference deleted successfully!");
+      if (onEventUpdate) {
+        onEventUpdate(); // Refresh the events list
+      }
+    } catch (error) {
+      console.error("Error deleting conference:", error);
+      toast.error(error.response?.data?.message || "Failed to delete conference");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleRegistrationSuccess = (registrationData) => {
     setShowRegistrationForm(false);
     onRegistrationSuccess && onRegistrationSuccess(registrationData);
   };
+
+  const statusInfo = getStatusInfo();
 
   if (showRegistrationForm) {
     return (
@@ -168,7 +201,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEd
             margin: 0,
           }}
         >
-          {event.title}
+          {event.title || event.name}
         </h3>
       </div>
 
@@ -202,7 +235,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEd
               color: theme.colors.text.secondary,
             }}
           >
-            <span>🕒</span>
+            <span>🕐</span>
             <span>{formatTime(event.startDate)}</span>
           </div>
           <div
@@ -338,6 +371,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEd
               style={{
                 fontSize: theme.typography.fontSize.sm,
                 color: theme.colors.text.secondary,
+                marginBottom: theme.spacing[1],
               }}
             >
               <strong>Instructor:</strong> {event.instructor}
@@ -347,6 +381,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEd
                 style={{
                   fontSize: theme.typography.fontSize.sm,
                   color: theme.colors.text.secondary,
+                  margin: 0,
                 }}
               >
                 <strong>Duration:</strong> {event.duration} hours
@@ -360,38 +395,62 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEd
           style={{
             display: "flex",
             gap: theme.spacing[3],
-            alignItems: "center",
+            alignItems: "stretch",
           }}
         >
-          {onEdit ? (
-            <Button
-              variant="primary"
-              onClick={() => onEdit(event)}
-              style={{ flex: 1 }}
-            >
-              Edit
-            </Button>
+          {/* Events Office buttons for conferences */}
+          {isEventsOffice && event.type === "conference" ? (
+            <>
+              <div style={{ flex: 1 }}>
+                <Button
+                  variant="primary"
+                  onClick={handleEditClick}
+                  style={{ 
+                    width: "100%",
+                    minHeight: "44px",
+                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Edit Conference
+                </Button>
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  variant="danger"
+                  onClick={handleDeleteConference}
+                  disabled={isDeleting}
+                  style={{ 
+                    width: "100%",
+                    minHeight: "44px",
+                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                    whiteSpace: "nowrap",
+                    opacity: isDeleting ? 0.6 : 1,
+                  }}
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </Button>
+              </div>
+            </>
           ) : (
+            /* Single Register Now button for regular users */
             showRegistration && canRegister() && (
-              <Button
-                variant="primary"
-                onClick={() => setShowRegistrationForm(true)}
-                style={{ flex: 1 }}
-              >
-                Register Now
-              </Button>
+              <div style={{ flex: 1 }}>
+                <Button
+                  variant="primary"
+                  onClick={() => setShowRegistrationForm(true)}
+                  style={{ 
+                    width: "100%",
+                    minHeight: "44px",
+                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Register Now
+                </Button>
+              </div>
             )
           )}
-          <Button
-            variant="outline"
-            onClick={() => {
-              // TODO: Navigate to event details page
-              console.log("View details for event:", event._id);
-            }}
-            style={{ flex: showRegistration && canRegister() ? "none" : 1 }}
-          >
-            View Details
-          </Button>
         </div>
       </div>
     </div>

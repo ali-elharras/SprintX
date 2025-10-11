@@ -391,9 +391,7 @@ const VendorDashboard = () => {
       setLoading(prev => ({ ...prev, bazaars: true }));
       const data = await eventServices.getUpcomingBazaars();
       setUpcomingBazaars(data.data || []);
-      setError(prev => ({ ...prev, bazaars: null }));
     } catch (err) {
-      console.error("Error fetching bazaars:", err);
       setError(prev => ({ ...prev, bazaars: err.message || "Failed to fetch bazaars" }));
       toast.error("Could not load upcoming bazaars.");
     } finally {
