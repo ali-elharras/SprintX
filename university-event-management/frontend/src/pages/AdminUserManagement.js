@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { adminAPI } from "../services/api";
 import theme from "../theme";
+import Navbar from "../components/Navbar";
 
 const initialForm = {
   firstName: "",
@@ -421,13 +422,16 @@ const AdminUserManagement = () => {
   );
 
   return (
-    <div style={containerBg}>
-      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-        {headerCard}
-        {tabs}
-        {activeTab === "admins" ? AdminsTab : VerificationTab}
+    <>
+      <Navbar />
+      <div style={containerBg}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          {headerCard}
+          {tabs}
+          {activeTab === "admins" ? AdminsTab : VerificationTab}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
