@@ -94,7 +94,7 @@ const EventsPage = () => {
   // State for creating a new bazaar
   const [createBazaarOpen, setCreateBazaarOpen] = useState(false);
   const [bazaarData, setBazaarData] = useState({
-    name: "",
+    title: "",
     description: "",
     startDate: "",
     endDate: "",
@@ -910,8 +910,8 @@ const EventsPage = () => {
               <Input
                 label="Bazaar Name"
                 placeholder="e.g., Annual Spring Fair"
-                value={bazaarData.name}
-                onChange={(e) => setBazaarData({ ...bazaarData, name: e.target.value })}
+                value={bazaarData.title}
+                onChange={(e) => setBazaarData({ ...bazaarData, title: e.target.value })}
               />
               <Input
                 label="Theme"
@@ -1000,7 +1000,7 @@ const EventsPage = () => {
               <Button
                 variant="secondary"
                 onClick={() => {
-                  setBazaarData({ name: "", description: "", theme: "", startDate: "", endDate: "", location: "University Courtyard", maxParticipants: "50", registrationDeadline: "" });
+                  setBazaarData({ title: "", description: "", theme: "", startDate: "", endDate: "", location: "University Courtyard", maxParticipants: "50", registrationDeadline: "" });
                   toast.success("Form fields cleared");
                 }}
               >
@@ -1010,7 +1010,7 @@ const EventsPage = () => {
                 variant="primary"
                 onClick={async () => {
                   try {
-                    if (!bazaarData.name || !bazaarData.description || !bazaarData.theme || !bazaarData.startDate || !bazaarData.endDate || !bazaarData.maxParticipants || !bazaarData.registrationDeadline) {
+                    if (!bazaarData.title || !bazaarData.description || !bazaarData.theme || !bazaarData.startDate || !bazaarData.endDate || !bazaarData.maxParticipants || !bazaarData.registrationDeadline) {
                       toast.error("Please fill all required fields: Name, Description, Theme, Dates, Max Participants, and Registration Deadline.");
                       return;
                     }
@@ -1021,7 +1021,7 @@ const EventsPage = () => {
                     }
 
                     const eventData = {
-                      name: bazaarData.name,
+                      title: bazaarData.title,
                       description: bazaarData.description,
                       startDate: new Date(bazaarData.startDate).toISOString(),
                       endDate: new Date(bazaarData.endDate).toISOString(),
@@ -1034,9 +1034,9 @@ const EventsPage = () => {
 
                     await api.post("/bazaars", eventData);
 
-                    toast.success(`Bazaar "${bazaarData.name}" created as a draft!`);
+                    toast.success(`Bazaar "${bazaarData.title}" created as a draft!`);
                     setCreateBazaarOpen(false);
-                    setBazaarData({ name: "", description: "", theme: "", startDate: "", endDate: "", location: "University Courtyard", maxParticipants: "50", registrationDeadline: "" });
+                    setBazaarData({ title: "", description: "", theme: "", startDate: "", endDate: "", location: "University Courtyard", maxParticipants: "50", registrationDeadline: "" });
                     fetchEvents();
                   } catch (error) {
                     console.error("Failed to create bazaar:", error);
