@@ -5,8 +5,6 @@ import {
   Navigate,
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import theme from "./theme";
@@ -29,7 +27,7 @@ import MyRegistrations from "./pages/MyRegistrations";
 import GymSchedulePage from "./pages/GymSchedulePage";
 import CreateWorkshop from "./pages/CreateWorkshop";
 import Workshops from "./pages/Workshops";
-import TripsPage from "./pages/TripsPage";
+import AdminUserManagement from "./pages/AdminUserManagement";
 // ---------------------------
 // Protected Route Components
 // ---------------------------
@@ -107,7 +105,7 @@ const AdminRoute = ({ children }) => {
     );
   }
 
-  if (!user || (user.role !== "admin" && user.role !== "events_office" && user.role !== "event-office")) {
+  if (!user || (user.role !== "admin" && user.role !== "event-office")) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -231,6 +229,16 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  {
+    path: "/admin-users",
+    element: (
+      <ProtectedRoute>
+        <AdminRoute>
+          <AdminUserManagement />
+        </AdminRoute>
+      </ProtectedRoute>
+    ),
+  },
 
   // New pages from main branch
   {
@@ -270,16 +278,6 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <CreateWorkshop />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/trips",
-    element: (
-      <ProtectedRoute>
-        <AdminRoute>
-          <TripsPage />
-        </AdminRoute>
       </ProtectedRoute>
     ),
   },
@@ -357,7 +355,7 @@ const App = () => {
       >
         <RouterProvider router={router} />
 
-        {/* React Hot Toast - For general notifications */}
+        {/* Toast Notifications */}
         <Toaster
           position="top-right"
           toastOptions={{
@@ -383,23 +381,6 @@ const App = () => {
                 secondary: theme.colors.error.light,
               },
             },
-          }}
-        />
-
-        {/* React Toastify - For conference operations */}
-        <ToastContainer
-          position="top-right"
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="light"
-          style={{
-            fontFamily: theme.typography.fontFamily.primary,
           }}
         />
       </div>
