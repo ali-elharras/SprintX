@@ -94,4 +94,38 @@ const workshopSchema = new mongoose.Schema(
 workshopSchema.index({ startDate: 1, location: 1 });
 workshopSchema.index({ registrationDeadline: 1 });
 
+// Status to indicate whether professor-submitted workshop is pending approval
+workshopSchema.add({
+  status: {
+    type: String,
+    enum: ["pending", "published", "rejected", "needs_revision"],
+    default: "pending",
+  },
+  // link to the published Event (if published)
+  publishedEventId: {
+    type: String,
+  },
+  // Reference to the professor who created this workshop
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: false, // Optional for backwards compatibility
+  },
+  // Edit requests from Events Office to professors
+  editRequests: {
+    type: [
+      {
+        message: { type: String, required: true },
+        requestedBy: {
+          id: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false },
+          name: { type: String },
+        },
+        requestedAt: { type: Date, default: Date.now },
+        status: { type: String, enum: ["needs_revision"], default: "needs_revision" },
+      },
+    ],
+    default: [],
+  },
+});
+
 module.exports = mongoose.model("Workshop", workshopSchema);

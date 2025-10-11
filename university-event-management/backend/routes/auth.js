@@ -9,6 +9,7 @@ const {
   forgotPassword,
   verifyResetToken,
   resetPassword,
+  verifyEmail,
 } = require("../controllers/authController");
 const { protect } = require("../middleware/auth");
 
@@ -210,5 +211,8 @@ router.get("/me", protect, getProfile);
 router.post("/forgot-password", forgotPasswordValidation, forgotPassword);
 router.get("/verify-reset-token/:token", verifyResetToken);
 router.post("/reset-password", resetPasswordValidation, resetPassword);
+
+// Email verification route (after admin approval)
+router.get("/verify-email/:token", verifyEmail);
 
 module.exports = router;

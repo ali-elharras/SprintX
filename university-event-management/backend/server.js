@@ -20,6 +20,8 @@ const gymRoutes = require("./routes/gym");
 const conferenceRoutes = require("./routes/conference.js");
 const bazaarRoutes = require("./routes/bazaar");
 const workshopRoutes = require("./routes/workshop");
+const notificationRoutes = require("./routes/notifications");
+
 
 const app = express();
 
@@ -71,7 +73,14 @@ app.use("/api/courts", courtRoutes);
 app.use("/api/gym", gymRoutes);
 app.use("/api/conferences", conferenceRoutes);
 app.use("/api/bazaars", bazaarRoutes);
-app.use("/api/workshops", workshopRoutes); 
+
+// Workshop routes (professors create -> saved as pending, Events Office can publish)
+app.use("/api/workshops", workshopRoutes);
+
+// Notification routes (for professors to receive workshop updates)
+app.use("/api/notifications", notificationRoutes);
+
+// Workshop routes removed as feature deprecated
 
 // ===== Health Check =====
 app.get("/api/health", (req, res) => {

@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import theme, { getRoleColor } from "../theme";
 import Button from "../components/Button";
+import NotificationCenter from "../components/NotificationCenter";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -169,7 +170,7 @@ const Navbar = () => {
       <div style={logoStyles}>🎓 Campus Events Hub</div>
 
       {/* Navigation Links */}
-      <div style={{ display: "flex", gap: theme.spacing[6] }}>
+  <div style={{ display: "flex", gap: theme.spacing[6] }}>
         {user && (user.role === "admin" || user.role === "event-office") ? (
           <>
             <button
@@ -239,6 +240,38 @@ const Navbar = () => {
               }}
             >
               Admin Dashboard
+            </button>
+            <button
+              onClick={() => navigate("/admin-users")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color: location.pathname === "/admin-users"
+                  ? theme.colors.primary.main
+                  : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom: location.pathname === "/admin-users"
+                  ? `2px solid ${theme.colors.primary.main}`
+                  : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/admin-users") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/admin-users") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              Admin Users
             </button>
           </>
         ) : isVendor ? (
@@ -382,6 +415,44 @@ const Navbar = () => {
             >
               Events
             </button>
+
+            {/* Trips link - visible to Events Office and Admin only */}
+            {user && (user.role === "events_office" || user.role === "admin") && (
+              <button
+                onClick={() => navigate("/trips")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: theme.typography.fontSize.base,
+                  fontWeight: theme.typography.fontWeight.medium,
+                  color:
+                    location.pathname === "/trips"
+                      ? theme.colors.primary.main
+                      : theme.colors.text.secondary,
+                  cursor: "pointer",
+                  padding: theme.spacing[2],
+                  textDecoration: "none",
+                  borderBottom:
+                    location.pathname === "/trips"
+                      ? `2px solid ${theme.colors.primary.main}`
+                      : "2px solid transparent",
+                  transition: "all 0.2s ease",
+                  fontFamily: theme.typography.fontFamily.primary,
+                }}
+                onMouseEnter={(e) => {
+                  if (location.pathname !== "/trips") {
+                    e.target.style.color = theme.colors.primary.main;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (location.pathname !== "/trips") {
+                    e.target.style.color = theme.colors.text.secondary;
+                  }
+                }}
+              >
+                Trips
+              </button>
+            )}
 
             <button
               onClick={() => navigate("/courts")}
@@ -531,6 +602,13 @@ const Navbar = () => {
 
       {/* Account Section */}
       <div style={accountSectionStyles}>
+        {/* Notification Center for Professors/Staff */}
+        {(user?.role === 'professor' || user?.role === 'staff') && (
+          <div style={{ marginRight: theme.spacing[4] }}>
+            <NotificationCenter />
+          </div>
+        )}
+        
         <div style={userInfoStyles}>
           {/* Avatar */}
           <div style={avatarStyles}>

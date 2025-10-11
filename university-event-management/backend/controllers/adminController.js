@@ -5,14 +5,18 @@ const User = require("../models/User");
 
 const createAdminOrEventOffice = async (req, res) => {
   try {
-    const { firstName, lastName, email, password, universityId, role } = req.body;
+  const { firstName, lastName, email, password, universityId, role } = req.body;
 
-    // Validate required fields
-    if (!firstName || !lastName || !email || !password || !universityId || !role) {
-      return res.status(400).json({ message: "All required fields must be provided" });
+    // Validate required fields (universityId is optional for admin/events_office)
+    if (!firstName || !lastName || !email || !password || !role) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
 
-    
+    // Normalize role alias and validate (DB enum uses 'events_office')
+    const normalizedRole = role === "event_office" ? "events_office" : role;
+    if (!["admin", "events_office"].includes(normalizedRole)) {
+      return res.status(400).json({ message: "Role must be 'admin' or 'events_office'" });
+    }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -21,18 +25,21 @@ const createAdminOrEventOffice = async (req, res) => {
     }
 
     // Create new user
-    const newUser = await User.create({
+    const payload = {
       firstName,
       lastName,
       email,
       password,
-      universityId,
-      role,
+      role: normalizedRole,
       isVerified: true, // Admins/Event office are verified immediately
-    });
+      isActive: true,   // Explicitly set active
+    };
+    if (universityId) payload.universityId = universityId;
+
+    const newUser = await User.create(payload);
 
     return res.status(201).json({
-      message: `${role === "admin" ? "Admin" : "Event office"} created successfully`,
+      message: `${role === "admin" ? "Admin" : "Event Office"} created successfully`,
       user: {
         id: newUser._id,
         fullName: `${newUser.firstName} ${newUser.lastName}`,
@@ -42,7 +49,7 @@ const createAdminOrEventOffice = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating admin/event office:", error);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -101,8 +108,95 @@ const getAllUsers = async (req, res) => {
 };
 
 
+// Fetch academics (staff/ta/professor) who registered but are not yet verified
+const getPendingAcademics = async (req, res) => {
+  try {
+    const users = await User.find(
+      {
+        isVerified: false,
+        role: { $in: ["staff", "ta", "professor"] },
+      },
+      "firstName lastName email universityId role createdAt"
+    ).sort({ createdAt: -1 });
+
+    res.status(200).json(users);
+  } catch (err) {
+    console.error("Error fetching pending academics:", err);
+    res.status(500).json({ message: "Error fetching pending academics" });
+  }
+};
+
+// Approve academic by setting the correct role, generating verification token, and emailing the user
+const approveAcademic = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body; // expected: staff, ta, professor
+
+    if (!["staff", "ta", "professor"].includes(role)) {
+      return res.status(400).json({ message: "Invalid role" });
+    }
+
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Update role, ensure verification is pending until email link is clicked
+    user.role = role;
+    user.isVerified = false;
+
+    // Generate verification token
+    const crypto = require("crypto");
+    const verifyToken = crypto.randomBytes(32).toString("hex");
+    user.verificationToken = verifyToken;
+    user.verificationTokenExpires = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24 hours
+
+    await user.save();
+
+    // Send verification email
+    const emailService = require("../services/emailService");
+    try {
+      await emailService.sendVerificationEmail(
+        user.email,
+        verifyToken,
+        `${user.firstName} ${user.lastName}`,
+        role
+      );
+    } catch (emailErr) {
+      console.error("Failed to send verification email:", emailErr.message);
+      // We keep the approval saved but inform the admin email failed
+      return res.status(200).json({
+        message:
+          "User approved. Verification email could not be sent. You may need to resend later.",
+        user: {
+          id: user._id,
+          fullName: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          role: user.role,
+          isVerified: user.isVerified,
+        },
+      });
+    }
+
+    return res.status(200).json({
+      message:
+        "User approved. Verification email sent. The user must click the link to activate their account.",
+      user: {
+        id: user._id,
+        fullName: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        role: user.role,
+        isVerified: user.isVerified,
+      },
+    });
+  } catch (err) {
+    console.error("Error approving academic:", err);
+    res.status(500).json({ message: "Error approving user" });
+  }
+};
+
 module.exports = {
   createAdminOrEventOffice,
   deleteAdminOrEventOffice,
   getAllUsers,
+  getPendingAcademics,
+  approveAcademic,
 };

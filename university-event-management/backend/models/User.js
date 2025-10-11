@@ -53,8 +53,10 @@ const userSchema = new mongoose.Schema(
     },
     universityId: {
       type: String,
-      required: [true, "University ID is required"],
-      unique: true,
+      // Required for regular university members; optional for admin/events_office
+      required: function () {
+        return !["admin", "events_office"].includes(this.role);
+      },
       trim: true,
       match: [
         /^[A-Za-z0-9\-_\.]+$/,
@@ -157,9 +159,20 @@ userSchema.virtual("fullName").get(function () {
 
 // Index for better query performance
 userSchema.index({ email: 1 });
-userSchema.index({ universityId: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ department: 1 });
+
+// Enforce unique universityId only for non-admin users and when universityId exists
+userSchema.index(
+  { universityId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      universityId: { $exists: true, $type: "string" },
+      role: { $nin: ["admin", "events_office"] },
+    },
+  }
+);
 
 // Pre-save middleware to hash password
 userSchema.pre("save", async function (next) {

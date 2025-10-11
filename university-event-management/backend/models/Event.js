@@ -132,17 +132,11 @@ const eventSchema = new mongoose.Schema(
     // Special fields for trips
     itinerary: {
       type: String,
-      required: function () {
-        return this.type === "trip";
-      },
       trim: true,
       maxlength: [3000, "Itinerary cannot exceed 3000 characters"],
     },
     transportation: {
       type: String,
-      required: function () {
-        return this.type === "trip";
-      },
       trim: true,
       maxlength: [500, "Transportation details cannot exceed 500 characters"],
     },
@@ -209,6 +203,11 @@ eventSchema.virtual("availableSpots").get(function () {
 eventSchema.virtual("isRegistrationExpired").get(function () {
   if (!this.registrationRequired) return false;
   return new Date() > this.registrationDeadline;
+});
+
+// Backwards-compatible alias: some front-end components expect `title`
+eventSchema.virtual('title').get(function () {
+  return this.name;
 });
 
 // === Indexes ===

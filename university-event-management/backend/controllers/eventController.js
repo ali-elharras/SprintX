@@ -16,7 +16,6 @@ const getUpcomingBazaars = async (req, res, next) => {
     const bazaars = await Event.find({
       startDate: { $gte: new Date() },
       type: "bazaar",
-      status: "published",
     }).sort({ startDate: 1 });
 
     return res.status(200).json({

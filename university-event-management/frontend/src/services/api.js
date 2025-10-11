@@ -355,3 +355,55 @@ export const conferenceAPI = {
 
     getConference: (id) => api.get(`/conferences/${id}`),
 };
+
+export const adminAPI = {
+  // ✅ Fetch all users
+  getAllUsers: async () => {
+    try {
+      const response = await api.get("/admin/users");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // ✅ Create Admin or Event Office
+  createUser: async (userData) => {
+    try {
+      const response = await api.post("/admin/create-user", userData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // ✅ Delete Admin or Event Office
+  deleteUser: async (id) => {
+    try {
+      const response = await api.delete(`/admin/delete-user/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // ✅ Get unverified academics (staff/ta/professor)
+  getPendingAcademics: async () => {
+    try {
+      const response = await api.get("/admin/pending-academics");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // ✅ Approve an academic: assign role and verify
+  approveAcademic: async (id, role) => {
+    try {
+      const response = await api.patch(`/admin/approve-academic/${id}`, { role });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};

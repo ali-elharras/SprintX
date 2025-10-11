@@ -33,7 +33,8 @@ class EmailService {
       // Create test account for development
       const testAccount = await nodemailer.createTestAccount();
 
-      this.transporter = nodemailer.createTransporter({
+      // NOTE: createTransporter is invalid, should be createTransport
+      this.transporter = nodemailer.createTransport({
         host: "smtp.ethereal.email",
         port: 587,
         secure: false, // true for 465, false for other ports
@@ -51,6 +52,90 @@ class EmailService {
       // Fallback to console logging
       this.transporter = null;
     }
+  }
+
+  // Send account verification email with tokenized link to backend verification endpoint
+  async sendVerificationEmail(to, verifyToken, fullName = "", requestedRole = "") {
+    const backendBase =
+      process.env.BACKEND_URL || process.env.API_BASE_URL || "http://localhost:5000";
+    const verifyUrl = `${backendBase.replace(/\/$/, "")}/api/auth/verify-email/${verifyToken}`;
+
+    const subject = "Verify your account - Campus Events Hub";
+
+    const mailOptions = {
+      from: `"Campus Events Hub" <${process.env.EMAIL_USER || "no-reply@campusevents.test"}>`,
+      to,
+      subject,
+      html: this.getVerificationEmailTemplate({ verifyUrl, fullName, requestedRole }),
+      text: `Hello${fullName ? ` ${fullName}` : ""},\n\n` +
+        `Please verify your Campus Events Hub account by visiting the link below:\n${verifyUrl}\n\n` +
+        `If you did not create this account, you can safely ignore this email.`,
+    };
+
+    try {
+      if (!this.transporter) {
+        console.log("⚠️ No transporter available - falling back to console mode");
+        console.log("📧 Verification Email (Console Mode):");
+        console.log("   To:", to);
+        console.log("   Verify URL:", verifyUrl);
+        console.log("   Subject:", subject);
+        return { success: true, messageId: "console-log" };
+      }
+
+      const info = await this.transporter.sendMail(mailOptions);
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+        console.log("✅ Verification email sent successfully", { to, messageId: info.messageId });
+      } else {
+        console.log("📧 Test verification email sent:");
+        console.log("   Preview URL:", nodemailer.getTestMessageUrl(info));
+      }
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error("❌ Failed to send verification email:", error.message);
+      throw new Error(`Failed to send verification email: ${error.message}`);
+    }
+  }
+
+  getVerificationEmailTemplate({ verifyUrl, fullName = "", requestedRole = "" }) {
+    const safeName = fullName || "there";
+    const roleLine = requestedRole ? `<p>Your requested role: <strong>${requestedRole}</strong></p>` : "";
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Verify your account - Campus Events Hub</title>
+        <style>
+          body { font-family: Arial, sans-serif; color: #333; max-width: 640px; margin: 0 auto; background: #f6f8fa; padding: 24px; }
+          .card { background: #fff; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); overflow: hidden; }
+          .header { background: linear-gradient(135deg,#667eea,#764ba2); color: #fff; padding: 24px; text-align: center; }
+          .content { padding: 28px; }
+          .btn { display: inline-block; background: #667eea; color: #fff; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; }
+          .note { color: #666; font-size: 14px; margin-top: 16px; }
+          .footer { color: #777; font-size: 12px; text-align: center; padding: 18px 24px; background: #fafbfc; }
+          .link { color: #667eea; word-break: break-all; font-size: 13px; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="header"><h2>Campus Events Hub</h2></div>
+          <div class="content">
+            <p>Hello ${safeName},</p>
+            <p>Please verify your account to complete the approval process and start using Campus Events Hub.</p>
+            ${roleLine}
+            <p style="margin:20px 0; text-align:center;">
+              <a class="btn" href="${verifyUrl}">Verify My Account</a>
+            </p>
+            <p class="note">If the button doesn't work, copy and paste this link into your browser:</p>
+            <p class="link">${verifyUrl}</p>
+            <p class="note">If you did not request this, you can safely ignore this email.</p>
+          </div>
+          <div class="footer">© ${new Date().getFullYear()} Campus Events Hub</div>
+        </div>
+      </body>
+      </html>
+    `;
   }
 
   async verifyConnection() {

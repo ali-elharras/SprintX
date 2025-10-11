@@ -11,6 +11,7 @@ import ConferenceModal from "./ConferenceModal";
 import LoadingScreen from "../components/LoadingScreen";
 import { eventAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import Modal from "../components/Modal";
 
 const EventsPage = () => {
   const navigate = useNavigate();
@@ -19,16 +20,10 @@ const EventsPage = () => {
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null); // Added missing error state
-  const [conferenceModal, setConferenceModal] = useState({
-    isOpen: false,
-    conference: null,
-    isEdit: false
-  });
+  const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     type: "",
     search: "",
-    instructor: "",
     upcoming: true,
   });
 
@@ -96,24 +91,49 @@ const EventsPage = () => {
   const [requestEditsCandidate, setRequestEditsCandidate] = useState(null);
   const [requestEditsMessage, setRequestEditsMessage] = useState("");
 
-  // Fetch events
+  // State for creating a new bazaar
+  const [createBazaarOpen, setCreateBazaarOpen] = useState(false);
+  const [bazaarData, setBazaarData] = useState({
+    name: "",
+    description: "",
+    startDate: "",
+    endDate: "",
+    location: "University Courtyard",
+    theme: "",
+    maxParticipants: "50",
+    registrationDeadline: "",
+  });
+
   const fetchEvents = async () => {
     try {
       setLoading(true);
       setError(null);
-      console.log("Fetching events...");
-      
-      const response = await eventAPI.getEvents({
-        status: "published",
-        upcoming: "true",
-      });
-      
-      console.log("Events response:", response);
-      // The response structure is response.data.data due to the backend API structure
+      // Removed upcoming: "true" filter to show all published events including workshops with any date
+      const response = await eventAPI.getEvents({ status: "published" });
       setEvents(response.data?.data || []);
-    } catch (error) {
-      console.error("Error fetching events:", error);
-      setError(error);
+
+      // If current user is Events Office, also fetch pending and needs_revision workshops
+      if (auth?.isEventsOffice) {
+        try {
+          // Fetch both pending and needs_revision workshops
+          const [pendingResp, revisionResp] = await Promise.all([
+            api.get('/workshops?status=pending'),
+            api.get('/workshops?status=needs_revision')
+          ]);
+          
+          // Combine both types of workshops
+          const pendingWorkshops = pendingResp.data || [];
+          const revisionWorkshops = revisionResp.data || [];
+          
+          setPendingWorkshops([...pendingWorkshops, ...revisionWorkshops]);
+        } catch (err) {
+          console.warn('Could not fetch pending workshops', err);
+          setPendingWorkshops([]);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err);
       toast.error("Failed to load events. Please try again.");
     } finally {
       setTimeout(() => setLoading(false), 2000);
@@ -122,9 +142,32 @@ const EventsPage = () => {
 
   useEffect(() => {
     fetchEvents();
+    
+    // Refresh events when window gains focus (user returns to tab/window)
+    // This ensures deleted workshops are removed from Events tab even if deleted from another tab
+    const handleFocus = () => {
+      fetchEvents();
+    };
+    
+    // Listen for workshop deletion events from other tabs via localStorage
+    const handleStorageChange = (e) => {
+      if (e.key === 'workshop_deleted' && e.newValue) {
+        console.log('Workshop deleted in another tab, refreshing events...');
+        fetchEvents();
+        // Clear the flag
+        localStorage.removeItem('workshop_deleted');
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
-  // Apply filters when events or filters change
   useEffect(() => {
     applyFilters();
   }, [events, filters]);
@@ -137,35 +180,20 @@ const EventsPage = () => {
       filtered = filtered.filter((event) => event.type === filters.type);
     }
 
-    // Filter by instructor (only applies if instructor search is entered)
-    if (filters.instructor) {
-      const instructorTerm = filters.instructor.toLowerCase();
-      filtered = filtered.filter(
-        (event) =>
-          event.instructor &&
-          event.instructor.toLowerCase().includes(instructorTerm)
-      );
-    }
-
     // Filter by search term
     if (filters.search) {
-      const searchTerm = filters.search.toLowerCase();
+      const s = filters.search.toLowerCase();
       filtered = filtered.filter(
         (event) =>
-          event.name.toLowerCase().includes(searchTerm) ||
+          event.title.toLowerCase().includes(searchTerm) ||
           event.description.toLowerCase().includes(searchTerm) ||
-          event.location.toLowerCase().includes(searchTerm) ||
-          (event.instructor &&
-            event.instructor.toLowerCase().includes(searchTerm))
+          event.location.toLowerCase().includes(searchTerm)
       );
     }
-
-    // Filter upcoming events
     if (filters.upcoming) {
       const now = new Date();
-      filtered = filtered.filter((event) => new Date(event.startDate) > now);
+      filtered = filtered.filter((e) => new Date(e.startDate) > now);
     }
-
     setFilteredEvents(filtered);
   };
 
@@ -181,34 +209,6 @@ const EventsPage = () => {
     fetchEvents();
   };
 
-  const handleCreateConference = () => {
-    setConferenceModal({
-      isOpen: true,
-      conference: null,
-      isEdit: false
-    });
-  };
-
-  const handleEditConference = (conference) => {
-    setConferenceModal({
-      isOpen: true,
-      conference: conference,
-      isEdit: true
-    });
-  };
-
-  const handleConferenceModalClose = () => {
-    setConferenceModal({
-      isOpen: false,
-      conference: null,
-      isEdit: false
-    });
-  };
-
-  const handleConferenceSuccess = () => {
-    fetchEvents(); // Refresh events list
-  };
-
   const eventTypeOptions = [
     { value: "", label: "All Types" },
     { value: "workshop", label: "Workshops" },
@@ -218,22 +218,27 @@ const EventsPage = () => {
     { value: "conference", label: "Conferences" },
   ];
 
-  if (loading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: theme.colors.background.default,
-        }}
-      >
-        <Navbar />
-        <LoadingScreen type="events" />
-      </div>
-    );
-  }
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: theme.colors.background.default }}>
+      <Navbar />
+      <LoadingScreen type="events" />
+    </div>
+  );
 
   return (
     <>
+      <style>{`
+        @keyframes slide-down {
+          from {
+            transform: translateY(-20%);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
       <Navbar />
       <div
         style={{
@@ -242,244 +247,42 @@ const EventsPage = () => {
           padding: theme.spacing[6],
         }}
       >
-        <div
-          style={{
-            maxWidth: "1200px",
-            margin: "0 auto",
-          }}
-        >
-          {/* Page Header */}
-          <div style={{ marginBottom: theme.spacing[8] }}>
-            <h1
-              style={{
-                fontSize: theme.typography.fontSize["3xl"],
-                fontWeight: theme.typography.fontWeight.bold,
-                color: theme.colors.text.primary,
-                marginBottom: theme.spacing[2],
-                textAlign: "center",
-              }}
-            >
-              University Events
-            </h1>
-            <p
-              style={{
-                fontSize: theme.typography.fontSize.lg,
-                color: theme.colors.text.secondary,
-                textAlign: "center",
-                maxWidth: "600px",
-                margin: "0 auto",
-              }}
-            >
-              Discover and register for workshops, trips, and other exciting events
-              happening at our university.
-            </p>
-          </div>
+      <div
+        style={{
+          maxWidth: "1200px",
+          margin: "0 auto",
+        }}
+      >
+        {/* Page Header */}
+        <div style={{ marginBottom: theme.spacing[8] }}>
+          <h1
+            style={{
+              fontSize: theme.typography.fontSize["3xl"],
+              fontWeight: theme.typography.fontWeight.bold,
+              color: theme.colors.text.primary,
+              marginBottom: theme.spacing[2],
+              textAlign: "center",
+            }}
+          >
+            University Events
+          </h1>
+          <p
+            style={{
+              fontSize: theme.typography.fontSize.lg,
+              color: theme.colors.text.secondary,
+              textAlign: "center",
+              maxWidth: "600px",
+              margin: "0 auto",
+            }}
+          >
+            Discover and register for workshops, trips, and other exciting events
+            happening at our university.
+          </p>
+        </div>
 
-          {/* Pending workshops — Events Office approvals (visible only to Events Office users) */}
-          {auth.isEventsOffice && pendingWorkshops.length > 0 && (
-            <div
-              style={{
-                background: theme.colors.background.paper,
-                padding: theme.spacing[5],
-                borderRadius: theme.borderRadius.lg,
-                boxShadow: theme.shadows.md,
-                marginBottom: theme.spacing[6],
-              }}
-            >
-              <h2
-                style={{
-                  marginTop: 0,
-                  marginBottom: theme.spacing[3],
-                  color: theme.colors.text.primary,
-                }}
-              >
-                Pending Workshop Approvals
-              </h2>
-              <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[4] }}>
-                These workshops were submitted by professors and are awaiting approval. They are not visible to other
-                stakeholders until published.
-              </p>
-
-              <div style={{ display: "grid", gap: theme.spacing[4] }}>
-                {pendingWorkshops.map((w) => (
-                  <div
-                    key={w.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: theme.spacing[4],
-                      borderRadius: theme.borderRadius.base,
-                      background: theme.colors.background.default,
-                      border: `1px solid ${theme.colors.border}`,
-                    }}
-                  >
-                    <div style={{ maxWidth: "75%" }}>
-                      <div style={{ fontSize: theme.typography.fontSize.lg, fontWeight: 600 }}>
-                        {w.name}
-                      </div>
-                      <div style={{ color: theme.colors.text.secondary, marginTop: theme.spacing[1] }}>
-                        <strong>Professor:</strong> {w.professorName} • <strong>Date:</strong>{" "}
-                        {new Date(w.startDate).toLocaleString()} • <strong>Location:</strong> {w.location}
-                      </div>
-                      <div style={{ marginTop: theme.spacing[2], color: theme.colors.text.primary }}>
-                        {w.shortDescription}
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", gap: theme.spacing[3] }}>
-                      <Button
-                        variant="primary"
-                        onClick={() => {
-                          // Open custom confirmation modal for this pending workshop
-                          setPublishCandidate(w);
-                        }}
-                      >
-                        Accept & Publish
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        onClick={() => setSelectedPending(w)}
-                      >
-                        View Details
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          // Open small input modal to request edits
-                          setRequestEditsCandidate(w);
-                          setRequestEditsMessage("");
-                        }}
-                      >
-                        Request Edits
-                      </Button>
-
-                      <Button
-                        variant="danger"
-                        onClick={() => {
-                          // Ask for confirmation before rejecting
-                          setRejectCandidate(w);
-                        }}
-                      >
-                        Reject
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Request Edits modal */}
-          {requestEditsCandidate && (
-            <div
-              role="dialog"
-              aria-modal="true"
-              style={{
-                position: "fixed",
-                inset: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "rgba(0,0,0,0.35)",
-                zIndex: 10000,
-              }}
-              onClick={() => setRequestEditsCandidate(null)}
-            >
-              <div
-                style={{
-                  width: "560px",
-                  maxWidth: "95%",
-                  background: theme.colors.background.paper,
-                  borderRadius: theme.borderRadius.lg,
-                  padding: theme.spacing[5],
-                  boxShadow: theme.shadows.lg,
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <h3 style={{ marginTop: 0, marginBottom: theme.spacing[2] }}>
-                  Request Edits for "{requestEditsCandidate.name}"
-                </h3>
-                <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[2] }}>
-                  Provide a short message that will be sent back to the professor explaining what needs to be changed. This will mark the workshop as "needs revision" and remove it from the pending approvals list.
-                </p>
-
-                <Input
-                  label="Edit message"
-                  name="requestEditsMessage"
-                  value={requestEditsMessage}
-                  onChange={(e) => setRequestEditsMessage(e.target.value)}
-                  placeholder="Please make the agenda clearer and include contact info..."
-                />
-
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing[3] }}>
-                  <Button variant="outline" onClick={() => setRequestEditsCandidate(null)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={async () => {
-                      const w = requestEditsCandidate;
-
-                      // Minimal validation
-                      if (!requestEditsMessage || requestEditsMessage.trim().length < 3) {
-                        toast.error("Please enter a short message to request edits.");
-                        return;
-                      }
-
-                      // Store edit request locally (for now) so professor can later view it.
-                      try {
-                        const key = "event_edit_requests";
-                        const existing = JSON.parse(localStorage.getItem(key) || "{}");
-                        existing[w.id || w._id || `local-${Date.now()}`] = {
-                          eventId: w._id || w.id,
-                          message: requestEditsMessage.trim(),
-                          requestedBy: {
-                            name: auth.user?.firstName ? `${auth.user.firstName} ${auth.user.lastName}` : "Events Office",
-                            id: auth.user?.id || null,
-                          },
-                          requestedAt: new Date().toISOString(),
-                          status: "needs_revision",
-                        };
-                        localStorage.setItem(key, JSON.stringify(existing));
-                      } catch (err) {
-                        console.error("Failed to persist edit request locally:", err);
-                      }
-
-                      // Remove from pending list locally
-                      setPendingWorkshops((prev) => prev.filter((p) => p.id !== w.id));
-
-                      // If this has a backend id, attempt to update status to 'rejected' or 'needs_revision' via API
-                      // Since backend doesn't yet have a 'needs_revision' status in the controller allowed list,
-                      // we'll set status to 'rejected' for backend but keep a local note. This simulates the flow
-                      // until backend support is added.
-                      if (w._id) {
-                        try {
-                          // Send needs_revision with message to backend
-                          await eventAPI.updateEventStatus(w._id, "needs_revision", requestEditsMessage.trim());
-                          toast.success(`Requested edits for "${w.name}" (professor notified)`);
-                        } catch (err) {
-                          console.error("Failed to update event status on server:", err);
-                          toast.error("Edit request saved locally. Server update failed.");
-                        }
-                      } else {
-                        toast.success(`Requested edits for "${w.name}"`);
-                      }
-
-                      setRequestEditsCandidate(null);
-                      setRequestEditsMessage("");
-                    }}
-                  >
-                    Send Request
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Filters */}
+        {/* Filters */}
+  {/* Pending workshops — Events Office approvals (visible only to Events Office users) */}
+  {auth.isEventsOffice && pendingWorkshops.length > 0 && (
           <div
             style={{
               background: theme.colors.background.paper,
@@ -489,164 +292,380 @@ const EventsPage = () => {
               marginBottom: theme.spacing[6],
             }}
           >
-            <div
+            <h2
               style={{
-                display: "grid",
-                gridTemplateColumns:
-                  filters.type === "workshop" && isEventsOffice
-                    ? "1fr 1fr 1fr auto auto auto"
-                    : filters.type === "workshop"
-                    ? "1fr 1fr 1fr auto auto"
-                    : isEventsOffice
-                    ? "1fr 1fr auto auto auto"
-                    : "1fr 1fr auto auto",
-                gap: theme.spacing[4],
-                alignItems: "end",
+                marginTop: 0,
+                marginBottom: theme.spacing[3],
+                color: theme.colors.text.primary,
               }}
             >
-              <Input
-                label="Search Events"
-                placeholder="Search by name, description, location, or instructor..."
-                value={filters.search}
-                onChange={(e) => handleFilterChange("search", e.target.value)}
-              />
-              <Select
-                label="Event Type"
-                options={eventTypeOptions}
-                value={filters.type}
-                onChange={(e) => handleFilterChange("type", e.target.value)}
-              />
-              {filters.type === "workshop" && (
-                <Input
-                  label="Instructor Name"
-                  placeholder="Search by instructor..."
-                  value={filters.instructor}
-                  onChange={(e) =>
-                    handleFilterChange("instructor", e.target.value)
-                  }
-                />
-              )}
-              <Button
-                variant={filters.upcoming ? "primary" : "secondary"}
-                onClick={() =>
-                  handleFilterChange("upcoming", !filters.upcoming)
-                }
-              >
-                {filters.upcoming ? "Upcoming Only" : "All Events"}
-              </Button>
-              <Button variant="outline" onClick={fetchEvents}>
-                Refresh
-              </Button>
-              {isEventsOffice && (
-                <Button
-                  variant="primary"
-                  onClick={handleCreateConference}
+              Pending Workshop Approvals
+            </h2>
+            <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[4] }}>
+              These workshops were submitted by professors and are awaiting approval. They are not visible to other
+              stakeholders until published.
+            </p>
+
+            <div style={{ display: "grid", gap: theme.spacing[4] }}>
+              {pendingWorkshops.map((w) => (
+                <div
+                  key={w.id}
                   style={{
-                    background: theme.colors.eventTypes.conference.main,
-                    whiteSpace: "nowrap",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: theme.spacing[4],
+                    borderRadius: theme.borderRadius.base,
+                    background: theme.colors.background.default,
+                    border: `1px solid ${theme.colors.border}`,
                   }}
                 >
-                  + Create Conference
-                </Button>
-              )}
-            </div>
-          </div>
+                  <div style={{ maxWidth: "75%" }}>
+                    <div style={{ fontSize: theme.typography.fontSize.lg, fontWeight: 600 }}>
+                      {w.name}
+                    </div>
+                    <div style={{ color: theme.colors.text.secondary, marginTop: theme.spacing[1] }}>
+                      <strong>Professor:</strong> {w.professorName} • <strong>Date:</strong>{" "}
+                      {new Date(w.startDate).toLocaleString()} • <strong>Location:</strong> {w.location}
+                    </div>
+                    <div style={{ marginTop: theme.spacing[2], color: theme.colors.text.primary }}>
+                      {w.shortDescription}
+                    </div>
+                  </div>
 
-          {/* Events Grid */}
-          {filteredEvents.length > 0 ? (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))",
-                gap: theme.spacing[6],
-              }}
-            >
-              {filteredEvents.map((event) => (
-                <EventCard
-                  key={event._id}
-                  event={event}
-                  onRegistrationSuccess={handleRegistrationSuccess}
-                  onEventUpdate={fetchEvents}
-                  onEditConference={event.type === "conference" ? handleEditConference : undefined}
-                />
+                    <div style={{ display: "flex", gap: theme.spacing[3] }}>
+                    <Button
+                      variant="primary"
+                      onClick={() => {
+                        // Open custom confirmation modal for this pending workshop
+                        setPublishCandidate(w);
+                      }}
+                    >
+                      Accept & Publish
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => setSelectedPending(w)}
+                    >
+                      View Details
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        // Open small input modal to request edits
+                        setRequestEditsCandidate(w);
+                        setRequestEditsMessage("");
+                      }}
+                    >
+                      Request Edits
+                    </Button>
+
+                    <Button
+                      variant="danger"
+                      onClick={() => {
+                        // Ask for confirmation before rejecting
+                        setRejectCandidate(w);
+                      }}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </div>
               ))}
             </div>
-          ) : (
+          </div>
+        )}
+        {/* Request Edits modal */}
+        {requestEditsCandidate && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              position: "fixed",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(0,0,0,0.35)",
+              zIndex: 10000,
+            }}
+            onClick={() => setRequestEditsCandidate(null)}
+          >
             <div
               style={{
+                width: "560px",
+                maxWidth: "95%",
                 background: theme.colors.background.paper,
-                padding: theme.spacing[12],
                 borderRadius: theme.borderRadius.lg,
-                boxShadow: theme.shadows.md,
-                textAlign: "center",
+                padding: theme.spacing[5],
+                boxShadow: theme.shadows.lg,
               }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <div
-                style={{
-                  fontSize: theme.typography.fontSize["4xl"],
-                  marginBottom: theme.spacing[4],
-                }}
-              >
-                📅
-              </div>
-              <h3
-                style={{
-                  fontSize: theme.typography.fontSize.xl,
-                  fontWeight: theme.typography.fontWeight.semibold,
-                  color: theme.colors.text.primary,
-                  marginBottom: theme.spacing[2],
-                }}
-              >
-                No Events Found
+              <h3 style={{ marginTop: 0, marginBottom: theme.spacing[2] }}>
+                Request Edits for "{requestEditsCandidate.name}"
               </h3>
-              <p
-                style={{
-                  fontSize: theme.typography.fontSize.base,
-                  color: theme.colors.text.secondary,
-                  marginBottom: theme.spacing[4],
-                }}
-              >
-                {filters.search || filters.type || filters.instructor
-                  ? "Try adjusting your filters to see more events."
-                  : "There are no upcoming events at the moment."}
+              <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[2] }}>
+                Provide a short message that will be sent back to the professor explaining what needs to be changed. This will mark the workshop as "needs revision" and remove it from the pending approvals list.
               </p>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  setFilters({
-                    type: "",
-                    search: "",
-                    instructor: "",
-                    upcoming: true,
-                  })
-                }
-              >
-                Clear Filters
-              </Button>
-            </div>
-          )}
 
-          {/* Summary - Fixed the error display logic */}
-          {error && (
-            <div
-              style={{
-                marginTop: theme.spacing[8],
-                padding: theme.spacing[4],
-                background: theme.colors.background.paper,
-                borderRadius: theme.borderRadius.base,
-                textAlign: "center",
-                fontSize: theme.typography.fontSize.sm,
-                color: theme.colors.text.secondary,
-              }}
-            >
-              <p>{error.message || "There was an error loading events. Please try again."}</p>
-              <Button variant="primary" onClick={fetchEvents}>
-                Retry
-              </Button>
+              <Input
+                label="Edit message"
+                name="requestEditsMessage"
+                value={requestEditsMessage}
+                onChange={(e) => setRequestEditsMessage(e.target.value)}
+                placeholder="Please make the agenda clearer and include contact info..."
+              />
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing[3] }}>
+                <Button variant="outline" onClick={() => setRequestEditsCandidate(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={async () => {
+                    const w = requestEditsCandidate;
+
+                    // Minimal validation
+                    if (!requestEditsMessage || requestEditsMessage.trim().length < 3) {
+                      toast.error("Please enter a short message to request edits.");
+                      return;
+                    }
+
+                    // Store edit request locally (for now) so professor can later view it.
+                    try {
+                      const key = "event_edit_requests";
+                      const existing = JSON.parse(localStorage.getItem(key) || "{}");
+                      existing[w.id || w._id || `local-${Date.now()}`] = {
+                        eventId: w._id || w.id,
+                        message: requestEditsMessage.trim(),
+                        requestedBy: {
+                          name: auth.user?.firstName ? `${auth.user.firstName} ${auth.user.lastName}` : "Events Office",
+                          id: auth.user?.id || null,
+                        },
+                        requestedAt: new Date().toISOString(),
+                        status: "needs_revision",
+                      };
+                      localStorage.setItem(key, JSON.stringify(existing));
+                    } catch (err) {
+                      console.error("Failed to persist edit request locally:", err);
+                    }
+
+                    // Remove from pending list locally
+                    setPendingWorkshops((prev) => prev.filter((p) => p.id !== w.id));
+
+                    // If this has a backend id, attempt to update status to 'rejected' or 'needs_revision' via API
+                    // Since backend doesn't yet have a 'needs_revision' status in the controller allowed list,
+                    // we'll set status to 'rejected' for backend but keep a local note. This simulates the flow
+                    // until backend support is added.
+                    if (w._id) {
+                      try {
+                        // Send needs_revision with message to backend
+                        await eventAPI.updateEventStatus(w._id, "needs_revision", requestEditsMessage.trim());
+                        toast.success(`Requested edits for "${w.name}" (professor notified)`);
+                      } catch (err) {
+                        console.error("Failed to update event status on server:", err);
+                        toast.error("Edit request saved locally. Server update failed.");
+                      }
+                    } else {
+                      toast.success(`Requested edits for "${w.name}"`);
+                    }
+
+                    setRequestEditsCandidate(null);
+                    setRequestEditsMessage("");
+                  }}
+                >
+                  Send Request
+                </Button>
+              </div>
             </div>
-          )}
+          </div>
+        )}
+        <div
+          style={{
+            background: theme.colors.background.paper,
+            padding: theme.spacing[5],
+            borderRadius: theme.borderRadius.lg,
+            boxShadow: theme.shadows.md,
+            marginBottom: theme.spacing[6],
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr auto auto",
+              gap: theme.spacing[4],
+              alignItems: "end",
+            }}
+          >
+            <Input
+              label="Search Events"
+              placeholder="Search by title, description, or location..."
+              value={filters.search}
+              onChange={(e) => handleFilterChange("search", e.target.value)}
+            />
+            <Select
+              label="Event Type"
+              options={eventTypeOptions}
+              value={filters.type}
+              onChange={(e) => handleFilterChange("type", e.target.value)}
+            />
+            <Button
+              variant={filters.upcoming ? "primary" : "secondary"}
+              onClick={() => handleFilterChange("upcoming", !filters.upcoming)}
+            >
+              {filters.upcoming ? "Upcoming Only" : "All Events"}
+            </Button>
+            <Button variant="outline" onClick={fetchEvents}>
+              Refresh
+            </Button>
+{auth.isEventsOffice && (
+    <Button
+        variant="primary"
+        onClick={() => setCreateBazaarOpen(true)}
+        style={{
+            background: 'linear-gradient(135deg, #6B73FF 0%, #000DFF 100%)',
+            color: 'white',
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+        }}
+    >
+        + Create Bazaar
+    </Button>
+)}
+          </div>
         </div>
 
+        {/* Events Grid */}
+        {filteredEvents.length > 0 ? (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))",
+              gap: theme.spacing[6],
+            }}
+          >
+            {filteredEvents.map((event) => (
+              <EventCard
+                key={event._id}
+                event={event}
+                onRegistrationSuccess={handleRegistrationSuccess}
+              />
+            ))}
+          </div>
+        ) : (
+          <div
+            style={{
+              background: theme.colors.background.paper,
+              padding: theme.spacing[12],
+              borderRadius: theme.borderRadius.lg,
+              boxShadow: theme.shadows.md,
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                fontSize: theme.typography.fontSize["4xl"],
+                marginBottom: theme.spacing[4],
+              }}
+            >
+              📅
+            </div>
+            <h3
+              style={{
+                fontSize: theme.typography.fontSize.xl,
+                fontWeight: theme.typography.fontWeight.semibold,
+                color: theme.colors.text.primary,
+                marginBottom: theme.spacing[2],
+              }}
+            >
+              No Events Found
+            </h3>
+            <p
+              style={{
+                fontSize: theme.typography.fontSize.base,
+                color: theme.colors.text.secondary,
+                marginBottom: theme.spacing[4],
+              }}
+            >
+              {filters.search || filters.type
+                ? "Try adjusting your filters to see more events."
+                : "There are no upcoming events at the moment."}
+            </p>
+            <Button
+              variant="outline"
+              onClick={() =>
+                setFilters({ type: "", search: "", upcoming: true })
+              }
+            >
+              Clear Filters
+            </Button>
+          </div>
+        )}
+
+        {/* Summary */}
+        {filteredEvents.length > 0 && (
+          <div
+            style={{
+              marginTop: theme.spacing[8],
+              padding: theme.spacing[4],
+              background: theme.colors.background.paper,
+              borderRadius: theme.borderRadius.base,
+              textAlign: "center",
+              fontSize: theme.typography.fontSize.sm,
+              color: theme.colors.text.secondary,
+            }}
+          >
+            Showing {filteredEvents.length} of {events.length} events
+          </div>
+        )}
+
+        {/* Error state */}
+        {error && !loading && (
+          <div
+            style={{
+              background: theme.colors.background.paper,
+              padding: theme.spacing[8],
+              borderRadius: theme.borderRadius.lg,
+              boxShadow: theme.shadows.md,
+              textAlign: "center",
+              border: `2px solid ${theme.colors.status.error}`,
+            }}
+          >
+            <div
+              style={{
+                fontSize: theme.typography.fontSize["2xl"],
+                marginBottom: theme.spacing[4],
+                color: theme.colors.status.error,
+              }}
+            >
+              ⚠️
+            </div>
+            <h3
+              style={{
+                fontSize: theme.typography.fontSize.xl,
+                fontWeight: theme.typography.fontWeight.semibold,
+                color: theme.colors.text.primary,
+                marginBottom: theme.spacing[2],
+              }}
+            >
+              Failed to Load Events
+            </h3>
+            <p
+              style={{
+                fontSize: theme.typography.fontSize.base,
+                color: theme.colors.text.secondary,
+                marginBottom: theme.spacing[4],
+              }}
+            >
+              {error.message || "There was an error loading events. Please try again."}
+            </p>
+            <Button variant="primary" onClick={fetchEvents}>
+              Retry
+            </Button>
+          </div>
+        )}
         {/* Pending workshop details modal */}
         {selectedPending && (
           <div
@@ -709,7 +728,6 @@ const EventsPage = () => {
             </div>
           </div>
         )}
-
         {/* Publish confirmation modal */}
         {publishCandidate && (
           <div
@@ -791,7 +809,6 @@ const EventsPage = () => {
             </div>
           </div>
         )}
-
         {/* Reject confirmation modal */}
         {rejectCandidate && (
           <div
@@ -863,14 +880,185 @@ const EventsPage = () => {
           </div>
         )}
       </div>
+      </div>
+      {/* Create Bazaar Panel */}
+      {createBazaarOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            zIndex: 20000,
+            display: "flex",
+            justifyContent: "center",
+            paddingTop: theme.spacing[6],
+          }}
+          onClick={() => setCreateBazaarOpen(false)}
+        >
+          <div
+            style={{
+              width: "800px",
+              maxWidth: "95%",
+              background: theme.colors.background.paper,
+              borderRadius: theme.borderRadius.lg,
+              boxShadow: theme.shadows.lg,
+              padding: theme.spacing[6],
+              animation: "slide-down 0.3s ease-out",
+              maxHeight: "90vh",
+              overflowY: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ marginTop: 0, marginBottom: theme.spacing[4] }}>
+              Create New Bazaar
+            </h2>
+            
+            <div style={{ display: "grid", gap: theme.spacing[4] }}>
+              <Input
+                label="Bazaar Name"
+                placeholder="e.g., Annual Spring Fair"
+                value={bazaarData.name}
+                onChange={(e) => setBazaarData({ ...bazaarData, name: e.target.value })}
+              />
+              <Input
+                label="Theme"
+                placeholder="e.g., 80s Retro, Sci-Fi, etc."
+                value={bazaarData.theme}
+                onChange={(e) => setBazaarData({ ...bazaarData, theme: e.target.value })}
+              />
+              <div>
+                <label style={{ display: 'block', marginBottom: theme.spacing[2], color: theme.colors.text.secondary }}>Description</label>
+                <textarea
+                  rows="4"
+                  placeholder="A brief summary of the bazaar, what vendors can expect, and any special attractions."
+                  value={bazaarData.description}
+                  onChange={(e) => setBazaarData({ ...bazaarData, description: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: theme.spacing[3],
+                    fontSize: theme.typography.fontSize.base,
+                    border: `1px solid ${theme.colors.border}`,
+                    borderRadius: theme.borderRadius,
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing[4] }}>
+                <Input
+                  label="Start Date"
+                  type="datetime-local"
+                  value={bazaarData.startDate}
+                  onChange={(e) => {
+                    const newStartDate = e.target.value;
+                    const updatedData = { ...bazaarData, startDate: newStartDate };
 
-      {/* Conference Modal */}
-      <ConferenceModal
-        isOpen={conferenceModal.isOpen}
-        onClose={handleConferenceModalClose}
-        conference={conferenceModal.conference}
-        onSuccess={handleConferenceSuccess}
-      />
+                    // If the new start date makes the end date invalid, clear it.
+                    if (updatedData.endDate && newStartDate > updatedData.endDate) {
+                      updatedData.endDate = "";
+                    }
+
+                    // If the registration deadline is now invalid (i.e., not before the start date), clear it.
+                    if (
+                      updatedData.registrationDeadline &&
+                      newStartDate <= updatedData.registrationDeadline
+                    ) {
+                      updatedData.registrationDeadline = "";
+                    }
+
+                    setBazaarData(updatedData);
+                  }}
+                />
+                <Input
+                  label="End Date"
+                  type="datetime-local"
+                  value={bazaarData.endDate}
+                  min={bazaarData.startDate} // Prevent selecting an end date before the start date
+                  onChange={(e) => setBazaarData({ ...bazaarData, endDate: e.target.value })}
+                />
+              </div>
+              <Input
+                label="Location"
+                value={bazaarData.location}
+                onChange={(e) => setBazaarData({ ...bazaarData, location: e.target.value })}
+              />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing[4] }}>
+                <Input
+                  label="Max Participants"
+                  type="number"
+                  placeholder="50"
+                  min="1"
+                  value={bazaarData.maxParticipants}
+                  onChange={(e) => setBazaarData({ ...bazaarData, maxParticipants: e.target.value })}
+                />
+                <Input
+                  label="Registration Deadline"
+                  type="datetime-local"
+                  value={bazaarData.registrationDeadline}
+                  max={bazaarData.startDate}
+                  onChange={(e) => setBazaarData({ ...bazaarData, registrationDeadline: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing[3], marginTop: theme.spacing[5] }}>
+              <Button variant="outline" onClick={() => setCreateBazaarOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setBazaarData({ name: "", description: "", theme: "", startDate: "", endDate: "", location: "University Courtyard", maxParticipants: "50", registrationDeadline: "" });
+                  toast.success("Form fields cleared");
+                }}
+              >
+                Clear Draft
+              </Button>
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  try {
+                    if (!bazaarData.name || !bazaarData.description || !bazaarData.theme || !bazaarData.startDate || !bazaarData.endDate || !bazaarData.maxParticipants || !bazaarData.registrationDeadline) {
+                      toast.error("Please fill all required fields: Name, Description, Theme, Dates, Max Participants, and Registration Deadline.");
+                      return;
+                    }
+
+                    if (new Date(bazaarData.registrationDeadline) >= new Date(bazaarData.startDate)) {
+                      toast.error("Registration deadline must be set before the event's start date.");
+                      return;
+                    }
+
+                    const eventData = {
+                      name: bazaarData.name,
+                      description: bazaarData.description,
+                      startDate: new Date(bazaarData.startDate).toISOString(),
+                      endDate: new Date(bazaarData.endDate).toISOString(),
+                      location: bazaarData.location,
+                      maxParticipants: Number(bazaarData.maxParticipants),
+                      registrationDeadline: new Date(bazaarData.registrationDeadline).toISOString(),
+                      registrationRequired: true,
+                      tags: bazaarData.theme ? [bazaarData.theme] : [],
+                    };
+
+                    await api.post("/bazaars", eventData);
+
+                    toast.success(`Bazaar "${bazaarData.name}" created as a draft!`);
+                    setCreateBazaarOpen(false);
+                    setBazaarData({ name: "", description: "", theme: "", startDate: "", endDate: "", location: "University Courtyard", maxParticipants: "50", registrationDeadline: "" });
+                    fetchEvents();
+                  } catch (error) {
+                    console.error("Failed to create bazaar:", error);
+                    toast.error(error.data?.message || error.message || "Failed to create bazaar. Please try again.");
+                  }
+                }}
+              >
+                Publish Bazaar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

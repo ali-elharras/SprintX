@@ -158,8 +158,8 @@ const verifyAdmin = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
 
-    if (!user || user.role !== "admin" || !user.isActive) {
-      return res.status(403).json({ message: "Access denied: Admins only" });
+    if (!user || user.role !== "admin" || !user.isVerified) {
+      return res.status(403).json({ message: "Access denied: Verified admins only" });
     }
 
     req.user = user;
