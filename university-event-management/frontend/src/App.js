@@ -27,6 +27,7 @@ import MyRegistrations from "./pages/MyRegistrations";
 import GymSchedulePage from "./pages/GymSchedulePage";
 import CreateWorkshop from "./pages/CreateWorkshop";
 import Workshops from "./pages/Workshops";
+import AdminUserManagement from "./pages/AdminUserManagement";
 // ---------------------------
 // Protected Route Components
 // ---------------------------
@@ -224,6 +225,16 @@ const router = createBrowserRouter([
       <ProtectedRoute>
         <AdminRoute>
           <AdminDashboard />
+        </AdminRoute>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/admin-users",
+    element: (
+      <ProtectedRoute>
+        <AdminRoute>
+          <AdminUserManagement />
         </AdminRoute>
       </ProtectedRoute>
     ),
