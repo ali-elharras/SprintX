@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "react-hot-toast";
 import Navbar from "../components/Navbar";
 import GymScheduleCalendar from "../components/GymScheduleCalendar";
@@ -7,6 +7,7 @@ import LoadingScreen from "../components/LoadingScreen";
 import { gymAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import theme from "../theme";
+import axios from "axios";
 
 const GymSchedulePage = () => {
   const [sessions, setSessions] = useState([]);
@@ -29,34 +30,55 @@ const GymSchedulePage = () => {
   });
   const auth = useAuth();
   const showCreateButton = auth?.isEventsOffice || auth?.isAdmin;
+  
+  // Ref for request cancellation
+  const cancelTokenRef = useRef(null);
 
   const fetchSessionTypes = useCallback(async () => {
     try {
-      const response = await gymAPI.getSessionTypes();
+      const response = await gymAPI.getSessionTypes(cancelTokenRef.current);
       if (response.data.success) {
         setSessionTypes(response.data.data);
       }
     } catch (error) {
+      // Don't show error if request was cancelled
+      if (axios.isCancel(error)) {
+        console.log('Request cancelled:', error.message);
+        return;
+      }
       console.error("Error fetching session types:", error);
       toast.error("Failed to load session types");
     }
   }, []);
 
   const fetchSessions = useCallback(async () => {
+    // Cancel any existing request
+    if (cancelTokenRef.current) {
+      cancelTokenRef.current.cancel('Operation cancelled due to new request');
+    }
+    
+    // Create new cancel token
+    cancelTokenRef.current = axios.CancelToken.source();
+    
     try {
       setLoading(true);
       let response;
 
       if (viewMode === "calendar") {
-        response = await gymAPI.getSessionsByMonth(currentYear, currentMonth);
+        response = await gymAPI.getSessionsByMonth(currentYear, currentMonth, {}, cancelTokenRef.current);
       } else {
-        response = await gymAPI.getSessions();
+        response = await gymAPI.getSessions({}, cancelTokenRef.current);
       }
 
       if (response.data.success) {
         setSessions(response.data.data.sessions || response.data.data);
       }
     } catch (error) {
+      // Don't show error if request was cancelled
+      if (axios.isCancel(error)) {
+        console.log('Request cancelled:', error.message);
+        return;
+      }
       console.error("Error fetching gym sessions:", error);
       toast.error("Failed to load gym sessions");
     } finally {
@@ -72,7 +94,7 @@ const GymSchedulePage = () => {
         return;
       }
 
-      const response = await gymAPI.getMyRegistrations({ upcoming: true });
+      const response = await gymAPI.getMyRegistrations({ upcoming: true }, cancelTokenRef.current);
       // API returns { success, data: [...] } or an array in some endpoints; handle both
       const regs = response.data?.data || response.data || [];
       setMyRegistrations(regs);
@@ -84,6 +106,11 @@ const GymSchedulePage = () => {
       }).filter(Boolean));
       setRegisteredSessionIds(ids);
     } catch (err) {
+      // Don't show error if request was cancelled
+      if (axios.isCancel(err)) {
+        console.log('Request cancelled:', err.message);
+        return;
+      }
       console.error('Failed to fetch user gym registrations', err);
       setMyRegistrations([]);
       setRegisteredSessionIds(new Set());
@@ -159,6 +186,13 @@ const GymSchedulePage = () => {
     fetchSessionTypes();
     fetchSessions();
     fetchMyRegistrations();
+    
+    // Cleanup function to cancel requests on unmount
+    return () => {
+      if (cancelTokenRef.current) {
+        cancelTokenRef.current.cancel('Component unmounted');
+      }
+    };
   }, [currentMonth, currentYear, fetchSessionTypes, fetchSessions, fetchMyRegistrations]);
 
   useEffect(() => {

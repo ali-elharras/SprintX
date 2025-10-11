@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api, { registrationAPI, eventAPI } from "../services/api";
@@ -10,6 +10,7 @@ import Input from "../components/Input";
 import Select from "../components/Select";
 import RegistrationCard from "../components/RegistrationCard";
 import toast from "react-hot-toast";
+import axios from "axios";
 
 // Card for displaying Bazaars created by the Events Office user
 const MyBazaarCard = ({ bazaar, onEdit, onDelete }) => {
@@ -172,6 +173,9 @@ const MyRegistrations = () => {
     registrationDeadline: "",
   });
 
+  // Ref for request cancellation
+  const cancelTokenRef = useRef(null);
+
   const eventTypeOptions = [
     { value: "all", label: "All Events" },
     { value: "workshop", label: "Workshops" },
@@ -190,12 +194,21 @@ const MyRegistrations = () => {
 
   const fetchData = useCallback(async () => {
     if (!isAuthenticated) return;
+    
+    // Cancel any existing request
+    if (cancelTokenRef.current) {
+      cancelTokenRef.current.cancel('Operation cancelled due to new request');
+    }
+    
+    // Create new cancel token
+    cancelTokenRef.current = axios.CancelToken.source();
+    
     try {
       setLoading(true);
       setError(null);
 
-      // 1. Fetch registrations
-      const regResponse = await registrationAPI.getMyRegistrations();
+      // 1. Fetch registrations with cancellation token
+      const regResponse = await registrationAPI.getMyRegistrations({}, cancelTokenRef.current);
       const fetchedRegistrations = (
         regResponse.data?.data?.upcoming || []
       ).concat(regResponse.data?.data?.past || []);
@@ -203,7 +216,9 @@ const MyRegistrations = () => {
       // 2. Fetch created bazaars if user is Events Office
       let createdItems = [];
       if (isEventsOffice && user?.id) {
-        const bazaarResponse = await api.get("/bazaars");
+        const bazaarResponse = await api.get("/bazaars", {
+          cancelToken: cancelTokenRef.current.token
+        });
         const allBazaars = bazaarResponse.data?.data || [];
         const userBazaars = allBazaars.filter(
           (bazaar) =>
@@ -236,6 +251,11 @@ const MyRegistrations = () => {
 
       setAllItems(combinedItems);
     } catch (err) {
+      // Don't show error if request was cancelled
+      if (axios.isCancel(err)) {
+        console.log('Request cancelled:', err.message);
+        return;
+      }
       setError(err);
       toast.error("Failed to load all event data.");
       console.error("Error fetching data:", err);
@@ -246,6 +266,13 @@ const MyRegistrations = () => {
 
   useEffect(() => {
     fetchData();
+    
+    // Cleanup function to cancel request on unmount
+    return () => {
+      if (cancelTokenRef.current) {
+        cancelTokenRef.current.cancel('Component unmounted');
+      }
+    };
   }, [fetchData, refreshTrigger]);
 
   // Handles all client-side filtering, sorting, and categorization

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import theme from "../theme";
@@ -9,7 +9,7 @@ import Select from "../components/Select";
 import Navbar from "../components/Navbar";
 import ConferenceModal from "./ConferenceModal";
 import LoadingScreen from "../components/LoadingScreen";
-import api, { eventAPI } from "../services/api";
+import api, { eventAPI, createCancelTokenSource } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 
@@ -26,6 +26,9 @@ const EventsPage = () => {
     search: "",
     upcoming: true,
   });
+
+  // Add ref for cancel token to prevent memory leaks and connection issues
+  const cancelTokenRef = useRef(null);
 
   // Pending workshops (visible only to Events Office on this page)
   // Two dummy workshops for testing (follow the project's workshop structure)
@@ -105,20 +108,42 @@ const EventsPage = () => {
   });
 
   const fetchEvents = async () => {
+    // Cancel any existing request
+    if (cancelTokenRef.current) {
+      cancelTokenRef.current.cancel('Operation cancelled due to new request');
+    }
+
+    // Create new cancel token
+    cancelTokenRef.current = createCancelTokenSource();
+    const currentCancelToken = cancelTokenRef.current;
+
     try {
       setLoading(true);
       setError(null);
-      // Removed upcoming: "true" filter to show all published events including workshops with any date
-      const response = await eventAPI.getEvents({ status: "published" });
+      
+      // Use cancel token for the main events request
+      const response = await eventAPI.getEvents(
+        { status: "published" }, 
+        currentCancelToken
+      );
+      
       setEvents(response.data?.data || []);
 
       // If current user is Events Office, also fetch pending and needs_revision workshops
       if (auth?.isEventsOffice) {
         try {
+          // Create separate cancel tokens for workshop requests
+          const pendingCancelToken = createCancelTokenSource();
+          const revisionCancelToken = createCancelTokenSource();
+          
           // Fetch both pending and needs_revision workshops
           const [pendingResp, revisionResp] = await Promise.all([
-            api.get('/workshops?status=pending'),
-            api.get('/workshops?status=needs_revision')
+            api.get('/workshops?status=pending', {
+              cancelToken: pendingCancelToken.token
+            }),
+            api.get('/workshops?status=needs_revision', {
+              cancelToken: revisionCancelToken.token
+            })
           ]);
           
           // Combine both types of workshops
@@ -127,27 +152,30 @@ const EventsPage = () => {
           
           setPendingWorkshops([...pendingWorkshops, ...revisionWorkshops]);
         } catch (err) {
-          console.warn('Could not fetch pending workshops', err);
-          setPendingWorkshops([]);
+          // Only log if not a cancellation
+          if (!err.isCancelled && err.name !== 'CanceledError') {
+            console.warn('Could not fetch pending workshops', err);
+            setPendingWorkshops([]);
+          }
         }
       }
     } catch (err) {
+      // Don't show error for cancelled requests
+      if (err.isCancelled || err.name === 'CanceledError') {
+        return;
+      }
+      
       console.error(err);
       setError(err);
       toast.error("Failed to load events. Please try again.");
     } finally {
-      setTimeout(() => setLoading(false), 2000);
+      // Always update loading state to prevent UI stuck in loading
+      setTimeout(() => setLoading(false), 1000);
     }
   };
 
   useEffect(() => {
     fetchEvents();
-    
-    // Refresh events when window gains focus (user returns to tab/window)
-    // This ensures deleted workshops are removed from Events tab even if deleted from another tab
-    const handleFocus = () => {
-      fetchEvents();
-    };
     
     // Listen for workshop deletion events from other tabs via localStorage
     const handleStorageChange = (e) => {
@@ -159,12 +187,20 @@ const EventsPage = () => {
       }
     };
     
-    window.addEventListener('focus', handleFocus);
     window.addEventListener('storage', handleStorageChange);
     
+    // Cleanup function to cancel any pending requests when component unmounts
     return () => {
-      window.removeEventListener('focus', handleFocus);
       window.removeEventListener('storage', handleStorageChange);
+      
+      // Cancel any pending requests to prevent connection issues
+      if (cancelTokenRef.current) {
+        try {
+          cancelTokenRef.current.cancel('Component unmounting');
+        } catch (error) {
+          // Ignore cancellation errors during cleanup
+        }
+      }
     };
   }, []);
 
@@ -612,8 +648,8 @@ const EventsPage = () => {
           </div>
         )}
 
-        {/* Error state */}
-        {error && !loading && (
+        {/* Error state - Only show when there are no events AND there's an error */}
+        {error && !loading && filteredEvents.length === 0 && (
           <div
             style={{
               background: theme.colors.background.paper,

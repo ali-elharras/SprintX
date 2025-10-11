@@ -28,8 +28,10 @@ const app = express();
 // ===== Security & Performance Middleware =====
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 300, // Increased from 100 to 300 requests per windowMs for frequent page switching
   message: "Too many requests from this IP, please try again later.",
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
 app.use(helmet()); // Add secure headers
@@ -51,12 +53,43 @@ mongoose
   .connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
+    // Connection pool settings for better stability
+    maxPoolSize: 50, // Maximum number of connections in the connection pool
+    minPoolSize: 5,  // Minimum number of connections in the connection pool
+    maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
+    serverSelectionTimeoutMS: 10000, // How long to try to connect before timing out
+    socketTimeoutMS: 45000, // How long a send or receive on a socket can take before timing out
   })
   .then(() => console.log("✅ MongoDB connected successfully"))
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err);
     process.exit(1);
   });
+
+// Connection event handlers for better monitoring
+mongoose.connection.on('connected', () => {
+  console.log('📦 Mongoose connected to MongoDB');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('❌ Mongoose connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('📦 Mongoose disconnected from MongoDB');
+});
+
+// Graceful shutdown handling
+process.on('SIGINT', async () => {
+  try {
+    await mongoose.connection.close();
+    console.log('📦 Mongoose connection closed due to app termination');
+    process.exit(0);
+  } catch (err) {
+    console.error('Error during graceful shutdown:', err);
+    process.exit(1);
+  }
+});
 
 // Routes
 app.use("/api/conferences", conferenceRoutes);
@@ -88,6 +121,9 @@ app.get("/api/health", (req, res) => {
     success: true,
     message: "University Event Management API is running",
     timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    connections: mongoose.connection.readyState, // 1 = connected, 0 = disconnected
   });
 });
 

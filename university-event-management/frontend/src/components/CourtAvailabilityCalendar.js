@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import theme from "../theme";
 import { courtAPI } from "../services/api";
 import toast from "react-hot-toast";
@@ -24,31 +24,70 @@ const CourtAvailabilityCalendar = ({ court, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isClosing, setIsClosing] = useState(false);
+  
+  // Ref to track the last error shown to prevent duplicates
+  const lastErrorRef = useRef(null);
+  
+  // Ref to track the current request to prevent race conditions
+  const currentRequestRef = useRef(null);
 
   useEffect(() => {
-    if (selectedDate) {
+    if (selectedDate && court) {
       fetchAvailability();
     }
-  }, [selectedDate, court]);
+  }, [selectedDate]); // Only depend on selectedDate, not court object
 
   const fetchAvailability = async () => {
     if (!court || !selectedDate) return;
     
+    // Create a unique request identifier
+    const requestId = Date.now();
+    currentRequestRef.current = requestId;
+    
+    // Declare variables at function level so they're accessible in catch block
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    const courtId = court._id || court.id;
+    
     try {
       setLoading(true);
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      console.log('Fetching availability for court:', court._id || court.id, 'date:', dateStr);
-      const courtId = court._id || court.id;
+      console.log('Fetching availability for court:', courtId, 'date:', dateStr);
       const response = await courtAPI.getCourtAvailability(courtId, dateStr);
+      
+      // Check if this is still the current request
+      if (currentRequestRef.current !== requestId) {
+        return; // Request was superseded, ignore response
+      }
+      
       console.log('Availability response:', response.data);
       setAvailability(response.data.data?.availableSlots || []);
+      
+      // Clear any previous errors on successful fetch
+      lastErrorRef.current = null;
+      
     } catch (error) {
+      // Check if this is still the current request
+      if (currentRequestRef.current !== requestId) {
+        return; // Request was superseded, ignore error
+      }
+      
       console.error("Error fetching availability:", error);
       console.error("Error details:", error.response?.data);
-      toast.error("Failed to load availability");
+      
+      // Only show error toast if it's different from the last error
+      const errorMessage = error.response?.data?.message || "Failed to load availability";
+      const errorKey = `${courtId}-${dateStr}-${errorMessage}`;
+      
+      if (lastErrorRef.current !== errorKey) {
+        toast.error("Failed to load availability");
+        lastErrorRef.current = errorKey;
+      }
+      
       setAvailability([]);
     } finally {
-      setLoading(false);
+      // Only update loading if this is still the current request
+      if (currentRequestRef.current === requestId) {
+        setLoading(false);
+      }
     }
   };
 

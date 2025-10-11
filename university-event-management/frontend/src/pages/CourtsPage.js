@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import theme from "../theme";
 import CourtCard from "../components/CourtCard";
@@ -9,6 +9,7 @@ import Navbar from "../components/Navbar";
 import CourtAvailabilityCalendar from "../components/CourtAvailabilityCalendar";
 import LoadingScreen from "../components/LoadingScreen";
 import { courtAPI } from "../services/api";
+import axios from "axios";
 
 const CourtsPage = () => {
   const [courts, setCourts] = useState([]);
@@ -22,11 +23,21 @@ const CourtsPage = () => {
     search: "",
     status: "active",
   });
+  
+  // Ref for request cancellation
+  const cancelTokenRef = useRef(null);
 
   // Fetch courts and stats
   useEffect(() => {
     fetchCourts();
     fetchStats();
+    
+    // Cleanup function to cancel requests on unmount
+    return () => {
+      if (cancelTokenRef.current) {
+        cancelTokenRef.current.cancel('Component unmounted');
+      }
+    };
   }, []);
 
   // Apply filters when courts or filters change
@@ -35,13 +46,26 @@ const CourtsPage = () => {
   }, [courts, filters]);
 
   const fetchCourts = async () => {
+    // Cancel any existing request
+    if (cancelTokenRef.current) {
+      cancelTokenRef.current.cancel('Operation cancelled due to new request');
+    }
+    
+    // Create new cancel token
+    cancelTokenRef.current = axios.CancelToken.source();
+    
     try {
       setLoading(true);
       const response = await courtAPI.getCourts({
         status: filters.status,
-      });
+      }, cancelTokenRef.current);
       setCourts(response.data.data || []);
     } catch (error) {
+      // Don't show error if request was cancelled
+      if (axios.isCancel(error)) {
+        console.log('Request cancelled:', error.message);
+        return;
+      }
       console.error("Error fetching courts:", error);
       toast.error("Failed to load courts");
     } finally {
@@ -51,9 +75,14 @@ const CourtsPage = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await courtAPI.getCourtStats();
+      const response = await courtAPI.getCourtStats(cancelTokenRef.current);
       setStats(response.data.data);
     } catch (error) {
+      // Don't show error if request was cancelled
+      if (axios.isCancel(error)) {
+        console.log('Request cancelled:', error.message);
+        return;
+      }
       console.error("Error fetching court stats:", error);
     }
   };
