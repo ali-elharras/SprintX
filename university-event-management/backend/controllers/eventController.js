@@ -30,13 +30,11 @@ const getUpcomingBazaars = async (req, res, next) => {
   }
 };
 
-
 // @desc    Seed a sample bazaar (Temporary)
 // @route   POST /api/events/seed/bazaar
 // @access  Public
 const seedBazaar = async (req, res, next) => {
   try {
-    // Create a dummy admin user if it doesn't exist
     let admin = await User.findOne({ email: "admin@events.internal" });
     if (!admin) {
       admin = await User.create({
@@ -49,7 +47,6 @@ const seedBazaar = async (req, res, next) => {
       });
     }
 
-    // Create a sample bazaar
     const today = new Date();
     const futureDate = new Date(today.setDate(today.getDate() + 30));
 
@@ -58,7 +55,7 @@ const seedBazaar = async (req, res, next) => {
       description: "A wonderful bazaar with lots of vendors and activities.",
       eventType: "bazaar",
       startDate: futureDate,
-      endDate: new Date(futureDate.getTime() + 86400000), // 1-day duration
+      endDate: new Date(futureDate.getTime() + 86400000),
       location: "University Main Courtyard",
       status: "upcoming",
       organizer: admin._id,
@@ -83,73 +80,28 @@ const seedBazaar = async (req, res, next) => {
 // @access  Public
 const getEvents = async (req, res) => {
   try {
-    const { type, status = "published", upcoming = false } = req.query;
+    const { type, upcoming = false } = req.query;
 
-    // Fetch regular events
-    let eventQuery = { status };
-    let conferenceQuery = {}; // Conferences don't have status field
+    // Simple query: only published, approved, or accepted status
+    let query = { status: { $in: ["published", "approved", "accepted"] } };
 
     if (type) {
-      eventQuery.type = type;
-      // If specifically asking for conferences, only return conferences
-      if (type === "conference") {
-        const conferences = await Conference.find(conferenceQuery).sort({ date: 1 });
-        return res.status(200).json({
-          success: true,
-          count: conferences.length,
-          data: conferences.map(conf => ({
-            ...conf.toObject(),
-            type: "conference",
-            name: conf.title, // Map title to name for consistency
-            startDate: conf.date,
-            endDate: conf.date, // Conferences are single-day
-            registrationRequired: true,
-            status: "published",// Assume conferences are always published
-          }))
-        });
-      }
+      query.type = type;
     }
 
     if (upcoming === "true") {
-      eventQuery.startDate = { $gte: new Date() };
-      conferenceQuery.date = { $gte: new Date() };
+      query.startDate = { $gte: new Date() };
     }
 
-    // Fetch both regular events and conferences
-    const [events, conferences] = await Promise.all([
-      Event.find(eventQuery)
-        .populate("organizer", "firstName lastName email")
-        .sort({ startDate: 1 }),
-      upcoming === "true" 
-        ? Conference.find({ date: { $gte: new Date() } }).sort({ date: 1 })
-        : Conference.find().sort({ date: 1 })
-    ]);
-
-    // Combine and transform the data
-    const allEvents = [
-      ...events,
-      ...conferences.map(conf => ({
-        ...conf.toObject(),
-        _id: conf._id,
-        type: "conference",
-        name: conf.title, // Map title to name for consistency
-        startDate: conf.date,
-        endDate: conf.date, // Conferences are single-day
-        registrationRequired: true,
-        status: "published", // Assume conferences are always published
-        maxParticipants: conf.capacity,
-        currentParticipants: 0, // You might want to track this separately
-        cost: 0 // Default cost for conferences
-      }))
-    ];
-
-    // Sort combined results by date
-    allEvents.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+    // Fetch only from events collection
+    const events = await Event.find(query)
+      .populate("organizer", "firstName lastName email")
+      .sort({ startDate: 1 });
 
     res.status(200).json({
       success: true,
-      count: allEvents.length,
-      data: allEvents,
+      count: events.length,
+      data: events,
     });
   } catch (error) {
     console.error("Error fetching events:", error);
@@ -197,7 +149,6 @@ const getEvent = async (req, res) => {
 // @access  Private (Admin/Events Office)
 const createEvent = async (req, res) => {
   try {
-    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -243,7 +194,6 @@ const updateEvent = async (req, res) => {
       });
     }
 
-    // Check if user is authorized to update this event
     if (
       event.organizer.toString() !== req.user.id &&
       !["admin", "events_office"].includes(req.user.role)
@@ -275,7 +225,7 @@ const updateEvent = async (req, res) => {
   }
 };
 
-// @desc    Update only the status of an event (e.g., publish, reject, needs_revision)
+// @desc    Update only the status of an event
 // @route   PUT /api/events/:id/status
 // @access  Private (Admin/Events Office)
 const updateEventStatus = async (req, res) => {
@@ -286,7 +236,7 @@ const updateEventStatus = async (req, res) => {
       return res.status(400).json({ success: false, message: "Status is required" });
     }
 
-    const allowedStatuses = ["pending", "published", "rejected", "cancelled", "upcoming", "needs_revision"];
+    const allowedStatuses = ["pending", "published", "rejected", "cancelled", "upcoming", "needs_revision", "approved"];
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({ success: false, message: "Invalid status" });
     }
@@ -297,12 +247,10 @@ const updateEventStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: "Event not found" });
     }
 
-    // Only Events Office or admin can change status
     if (!["admin", "events_office"].includes(req.user.role)) {
       return res.status(403).json({ success: false, message: "Not authorized to update event status" });
     }
 
-    // When requesting edits, attach message into editRequests and set status to needs_revision
     if (status === "needs_revision") {
       if (!message || message.trim().length < 3) {
         return res.status(400).json({ success: false, message: "Message is required when requesting edits" });
@@ -322,7 +270,6 @@ const updateEventStatus = async (req, res) => {
       return res.status(200).json({ success: true, message: "Edit request saved", data: event });
     }
 
-    // For other status updates we only update the status field
     event.status = status;
     await event.save();
 
@@ -349,7 +296,6 @@ const deleteEvent = async (req, res) => {
       });
     }
 
-    // Check if user is authorized to delete this event
     if (
       event.organizer.toString() !== req.user.id &&
       !["admin", "events_office"].includes(req.user.role)
@@ -414,4 +360,5 @@ module.exports = {
   updateEvent,
   deleteEvent,
   getEventsByType,
+  updateEventStatus,
 };

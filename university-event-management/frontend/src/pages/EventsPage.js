@@ -214,7 +214,7 @@ const EventsPage = () => {
     { value: "workshop", label: "Workshops" },
     { value: "trip", label: "Trips" },
     { value: "bazaar", label: "Bazaars" },
-    { value: "competition", label: "Competitions" },
+    { value: "booth", label: "Booths" },
     { value: "conference", label: "Conferences" },
   ];
 

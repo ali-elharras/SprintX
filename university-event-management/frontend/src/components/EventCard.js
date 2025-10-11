@@ -37,7 +37,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
       workshop: "Workshop",
       trip: "Trip",
       bazaar: "Bazaar",
-      competition: "Competition",
+      booth: "Booth",
       conference: "Conference",
     };
     return labels[type] || type;
@@ -49,10 +49,6 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
     const registrationDeadline = event.registrationDeadline
       ? new Date(event.registrationDeadline)
       : null;
-
-    if (event.status !== "published") {
-      return { status: "Not Published", color: theme.colors.neutral.gray500 };
-    }
 
     if (startDate < now) {
       return { status: "Event Ended", color: theme.colors.neutral.gray500 };
@@ -105,7 +101,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
       await conferenceAPI.deleteConference(event._id);
       toast.success("Conference deleted successfully!");
       if (onEventUpdate) {
-        onEventUpdate(); // Refresh the events list
+        onEventUpdate();
       }
     } catch (error) {
       console.error("Error deleting conference:", error);
@@ -269,6 +265,52 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
         >
           {event.description}
         </p>
+
+        {/* Vendors for Bazaars */}
+        {event.type === "bazaar" && event.vendors && event.vendors.length > 0 && (
+          <div
+            style={{
+              background: theme.colors.neutral.gray50,
+              padding: theme.spacing[3],
+              borderRadius: theme.borderRadius.base,
+              marginBottom: theme.spacing[4],
+            }}
+          >
+            <div
+              style={{
+                fontSize: theme.typography.fontSize.sm,
+                fontWeight: theme.typography.fontWeight.semibold,
+                color: theme.colors.text.primary,
+                marginBottom: theme.spacing[2],
+              }}
+            >
+              Participating Vendors ({event.vendors.length})
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: theme.spacing[2],
+              }}
+            >
+              {event.vendors.map((vendor, index) => (
+                <span
+                  key={index}
+                  style={{
+                    background: theme.colors.background.paper,
+                    padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+                    borderRadius: theme.borderRadius.sm,
+                    fontSize: theme.typography.fontSize.xs,
+                    color: theme.colors.text.secondary,
+                    border: `1px solid ${theme.colors.border}`,
+                  }}
+                >
+                  {vendor}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Registration Info */}
         {event.registrationRequired && (
