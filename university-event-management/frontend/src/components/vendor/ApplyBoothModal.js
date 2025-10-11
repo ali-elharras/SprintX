@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import toast from "react-hot-toast";
 import theme from "../../theme";
+import BoothMapSelector from "./BoothMapSelector"; // Import the new component
 
 const styles = {
   modalOverlay: {
@@ -74,7 +75,7 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
   const [boothSize, setBoothSize] = useState("2x2");
   const [startDate, setStartDate] = useState("");
   const [durationWeeks, setDurationWeeks] = useState(1); // Duration in weeks
-  const [location, setLocation] = useState("");
+  const [selectedBoothId, setSelectedBoothId] = useState(null); // State for selected booth from map
   const [attendees, setAttendees] = useState([{ name: "", email: "" }]);
 
   if (!isOpen) return null;
@@ -101,8 +102,8 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
         toast.error("Please add at least one attendee.");
         return;
     }
-    if (!location) {
-        toast.error("Please specify a location for the booth.");
+    if (!selectedBoothId) {
+        toast.error("Please select a booth location on the map.");
         return;
     }
     if (!startDate) {
@@ -119,7 +120,7 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
       startDate: start.toISOString(), 
       endDate: end.toISOString(), 
       durationWeeks, 
-      location, 
+      location: selectedBoothId, // Pass the selected booth ID as location
       attendees: finalAttendees 
     });
   };
@@ -130,18 +131,10 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
         <h2 style={styles.modalHeader}>Apply for a Standalone Booth</h2>
         <form onSubmit={handleSubmit}>
           <div style={styles.formGroup}>
-            <label style={styles.label} htmlFor="location">
+            <label style={styles.label}>
               Preferred Location
             </label>
-            <input
-              id="location"
-              type="text"
-              style={styles.input}
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g., Main Campus Courtyard"
-              required
-            />
+            <BoothMapSelector onSelectBooth={setSelectedBoothId} selectedBoothId={selectedBoothId} />
           </div>
 
           <div style={styles.formGroup}>
