@@ -433,42 +433,22 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
               </div>
             </>
           ) : (
-            /* Regular user buttons for all events */
-            <>
-              {showRegistration && canRegister() && (
-                <div style={{ flex: 1 }}>
-                  <Button
-                    variant="primary"
-                    onClick={() => setShowRegistrationForm(true)}
-                    style={{ 
-                      width: "100%",
-                      minHeight: "44px",
-                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Register Now
-                  </Button>
-                </div>
-              )}
-            </>
-          {onEdit ? (
-            <Button
-              variant="primary"
-              onClick={() => onEdit(event)}
-              style={{ flex: 1 }}
-            >
-              Edit
-            </Button>
-          ) : (
+            /* Single Register Now button for regular users */
             showRegistration && canRegister() && (
-              <Button
-                variant="primary"
-                onClick={() => setShowRegistrationForm(true)}
-                style={{ flex: 1 }}
-              >
-                Register Now
-              </Button>
+              <div style={{ flex: 1 }}>
+                <Button
+                  variant="primary"
+                  onClick={() => setShowRegistrationForm(true)}
+                  style={{ 
+                    width: "100%",
+                    minHeight: "44px",
+                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Register Now
+                </Button>
+              </div>
             )
           )}
         </div>

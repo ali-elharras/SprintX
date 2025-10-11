@@ -9,7 +9,7 @@ import Select from "../components/Select";
 import Navbar from "../components/Navbar";
 import ConferenceModal from "./ConferenceModal";
 import LoadingScreen from "../components/LoadingScreen";
-import { eventAPI } from "../services/api";
+import api, { eventAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 
@@ -174,20 +174,11 @@ const EventsPage = () => {
 
   const applyFilters = () => {
     let filtered = [...events];
-
-    // Filter by type
-    if (filters.type) {
-      filtered = filtered.filter((event) => event.type === filters.type);
-    }
-
-    // Filter by search term
+    if (filters.type) filtered = filtered.filter((e) => e.type === filters.type);
     if (filters.search) {
       const s = filters.search.toLowerCase();
       filtered = filtered.filter(
-        (event) =>
-          event.title.toLowerCase().includes(searchTerm) ||
-          event.description.toLowerCase().includes(searchTerm) ||
-          event.location.toLowerCase().includes(searchTerm)
+        (e) => (e.title || e.name || "").toLowerCase().includes(s) || (e.description || "").toLowerCase().includes(s) || (e.location || "").toLowerCase().includes(s)
       );
     }
     if (filters.upcoming) {
