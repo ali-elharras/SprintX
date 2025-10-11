@@ -57,6 +57,22 @@ const LoadingScreen = ({ type = "default", message = "Loading..." }) => {
           subtitle: "Preparing your events",
         };
 
+      case "trips":
+        return {
+          animation: (
+            <Lottie
+              animationData={jumpingAnimation}
+              style={{
+                width: "160px",
+                height: "160px",
+                margin: "0 auto",
+              }}
+            />
+          ),
+          message: "Loading trips...",
+          subtitle: "Preparing your trips",
+        };
+
       default:
         return {
           animation: (
