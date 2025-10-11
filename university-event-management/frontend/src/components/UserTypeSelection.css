@@ -176,6 +176,15 @@
   transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Position animations before selection */
+.university-card:not(.selected) .animation-container > * {
+  transform: translateX(-15px);
+}
+
+.vendor-card:not(.selected) .animation-container > * {
+  transform: translateX(15px);
+}
+
 .card-content {
   padding: 20px;
   flex: 1;
