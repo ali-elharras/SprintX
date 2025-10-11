@@ -92,7 +92,23 @@ const getEvents = async (req, res) => {
       eventQuery.type = type;
       // If specifically asking for conferences, only return conferences
       if (type === "conference") {
-        const conferences = await Conference.find(conferenceQuery).sort({ date: 1 });
+        let conferences = await Conference.find(conferenceQuery).sort({ date: 1 });
+        
+        // Filter out conferences user is already registered for (if user is authenticated)
+        if (req.user) {
+          const userRegistrations = await Registration.find({
+            $or: [
+              { user: req.user.id },
+              { email: req.user.email }
+            ],
+            status: { $in: ["pending", "confirmed", "attended", "no-show"] } // Exclude cancelled
+          }).distinct('event');
+          
+          conferences = conferences.filter(conf => 
+            !userRegistrations.some(regEventId => regEventId.toString() === conf._id.toString())
+          );
+        }
+        
         return res.status(200).json({
           success: true,
           count: conferences.length,
@@ -124,10 +140,31 @@ const getEvents = async (req, res) => {
         : Conference.find().sort({ date: 1 })
     ]);
 
+    // Get user's active registrations if user is authenticated
+    let userRegistrations = [];
+    if (req.user) {
+      userRegistrations = await Registration.find({
+        $or: [
+          { user: req.user.id },
+          { email: req.user.email }
+        ],
+        status: { $in: ["pending", "confirmed", "attended", "no-show"] } // Exclude cancelled
+      }).distinct('event');
+    }
+
+    // Filter out events user is already registered for
+    const filteredEvents = events.filter(event => 
+      !userRegistrations.some(regEventId => regEventId.toString() === event._id.toString())
+    );
+
+    const filteredConferences = conferences.filter(conf => 
+      !userRegistrations.some(regEventId => regEventId.toString() === conf._id.toString())
+    );
+
     // Combine and transform the data
     const allEvents = [
-      ...events,
-      ...conferences.map(conf => ({
+      ...filteredEvents,
+      ...filteredConferences.map(conf => ({
         ...conf.toObject(),
         _id: conf._id,
         type: "conference",
@@ -381,10 +418,25 @@ const deleteEvent = async (req, res) => {
 const getEventsByType = async (req, res) => {
   try {
     const { type } = req.params;
-    const events = await Event.findByType(type).populate(
+    let events = await Event.findByType(type).populate(
       "organizer",
       "firstName lastName email"
     );
+
+    // Filter out events user is already registered for (if user is authenticated)
+    if (req.user) {
+      const userRegistrations = await Registration.find({
+        $or: [
+          { user: req.user.id },
+          { email: req.user.email }
+        ],
+        status: { $in: ["pending", "confirmed", "attended", "no-show"] } // Exclude cancelled
+      }).distinct('event');
+      
+      events = events.filter(event => 
+        !userRegistrations.some(regEventId => regEventId.toString() === event._id.toString())
+      );
+    }
 
     res.status(200).json({
       success: true,

@@ -6,6 +6,51 @@ const Vendor = require("../models/Vendor");
    AUTHENTICATION MIDDLEWARES
 -------------------------------------------------------- */
 
+// Optional protect - sets req.user if authenticated, but doesn't fail if not
+const optionalProtect = async (req, res, next) => {
+  try {
+    let token;
+
+    // Check for token in header
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      token = req.headers.authorization.split(" ")[1];
+    }
+
+    // If no token, continue without setting req.user
+    if (!token) {
+      return next();
+    }
+
+    try {
+      // Verify token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      // Check if user or vendor based on userType in token
+      if (decoded.userType === "vendor") {
+        req.vendor = await Vendor.findById(decoded.id);
+        if (req.vendor) {
+          req.userType = "vendor";
+        }
+      } else {
+        req.user = await User.findById(decoded.id);
+        if (req.user) {
+          req.userType = "user";
+        }
+      }
+    } catch (error) {
+      // Token invalid, but continue without authentication
+      console.log('Invalid token in optional auth:', error.message);
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Protect routes - general authentication
 const protect = async (req, res, next) => {
   try {
@@ -174,6 +219,7 @@ const verifyAdmin = async (req, res, next) => {
 -------------------------------------------------------- */
 module.exports = {
   protect,
+  optionalProtect,
   authorize,
   requireAdminOrEventsOffice,
   requireApprovedVendor,

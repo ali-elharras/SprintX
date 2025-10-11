@@ -10,7 +10,7 @@ const {
   getUpcomingBazaars,
   seedBazaar,
 } = require("../controllers/eventController");
-const { protect, authorize } = require("../middleware/auth");
+const { protect, authorize, optionalProtect } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -84,10 +84,10 @@ const createEventValidation = [
 ];
 
 // =============================
-// Public Routes
+// Public Routes (with optional auth for filtering)
 // =============================
-router.get("/", getEvents);
-router.get("/type/:type", getEventsByType);
+router.get("/", optionalProtect, getEvents);
+router.get("/type/:type", optionalProtect, getEventsByType);
 router.get("/:id", getEvent);
 
 // =============================
