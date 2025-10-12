@@ -342,21 +342,39 @@ const EventsPage = () => {
     applyFilters();
   }, [events, filters]);
 
-  const applyFilters = () => {
-    let filtered = [...events];
-    if (filters.type) filtered = filtered.filter((e) => e.type === filters.type);
-    if (filters.search) {
-      const s = filters.search.toLowerCase();
-      filtered = filtered.filter(
-        (e) => (e.title || e.name || "").toLowerCase().includes(s) || (e.description || "").toLowerCase().includes(s) || (e.location || "").toLowerCase().includes(s)
+const applyFilters = () => {
+  let filtered = [...events];
+  
+  if (filters.type) {
+    filtered = filtered.filter((e) => e.type === filters.type);
+  }
+  
+  if (filters.search) {
+    const s = filters.search.toLowerCase();
+    filtered = filtered.filter((e) => {
+      const title = (e.title || e.name || "").toLowerCase();
+      const description = (e.description || "").toLowerCase();
+      const location = (e.location || "").toLowerCase();
+      const instructor = (e.instructor || e.professorName || "").toLowerCase();
+      
+      return (
+        title.includes(s) ||
+        description.includes(s) ||
+        location.includes(s) ||
+        instructor.includes(s)
       );
-    }
-    if (filters.upcoming) {
-      const now = new Date();
-      filtered = filtered.filter((e) => new Date(e.startDate) > now);
-    }
-    setFilteredEvents(filtered);
-  };
+    });
+  }
+  
+  if (filters.upcoming) {
+    const now = new Date();
+    filtered = filtered.filter((e) => new Date(e.startDate) > now);
+  }
+  
+  setFilteredEvents(filtered);
+};
+// 1. First, fix the button:
+
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({
