@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import theme from "../theme";
+import theme, { getEventTypeColor } from "../theme";
 import EventCard from "../components/EventCard";
 import Button from "../components/Button";
 import Input from "../components/Input";
@@ -12,18 +12,42 @@ import LoadingScreen from "../components/LoadingScreen";
 import api, { eventAPI, createCancelTokenSource } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
-import Card from "../components/Card";
 
-// Card for displaying Bazaars created by the Events Office user
 const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
   const cardStyle = {
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "space-between",
-    height: "100%",
-    boxShadow: theme.shadows.md,
-    transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-    border: `2px solid ${theme.colors.primary.main}`,
+    background: theme.colors.background.paper,
+    borderRadius: theme.borderRadius.card,
+    boxShadow: theme.shadows.card,
+    overflow: "hidden",
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    height: '100%',
+  };
+
+  const headerStyle = {
+    background: `linear-gradient(135deg, ${getEventTypeColor('bazaar')} 0%, ${getEventTypeColor('bazaar')}dd 100%)`,
+    padding: theme.spacing[4],
+    color: theme.colors.text.white,
+  };
+
+  const labelStyle = {
+    background: "rgba(255, 255, 255, 0.2)",
+    padding: `${theme.spacing[1]} ${theme.spacing[3]}`,
+    borderRadius: theme.borderRadius.full,
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.semibold,
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+    display: 'inline-block',
+  };
+
+  const titleStyle = {
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: theme.typography.fontWeight.bold,
+    lineHeight: theme.typography.lineHeight.tight,
+    margin: 0,
+    marginTop: theme.spacing[2],
   };
 
   const now = new Date();
@@ -31,73 +55,33 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
   const hasEnded = new Date(bazaar.endDate) < now;
 
   return (
-    <Card style={cardStyle}>
+    <div style={cardStyle}>
       <div>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            marginBottom: theme.spacing[3],
-          }}
-        >
-          <h3
-            style={{
-              fontSize: theme.typography.fontSize.lg,
-              fontWeight: "bold",
-              color: theme.colors.text.primary,
-              margin: 0,
-              paddingRight: theme.spacing[2],
-            }}
-          >
+        <div style={headerStyle}>
+          <div style={labelStyle}>
+            Bazaar
+          </div>
+          <h3 style={titleStyle}>
             {bazaar.title || bazaar.name}
           </h3>
         </div>
-        <p
-          style={{
-            color: theme.colors.text.secondary,
-            margin: 0,
-            fontSize: theme.typography.fontSize.sm,
-          }}
-        >
-          {new Date(bazaar.startDate).toLocaleString("en-US", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          })}
-        </p>
-        <p
-          style={{
-            color: theme.colors.text.secondary,
-            margin: `${theme.spacing[1]} 0`,
-            fontSize: theme.typography.fontSize.sm,
-          }}
-        >
-          📍 {bazaar.location}
-        </p>
-        <p
-          style={{
-            color: theme.colors.text.primary,
-            marginTop: theme.spacing[4],
-            fontSize: theme.typography.fontSize.base,
-            maxHeight: "100px",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {bazaar.description}
-        </p>
+
+        <div style={{ padding: theme.spacing[5] }}>
+          <p style={{ color: theme.colors.text.secondary, margin: 0, fontSize: theme.typography.fontSize.sm }}>
+            {new Date(bazaar.startDate).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
+          </p>
+          <p style={{ color: theme.colors.text.secondary, margin: `${theme.spacing[1]} 0`, fontSize: theme.typography.fontSize.sm }}>
+            📍 {bazaar.location}
+          </p>
+          <p style={{ color: theme.colors.text.primary, marginTop: theme.spacing[4], fontSize: theme.typography.fontSize.base, maxHeight: "100px", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {bazaar.description}
+          </p>
+        </div>
       </div>
-      <div style={{ marginTop: theme.spacing[4] }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            color: theme.colors.text.secondary,
-            fontSize: theme.typography.fontSize.sm,
-            marginBottom: theme.spacing[4],
-          }}
-        >
+
+      <div style={{ padding: `0 ${theme.spacing[5]} ${theme.spacing[5]}` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", color: theme.colors.text.secondary, fontSize: theme.typography.fontSize.sm, marginBottom: theme.spacing[4], borderTop: `1px solid ${theme.colors.border}`,
+            paddingTop: theme.spacing[4] }}>
           <span>Participants</span>
           <span style={{ fontWeight: "bold" }}>
             {bazaar.currentParticipants} / {bazaar.maxParticipants}
@@ -106,18 +90,10 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
         <div style={{ display: "flex", gap: theme.spacing[2], width: "100%" }}>
           {!hasStarted ? (
             <>
-              <Button
-                variant="primary"
-                onClick={() => onEdit(bazaar)}
-                style={{ flex: 1 }}
-              >
+              <Button variant="primary" onClick={() => onEdit(bazaar)} style={{ flex: 1 }}>
                 Edit
               </Button>
-              <Button
-                variant="danger"
-                onClick={() => onDelete(bazaar._id)}
-                style={{ flex: 1 }}
-              >
+              <Button variant="danger" onClick={() => onDelete(bazaar._id)} style={{ flex: 1 }}>
                 Delete
               </Button>
             </>
@@ -132,7 +108,7 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
           )}
         </div>
       </div>
-    </Card>
+    </div>
   );
 };
 
@@ -448,7 +424,7 @@ const EventsPage = () => {
       return;
     }
     if (
-      new Date(editBazaarData.registrationDeadline) >=
+      new Date(editBazaarData.registrationDeadline) >= 
       new Date(editBazaarData.startDate)
     ) {
       toast.error(
