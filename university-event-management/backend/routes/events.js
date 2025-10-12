@@ -7,10 +7,8 @@ const {
   updateEvent,
   deleteEvent,
   getEventsByType,
-  getUpcomingBazaars,
-  seedBazaar,
 } = require("../controllers/eventController");
-const { protect, authorize, optionalProtect } = require("../middleware/auth");
+const { protect, authorize } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -27,7 +25,7 @@ const createEventValidation = [
     .isLength({ min: 1, max: 2000 })
     .withMessage("Description is required and must be between 1 and 2000 characters"),
   body("type")
-    .isIn(["workshop", "trip", "bazaar", "competition", "conference"])
+    .isIn(["workshop", "trip", "bazaar", "booth", "conference"])
     .withMessage("Invalid event type"),
   body("startDate")
     .isISO8601()
@@ -84,16 +82,11 @@ const createEventValidation = [
 ];
 
 // =============================
-// Public Routes (with optional auth for filtering)
+// Public Routes
 // =============================
-router.get("/", optionalProtect, getEvents);
-router.get("/type/:type", optionalProtect, getEventsByType);
+router.get("/", getEvents);
+router.get("/type/:type", getEventsByType);
 router.get("/:id", getEvent);
-
-// =============================
-// Bazaar Routes
-// =============================
-router.get("/bazaars/upcoming", getUpcomingBazaars);
 
 // =============================
 // Protected & Admin Routes
@@ -122,8 +115,5 @@ router.delete(
   authorize("admin", "events_office"),
   deleteEvent
 );
-
-// Temporary route for seeding (testing only)
-router.post("/seed/bazaar", authorize("admin"), seedBazaar);
 
 module.exports = router;

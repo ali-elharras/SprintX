@@ -239,7 +239,7 @@ const EventsPage = () => {
       
       // Use cancel token for the main events request
       const response = await eventAPI.getEvents(
-        { status: "published" }, 
+        { /*status: ["published", "accepted", "approved"]*/ }, 
         currentCancelToken
       );
       
@@ -465,7 +465,7 @@ const EventsPage = () => {
     { value: "workshop", label: "Workshops" },
     { value: "trip", label: "Trips" },
     { value: "bazaar", label: "Bazaars" },
-    { value: "competition", label: "Competitions" },
+    { value: "booth", label: "Booths" },
     { value: "conference", label: "Conferences" },
   ];
 
