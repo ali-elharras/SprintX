@@ -55,26 +55,45 @@ class EmailService {
   }
 
   // Send account verification email with tokenized link to backend verification endpoint
-  async sendVerificationEmail(to, verifyToken, fullName = "", requestedRole = "") {
+  async sendVerificationEmail(
+    to,
+    verifyToken,
+    fullName = "",
+    requestedRole = ""
+  ) {
     const backendBase =
-      process.env.BACKEND_URL || process.env.API_BASE_URL || "http://localhost:5000";
-    const verifyUrl = `${backendBase.replace(/\/$/, "")}/api/auth/verify-email/${verifyToken}`;
+      process.env.BACKEND_URL ||
+      process.env.API_BASE_URL ||
+      "http://localhost:5000";
+    const verifyUrl = `${backendBase.replace(
+      /\/$/,
+      ""
+    )}/api/auth/verify-email/${verifyToken}`;
 
     const subject = "Verify your account - Campus Events Hub";
 
     const mailOptions = {
-      from: `"Campus Events Hub" <${process.env.EMAIL_USER || "no-reply@campusevents.test"}>`,
+      from: `"Campus Events Hub" <${
+        process.env.EMAIL_USER || "no-reply@campusevents.test"
+      }>`,
       to,
       subject,
-      html: this.getVerificationEmailTemplate({ verifyUrl, fullName, requestedRole }),
-      text: `Hello${fullName ? ` ${fullName}` : ""},\n\n` +
+      html: this.getVerificationEmailTemplate({
+        verifyUrl,
+        fullName,
+        requestedRole,
+      }),
+      text:
+        `Hello${fullName ? ` ${fullName}` : ""},\n\n` +
         `Please verify your Campus Events Hub account by visiting the link below:\n${verifyUrl}\n\n` +
         `If you did not create this account, you can safely ignore this email.`,
     };
 
     try {
       if (!this.transporter) {
-        console.log("⚠️ No transporter available - falling back to console mode");
+        console.log(
+          "⚠️ No transporter available - falling back to console mode"
+        );
         console.log("📧 Verification Email (Console Mode):");
         console.log("   To:", to);
         console.log("   Verify URL:", verifyUrl);
@@ -84,7 +103,10 @@ class EmailService {
 
       const info = await this.transporter.sendMail(mailOptions);
       if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
-        console.log("✅ Verification email sent successfully", { to, messageId: info.messageId });
+        console.log("✅ Verification email sent successfully", {
+          to,
+          messageId: info.messageId,
+        });
       } else {
         console.log("📧 Test verification email sent:");
         console.log("   Preview URL:", nodemailer.getTestMessageUrl(info));
@@ -96,9 +118,15 @@ class EmailService {
     }
   }
 
-  getVerificationEmailTemplate({ verifyUrl, fullName = "", requestedRole = "" }) {
+  getVerificationEmailTemplate({
+    verifyUrl,
+    fullName = "",
+    requestedRole = "",
+  }) {
     const safeName = fullName || "there";
-    const roleLine = requestedRole ? `<p>Your requested role: <strong>${requestedRole}</strong></p>` : "";
+    const roleLine = requestedRole
+      ? `<p>Your requested role: <strong>${requestedRole}</strong></p>`
+      : "";
     return `
       <!DOCTYPE html>
       <html lang="en">
@@ -331,6 +359,212 @@ class EmailService {
             
             <p>If you're having trouble clicking the button, you can copy and paste this link into your browser:</p>
             <p style="word-break: break-all; color: #667eea; font-size: 14px;">${resetUrl}</p>
+            
+            <p>Best regards,<br>The Campus Events Hub Team</p>
+          </div>
+          
+          <div class="footer">
+            <p>This email was sent from Campus Events Hub<br>
+            If you have questions, contact us at <a href="mailto:support@campusevents.edu">support@campusevents.edu</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  async sendVerificationEmail(to, verificationToken, fullName, role) {
+    console.log(
+      `📧 sendVerificationEmail called with: to=${to}, fullName=${fullName}, role=${role}`
+    );
+    console.log(`🔧 Transporter status:`, !!this.transporter);
+
+    const verifyUrl = `${
+      process.env.BACKEND_URL || "http://localhost:5000"
+    }/api/auth/verify-email/${verificationToken}`;
+
+    const mailOptions = {
+      from: `"Campus Events Hub" <${process.env.EMAIL_USER}>`,
+      to: to,
+      subject: "Account Verification - Campus Events Hub",
+      html: this.getVerificationEmailTemplate(verifyUrl, fullName, role),
+      text: `
+        Dear ${fullName},
+
+        Your ${role} account has been approved by the administrator!
+        
+        To complete your account activation, please click the following link:
+        ${verifyUrl}
+        
+        This link will expire in 24 hours for security purposes.
+        
+        Once verified, you'll be able to access all features of Campus Events Hub.
+        
+        Best regards,
+        Campus Events Hub Team
+      `,
+    };
+
+    try {
+      if (!this.transporter) {
+        console.log(
+          "⚠️ No transporter available - falling back to console mode"
+        );
+        console.log("📧 Verification Email (Console Mode):");
+        console.log("   To:", to);
+        console.log("   Verify URL:", verifyUrl);
+        console.log("   Subject:", mailOptions.subject);
+        return { success: true, messageId: "console-log" };
+      }
+
+      console.log(`📧 Sending verification email to: ${to}`);
+      const info = await this.transporter.sendMail(mailOptions);
+
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+        console.log("✅ Verification email sent successfully!");
+        console.log(`   To: ${to}`);
+        console.log(`   Message ID: ${info.messageId}`);
+      } else {
+        console.log("📧 Test verification email sent:");
+        console.log("   Preview URL:", nodemailer.getTestMessageUrl(info));
+      }
+
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error("❌ Failed to send verification email:", error.message);
+      throw new Error(`Failed to send verification email: ${error.message}`);
+    }
+  }
+
+  getVerificationEmailTemplate(verifyUrl, fullName, role) {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Account Verification - Campus Events Hub</title>
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+          }
+          .email-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            text-align: center;
+            color: white;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+          }
+          .content {
+            background: white;
+            padding: 40px 30px;
+            color: #333333;
+          }
+          .content p {
+            color: #333333 !important;
+          }
+          .content h2 {
+            color: #667eea;
+            margin-top: 0;
+            font-size: 24px;
+          }
+          .verify-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            padding: 15px 30px;
+            border-radius: 8px;
+            text-decoration: none !important;
+            font-weight: bold;
+            font-size: 16px;
+            margin: 20px 0;
+            transition: transform 0.2s ease;
+          }
+          .verify-button:hover {
+            transform: translateY(-2px);
+          }
+          .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #155724;
+          }
+          .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
+          }
+          .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+          }
+          .footer a {
+            color: #667eea;
+            text-decoration: none;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <h1>🎓 Campus Events Hub</h1>
+          </div>
+          
+          <div class="content">
+            <h2>🎉 Account Approved!</h2>
+            
+            <p>Dear ${fullName},</p>
+            
+            <div class="success">
+              <strong>🎊 Great news!</strong> Your ${role} account has been approved by our administrator team.
+            </div>
+            
+            <p>To complete your account activation and gain access to all Campus Events Hub features, please verify your email address by clicking the button below:</p>
+            
+            <p style="text-align: center; margin: 30px 0;">
+              <a href="${verifyUrl}" class="verify-button">Verify My Account</a>
+            </p>
+            
+            <div class="warning">
+              <strong>⚠️ Important:</strong> This verification link will expire in <strong>24 hours</strong> for security purposes. Please verify your account as soon as possible.
+            </div>
+            
+            <p>Once verified, you'll be able to:</p>
+            <ul>
+              <li>Access your personalized dashboard</li>
+              <li>Manage events and activities</li>
+              <li>Connect with the university community</li>
+              <li>Receive important notifications</li>
+            </ul>
+            
+            <p>If you're having trouble clicking the button, you can copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; color: #667eea; font-size: 14px;">${verifyUrl}</p>
+            
+            <p>Welcome to Campus Events Hub!</p>
             
             <p>Best regards,<br>The Campus Events Hub Team</p>
           </div>

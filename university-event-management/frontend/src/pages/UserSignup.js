@@ -189,12 +189,42 @@ const UserSignup = () => {
         delete submitData.yearOfStudy;
       }
 
+      // Proceed with registration
       const result = await registerUser(submitData);
 
       if (result.success) {
+        // Check if verification email is required
+        if (
+          result.requiresVerificationEmail ||
+          result.data?.requiresVerificationEmail
+        ) {
+          navigate("/verification-email-selection", {
+            state: {
+              userData: result.data?.userData || submitData,
+              userId: result.data?.userId,
+            },
+          });
+          return;
+        }
+
+        // For students and complete registrations
         toast.success("Registration successful! Welcome to Campus Events Hub!");
         navigate("/dashboard");
       } else {
+        // Handle case where backend returns requiresVerificationEmail in error response
+        if (
+          result.requiresVerificationEmail ||
+          result.data?.requiresVerificationEmail
+        ) {
+          navigate("/verification-email-selection", {
+            state: {
+              userData: result.data?.userData || submitData,
+              userId: result.data?.userId,
+            },
+          });
+          return;
+        }
+
         toast.error(result.error || "Registration failed. Please try again.");
       }
     } catch (error) {

@@ -124,6 +124,38 @@ const UserTypeSelection = () => {
           );
           navigate("/dashboard", { replace: true });
         } else {
+          console.log("University login result:", result); // Debug log
+
+          // Check if registration is incomplete and requires verification email
+          if (
+            result.requiresVerificationEmail ||
+            result.data?.requiresVerificationEmail
+          ) {
+            navigate("/verification-email-selection", {
+              state: {
+                userData: result.data?.userData,
+                userId: result.data?.userId,
+              },
+            });
+            return;
+          }
+
+          // Check if verification email has been sent but user hasn't verified
+          if (result.emailVerificationSent && result.canReapply) {
+            console.log(
+              "Navigating to verification-pending from UserTypeSelection"
+            );
+            navigate("/verification-pending", {
+              state: {
+                userId: result.data?.userId,
+                email: result.data?.email,
+                verificationEmail: result.data?.verificationEmail,
+                message: result.error,
+              },
+            });
+            return;
+          }
+
           toast.error(
             result.error || "Login failed. Please check your credentials."
           );

@@ -12,133 +12,6 @@ import RegistrationCard from "../components/RegistrationCard";
 import toast from "react-hot-toast";
 import axios from "axios";
 
-// Card for displaying Bazaars created by the Events Office user
-const MyBazaarCard = ({ bazaar, onEdit, onDelete }) => {
-  const cardStyle = {
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "space-between",
-    height: "100%",
-    boxShadow: theme.shadows.md,
-    transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-  };
-
-  const statusBadgeStyle = {
-    background:
-      bazaar.status === "draft"
-        ? theme.colors.secondary.main
-        : theme.colors.primary.main,
-    color: "white",
-    padding: "4px 10px",
-    borderRadius: theme.borderRadius.full,
-    fontSize: theme.typography.fontSize.xs,
-    fontWeight: "bold",
-    textTransform: "uppercase",
-  };
-
-  return (
-    <Card style={cardStyle}>
-      <div>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            marginBottom: theme.spacing[3],
-          }}
-        >
-          <h3
-            style={{
-              fontSize: theme.typography.fontSize.lg,
-              fontWeight: "bold",
-              color: theme.colors.text.primary,
-              margin: 0,
-              paddingRight: theme.spacing[2],
-            }}
-          >
-            {bazaar.title || bazaar.name}
-          </h3>
-          <span style={statusBadgeStyle}>{bazaar.status}</span>
-        </div>
-        <p
-          style={{
-            color: theme.colors.text.secondary,
-            margin: 0,
-            fontSize: theme.typography.fontSize.sm,
-          }}
-        >
-          {new Date(bazaar.startDate).toLocaleString("en-US", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          })}
-        </p>
-        <p
-          style={{
-            color: theme.colors.text.secondary,
-            margin: `${theme.spacing[1]} 0`,
-            fontSize: theme.typography.fontSize.sm,
-          }}
-        >
-          📍 {bazaar.location}
-        </p>
-        <p
-          style={{
-            color: theme.colors.text.primary,
-            marginTop: theme.spacing[4],
-            fontSize: theme.typography.fontSize.base,
-            maxHeight: "100px",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {bazaar.description}
-        </p>
-      </div>
-      <div style={{ marginTop: theme.spacing[4] }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            color: theme.colors.text.secondary,
-            fontSize: theme.typography.fontSize.sm,
-            marginBottom: theme.spacing[4],
-          }}
-        >
-          <span>Participants</span>
-          <span style={{ fontWeight: "bold" }}>
-            {bazaar.currentParticipants} / {bazaar.maxParticipants}
-          </span>
-        </div>
-        <div style={{ display: "flex", gap: theme.spacing[2], width: "100%" }}>
-          {new Date(bazaar.startDate) > new Date() ? (
-            <>
-              <Button
-                variant="primary"
-                onClick={() => onEdit(bazaar)}
-                style={{ flex: 1 }}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => onDelete(bazaar._id)}
-                style={{ flex: 1 }}
-              >
-                Delete
-              </Button>
-            </>
-          ) : (
-            <Button variant="secondary" disabled style={{ width: "100%" }}>
-              Event Started
-            </Button>
-          )}
-        </div>
-      </div>
-    </Card>
-  );
-};
-
 const MyRegistrations = () => {
   const { isAuthenticated, isEventsOffice, user } = useAuth();
 
@@ -158,20 +31,6 @@ const MyRegistrations = () => {
   const [sortBy, setSortBy] = useState("startDate");
   const [sortOrder, setSortOrder] = useState("asc");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  // Edit Modal state
-  const [editingBazaar, setEditingBazaar] = useState(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [bazaarData, setBazaarData] = useState({
-    name: "",
-    description: "",
-    startDate: "",
-    endDate: "",
-    location: "",
-    theme: "",
-    maxParticipants: "50",
-    registrationDeadline: "",
-  });
 
   // Ref for request cancellation
   const cancelTokenRef = useRef(null);
@@ -213,43 +72,7 @@ const MyRegistrations = () => {
         regResponse.data?.data?.upcoming || []
       ).concat(regResponse.data?.data?.past || []);
 
-      // 2. Fetch created bazaars if user is Events Office
-      let createdItems = [];
-      if (isEventsOffice && user?.id) {
-        const bazaarResponse = await api.get("/bazaars", {
-          cancelToken: cancelTokenRef.current.token
-        });
-        const allBazaars = bazaarResponse.data?.data || [];
-        const userBazaars = allBazaars.filter(
-          (bazaar) =>
-            (typeof bazaar.organizer === "object" &&
-              bazaar.organizer?._id === user.id) ||
-            (typeof bazaar.organizer === "string" &&
-              bazaar.organizer === user.id)
-        );
-        createdItems = userBazaars.map((bazaar) => ({
-          _id: `created-${bazaar._id}`,
-          event: bazaar,
-          isCreator: true,
-          registrationDate: bazaar.createdAt || bazaar.startDate,
-        }));
-      }
-
-      // 3. De-duplicate, prioritizing creator items
-      const combinedItemsMap = new Map();
-      fetchedRegistrations.forEach((reg) => {
-        if (reg.event?._id) {
-          combinedItemsMap.set(reg.event._id, reg);
-        }
-      });
-      createdItems.forEach((item) => {
-        if (item.event?._id) {
-          combinedItemsMap.set(item.event._id, item); // This overwrites the registration with the creator item
-        }
-      });
-      const combinedItems = Array.from(combinedItemsMap.values());
-
-      setAllItems(combinedItems);
+      setAllItems(fetchedRegistrations);
     } catch (err) {
       // Don't show error if request was cancelled
       if (axios.isCancel(err)) {
@@ -262,7 +85,7 @@ const MyRegistrations = () => {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, isEventsOffice, user]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     fetchData();
@@ -329,97 +152,6 @@ const MyRegistrations = () => {
       setRefreshTrigger((p) => p + 1);
     } catch (error) {
       toast.error(error.message || "Failed to cancel registration");
-    }
-  };
-
-  const handleDeleteBazaar = async (bazaarId) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to permanently delete this bazaar?"
-      )
-    )
-      return;
-    try {
-      await api.delete(`/bazaars/${bazaarId}`);
-      toast.success("Bazaar deleted successfully");
-      setRefreshTrigger((p) => p + 1);
-    } catch (error) {
-      console.error("Failed to delete bazaar:", error);
-      toast.error(error.response?.data?.message || "Failed to delete bazaar.");
-    }
-  };
-
-  const handleOpenEditModal = (bazaar) => {
-    const formatForInput = (dateStr) => {
-      if (!dateStr) return "";
-      const d = new Date(dateStr);
-      return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-        .toISOString()
-        .slice(0, 16);
-    };
-    setEditingBazaar(bazaar);
-    setBazaarData({
-      name: bazaar.title || bazaar.name,
-      description: bazaar.description,
-      startDate: formatForInput(bazaar.startDate),
-      endDate: formatForInput(bazaar.endDate),
-      location: bazaar.location,
-      theme: bazaar.tags?.join(", ") || "",
-      maxParticipants: bazaar.maxParticipants?.toString() || "50",
-      registrationDeadline: formatForInput(bazaar.registrationDeadline),
-    });
-    setIsEditModalOpen(true);
-  };
-
-  const handleCloseEditModal = () => {
-    setIsEditModalOpen(false);
-    setEditingBazaar(null);
-  };
-
-  const handleUpdateBazaar = async () => {
-    if (!editingBazaar) return;
-    if (
-      !bazaarData.name ||
-      !bazaarData.description ||
-      !bazaarData.startDate ||
-      !bazaarData.endDate ||
-      !bazaarData.registrationDeadline
-    ) {
-      toast.error("Please fill all required fields.");
-      return;
-    }
-    if (
-      new Date(bazaarData.registrationDeadline) >=
-      new Date(bazaarData.startDate)
-    ) {
-      toast.error(
-        "Registration deadline must be before the event's start date."
-      );
-      return;
-    }
-    try {
-      const updatedEventData = {
-        name: bazaarData.name,
-        title: bazaarData.name,
-        description: bazaarData.description,
-        startDate: new Date(bazaarData.startDate).toISOString(),
-        endDate: new Date(bazaarData.endDate).toISOString(),
-        location: bazaarData.location,
-        maxParticipants: Number(bazaarData.maxParticipants),
-        registrationDeadline: new Date(
-          bazaarData.registrationDeadline
-        ).toISOString(),
-        tags: bazaarData.theme
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean),
-      };
-      await api.put(`/bazaars/${editingBazaar._id}`, updatedEventData);
-      toast.success("Bazaar updated successfully!");
-      handleCloseEditModal();
-      setRefreshTrigger((p) => p + 1);
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to update bazaar.");
     }
   };
 
@@ -531,178 +263,6 @@ const MyRegistrations = () => {
       </div>
     );
   }
-
-  const renderEditModal = () => {
-    if (!isEditModalOpen) return null;
-    return (
-      <div
-        role="dialog"
-        aria-modal="true"
-        style={{
-          animation: "slide-down 0.3s ease-out",
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.5)",
-          zIndex: 20000,
-          display: "flex",
-          justifyContent: "center",
-          paddingTop: theme.spacing[6],
-        }}
-        onClick={handleCloseEditModal}
-      >
-        <div
-          style={{
-            width: "800px",
-            maxWidth: "95%",
-            background: theme.colors.background.paper,
-            borderRadius: theme.borderRadius.lg,
-            boxShadow: theme.shadows.lg,
-            padding: theme.spacing[6],
-            maxHeight: "90vh",
-            overflowY: "auto",
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <h2 style={{ marginTop: 0, marginBottom: theme.spacing[4] }}>
-            Edit Bazaar
-          </h2>
-          <div style={{ display: "grid", gap: theme.spacing[4] }}>
-            <Input
-              label="Bazaar Name"
-              value={bazaarData.name}
-              onChange={(e) =>
-                setBazaarData({ ...bazaarData, name: e.target.value })
-              }
-            />
-            <Input
-              label="Theme"
-              value={bazaarData.theme}
-              onChange={(e) =>
-                setBazaarData({ ...bazaarData, theme: e.target.value })
-              }
-            />
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: theme.spacing[2],
-                  color: theme.colors.text.secondary,
-                }}
-              >
-                Description
-              </label>
-              <textarea
-                rows="4"
-                value={bazaarData.description}
-                onChange={(e) =>
-                  setBazaarData({ ...bazaarData, description: e.target.value })
-                }
-                style={{
-                  width: "100%",
-                  padding: theme.spacing[3],
-                  fontSize: theme.typography.fontSize.base,
-                  border: `1px solid ${theme.colors.border}`,
-                  borderRadius: theme.borderRadius.base,
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: theme.spacing[4],
-              }}
-            >
-              <Input
-                label="Start Date"
-                type="datetime-local"
-                value={bazaarData.startDate}
-                onChange={(e) => {
-                  const newStartDate = e.target.value;
-                  const updatedData = {
-                    ...bazaarData,
-                    startDate: newStartDate,
-                  };
-                  if (updatedData.endDate && newStartDate > updatedData.endDate)
-                    updatedData.endDate = "";
-                  if (
-                    updatedData.registrationDeadline &&
-                    newStartDate <= updatedData.registrationDeadline
-                  )
-                    updatedData.registrationDeadline = "";
-                  setBazaarData(updatedData);
-                }}
-              />
-              <Input
-                label="End Date"
-                type="datetime-local"
-                value={bazaarData.endDate}
-                min={bazaarData.startDate}
-                onChange={(e) =>
-                  setBazaarData({ ...bazaarData, endDate: e.target.value })
-                }
-              />
-            </div>
-            <Input
-              label="Location"
-              value={bazaarData.location}
-              onChange={(e) =>
-                setBazaarData({ ...bazaarData, location: e.target.value })
-              }
-            />
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: theme.spacing[4],
-              }}
-            >
-              <Input
-                label="Max Participants"
-                type="number"
-                min="1"
-                value={bazaarData.maxParticipants}
-                onChange={(e) =>
-                  setBazaarData({
-                    ...bazaarData,
-                    maxParticipants: e.target.value,
-                  })
-                }
-              />
-              <Input
-                label="Registration Deadline"
-                type="datetime-local"
-                value={bazaarData.registrationDeadline}
-                max={bazaarData.startDate}
-                onChange={(e) =>
-                  setBazaarData({
-                    ...bazaarData,
-                    registrationDeadline: e.target.value,
-                  })
-                }
-              />
-            </div>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: theme.spacing[3],
-              marginTop: theme.spacing[5],
-            }}
-          >
-            <Button variant="outline" onClick={handleCloseEditModal}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handleUpdateBazaar}>
-              Save Changes
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div style={containerStyles}>
@@ -865,26 +425,16 @@ const MyRegistrations = () => {
         {!loading && currentItems.length > 0 && (
           <div style={gridStyles}>
             {currentItems.map((item) =>
-              item.isCreator ? (
-                <MyBazaarCard
-                  key={item._id}
-                  bazaar={item.event}
-                  onEdit={handleOpenEditModal}
-                  onDelete={handleDeleteBazaar}
-                />
-              ) : (
                 <RegistrationCard
                   key={item._id}
                   registration={item}
                   onCancel={handleCancelRegistration}
                   isPastEvent={activeTab === "past"}
                 />
-              )
             )}
           </div>
         )}
       </div>
-      {renderEditModal()}
     </div>
   );
 };

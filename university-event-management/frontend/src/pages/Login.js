@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -60,7 +60,24 @@ const Login = () => {
   const watchedEmail = watch("email");
   const detectedRole = getUniversityRole(watchedEmail);
 
+  // Check for email verification success
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    if (urlParams.get("verified") === "true") {
+      toast.success(
+        "Email verified successfully! You can now log in to your account.",
+        {
+          duration: 5000,
+          position: "top-center",
+        }
+      );
+      // Clean up the URL
+      window.history.replaceState({}, document.title, location.pathname);
+    }
+  }, [location.search, location.pathname]);
+
   const onSubmit = async (data) => {
+    console.log("=== LOGIN FORM SUBMITTED ===", data);
     try {
       setIsSubmitting(true);
 
@@ -86,10 +103,12 @@ const Login = () => {
       }
 
       // This is now university member login only
+      console.log("=== CALLING loginUser ===");
       const result = await loginUser({
         email: data.email,
         password: data.password,
       });
+      console.log("=== loginUser RESULT ===", result);
 
       if (result.success) {
         const accountData = result.data.user;
@@ -101,11 +120,55 @@ const Login = () => {
         // Navigate to intended destination or dashboard
         navigate(from, { replace: true });
       } else {
+        console.log("Login result:", result); // Debug log
+        console.log(
+          "result.emailVerificationSent:",
+          result.emailVerificationSent
+        );
+        console.log("result.canReapply:", result.canReapply);
+        console.log(
+          "Condition check:",
+          result.emailVerificationSent && result.canReapply
+        );
+
+        // Check if verification email is required (incomplete registration)
+        if (result.requiresVerificationEmail) {
+          console.log("Navigating to verification-email-selection");
+          navigate("/verification-email-selection", {
+            state: {
+              userData: result.data?.userData,
+              userId: result.data?.userId,
+            },
+          });
+          return;
+        }
+
+        // Check if verification email has been sent but user hasn't verified
+        if (result.emailVerificationSent && result.canReapply) {
+          console.log("Navigating to verification-pending with data:", {
+            userId: result.data?.userId,
+            email: result.data?.email,
+            verificationEmail: result.data?.verificationEmail,
+            message: result.error,
+          });
+          navigate("/verification-pending", {
+            state: {
+              userId: result.data?.userId,
+              email: result.data?.email,
+              verificationEmail: result.data?.verificationEmail,
+              message: result.error,
+            },
+          });
+          return;
+        }
+
+        console.log("Showing toast error for result:", result);
         toast.error(
           result.error || "Login failed. Please check your credentials."
         );
       }
     } catch (error) {
+      console.log("=== LOGIN.JS CATCH BLOCK ===", error);
       toast.error("An unexpected error occurred. Please try again.");
       console.error("Login error:", error);
     } finally {

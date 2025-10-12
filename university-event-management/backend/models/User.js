@@ -27,6 +27,16 @@ const userSchema = new mongoose.Schema(
         "Please provide a valid email address",
       ],
     },
+    verificationEmail: {
+      type: String,
+      required: false, // Only required for staff, TA, professor during registration
+      lowercase: true,
+      trim: true,
+      match: [
+        /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+        "Please provide a valid verification email address",
+      ],
+    },
     password: {
       type: String,
       required: [true, "Password is required"],
@@ -105,6 +115,14 @@ const userSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    isRegistrationComplete: {
+      type: Boolean,
+      default: true, // Most users have complete registration
+    },
+    emailVerificationSent: {
+      type: Boolean,
+      default: false, // Tracks if verification email has been sent after admin approval
     },
     verificationToken: {
       type: String,
