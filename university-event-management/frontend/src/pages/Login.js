@@ -91,6 +91,8 @@ const Login = () => {
         password: data.password,
       });
 
+      console.log("Login result:", result);
+
       if (result.success) {
         const accountData = result.data.user;
 
@@ -101,6 +103,17 @@ const Login = () => {
         // Navigate to intended destination or dashboard
         navigate(from, { replace: true });
       } else {
+        // Check if verification email is required (incomplete registration)
+        if (result.requiresVerificationEmail) {
+          navigate("/verification-email-selection", {
+            state: {
+              userData: result.data?.userData,
+              userId: result.data?.userId,
+            },
+          });
+          return;
+        }
+
         toast.error(
           result.error || "Login failed. Please check your credentials."
         );

@@ -14,6 +14,8 @@ import UserTypeSelection from "./components/UserTypeSelection";
 import Login from "./pages/Login";
 import VendorLogin from "./pages/VendorLogin";
 import UserSignup from "./pages/UserSignup";
+import VerificationEmailSelection from "./pages/VerificationEmailSelection";
+import VerificationSuccess from "./pages/VerificationSuccess";
 import VendorSignup from "./pages/VendorSignup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -180,6 +182,22 @@ const router = createBrowserRouter([
     element: (
       <PublicRoute>
         <VendorSignup />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/verification-email-selection",
+    element: (
+      <PublicRoute>
+        <VerificationEmailSelection />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/verification-success",
+    element: (
+      <PublicRoute>
+        <VerificationSuccess />
       </PublicRoute>
     ),
   },

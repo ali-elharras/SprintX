@@ -124,6 +124,20 @@ const UserTypeSelection = () => {
           );
           navigate("/dashboard", { replace: true });
         } else {
+          // Check if registration is incomplete and requires verification email
+          if (
+            result.requiresVerificationEmail ||
+            result.data?.requiresVerificationEmail
+          ) {
+            navigate("/verification-email-selection", {
+              state: {
+                userData: result.data?.userData,
+                userId: result.data?.userId,
+              },
+            });
+            return;
+          }
+
           toast.error(
             result.error || "Login failed. Please check your credentials."
           );

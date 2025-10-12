@@ -58,6 +58,7 @@ const registerUser = async (req, res, next) => {
       department,
       yearOfStudy,
       phoneNumber,
+      verificationEmail,
     } = req.body;
 
     // Validate that the provided role matches the email domain
@@ -104,6 +105,43 @@ const registerUser = async (req, res, next) => {
       });
     }
 
+    // For staff, TA, and professor, verificationEmail is required
+    if (["staff", "ta", "professor"].includes(role) && !verificationEmail) {
+      // Create incomplete user record
+      const incompleteUserData = {
+        firstName,
+        lastName,
+        email,
+        password,
+        role,
+        universityId,
+        phoneNumber,
+        department,
+        isRegistrationComplete: false,
+        isVerified: false,
+      };
+
+      const incompleteUser = await User.create(incompleteUserData);
+
+      return res.status(200).json({
+        success: true,
+        message: "Partial registration created. Verification email required.",
+        requiresVerificationEmail: true,
+        data: {
+          userId: incompleteUser._id,
+          userData: {
+            firstName,
+            lastName,
+            email,
+            role,
+            universityId,
+            department,
+            phoneNumber,
+          },
+        },
+      });
+    }
+
     // Create user
     const userData = {
       firstName,
@@ -123,10 +161,16 @@ const registerUser = async (req, res, next) => {
       userData.yearOfStudy = yearOfStudy;
     }
 
+    // Add verification email for staff, TA, professor
+    if (["staff", "ta", "professor"].includes(role) && verificationEmail) {
+      userData.verificationEmail = verificationEmail;
+    }
+
     // Verification policy:
     // - Students are auto-verified
     // - Staff/TA/Professor require admin verification (isVerified remains false)
     userData.isVerified = role === "student";
+    userData.isRegistrationComplete = true;
 
     const user = await User.create(userData);
 
@@ -298,7 +342,9 @@ const verifyEmail = async (req, res, next) => {
   try {
     const { token } = req.params;
     if (!token) {
-      return res.status(400).json({ success: false, message: "Verification token is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Verification token is required" });
     }
 
     // Look up user by verificationToken and ensure not expired
@@ -308,7 +354,12 @@ const verifyEmail = async (req, res, next) => {
     });
 
     if (!user) {
-      return res.status(400).json({ success: false, message: "Invalid or expired verification token" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Invalid or expired verification token",
+        });
     }
 
     // Mark verified and clear token
@@ -323,6 +374,81 @@ const verifyEmail = async (req, res, next) => {
     return res.redirect(302, redirectUrl);
   } catch (error) {
     return next(error);
+  }
+};
+
+// @desc    Complete user registration with verification email
+// @route   POST /api/auth/complete-registration
+// @access  Public
+const completeUserRegistration = async (req, res, next) => {
+  try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: errors.array(),
+      });
+    }
+
+    const { userId, verificationEmail } = req.body;
+
+    if (!userId || !verificationEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID and verification email are required",
+      });
+    }
+
+    // Find the incomplete user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Check if registration is already complete
+    if (user.isRegistrationComplete) {
+      return res.status(400).json({
+        success: false,
+        message: "Registration is already complete",
+      });
+    }
+
+    // Update user with verification email and mark registration complete
+    user.verificationEmail = verificationEmail;
+    user.isRegistrationComplete = true;
+    await user.save();
+
+    // Generate token
+    const token = generateToken(user._id, "user");
+
+    // Update login tracking
+    await user.updateLastLogin();
+
+    res.status(200).json({
+      success: true,
+      message: "Registration completed successfully",
+      data: {
+        token,
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          role: user.role,
+          universityId: user.universityId,
+          department: user.department,
+          verificationEmail: user.verificationEmail,
+          isVerified: user.isVerified,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -367,6 +493,37 @@ const login = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: "Invalid credentials",
+      });
+    }
+
+    // Check if registration is incomplete (for staff, TA, professor)
+    if (accountType === "user" && account.isRegistrationComplete === false) {
+      // Check password first
+      const isPasswordMatch = await account.comparePassword(password);
+      if (!isPasswordMatch) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid credentials",
+        });
+      }
+
+      return res.status(200).json({
+        success: false,
+        message:
+          "Registration incomplete. Please complete your verification email selection.",
+        requiresVerificationEmail: true,
+        data: {
+          userId: account._id,
+          userData: {
+            firstName: account.firstName,
+            lastName: account.lastName,
+            email: account.email,
+            role: account.role,
+            universityId: account.universityId,
+            department: account.department,
+            phoneNumber: account.phoneNumber,
+          },
+        },
       });
     }
 
@@ -798,6 +955,7 @@ const resetPassword = async (req, res, next) => {
 
 module.exports = {
   registerUser,
+  completeUserRegistration,
   registerVendor,
   login,
   logout,

@@ -20,6 +20,15 @@ export const authAPI = {
     return response.data;
   },
 
+  // Complete user registration with verification email
+  completeUserRegistration: async (completionData) => {
+    const response = await api.post(
+      "/auth/complete-registration",
+      completionData
+    );
+    return response.data;
+  },
+
   // Logout
   logout: async () => {
     const response = await api.post("/auth/logout");
