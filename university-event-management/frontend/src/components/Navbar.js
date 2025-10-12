@@ -454,7 +454,7 @@ const Navbar = () => {
               </button>
             )}
 
-            <button
+            {/* <button
               onClick={() => navigate("/courts")}
               style={{
                 background: "none",
@@ -487,7 +487,43 @@ const Navbar = () => {
               }}
             >
               Courts
-            </button>
+            </button> */}
+            {user.role !== "events_office" && (
+              <button
+                onClick={() => navigate("/courts")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: theme.typography.fontSize.base,
+                  fontWeight: theme.typography.fontWeight.medium,
+                  color:
+                    location.pathname === "/courts"
+                      ? theme.colors.primary.main
+                      : theme.colors.text.secondary,
+                  cursor: "pointer",
+                  padding: theme.spacing[2],
+                  textDecoration: "none",
+                  borderBottom:
+                    location.pathname === "/courts"
+                      ? `2px solid ${theme.colors.primary.main}`
+                      : "2px solid transparent",
+                  transition: "all 0.2s ease",
+                  fontFamily: theme.typography.fontFamily.primary,
+                }}
+                onMouseEnter={(e) => {
+                  if (location.pathname !== "/courts") {
+                    e.target.style.color = theme.colors.primary.main;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (location.pathname !== "/courts") {
+                    e.target.style.color = theme.colors.text.secondary;
+                  }
+                }}
+              >
+                Courts
+              </button>
+            )}
 
             <button
               onClick={() => navigate("/gym-schedule")}
@@ -524,7 +560,7 @@ const Navbar = () => {
               Gym Schedule
             </button>
 
-            {/* My Registrations link - only show for users, not vendors */}
+            {/* My Registrations link - only show for users, not vendors
             {isUser && (
               <button
                 onClick={() => navigate("/my-registrations")}
@@ -560,7 +596,43 @@ const Navbar = () => {
               >
                 My Registrations
               </button>
-            )}
+            )} */}
+            {isUser && user.role !== "events_office" && (
+            <button
+              onClick={() => navigate("/my-registrations")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color:
+                  location.pathname === "/my-registrations"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom:
+                  location.pathname === "/my-registrations"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/my-registrations") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/my-registrations") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              My Registrations
+            </button>
+          )}
 
             <button
               onClick={() => navigate("/dashboard")}

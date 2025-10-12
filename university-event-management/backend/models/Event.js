@@ -9,11 +9,19 @@ const eventSchema = new mongoose.Schema(
       trim: true,
       maxlength: [200, "Event title cannot exceed 200 characters"],
     },
+    name: {
+      type: String,
+      trim: true,
+    },
     description: {
       type: String,
       required: [true, "Event description is required"],
       trim: true,
       maxlength: [2000, "Event description cannot exceed 2000 characters"],
+    },
+    shortDescription: {
+      type: String,
+      trim: true,
     },
     type: {
       type: String,
@@ -127,6 +135,29 @@ const eventSchema = new mongoose.Schema(
     images: {
       type: [String],
       default: [],
+    },
+
+    // Conference-specific fields
+    fullAgenda: {
+      type: String,
+      trim: true,
+    },
+    websiteLink: {
+      type: String,
+      trim: true,
+    },
+    requiredBudget: {
+      type: Number,
+      min: [0, 'Budget cannot be negative'],
+      default: 0
+    },
+    sourceOfFunding: {
+      type: String,
+      enum: ['GUC', 'external']
+    },
+    extraRequiredResources: {
+      type: String,
+      trim: true,
     },
 
     // Special fields for trips

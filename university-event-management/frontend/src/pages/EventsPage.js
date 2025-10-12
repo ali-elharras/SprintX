@@ -12,6 +12,7 @@ import LoadingScreen from "../components/LoadingScreen";
 import api, { eventAPI, createCancelTokenSource } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
+import CreateDropdownButton from '../components/CreateDropdownButton';
 
 const EventsPage = () => {
   const navigate = useNavigate();
@@ -21,6 +22,8 @@ const EventsPage = () => {
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showConferenceModal, setShowConferenceModal] = useState(false);
+  const [editingConference, setEditingConference] = useState(null);
   const [filters, setFilters] = useState({
     type: "",
     search: "",
@@ -545,22 +548,10 @@ const EventsPage = () => {
             >
               {filters.upcoming ? "Upcoming Only" : "All Events"}
             </Button>
-            <Button variant="outline" onClick={fetchEvents}>
-              Refresh
-            </Button>
-{auth.isEventsOffice && (
-    <Button
-        variant="primary"
-        onClick={() => setCreateBazaarOpen(true)}
-        style={{
-            background: 'linear-gradient(135deg, #6B73FF 0%, #000DFF 100%)',
-            color: 'white',
-            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-        }}
-    >
-        + Create Bazaar
-    </Button>
-)}
+          <Button variant="outline" onClick={fetchEvents}>
+            Refresh
+          </Button>
+          <CreateDropdownButton onConferenceModalOpen={() => setShowConferenceModal(true)} />
           </div>
         </div>
 
@@ -578,6 +569,11 @@ const EventsPage = () => {
                 key={event._id}
                 event={event}
                 onRegistrationSuccess={handleRegistrationSuccess}
+                onEventUpdate={fetchEvents}
+                onEditConference={(conference) => {
+                  setEditingConference(conference);
+                  setShowConferenceModal(true);
+                }}
               />
             ))}
           </div>
@@ -1086,6 +1082,19 @@ const EventsPage = () => {
           </div>
         </div>
       )}
+      {/* Conference Modal */}
+      <ConferenceModal
+        isOpen={showConferenceModal}
+        onClose={() => {
+          setShowConferenceModal(false);
+          setEditingConference(null);
+        }}
+        conference={editingConference}
+        onSuccess={() => {
+          fetchEvents(); // Refresh events list
+          setEditingConference(null);
+        }}
+      />
     </>
   );
 };

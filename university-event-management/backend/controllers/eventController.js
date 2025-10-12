@@ -1,7 +1,6 @@
 const Event = require("../models/Event");
 const User = require("../models/User");
 const Registration = require("../models/Registration");
-const Conference = require("../models/Conference");
 const { validationResult } = require("express-validator");
 
 /* --------------------------------------------------------
@@ -84,61 +83,21 @@ const getEvents = async (req, res) => {
   try {
     const { type, status = "published", upcoming = false } = req.query;
 
-    // Fetch regular events
+    // Build query for events (including conferences as type: "conference")
     let eventQuery = { status };
-    let conferenceQuery = {}; // Conferences don't have status field
 
     if (type) {
       eventQuery.type = type;
-      // If specifically asking for conferences, only return conferences
-      if (type === "conference") {
-        let conferences = await Conference.find(conferenceQuery).sort({ date: 1 });
-        
-        // Filter out conferences user is already registered for (if user is authenticated)
-        if (req.user) {
-          const userRegistrations = await Registration.find({
-            $or: [
-              { user: req.user.id },
-              { email: req.user.email }
-            ],
-            status: { $in: ["pending", "confirmed", "attended", "no-show"] } // Exclude cancelled
-          }).distinct('event');
-          
-          conferences = conferences.filter(conf => 
-            !userRegistrations.some(regEventId => regEventId.toString() === conf._id.toString())
-          );
-        }
-        
-        return res.status(200).json({
-          success: true,
-          count: conferences.length,
-          data: conferences.map(conf => ({
-            ...conf.toObject(),
-            type: "conference",
-            name: conf.title, // Map title to name for consistency
-            startDate: conf.date,
-            endDate: conf.date, // Conferences are single-day
-            registrationRequired: true,
-            status: "published",// Assume conferences are always published
-          }))
-        });
-      }
     }
 
     if (upcoming === "true") {
       eventQuery.startDate = { $gte: new Date() };
-      conferenceQuery.date = { $gte: new Date() };
     }
 
-    // Fetch both regular events and conferences
-    const [events, conferences] = await Promise.all([
-      Event.find(eventQuery)
-        .populate("organizer", "firstName lastName email")
-        .sort({ startDate: 1 }),
-      upcoming === "true" 
-        ? Conference.find({ date: { $gte: new Date() } }).sort({ date: 1 })
-        : Conference.find().sort({ date: 1 })
-    ]);
+    // Fetch events (conferences included via type filter)
+    const events = await Event.find(eventQuery)
+      .populate("organizer", "firstName lastName email")
+      .sort({ startDate: 1 });
 
     // Get user's active registrations if user is authenticated
     let userRegistrations = [];
@@ -157,35 +116,10 @@ const getEvents = async (req, res) => {
       !userRegistrations.some(regEventId => regEventId.toString() === event._id.toString())
     );
 
-    const filteredConferences = conferences.filter(conf => 
-      !userRegistrations.some(regEventId => regEventId.toString() === conf._id.toString())
-    );
-
-    // Combine and transform the data
-    const allEvents = [
-      ...filteredEvents,
-      ...filteredConferences.map(conf => ({
-        ...conf.toObject(),
-        _id: conf._id,
-        type: "conference",
-        name: conf.title, // Map title to name for consistency
-        startDate: conf.date,
-        endDate: conf.date, // Conferences are single-day
-        registrationRequired: true,
-        status: "published", // Assume conferences are always published
-        maxParticipants: conf.capacity,
-        currentParticipants: 0, // You might want to track this separately
-        cost: 0 // Default cost for conferences
-      }))
-    ];
-
-    // Sort combined results by date
-    allEvents.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
-
     res.status(200).json({
       success: true,
-      count: allEvents.length,
-      data: allEvents,
+      count: filteredEvents.length,
+      data: filteredEvents,
     });
   } catch (error) {
     console.error("Error fetching events:", error);
@@ -197,15 +131,13 @@ const getEvents = async (req, res) => {
   }
 };
 
-// @desc    Get single event
+// @desc    Get a single event
 // @route   GET /api/events/:id
 // @access  Public
 const getEvent = async (req, res) => {
   try {
-    const event = await Event.findById(req.params.id).populate(
-      "organizer",
-      "firstName lastName email phone"
-    );
+    const event = await Event.findById(req.params.id)
+      .populate("organizer", "firstName lastName email");
 
     if (!event) {
       return res.status(404).json({
@@ -230,10 +162,9 @@ const getEvent = async (req, res) => {
 
 // @desc    Create new event
 // @route   POST /api/events
-// @access  Private (Admin/Events Office)
+// @access  Private (Organizer/Admin)
 const createEvent = async (req, res) => {
   try {
-    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -246,6 +177,10 @@ const createEvent = async (req, res) => {
     const event = await Event.create({
       ...req.body,
       organizer: req.user.id,
+      organizerDetails: {
+        name: `${req.user.firstName} ${req.user.lastName}`,
+        email: req.user.email,
+      },
     });
 
     await event.populate("organizer", "firstName lastName email");
@@ -267,9 +202,18 @@ const createEvent = async (req, res) => {
 
 // @desc    Update event
 // @route   PUT /api/events/:id
-// @access  Private (Admin/Events Office/Organizer)
+// @access  Private (Organizer/Admin)
 const updateEvent = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: errors.array(),
+      });
+    }
+
     const event = await Event.findById(req.params.id);
 
     if (!event) {
