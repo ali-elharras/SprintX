@@ -91,9 +91,10 @@ const registerForEvent = async (req, res) => {
       });
     }
 
-    // Check if user is already registered
+    // Check if user is already registered (excluding cancelled registrations)
     const existingRegistration = await Registration.findOne({
       event: eventId,
+      status: { $ne: "cancelled" }, // Exclude cancelled registrations
       $or: [
         { email: email.toLowerCase() },
         { universityId: universityId }

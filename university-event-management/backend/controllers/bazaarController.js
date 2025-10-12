@@ -8,7 +8,7 @@ const Event = require("../models/Event");
 exports.createBazaar = async (req, res) => {
   try {
     const {
-      name,
+      title,
       description,
       startDate,
       endDate,
@@ -21,7 +21,7 @@ exports.createBazaar = async (req, res) => {
 
     // Validate required fields
     if (
-      !name ||
+      !title ||
       !description ||
       !startDate ||
       !endDate ||
@@ -37,7 +37,7 @@ exports.createBazaar = async (req, res) => {
 
     // Create bazaar event
     const newBazaar = await Event.create({
-      name,
+      title,
       description,
       type: "bazaar",
       startDate,

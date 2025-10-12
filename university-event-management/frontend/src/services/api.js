@@ -52,10 +52,13 @@ export const retryRequest = async (
 // ============================================
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || "http://localhost:8080/api",
-  timeout: 10000,
+  timeout: 30000, // Increased from 10s to 30s for better stability
   headers: {
     "Content-Type": "application/json",
   },
+  // Additional connection settings for stability
+  maxRedirects: 5,
+  maxContentLength: 50 * 1024 * 1024, // 50MB
 });
 
 // ============================================
@@ -78,6 +81,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Don't handle errors for cancelled requests
+    if (axios.isCancel(error)) {
+      console.log('Request cancelled:', error.message);
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401) {
       const wasVendor = localStorage.getItem("userType") === "vendor";
       localStorage.removeItem("token");
@@ -95,20 +104,24 @@ api.interceptors.response.use(
 
     // Handle server errors with user-friendly messages
     let errorMessage;
-    if (error.response?.status >= 500) {
+    if (error.code === 'ECONNABORTED' || error.code === 'ENOTFOUND') {
+      errorMessage = "Connection timeout. Please check your internet connection.";
+    } else if (error.response?.status >= 500) {
       errorMessage = "Server error. Please try again in a moment.";
     } else if (error.response?.status === 429) {
-      errorMessage =
-        "Too many requests. Please wait a moment before trying again.";
+      errorMessage = "Too many requests. Please wait a moment before trying again.";
+    } else if (error.response?.status === 0 || !error.response) {
+      errorMessage = "Network error. Please check your connection and try again.";
     } else {
-      errorMessage =
-        error.response?.data?.message || error.message || "An error occurred";
+      errorMessage = error.response?.data?.message || error.message || "An error occurred";
     }
 
     return Promise.reject({
       message: errorMessage,
       status: error.response?.status,
       data: error.response?.data,
+      isNetworkError: !error.response,
+      isCancelled: axios.isCancel(error),
     });
   }
 );
@@ -270,22 +283,40 @@ export const registrationAPI = {
 // COURT API ENDPOINTS
 // ============================================
 export const courtAPI = {
-  getCourts: (params = {}) => {
+  getCourts: (params = {}, cancelToken = null) => {
     const queryParams = new URLSearchParams(params).toString();
-    return api.get(`/courts${queryParams ? `?${queryParams}` : ""}`);
+    return api.get(`/courts${queryParams ? `?${queryParams}` : ""}`, {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    });
   },
 
-  getCourt: (id) => api.get(`/courts/${id}`),
-  getCourtsByType: (type) => api.get(`/courts/type/${type}`),
-  getCourtAvailability: (courtId, date) =>
-    api.get(`/courts/${courtId}/availability/${date}`),
+  getCourt: (id, cancelToken = null) => 
+    api.get(`/courts/${id}`, {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    }),
+    
+  getCourtsByType: (type, cancelToken = null) => 
+    api.get(`/courts/type/${type}`, {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    }),
+    
+  getCourtAvailability: (courtId, date, cancelToken = null) =>
+    api.get(`/courts/${courtId}/availability/${date}`, {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    }),
 
-  getWeeklyAvailability: (courtId, startDate = null) => {
+  getWeeklyAvailability: (courtId, startDate = null, cancelToken = null) => {
     const params = startDate ? `?startDate=${startDate}` : "";
-    return api.get(`/courts/${courtId}/weekly-availability${params}`);
+    return api.get(`/courts/${courtId}/weekly-availability${params}`, {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    });
   },
 
-  getCourtStats: () => api.get("/courts/stats"),
+  getCourtStats: (cancelToken = null) => 
+    api.get("/courts/stats", {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    }),
+    
   createCourt: (courtData) => api.post("/courts", courtData),
   updateCourt: (id, courtData) => api.put(`/courts/${id}`, courtData),
   deleteCourt: (id) => api.delete(`/courts/${id}`),
@@ -295,23 +326,39 @@ export const courtAPI = {
 // GYM API ENDPOINTS
 // ============================================
 export const gymAPI = {
-  getSessions: (params = {}) => {
+  getSessions: (params = {}, cancelToken = null) => {
     const queryString = new URLSearchParams(params).toString();
-    return api.get(`/gym/sessions${queryString ? `?${queryString}` : ""}`);
+    return api.get(`/gym/sessions${queryString ? `?${queryString}` : ""}`, {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    });
   },
 
-  getSessionsByMonth: (year, month, params = {}) => {
+  getSessionsByMonth: (year, month, params = {}, cancelToken = null) => {
     const queryString = new URLSearchParams(params).toString();
     return api.get(
       `/gym/sessions/month/${year}/${month}${
         queryString ? `?${queryString}` : ""
-      }`
+      }`,
+      {
+        ...(cancelToken && { cancelToken: cancelToken.token }),
+      }
     );
   },
 
-  getSessionsByDate: (date) => api.get(`/gym/sessions/date/${date}`),
-  getSession: (id) => api.get(`/gym/sessions/${id}`),
-  getSessionTypes: () => api.get("/gym/types"),
+  getSessionsByDate: (date, cancelToken = null) => 
+    api.get(`/gym/sessions/date/${date}`, {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    }),
+    
+  getSession: (id, cancelToken = null) => 
+    api.get(`/gym/sessions/${id}`, {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    }),
+    
+  getSessionTypes: (cancelToken = null) => 
+    api.get("/gym/types", {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    }),
 
   register: (sessionId, data) =>
     api.post(`/gym/sessions/${sessionId}/register`, data),
@@ -323,9 +370,11 @@ export const gymAPI = {
   updateSession: (id, sessionData) =>
     api.put(`/gym/sessions/${id}`, sessionData),
 
-  getMyRegistrations: (params = {}) => {
+  getMyRegistrations: (params = {}, cancelToken = null) => {
     const queryString = new URLSearchParams(params).toString();
-    return api.get(`/gym/registrations${queryString ? `?${queryString}` : ""}`);
+    return api.get(`/gym/registrations${queryString ? `?${queryString}` : ""}`, {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    });
   },
 
   cancelRegistration: (registrationId, reason) =>
@@ -358,9 +407,11 @@ export const conferenceAPI = {
 
 export const adminAPI = {
   // ✅ Fetch all users
-  getAllUsers: async () => {
+  getAllUsers: async (cancelToken = null) => {
     try {
-      const response = await api.get("/admin/users");
+      const response = await api.get("/admin/users", {
+        ...(cancelToken && { cancelToken: cancelToken.token }),
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -388,9 +439,11 @@ export const adminAPI = {
   },
 
   // ✅ Get unverified academics (staff/ta/professor)
-  getPendingAcademics: async () => {
+  getPendingAcademics: async (cancelToken = null) => {
     try {
-      const response = await api.get("/admin/pending-academics");
+      const response = await api.get("/admin/pending-academics", {
+        ...(cancelToken && { cancelToken: cancelToken.token }),
+      });
       return response.data;
     } catch (error) {
       throw error;

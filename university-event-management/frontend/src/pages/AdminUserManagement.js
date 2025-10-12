@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import toast from "react-hot-toast";
 import { adminAPI } from "../services/api";
 import theme from "../theme";
+import Navbar from "../components/Navbar";
+import axios from "axios";
 
 const initialForm = {
   firstName: "",
@@ -23,13 +25,29 @@ const AdminUserManagement = () => {
   const [rowRoleSelections, setRowRoleSelections] = useState({});
   const [roleFilter, setRoleFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("admins"); // 'admins' | 'verification'
+  
+  // Ref for request cancellation
+  const cancelTokenRef = useRef(null);
 
   const fetchUsers = async () => {
+    // Cancel any existing request
+    if (cancelTokenRef.current) {
+      cancelTokenRef.current.cancel('Operation cancelled due to new request');
+    }
+    
+    // Create new cancel token
+    cancelTokenRef.current = axios.CancelToken.source();
+    
     setLoading(true);
     try {
-      const data = await adminAPI.getAllUsers();
+      const data = await adminAPI.getAllUsers(cancelTokenRef.current);
       setUsers(data);
     } catch (err) {
+      // Don't show error if request was cancelled
+      if (axios.isCancel(err)) {
+        console.log('Request cancelled:', err.message);
+        return;
+      }
       toast.error(err.message || "Failed to fetch users");
     } finally {
       setLoading(false);
@@ -39,9 +57,14 @@ const AdminUserManagement = () => {
   const fetchPendingAcademics = async () => {
     setPendingLoading(true);
     try {
-      const data = await adminAPI.getPendingAcademics();
+      const data = await adminAPI.getPendingAcademics(cancelTokenRef.current);
       setPendingAcademics(data);
     } catch (err) {
+      // Don't show error if request was cancelled
+      if (axios.isCancel(err)) {
+        console.log('Request cancelled:', err.message);
+        return;
+      }
       toast.error(err.message || "Failed to fetch pending academics");
     } finally {
       setPendingLoading(false);
@@ -51,6 +74,13 @@ const AdminUserManagement = () => {
   useEffect(() => {
     fetchUsers();
     fetchPendingAcademics();
+    
+    // Cleanup function to cancel requests on unmount
+    return () => {
+      if (cancelTokenRef.current) {
+        cancelTokenRef.current.cancel('Component unmounted');
+      }
+    };
   }, []);
 
   const handleChange = (e) => {
@@ -421,13 +451,16 @@ const AdminUserManagement = () => {
   );
 
   return (
-    <div style={containerBg}>
-      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-        {headerCard}
-        {tabs}
-        {activeTab === "admins" ? AdminsTab : VerificationTab}
+    <>
+      <Navbar />
+      <div style={containerBg}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          {headerCard}
+          {tabs}
+          {activeTab === "admins" ? AdminsTab : VerificationTab}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

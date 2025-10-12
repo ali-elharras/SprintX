@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import theme from "../theme";
@@ -9,7 +9,7 @@ import Select from "../components/Select";
 import Navbar from "../components/Navbar";
 import ConferenceModal from "./ConferenceModal";
 import LoadingScreen from "../components/LoadingScreen";
-import api, { eventAPI } from "../services/api";
+import api, { eventAPI, createCancelTokenSource } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 
@@ -26,6 +26,9 @@ const EventsPage = () => {
     search: "",
     upcoming: true,
   });
+
+  // Add ref for cancel token to prevent memory leaks and connection issues
+  const cancelTokenRef = useRef(null);
 
   // Pending workshops (visible only to Events Office on this page)
   // Two dummy workshops for testing (follow the project's workshop structure)
@@ -94,7 +97,7 @@ const EventsPage = () => {
   // State for creating a new bazaar
   const [createBazaarOpen, setCreateBazaarOpen] = useState(false);
   const [bazaarData, setBazaarData] = useState({
-    name: "",
+    title: "",
     description: "",
     startDate: "",
     endDate: "",
@@ -105,20 +108,42 @@ const EventsPage = () => {
   });
 
   const fetchEvents = async () => {
+    // Cancel any existing request
+    if (cancelTokenRef.current) {
+      cancelTokenRef.current.cancel('Operation cancelled due to new request');
+    }
+
+    // Create new cancel token
+    cancelTokenRef.current = createCancelTokenSource();
+    const currentCancelToken = cancelTokenRef.current;
+
     try {
       setLoading(true);
       setError(null);
-      // Removed upcoming: "true" filter to show all published events including workshops with any date
-      const response = await eventAPI.getEvents({ status: "published" });
+      
+      // Use cancel token for the main events request
+      const response = await eventAPI.getEvents(
+        { status: "published" }, 
+        currentCancelToken
+      );
+      
       setEvents(response.data?.data || []);
 
       // If current user is Events Office, also fetch pending and needs_revision workshops
       if (auth?.isEventsOffice) {
         try {
+          // Create separate cancel tokens for workshop requests
+          const pendingCancelToken = createCancelTokenSource();
+          const revisionCancelToken = createCancelTokenSource();
+          
           // Fetch both pending and needs_revision workshops
           const [pendingResp, revisionResp] = await Promise.all([
-            api.get('/workshops?status=pending'),
-            api.get('/workshops?status=needs_revision')
+            api.get('/workshops?status=pending', {
+              cancelToken: pendingCancelToken.token
+            }),
+            api.get('/workshops?status=needs_revision', {
+              cancelToken: revisionCancelToken.token
+            })
           ]);
           
           // Combine both types of workshops
@@ -127,27 +152,30 @@ const EventsPage = () => {
           
           setPendingWorkshops([...pendingWorkshops, ...revisionWorkshops]);
         } catch (err) {
-          console.warn('Could not fetch pending workshops', err);
-          setPendingWorkshops([]);
+          // Only log if not a cancellation
+          if (!err.isCancelled && err.name !== 'CanceledError') {
+            console.warn('Could not fetch pending workshops', err);
+            setPendingWorkshops([]);
+          }
         }
       }
     } catch (err) {
+      // Don't show error for cancelled requests
+      if (err.isCancelled || err.name === 'CanceledError') {
+        return;
+      }
+      
       console.error(err);
       setError(err);
       toast.error("Failed to load events. Please try again.");
     } finally {
-      setTimeout(() => setLoading(false), 2000);
+      // Always update loading state to prevent UI stuck in loading
+      setTimeout(() => setLoading(false), 1000);
     }
   };
 
   useEffect(() => {
     fetchEvents();
-    
-    // Refresh events when window gains focus (user returns to tab/window)
-    // This ensures deleted workshops are removed from Events tab even if deleted from another tab
-    const handleFocus = () => {
-      fetchEvents();
-    };
     
     // Listen for workshop deletion events from other tabs via localStorage
     const handleStorageChange = (e) => {
@@ -159,12 +187,20 @@ const EventsPage = () => {
       }
     };
     
-    window.addEventListener('focus', handleFocus);
     window.addEventListener('storage', handleStorageChange);
     
+    // Cleanup function to cancel any pending requests when component unmounts
     return () => {
-      window.removeEventListener('focus', handleFocus);
       window.removeEventListener('storage', handleStorageChange);
+      
+      // Cancel any pending requests to prevent connection issues
+      if (cancelTokenRef.current) {
+        try {
+          cancelTokenRef.current.cancel('Component unmounting');
+        } catch (error) {
+          // Ignore cancellation errors during cleanup
+        }
+      }
     };
   }, []);
 
@@ -612,8 +648,8 @@ const EventsPage = () => {
           </div>
         )}
 
-        {/* Error state */}
-        {error && !loading && (
+        {/* Error state - Only show when there are no events AND there's an error */}
+        {error && !loading && filteredEvents.length === 0 && (
           <div
             style={{
               background: theme.colors.background.paper,
@@ -910,8 +946,8 @@ const EventsPage = () => {
               <Input
                 label="Bazaar Name"
                 placeholder="e.g., Annual Spring Fair"
-                value={bazaarData.name}
-                onChange={(e) => setBazaarData({ ...bazaarData, name: e.target.value })}
+                value={bazaarData.title}
+                onChange={(e) => setBazaarData({ ...bazaarData, title: e.target.value })}
               />
               <Input
                 label="Theme"
@@ -1000,7 +1036,7 @@ const EventsPage = () => {
               <Button
                 variant="secondary"
                 onClick={() => {
-                  setBazaarData({ name: "", description: "", theme: "", startDate: "", endDate: "", location: "University Courtyard", maxParticipants: "50", registrationDeadline: "" });
+                  setBazaarData({ title: "", description: "", theme: "", startDate: "", endDate: "", location: "University Courtyard", maxParticipants: "50", registrationDeadline: "" });
                   toast.success("Form fields cleared");
                 }}
               >
@@ -1010,7 +1046,7 @@ const EventsPage = () => {
                 variant="primary"
                 onClick={async () => {
                   try {
-                    if (!bazaarData.name || !bazaarData.description || !bazaarData.theme || !bazaarData.startDate || !bazaarData.endDate || !bazaarData.maxParticipants || !bazaarData.registrationDeadline) {
+                    if (!bazaarData.title || !bazaarData.description || !bazaarData.theme || !bazaarData.startDate || !bazaarData.endDate || !bazaarData.maxParticipants || !bazaarData.registrationDeadline) {
                       toast.error("Please fill all required fields: Name, Description, Theme, Dates, Max Participants, and Registration Deadline.");
                       return;
                     }
@@ -1021,7 +1057,7 @@ const EventsPage = () => {
                     }
 
                     const eventData = {
-                      name: bazaarData.name,
+                      title: bazaarData.title,
                       description: bazaarData.description,
                       startDate: new Date(bazaarData.startDate).toISOString(),
                       endDate: new Date(bazaarData.endDate).toISOString(),
@@ -1034,9 +1070,9 @@ const EventsPage = () => {
 
                     await api.post("/bazaars", eventData);
 
-                    toast.success(`Bazaar "${bazaarData.name}" created as a draft!`);
+                    toast.success(`Bazaar "${bazaarData.title}" created as a draft!`);
                     setCreateBazaarOpen(false);
-                    setBazaarData({ name: "", description: "", theme: "", startDate: "", endDate: "", location: "University Courtyard", maxParticipants: "50", registrationDeadline: "" });
+                    setBazaarData({ title: "", description: "", theme: "", startDate: "", endDate: "", location: "University Courtyard", maxParticipants: "50", registrationDeadline: "" });
                     fetchEvents();
                   } catch (error) {
                     console.error("Failed to create bazaar:", error);

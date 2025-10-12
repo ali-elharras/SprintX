@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from "react";
 import theme from "../theme";
 import Button from "./Button";
-import CourtAvailabilityCalendar from "./CourtAvailabilityCalendar";
 import { courtAPI } from "../services/api";
 
 const CourtCard = ({ court, showBooking = true, onBookingClick }) => {
   const [todayAvailability, setTodayAvailability] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
 
   useEffect(() => {
     if (court && court._id) {
@@ -109,18 +107,27 @@ const CourtCard = ({ court, showBooking = true, onBookingClick }) => {
         boxShadow: theme.shadows.card,
         overflow: "hidden",
         transition: "all 0.3s ease",
-        cursor: "pointer",
+        cursor: court.status === "active" ? "pointer" : "default",
         height: "100%",
         display: "flex",
         flexDirection: "column",
       }}
+      onClick={() => {
+        if (court.status === "active" && onBookingClick) {
+          onBookingClick(court);
+        }
+      }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-5px)";
-        e.currentTarget.style.boxShadow = theme.shadows.cardHover;
+        if (court.status === "active") {
+          e.currentTarget.style.transform = "translateY(-5px)";
+          e.currentTarget.style.boxShadow = theme.shadows.cardHover;
+        }
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = theme.shadows.card;
+        if (court.status === "active") {
+          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.boxShadow = theme.shadows.card;
+        }
       }}
     >
       {/* Court Header */}
@@ -199,11 +206,25 @@ const CourtCard = ({ court, showBooking = true, onBookingClick }) => {
               fontWeight: theme.typography.fontWeight.bold,
               lineHeight: theme.typography.lineHeight.tight,
               margin: 0,
+              marginBottom: theme.spacing[1],
               textShadow: "0 2px 4px rgba(0,0,0,0.3)",
             }}
           >
             {court.name}
           </h3>
+          {court.status === "active" && (
+            <p
+              style={{
+                fontSize: theme.typography.fontSize.sm,
+                margin: 0,
+                opacity: 0.9,
+                fontWeight: theme.typography.fontWeight.medium,
+                textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+              }}
+            >
+              📅 Click to view availability
+            </p>
+          )}
         </div>
       </div>
 
@@ -523,7 +544,10 @@ const CourtCard = ({ court, showBooking = true, onBookingClick }) => {
           {showBooking && court.status === "active" && (
             <Button
               variant="primary"
-              onClick={() => setShowCalendar(true)}
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent event bubbling to the card
+                onBookingClick && onBookingClick(court);
+              }}
               style={{ 
                 flex: 1,
                 width: "100%",
@@ -537,14 +561,6 @@ const CourtCard = ({ court, showBooking = true, onBookingClick }) => {
           )}
         </div>
       </div>
-      
-      {/* Availability Calendar Modal */}
-      {showCalendar && (
-        <CourtAvailabilityCalendar
-          court={court}
-          onClose={() => setShowCalendar(false)}
-        />
-      )}
     </div>
   );
 };
