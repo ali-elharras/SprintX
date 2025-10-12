@@ -240,12 +240,26 @@ const AdminUserManagement = () => {
     letterSpacing: theme.typography.letterSpacing.wide,
     background: theme.colors.neutral.gray50,
     borderBottom: `1px solid ${theme.colors.border.light}`,
+    position: "sticky",
+    top: 0,
+    zIndex: 1,
   };
   const tdStyle = {
     padding: theme.spacing[3],
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.primary,
     borderBottom: `1px solid ${theme.colors.border.light}`,
+  };
+
+  // Scroll container for tables so only the list scrolls, not the whole page
+  const listContainerStyle = {
+    overflow: "auto",
+    maxHeight: "60vh",
+    borderRadius: theme.borderRadius.lg,
+    border: `1px solid ${theme.colors.border.light}`,
+    boxShadow: theme.shadows.sm,
+    overscrollBehavior: "contain",
+    background: theme.colors.background.paper,
   };
 
   const containerBg = {
@@ -330,7 +344,7 @@ const AdminUserManagement = () => {
       {loading ? (
         <div>Loading users...</div>
       ) : (
-        <div style={{ overflow: "auto" }}>
+        <div style={listContainerStyle}>
           <table style={tableStyle}>
             <thead>
               <tr>
