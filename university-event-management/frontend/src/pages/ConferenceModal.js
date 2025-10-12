@@ -5,6 +5,7 @@ import Input from '../components/Input';
 import Button from '../components/Button';
 import theme from '../theme';
 import { toast } from 'react-toastify';
+import { useAuth } from '../context/AuthContext';
 
 const styles = {
   overlay: {
@@ -133,12 +134,14 @@ const cssKeyframes = `
 `;
 
 const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
+  const { user } = useAuth(); // Add this to get current user
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     date: '',
     location: '',
-    capacity: ''
+    capacity: '',
+    organizer: user?._id || '' 
   });
   const [loading, setLoading] = useState(false);
   const [isEdit] = useState(!!conference);
@@ -150,7 +153,8 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
         description: conference.description || '',
         date: conference.date ? new Date(conference.date).toISOString().split('T')[0] : '',
         location: conference.location || '',
-        capacity: conference.capacity || ''
+        capacity: conference.capacity || '',
+        organizer: conference.organizer || user?._id || '' // Include organizer
       });
     } else {
       setFormData({
@@ -158,29 +162,58 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
         description: '',
         date: '',
         location: '',
-        capacity: ''
+        capacity: '',
+        organizer: user?._id || '' // Include organizer for new conferences
       });
     }
-  }, [conference, isOpen]);
+  }, [conference, isOpen, user]); // Add user to dependencies
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
+    console.log('Submitting conference data:', formData);
+
+    // Validate all required fields
+    if (!formData.title || !formData.description || !formData.date || !formData.location || !formData.capacity || !formData.organizer) {
+      toast.error('Please fill in all required fields');
+      setLoading(false);
+      return;
+    }
+
     try {
+      // Prepare the data for API
+      const submissionData = {
+        title: formData.title,
+        description: formData.description,
+        date: formData.date,
+        location: formData.location,
+        capacity: parseInt(formData.capacity),
+        organizer: formData.organizer
+      };
+
+      console.log('Final submission data:', submissionData);
+
+      let result;
       if (isEdit) {
-        await conferenceAPI.updateConference(conference._id, formData);
-        toast.success('Conference updated successfully!');
+        result = await conferenceAPI.updateConference(conference._id, submissionData);
       } else {
-        await conferenceAPI.createConference(formData);
-        toast.success('Conference created successfully!');
+        result = await conferenceAPI.createConference(submissionData);
       }
       
-      onSuccess?.();
-      onClose();
+      console.log('API Response:', result);
+      
+      if (result.data && result.data.success) {
+        toast.success(`Conference ${isEdit ? 'updated' : 'created'} successfully!`);
+        onSuccess?.();
+        onClose();
+      } else {
+        throw new Error(result.data?.message || `Failed to ${isEdit ? 'update' : 'create'} conference`);
+      }
     } catch (error) {
-      toast.error(error.message || `Failed to ${isEdit ? 'update' : 'create'} conference`);
-      console.error('Error:', error);
+      console.error('API Error Details:', error);
+      const errorMessage = error.response?.data?.message || error.message || `Failed to ${isEdit ? 'update' : 'create'} conference`;
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

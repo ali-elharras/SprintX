@@ -12,6 +12,8 @@ import LoadingScreen from "../components/LoadingScreen";
 import api, { eventAPI, createCancelTokenSource } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
+import { useSearchParams } from 'react-router-dom';
+import CreateDropdown from "../components/CreateDropdown";
 
 const EventsPage = () => {
   const navigate = useNavigate();
@@ -26,6 +28,7 @@ const EventsPage = () => {
     search: "",
     upcoming: true,
   });
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Add ref for cancel token to prevent memory leaks and connection issues
   const cancelTokenRef = useRef(null);
@@ -106,6 +109,17 @@ const EventsPage = () => {
     maxParticipants: "50",
     registrationDeadline: "",
   });
+
+  useEffect(() => {
+    const createBazaarParam = searchParams.get('createBazaar');
+    if (createBazaarParam === 'true' && auth.isEventsOffice) {
+      setCreateBazaarOpen(true);
+      // Remove the parameter from URL
+      searchParams.delete('createBazaar');
+      setSearchParams(searchParams);
+    }
+  }, [searchParams, setSearchParams, auth.isEventsOffice]);
+
 
   const fetchEvents = async () => {
     // Cancel any existing request
@@ -522,7 +536,7 @@ const EventsPage = () => {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr auto auto",
+              gridTemplateColumns: "1fr 1fr auto auto auto",
               gap: theme.spacing[4],
               alignItems: "end",
             }}
@@ -548,19 +562,7 @@ const EventsPage = () => {
             <Button variant="outline" onClick={fetchEvents}>
               Refresh
             </Button>
-{auth.isEventsOffice && (
-    <Button
-        variant="primary"
-        onClick={() => setCreateBazaarOpen(true)}
-        style={{
-            background: 'linear-gradient(135deg, #6B73FF 0%, #000DFF 100%)',
-            color: 'white',
-            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-        }}
-    >
-        + Create Bazaar
-    </Button>
-)}
+            <CreateDropdown />
           </div>
         </div>
 
