@@ -120,6 +120,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true, // Most users have complete registration
     },
+    emailVerificationSent: {
+      type: Boolean,
+      default: false, // Tracks if verification email has been sent after admin approval
+    },
     verificationToken: {
       type: String,
       select: false,

@@ -118,6 +118,7 @@ export const AuthProvider = ({ children }) => {
 
   // Login function for users
   const loginUser = async (loginData) => {
+    console.log("=== LOGIN ATTEMPT STARTED ===", loginData);
     try {
       dispatch({ type: AUTH_ACTIONS.LOADING, payload: true });
       dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
@@ -152,6 +153,17 @@ export const AuthProvider = ({ children }) => {
           };
         }
 
+        // Check if verification email has been sent but user hasn't verified
+        if (response.emailVerificationSent && response.canReapply) {
+          return {
+            success: false,
+            emailVerificationSent: true,
+            canReapply: true,
+            data: response.data,
+            error: response.message,
+          };
+        }
+
         // Regular login failure
         dispatch({
           type: AUTH_ACTIONS.SET_ERROR,
@@ -160,14 +172,39 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: response.message || "Login failed" };
       }
     } catch (error) {
+      console.log("Login error caught:", error);
+      console.log("Error response data:", error.response?.data);
+      console.log("Error data direct:", error.data);
+
+      // Get error data from either error.data or error.response.data
+      const errorData = error.data || error.response?.data;
+
       // Check if this is an incomplete registration error
-      if (error.response?.data?.requiresVerificationEmail) {
+      if (errorData?.requiresVerificationEmail) {
+        console.log("Detected incomplete registration");
         return {
           success: false,
           requiresVerificationEmail: true,
-          data: error.response.data.data,
-          error: error.response.data.message,
+          data: errorData.data,
+          error: errorData.message,
         };
+      }
+
+      // Check if verification email has been sent but user hasn't verified (from error response)
+      if (errorData?.emailVerificationSent && errorData?.canReapply) {
+        console.log("Detected verification email sent case");
+        const returnValue = {
+          success: false,
+          emailVerificationSent: true,
+          canReapply: true,
+          data: errorData.data,
+          error: errorData.message,
+        };
+        console.log("=== RETURNING FROM AuthContext ===", returnValue);
+
+        // Make sure we dispatch loading false before returning
+        dispatch({ type: AUTH_ACTIONS.LOADING, payload: false });
+        return returnValue;
       }
 
       dispatch({
@@ -274,6 +311,44 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Reapply for verification function
+  const reapplyVerification = async (userId) => {
+    try {
+      dispatch({ type: AUTH_ACTIONS.LOADING, payload: true });
+      dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
+
+      const response = await authAPI.reapplyVerification(userId);
+
+      if (response.success) {
+        return {
+          success: true,
+          message: response.message,
+          data: response.data,
+        };
+      } else {
+        dispatch({
+          type: AUTH_ACTIONS.SET_ERROR,
+          payload: response.message || "Failed to reapply for verification",
+        });
+        return {
+          success: false,
+          error: response.message || "Failed to reapply for verification",
+        };
+      }
+    } catch (error) {
+      dispatch({
+        type: AUTH_ACTIONS.SET_ERROR,
+        payload: error.message || "Failed to reapply for verification",
+      });
+      return {
+        success: false,
+        error: error.message || "Failed to reapply for verification",
+      };
+    } finally {
+      dispatch({ type: AUTH_ACTIONS.LOADING, payload: false });
+    }
+  };
+
   // Register vendor function
   const registerVendor = async (vendorData) => {
     try {
@@ -372,6 +447,7 @@ export const AuthProvider = ({ children }) => {
     loginUser,
     loginVendor,
     registerUser,
+    reapplyVerification,
     registerVendor,
     logout,
     clearError,

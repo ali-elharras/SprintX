@@ -16,6 +16,7 @@ import VendorLogin from "./pages/VendorLogin";
 import UserSignup from "./pages/UserSignup";
 import VerificationEmailSelection from "./pages/VerificationEmailSelection";
 import VerificationSuccess from "./pages/VerificationSuccess";
+import VerificationPending from "./pages/VerificationPending";
 import VendorSignup from "./pages/VendorSignup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -198,6 +199,14 @@ const router = createBrowserRouter([
     element: (
       <PublicRoute>
         <VerificationSuccess />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/verification-pending",
+    element: (
+      <PublicRoute>
+        <VerificationPending />
       </PublicRoute>
     ),
   },

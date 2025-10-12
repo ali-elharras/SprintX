@@ -337,46 +337,6 @@ const registerVendor = async (req, res, next) => {
 
 // @desc    Verify email via token (after admin approval)
 // @route   GET /api/auth/verify-email/:token
-// @access  Public
-const verifyEmail = async (req, res, next) => {
-  try {
-    const { token } = req.params;
-    if (!token) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Verification token is required" });
-    }
-
-    // Look up user by verificationToken and ensure not expired
-    const user = await User.findOne({
-      verificationToken: token,
-      verificationTokenExpires: { $gt: new Date() },
-    });
-
-    if (!user) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Invalid or expired verification token",
-        });
-    }
-
-    // Mark verified and clear token
-    user.isVerified = true;
-    user.verificationToken = undefined;
-    user.verificationTokenExpires = undefined;
-    await user.save();
-
-    // Redirect to frontend login page with success flag
-    const frontend = process.env.FRONTEND_URL || "http://localhost:3000";
-    const redirectUrl = `${frontend.replace(/\/$/, "")}/login?verified=1`;
-    return res.redirect(302, redirectUrl);
-  } catch (error) {
-    return next(error);
-  }
-};
-
 // @desc    Complete user registration with verification email
 // @route   POST /api/auth/complete-registration
 // @access  Public
@@ -541,11 +501,27 @@ const login = async (req, res, next) => {
       ["staff", "ta", "professor"].includes(account.role) &&
       !account.isVerified
     ) {
-      return res.status(403).json({
-        success: false,
-        message:
-          "Your account is awaiting verification by an administrator. You'll be able to log in once verified.",
-      });
+      // Check if verification email has been sent
+      if (account.emailVerificationSent) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Verification email sent to your email. If email not received, you can reapply for verification.",
+          emailVerificationSent: true,
+          canReapply: true,
+          data: {
+            userId: account._id,
+            email: account.email,
+            verificationEmail: account.verificationEmail,
+          },
+        });
+      } else {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Your account is awaiting verification by an administrator. You'll be able to log in once verified.",
+        });
+      }
     }
 
     // Check password
@@ -953,6 +929,145 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+// @desc    Verify email via token (after admin approval)
+// @route   GET /api/auth/verify-email/:token
+// @access  Public
+const verifyEmail = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+
+    console.log(`🔍 [EMAIL VERIFICATION] Attempting to verify token: ${token}`);
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification token is required",
+      });
+    }
+
+    // Look up user by verificationToken and ensure not expired
+    const user = await User.findOne({
+      verificationToken: token,
+      verificationTokenExpires: { $gt: new Date() },
+    }).select("+verificationToken +verificationTokenExpires");
+
+    if (!user) {
+      console.log(`❌ [EMAIL VERIFICATION] No user found with valid token`);
+
+      // Check if token exists but is expired
+      const expiredUser = await User.findOne({
+        verificationToken: token,
+      }).select("+verificationToken +verificationTokenExpires");
+      if (expiredUser) {
+        console.log(
+          `⏰ [EMAIL VERIFICATION] Token found but expired. Expires: ${
+            expiredUser.verificationTokenExpires
+          }, Now: ${new Date()}`
+        );
+        return res.status(400).json({
+          success: false,
+          message:
+            "Verification link has expired. Please contact administrator for a new verification email.",
+        });
+      } else {
+        console.log(`🚫 [EMAIL VERIFICATION] Token not found in database`);
+        return res.status(400).json({
+          success: false,
+          message: "Invalid verification link.",
+        });
+      }
+    }
+
+    console.log(
+      `✅ [EMAIL VERIFICATION] Valid user found - ID: ${user._id}, Name: ${user.firstName} ${user.lastName}`
+    );
+
+    // Verify the user and clear verification token
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    user.verificationTokenExpires = undefined;
+    await user.save();
+
+    console.log(
+      `🎉 [EMAIL VERIFICATION] User verified successfully - ID: ${user._id}`
+    );
+
+    // Redirect to login page with success message
+    res.redirect(`${process.env.FRONTEND_URL}/?verified=true`);
+  } catch (error) {
+    console.error(`❌ [EMAIL VERIFICATION] Error occurred:`, error);
+    next(error);
+  }
+};
+
+// @desc    Reapply for email verification (reset emailVerificationSent to false)
+// @route   POST /api/auth/reapply-verification
+// @access  Public
+const reapplyVerification = async (req, res, next) => {
+  try {
+    const { userId } = req.body;
+
+    console.log(`🔄 [REAPPLY VERIFICATION] Request for user ID: ${userId}`);
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required",
+      });
+    }
+
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Check if user is eligible for reapplication
+    if (user.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "User is already verified",
+      });
+    }
+
+    if (!["staff", "ta", "professor"].includes(user.role)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Only staff, TA, and professor accounts can reapply for verification",
+      });
+    }
+
+    // Reset emailVerificationSent to false so admin can send verification email again
+    user.emailVerificationSent = false;
+    user.verificationToken = undefined;
+    user.verificationTokenExpires = undefined;
+    await user.save();
+
+    console.log(
+      `✅ [REAPPLY VERIFICATION] Reset verification status for user ID: ${userId}`
+    );
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Verification status reset successfully. Please wait for administrator to approve and send new verification email.",
+      data: {
+        userId: user._id,
+        email: user.email,
+        verificationEmail: user.verificationEmail,
+        emailVerificationSent: user.emailVerificationSent,
+      },
+    });
+  } catch (error) {
+    console.error(`❌ [REAPPLY VERIFICATION] Error occurred:`, error);
+    next(error);
+  }
+};
+
 module.exports = {
   registerUser,
   completeUserRegistration,
@@ -964,4 +1079,5 @@ module.exports = {
   verifyResetToken,
   resetPassword,
   verifyEmail,
+  reapplyVerification,
 };

@@ -61,6 +61,12 @@ export const authAPI = {
     });
     return response.data;
   },
+
+  // Reapply for verification
+  reapplyVerification: async (userId) => {
+    const response = await api.post("/auth/reapply-verification", { userId });
+    return response.data;
+  },
 };
 
 // Helper functions for local storage management

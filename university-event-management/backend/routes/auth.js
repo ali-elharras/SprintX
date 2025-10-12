@@ -11,6 +11,7 @@ const {
   verifyResetToken,
   resetPassword,
   verifyEmail,
+  reapplyVerification,
 } = require("../controllers/authController");
 const { protect } = require("../middleware/auth");
 
@@ -229,5 +230,12 @@ router.post("/reset-password", resetPasswordValidation, resetPassword);
 
 // Email verification route (after admin approval)
 router.get("/verify-email/:token", verifyEmail);
+
+// Reapply for verification route
+router.post(
+  "/reapply-verification",
+  [body("userId").notEmpty().withMessage("User ID is required")],
+  reapplyVerification
+);
 
 module.exports = router;
