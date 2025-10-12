@@ -1,11 +1,10 @@
 const mongoose = require("mongoose");
 const User = require("../models/User");
 
-
-
 const createAdminOrEventOffice = async (req, res) => {
   try {
-  const { firstName, lastName, email, password, universityId, role } = req.body;
+    const { firstName, lastName, email, password, universityId, role } =
+      req.body;
 
     // Validate required fields (universityId is optional for admin/events_office)
     if (!firstName || !lastName || !email || !password || !role) {
@@ -15,13 +14,17 @@ const createAdminOrEventOffice = async (req, res) => {
     // Normalize role alias and validate (DB enum uses 'events_office')
     const normalizedRole = role === "event_office" ? "events_office" : role;
     if (!["admin", "events_office"].includes(normalizedRole)) {
-      return res.status(400).json({ message: "Role must be 'admin' or 'events_office'" });
+      return res
+        .status(400)
+        .json({ message: "Role must be 'admin' or 'events_office'" });
     }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: "User with this email already exists" });
+      return res
+        .status(400)
+        .json({ message: "User with this email already exists" });
     }
 
     // Create new user
@@ -32,9 +35,9 @@ const createAdminOrEventOffice = async (req, res) => {
       password,
       role: normalizedRole,
       isVerified: true, // Admins/Event office are verified immediately
-      isActive: true,   // Explicitly set active
+      isActive: true, // Explicitly set active
     };
-    
+
     // Only set universityId if it's provided and not empty
     if (universityId && universityId.trim()) {
       payload.universityId = universityId.trim();
@@ -44,7 +47,9 @@ const createAdminOrEventOffice = async (req, res) => {
     const newUser = await User.create(payload);
 
     return res.status(201).json({
-      message: `${role === "admin" ? "Admin" : "Event Office"} created successfully`,
+      message: `${
+        role === "admin" ? "Admin" : "Event Office"
+      } created successfully`,
       user: {
         id: newUser._id,
         fullName: `${newUser.firstName} ${newUser.lastName}`,
@@ -54,12 +59,13 @@ const createAdminOrEventOffice = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating admin/event office:", error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
 
-
-const  deleteAdminOrEventOffice= async (req, res)=> {
+const deleteAdminOrEventOffice = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -69,29 +75,31 @@ const  deleteAdminOrEventOffice= async (req, res)=> {
 
     // Check if user is admin or event office
     if (user.role !== "admin" && user.role !== "event_office") {
-      return res.status(400).json({ message: "User is not an admin or event office" });
+      return res
+        .status(400)
+        .json({ message: "User is not an admin or event office" });
     }
 
     // Delete the account
     await User.findByIdAndDelete(id);
-    res.status(200).json({ message: "Admin/Event Office account deleted successfully" });
-
+    res
+      .status(200)
+      .json({ message: "Admin/Event Office account deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
-}
-
+};
 
 const getAllUsers = async (req, res) => {
-
   try {
     // Fetch all users with selected fields only (no password or sensitive tokens)
-    const users = await User.find({}, 
+    const users = await User.find(
+      {},
       "firstName lastName email role universityId department yearOfStudy phoneNumber isActive isVerified createdAt"
     ).lean();
 
     // Format output to make it frontend-friendly
-    const formattedUsers = users.map(user => ({
+    const formattedUsers = users.map((user) => ({
       id: user._id,
       fullName: `${user.firstName} ${user.lastName}`,
       email: user.email,
@@ -111,7 +119,6 @@ const getAllUsers = async (req, res) => {
     res.status(500).json({ message: "Error fetching users" });
   }
 };
-
 
 // Fetch academics (staff/ta/professor) who registered but are not yet verified
 const getPendingAcademics = async (req, res) => {
@@ -160,11 +167,15 @@ const approveAcademic = async (req, res) => {
     const emailService = require("../services/emailService");
     try {
       await emailService.sendVerificationEmail(
-        user.email,
+        user.verificationEmail,
         verifyToken,
         `${user.firstName} ${user.lastName}`,
         role
       );
+
+      // Mark email as sent on successful sending
+      user.emailVerificationSent = true;
+      await user.save();
     } catch (emailErr) {
       console.error("Failed to send verification email:", emailErr.message);
       // We keep the approval saved but inform the admin email failed
@@ -177,6 +188,7 @@ const approveAcademic = async (req, res) => {
           email: user.email,
           role: user.role,
           isVerified: user.isVerified,
+          emailVerificationSent: user.emailVerificationSent,
         },
       });
     }
@@ -190,6 +202,7 @@ const approveAcademic = async (req, res) => {
         email: user.email,
         role: user.role,
         isVerified: user.isVerified,
+        emailVerificationSent: user.emailVerificationSent,
       },
     });
   } catch (err) {

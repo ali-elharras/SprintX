@@ -58,6 +58,7 @@ const registerUser = async (req, res, next) => {
       department,
       yearOfStudy,
       phoneNumber,
+      verificationEmail,
     } = req.body;
 
     // Validate that the provided role matches the email domain
@@ -104,6 +105,43 @@ const registerUser = async (req, res, next) => {
       });
     }
 
+    // For staff, TA, and professor, verificationEmail is required
+    if (["staff", "ta", "professor"].includes(role) && !verificationEmail) {
+      // Create incomplete user record
+      const incompleteUserData = {
+        firstName,
+        lastName,
+        email,
+        password,
+        role,
+        universityId,
+        phoneNumber,
+        department,
+        isRegistrationComplete: false,
+        isVerified: false,
+      };
+
+      const incompleteUser = await User.create(incompleteUserData);
+
+      return res.status(200).json({
+        success: true,
+        message: "Partial registration created. Verification email required.",
+        requiresVerificationEmail: true,
+        data: {
+          userId: incompleteUser._id,
+          userData: {
+            firstName,
+            lastName,
+            email,
+            role,
+            universityId,
+            department,
+            phoneNumber,
+          },
+        },
+      });
+    }
+
     // Create user
     const userData = {
       firstName,
@@ -123,10 +161,16 @@ const registerUser = async (req, res, next) => {
       userData.yearOfStudy = yearOfStudy;
     }
 
+    // Add verification email for staff, TA, professor
+    if (["staff", "ta", "professor"].includes(role) && verificationEmail) {
+      userData.verificationEmail = verificationEmail;
+    }
+
     // Verification policy:
     // - Students are auto-verified
     // - Staff/TA/Professor require admin verification (isVerified remains false)
     userData.isVerified = role === "student";
+    userData.isRegistrationComplete = true;
 
     const user = await User.create(userData);
 
@@ -293,36 +337,78 @@ const registerVendor = async (req, res, next) => {
 
 // @desc    Verify email via token (after admin approval)
 // @route   GET /api/auth/verify-email/:token
+// @desc    Complete user registration with verification email
+// @route   POST /api/auth/complete-registration
 // @access  Public
-const verifyEmail = async (req, res, next) => {
+const completeUserRegistration = async (req, res, next) => {
   try {
-    const { token } = req.params;
-    if (!token) {
-      return res.status(400).json({ success: false, message: "Verification token is required" });
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: errors.array(),
+      });
     }
 
-    // Look up user by verificationToken and ensure not expired
-    const user = await User.findOne({
-      verificationToken: token,
-      verificationTokenExpires: { $gt: new Date() },
-    });
+    const { userId, verificationEmail } = req.body;
 
+    if (!userId || !verificationEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID and verification email are required",
+      });
+    }
+
+    // Find the incomplete user
+    const user = await User.findById(userId);
     if (!user) {
-      return res.status(400).json({ success: false, message: "Invalid or expired verification token" });
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
-    // Mark verified and clear token
-    user.isVerified = true;
-    user.verificationToken = undefined;
-    user.verificationTokenExpires = undefined;
+    // Check if registration is already complete
+    if (user.isRegistrationComplete) {
+      return res.status(400).json({
+        success: false,
+        message: "Registration is already complete",
+      });
+    }
+
+    // Update user with verification email and mark registration complete
+    user.verificationEmail = verificationEmail;
+    user.isRegistrationComplete = true;
     await user.save();
 
-    // Redirect to frontend login page with success flag
-    const frontend = process.env.FRONTEND_URL || "http://localhost:3000";
-    const redirectUrl = `${frontend.replace(/\/$/, "")}/login?verified=1`;
-    return res.redirect(302, redirectUrl);
+    // Generate token
+    const token = generateToken(user._id, "user");
+
+    // Update login tracking
+    await user.updateLastLogin();
+
+    res.status(200).json({
+      success: true,
+      message: "Registration completed successfully",
+      data: {
+        token,
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          role: user.role,
+          universityId: user.universityId,
+          department: user.department,
+          verificationEmail: user.verificationEmail,
+          isVerified: user.isVerified,
+        },
+      },
+    });
   } catch (error) {
-    return next(error);
+    next(error);
   }
 };
 
@@ -370,6 +456,37 @@ const login = async (req, res, next) => {
       });
     }
 
+    // Check if registration is incomplete (for staff, TA, professor)
+    if (accountType === "user" && account.isRegistrationComplete === false) {
+      // Check password first
+      const isPasswordMatch = await account.comparePassword(password);
+      if (!isPasswordMatch) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid credentials",
+        });
+      }
+
+      return res.status(200).json({
+        success: false,
+        message:
+          "Registration incomplete. Please complete your verification email selection.",
+        requiresVerificationEmail: true,
+        data: {
+          userId: account._id,
+          userData: {
+            firstName: account.firstName,
+            lastName: account.lastName,
+            email: account.email,
+            role: account.role,
+            universityId: account.universityId,
+            department: account.department,
+            phoneNumber: account.phoneNumber,
+          },
+        },
+      });
+    }
+
     // Check if account is active
     if (!account.isActive) {
       return res.status(401).json({
@@ -384,11 +501,27 @@ const login = async (req, res, next) => {
       ["staff", "ta", "professor"].includes(account.role) &&
       !account.isVerified
     ) {
-      return res.status(403).json({
-        success: false,
-        message:
-          "Your account is awaiting verification by an administrator. You'll be able to log in once verified.",
-      });
+      // Check if verification email has been sent
+      if (account.emailVerificationSent) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Verification email sent to your email. If email not received, you can reapply for verification.",
+          emailVerificationSent: true,
+          canReapply: true,
+          data: {
+            userId: account._id,
+            email: account.email,
+            verificationEmail: account.verificationEmail,
+          },
+        });
+      } else {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Your account is awaiting verification by an administrator. You'll be able to log in once verified.",
+        });
+      }
     }
 
     // Check password
@@ -796,8 +929,148 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+// @desc    Verify email via token (after admin approval)
+// @route   GET /api/auth/verify-email/:token
+// @access  Public
+const verifyEmail = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+
+    console.log(`🔍 [EMAIL VERIFICATION] Attempting to verify token: ${token}`);
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification token is required",
+      });
+    }
+
+    // Look up user by verificationToken and ensure not expired
+    const user = await User.findOne({
+      verificationToken: token,
+      verificationTokenExpires: { $gt: new Date() },
+    }).select("+verificationToken +verificationTokenExpires");
+
+    if (!user) {
+      console.log(`❌ [EMAIL VERIFICATION] No user found with valid token`);
+
+      // Check if token exists but is expired
+      const expiredUser = await User.findOne({
+        verificationToken: token,
+      }).select("+verificationToken +verificationTokenExpires");
+      if (expiredUser) {
+        console.log(
+          `⏰ [EMAIL VERIFICATION] Token found but expired. Expires: ${
+            expiredUser.verificationTokenExpires
+          }, Now: ${new Date()}`
+        );
+        return res.status(400).json({
+          success: false,
+          message:
+            "Verification link has expired. Please contact administrator for a new verification email.",
+        });
+      } else {
+        console.log(`🚫 [EMAIL VERIFICATION] Token not found in database`);
+        return res.status(400).json({
+          success: false,
+          message: "Invalid verification link.",
+        });
+      }
+    }
+
+    console.log(
+      `✅ [EMAIL VERIFICATION] Valid user found - ID: ${user._id}, Name: ${user.firstName} ${user.lastName}`
+    );
+
+    // Verify the user and clear verification token
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    user.verificationTokenExpires = undefined;
+    await user.save();
+
+    console.log(
+      `🎉 [EMAIL VERIFICATION] User verified successfully - ID: ${user._id}`
+    );
+
+    // Redirect to login page with success message
+    res.redirect(`${process.env.FRONTEND_URL}/?verified=true`);
+  } catch (error) {
+    console.error(`❌ [EMAIL VERIFICATION] Error occurred:`, error);
+    next(error);
+  }
+};
+
+// @desc    Reapply for email verification (reset emailVerificationSent to false)
+// @route   POST /api/auth/reapply-verification
+// @access  Public
+const reapplyVerification = async (req, res, next) => {
+  try {
+    const { userId } = req.body;
+
+    console.log(`🔄 [REAPPLY VERIFICATION] Request for user ID: ${userId}`);
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required",
+      });
+    }
+
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Check if user is eligible for reapplication
+    if (user.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "User is already verified",
+      });
+    }
+
+    if (!["staff", "ta", "professor"].includes(user.role)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Only staff, TA, and professor accounts can reapply for verification",
+      });
+    }
+
+    // Reset emailVerificationSent to false so admin can send verification email again
+    user.emailVerificationSent = false;
+    user.verificationToken = undefined;
+    user.verificationTokenExpires = undefined;
+    await user.save();
+
+    console.log(
+      `✅ [REAPPLY VERIFICATION] Reset verification status for user ID: ${userId}`
+    );
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Verification status reset successfully. Please wait for administrator to approve and send new verification email.",
+      data: {
+        userId: user._id,
+        email: user.email,
+        verificationEmail: user.verificationEmail,
+        emailVerificationSent: user.emailVerificationSent,
+      },
+    });
+  } catch (error) {
+    console.error(`❌ [REAPPLY VERIFICATION] Error occurred:`, error);
+    next(error);
+  }
+};
+
 module.exports = {
   registerUser,
+  completeUserRegistration,
   registerVendor,
   login,
   logout,
@@ -806,4 +1079,5 @@ module.exports = {
   verifyResetToken,
   resetPassword,
   verifyEmail,
+  reapplyVerification,
 };

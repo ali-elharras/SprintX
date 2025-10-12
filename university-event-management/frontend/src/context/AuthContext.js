@@ -118,6 +118,7 @@ export const AuthProvider = ({ children }) => {
 
   // Login function for users
   const loginUser = async (loginData) => {
+    console.log("=== LOGIN ATTEMPT STARTED ===", loginData);
     try {
       dispatch({ type: AUTH_ACTIONS.LOADING, payload: true });
       dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
@@ -141,13 +142,78 @@ export const AuthProvider = ({ children }) => {
         });
 
         return { success: true, data: response.data };
+      } else {
+        // Check if this is an incomplete registration (verification email required)
+        if (response.requiresVerificationEmail) {
+          return {
+            success: false,
+            requiresVerificationEmail: true,
+            data: response.data,
+            error: response.message,
+          };
+        }
+
+        // Check if verification email has been sent but user hasn't verified
+        if (response.emailVerificationSent && response.canReapply) {
+          return {
+            success: false,
+            emailVerificationSent: true,
+            canReapply: true,
+            data: response.data,
+            error: response.message,
+          };
+        }
+
+        // Regular login failure
+        dispatch({
+          type: AUTH_ACTIONS.SET_ERROR,
+          payload: response.message || "Login failed",
+        });
+        return { success: false, error: response.message || "Login failed" };
       }
     } catch (error) {
+      console.log("Login error caught:", error);
+      console.log("Error response data:", error.response?.data);
+      console.log("Error data direct:", error.data);
+
+      // Get error data from either error.data or error.response.data
+      const errorData = error.data || error.response?.data;
+
+      // Check if this is an incomplete registration error
+      if (errorData?.requiresVerificationEmail) {
+        console.log("Detected incomplete registration");
+        return {
+          success: false,
+          requiresVerificationEmail: true,
+          data: errorData.data,
+          error: errorData.message,
+        };
+      }
+
+      // Check if verification email has been sent but user hasn't verified (from error response)
+      if (errorData?.emailVerificationSent && errorData?.canReapply) {
+        console.log("Detected verification email sent case");
+        const returnValue = {
+          success: false,
+          emailVerificationSent: true,
+          canReapply: true,
+          data: errorData.data,
+          error: errorData.message,
+        };
+        console.log("=== RETURNING FROM AuthContext ===", returnValue);
+
+        // Make sure we dispatch loading false before returning
+        dispatch({ type: AUTH_ACTIONS.LOADING, payload: false });
+        return returnValue;
+      }
+
       dispatch({
         type: AUTH_ACTIONS.SET_ERROR,
         payload: error.message || "Login failed",
       });
       return { success: false, error: error.message || "Login failed" };
+    } finally {
+      dispatch({ type: AUTH_ACTIONS.LOADING, payload: false });
     }
   };
 
@@ -195,6 +261,18 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.registerUser(userData);
 
       if (response.success) {
+        // Check if verification email is required
+        if (
+          response.requiresVerificationEmail ||
+          response.data?.requiresVerificationEmail
+        ) {
+          return {
+            success: true,
+            requiresVerificationEmail: true,
+            data: response.data,
+          };
+        }
+
         const authData = {
           token: response.data.token,
           user: response.data.user,
@@ -213,11 +291,61 @@ export const AuthProvider = ({ children }) => {
         return { success: true, data: response.data };
       }
     } catch (error) {
+      // Check if this is a verification email required error
+      if (error.response?.data?.requiresVerificationEmail) {
+        return {
+          success: false,
+          requiresVerificationEmail: true,
+          data: error.response.data.data,
+          error: error.response.data.message,
+        };
+      }
+
       dispatch({
         type: AUTH_ACTIONS.SET_ERROR,
         payload: error.message || "Registration failed",
       });
       return { success: false, error: error.message || "Registration failed" };
+    } finally {
+      dispatch({ type: AUTH_ACTIONS.LOADING, payload: false });
+    }
+  };
+
+  // Reapply for verification function
+  const reapplyVerification = async (userId) => {
+    try {
+      dispatch({ type: AUTH_ACTIONS.LOADING, payload: true });
+      dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
+
+      const response = await authAPI.reapplyVerification(userId);
+
+      if (response.success) {
+        return {
+          success: true,
+          message: response.message,
+          data: response.data,
+        };
+      } else {
+        dispatch({
+          type: AUTH_ACTIONS.SET_ERROR,
+          payload: response.message || "Failed to reapply for verification",
+        });
+        return {
+          success: false,
+          error: response.message || "Failed to reapply for verification",
+        };
+      }
+    } catch (error) {
+      dispatch({
+        type: AUTH_ACTIONS.SET_ERROR,
+        payload: error.message || "Failed to reapply for verification",
+      });
+      return {
+        success: false,
+        error: error.message || "Failed to reapply for verification",
+      };
+    } finally {
+      dispatch({ type: AUTH_ACTIONS.LOADING, payload: false });
     }
   };
 
@@ -319,6 +447,7 @@ export const AuthProvider = ({ children }) => {
     loginUser,
     loginVendor,
     registerUser,
+    reapplyVerification,
     registerVendor,
     logout,
     clearError,

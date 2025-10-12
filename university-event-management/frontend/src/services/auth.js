@@ -20,6 +20,15 @@ export const authAPI = {
     return response.data;
   },
 
+  // Complete user registration with verification email
+  completeUserRegistration: async (completionData) => {
+    const response = await api.post(
+      "/auth/complete-registration",
+      completionData
+    );
+    return response.data;
+  },
+
   // Logout
   logout: async () => {
     const response = await api.post("/auth/logout");
@@ -50,6 +59,12 @@ export const authAPI = {
       token,
       password: newPassword,
     });
+    return response.data;
+  },
+
+  // Reapply for verification
+  reapplyVerification: async (userId) => {
+    const response = await api.post("/auth/reapply-verification", { userId });
     return response.data;
   },
 };

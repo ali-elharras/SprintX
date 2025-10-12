@@ -2,6 +2,7 @@ const express = require("express");
 const { body } = require("express-validator");
 const {
   registerUser,
+  completeUserRegistration,
   registerVendor,
   login,
   logout,
@@ -10,6 +11,7 @@ const {
   verifyResetToken,
   resetPassword,
   verifyEmail,
+  reapplyVerification,
 } = require("../controllers/authController");
 const { protect } = require("../middleware/auth");
 
@@ -200,8 +202,22 @@ const resetPasswordValidation = [
     ),
 ];
 
+// Validation rules for completing registration
+const completeRegistrationValidation = [
+  body("userId").notEmpty().withMessage("User ID is required"),
+  body("verificationEmail")
+    .isEmail()
+    .normalizeEmail()
+    .withMessage("Valid verification email is required"),
+];
+
 // Routes
 router.post("/register/user", userRegistrationValidation, registerUser);
+router.post(
+  "/complete-registration",
+  completeRegistrationValidation,
+  completeUserRegistration
+);
 router.post("/register/vendor", vendorRegistrationValidation, registerVendor);
 router.post("/login", loginValidation, login);
 router.post("/logout", protect, logout);
@@ -214,5 +230,12 @@ router.post("/reset-password", resetPasswordValidation, resetPassword);
 
 // Email verification route (after admin approval)
 router.get("/verify-email/:token", verifyEmail);
+
+// Reapply for verification route
+router.post(
+  "/reapply-verification",
+  [body("userId").notEmpty().withMessage("User ID is required")],
+  reapplyVerification
+);
 
 module.exports = router;
