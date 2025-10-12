@@ -104,15 +104,7 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
           </span>
         </div>
         <div style={{ display: "flex", gap: theme.spacing[2], width: "100%" }}>
-          {hasEnded ? (
-            <Button variant="secondary" disabled style={{ width: "100%" }}>
-              Event Ended
-            </Button>
-          ) : hasStarted ? (
-            <Button variant="secondary" disabled style={{ width: "100%" }}>
-              Event Started
-            </Button>
-          ) : (
+          {!hasStarted ? (
             <>
               <Button
                 variant="primary"
@@ -129,6 +121,14 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
                 Delete
               </Button>
             </>
+          ) : hasEnded ? (
+            <Button variant="secondary" disabled style={{ width: "100%" }}>
+              Event Ended
+            </Button>
+          ) : (
+            <Button variant="secondary" disabled style={{ width: "100%" }}>
+              Event Started
+            </Button>
           )}
         </div>
       </div>
@@ -1496,11 +1496,12 @@ const EventsPage = () => {
                       registrationDeadline: new Date(bazaarData.registrationDeadline).toISOString(),
                       registrationRequired: true,
                       tags: bazaarData.theme ? [bazaarData.theme] : [],
+                      status: 'published',
                     };
 
                     await api.post("/bazaars", eventData);
 
-                    toast.success(`Bazaar "${bazaarData.title}" created as a draft!`);
+                    toast.success(`Bazaar "${bazaarData.title}" has been published!`);
                     setCreateBazaarOpen(false);
                     setBazaarData({ title: "", description: "", theme: "", startDate: "", endDate: "", location: "University Courtyard", maxParticipants: "50", registrationDeadline: "" });
                     fetchEvents();
