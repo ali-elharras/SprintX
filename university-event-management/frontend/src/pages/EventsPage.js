@@ -12,6 +12,129 @@ import LoadingScreen from "../components/LoadingScreen";
 import api, { eventAPI, createCancelTokenSource } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
+import Card from "../components/Card";
+
+// Card for displaying Bazaars created by the Events Office user
+const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
+  const cardStyle = {
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+    height: "100%",
+    boxShadow: theme.shadows.md,
+    transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+    border: `2px solid ${theme.colors.primary.main}`,
+  };
+
+  const now = new Date();
+  const hasStarted = new Date(bazaar.startDate) <= now;
+  const hasEnded = new Date(bazaar.endDate) < now;
+
+  return (
+    <Card style={cardStyle}>
+      <div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            marginBottom: theme.spacing[3],
+          }}
+        >
+          <h3
+            style={{
+              fontSize: theme.typography.fontSize.lg,
+              fontWeight: "bold",
+              color: theme.colors.text.primary,
+              margin: 0,
+              paddingRight: theme.spacing[2],
+            }}
+          >
+            {bazaar.title || bazaar.name}
+          </h3>
+        </div>
+        <p
+          style={{
+            color: theme.colors.text.secondary,
+            margin: 0,
+            fontSize: theme.typography.fontSize.sm,
+          }}
+        >
+          {new Date(bazaar.startDate).toLocaleString("en-US", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })}
+        </p>
+        <p
+          style={{
+            color: theme.colors.text.secondary,
+            margin: `${theme.spacing[1]} 0`,
+            fontSize: theme.typography.fontSize.sm,
+          }}
+        >
+          📍 {bazaar.location}
+        </p>
+        <p
+          style={{
+            color: theme.colors.text.primary,
+            marginTop: theme.spacing[4],
+            fontSize: theme.typography.fontSize.base,
+            maxHeight: "100px",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {bazaar.description}
+        </p>
+      </div>
+      <div style={{ marginTop: theme.spacing[4] }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            color: theme.colors.text.secondary,
+            fontSize: theme.typography.fontSize.sm,
+            marginBottom: theme.spacing[4],
+          }}
+        >
+          <span>Participants</span>
+          <span style={{ fontWeight: "bold" }}>
+            {bazaar.currentParticipants} / {bazaar.maxParticipants}
+          </span>
+        </div>
+        <div style={{ display: "flex", gap: theme.spacing[2], width: "100%" }}>
+          {hasEnded ? (
+            <Button variant="secondary" disabled style={{ width: "100%" }}>
+              Event Ended
+            </Button>
+          ) : hasStarted ? (
+            <Button variant="secondary" disabled style={{ width: "100%" }}>
+              Event Started
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="primary"
+                onClick={() => onEdit(bazaar)}
+                style={{ flex: 1 }}
+              >
+                Edit
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => onDelete(bazaar._id)}
+                style={{ flex: 1 }}
+              >
+                Delete
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+};
 
 const EventsPage = () => {
   const navigate = useNavigate();
@@ -107,6 +230,20 @@ const EventsPage = () => {
     registrationDeadline: "",
   });
 
+  // Edit Modal state
+  const [editingBazaar, setEditingBazaar] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editBazaarData, setEditBazaarData] = useState({
+    title: "",
+    description: "",
+    startDate: "",
+    endDate: "",
+    location: "",
+    theme: "",
+    maxParticipants: "50",
+    registrationDeadline: "",
+  });
+
   const fetchEvents = async () => {
     // Cancel any existing request
     if (cancelTokenRef.current) {
@@ -127,38 +264,56 @@ const EventsPage = () => {
         currentCancelToken
       );
       
-      setEvents(response.data?.data || []);
+      let allEvents = response.data?.data || [];
 
-      // If current user is Events Office, also fetch pending and needs_revision workshops
+      // If current user is Events Office, fetch their other items
       if (auth?.isEventsOffice) {
         try {
-          // Create separate cancel tokens for workshop requests
+          // 1. Fetch pending and needs_revision workshops
           const pendingCancelToken = createCancelTokenSource();
           const revisionCancelToken = createCancelTokenSource();
           
-          // Fetch both pending and needs_revision workshops
-          const [pendingResp, revisionResp] = await Promise.all([
+          const [pendingResp, revisionResp, userBazaarsResponse] = await Promise.all([
             api.get('/workshops?status=pending', {
               cancelToken: pendingCancelToken.token
             }),
             api.get('/workshops?status=needs_revision', {
               cancelToken: revisionCancelToken.token
+            }),
+            // 2. Fetch user-created bazaars (drafts, etc.)
+            api.get('/bazaars', {
+              cancelToken: currentCancelToken.token
             })
           ]);
           
-          // Combine both types of workshops
-          const pendingWorkshops = pendingResp.data || [];
+          const pendingWorkshopsData = pendingResp.data || [];
           const revisionWorkshops = revisionResp.data || [];
           
-          setPendingWorkshops([...pendingWorkshops, ...revisionWorkshops]);
+          setPendingWorkshops([...pendingWorkshopsData, ...revisionWorkshops]);
+
+          const allBazaars = userBazaarsResponse.data?.data || [];
+          const userBazaars = allBazaars.filter(bazaar => {
+              const isOwner = (typeof bazaar.organizer === "object" && bazaar.organizer?._id === auth.user?.id) || (typeof bazaar.organizer === "string" && bazaar.organizer === auth.user?.id);
+              return isOwner;
+          });
+
+          // Combine and de-duplicate events and bazaars
+          const eventsMap = new Map();
+          allEvents.forEach(event => eventsMap.set(event._id, event));
+          userBazaars.forEach(bazaar => eventsMap.set(bazaar._id, bazaar));
+
+          allEvents = Array.from(eventsMap.values());
+
         } catch (err) {
           // Only log if not a cancellation
           if (!err.isCancelled && err.name !== 'CanceledError') {
-            console.warn('Could not fetch pending workshops', err);
-            setPendingWorkshops([]);
+            console.warn('Could not fetch additional Events Office data', err);
           }
         }
       }
+      
+      setEvents(allEvents);
+
     } catch (err) {
       // Don't show error for cancelled requests
       if (err.isCancelled || err.name === 'CanceledError') {
@@ -236,6 +391,96 @@ const EventsPage = () => {
     fetchEvents();
   };
 
+  const handleDeleteBazaar = async (bazaarId) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to permanently delete this bazaar?"
+      )
+    )
+      return;
+    try {
+      await api.delete(`/bazaars/${bazaarId}`);
+      toast.success("Bazaar deleted successfully");
+      fetchEvents();
+    } catch (error) {
+      console.error("Failed to delete bazaar:", error);
+      toast.error(error.response?.data?.message || "Failed to delete bazaar.");
+    }
+  };
+
+  const handleOpenEditModal = (bazaar) => {
+    const formatForInput = (dateStr) => {
+      if (!dateStr) return "";
+      const d = new Date(dateStr);
+      return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+    };
+    setEditingBazaar(bazaar);
+    setEditBazaarData({
+      title: bazaar.title || bazaar.name,
+      description: bazaar.description,
+      startDate: formatForInput(bazaar.startDate),
+      endDate: formatForInput(bazaar.endDate),
+      location: bazaar.location,
+      theme: bazaar.tags?.join(", ") || "",
+      maxParticipants: bazaar.maxParticipants?.toString() || "50",
+      registrationDeadline: formatForInput(bazaar.registrationDeadline),
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingBazaar(null);
+  };
+
+  const handleUpdateBazaar = async () => {
+    if (!editingBazaar) return;
+    if (
+      !editBazaarData.title ||
+      !editBazaarData.description ||
+      !editBazaarData.startDate ||
+      !editBazaarData.endDate ||
+      !editBazaarData.registrationDeadline
+    ) {
+      toast.error("Please fill all required fields.");
+      return;
+    }
+    if (
+      new Date(editBazaarData.registrationDeadline) >=
+      new Date(editBazaarData.startDate)
+    ) {
+      toast.error(
+        "Registration deadline must be before the event's start date."
+      );
+      return;
+    }
+    try {
+      const updatedEventData = {
+        title: editBazaarData.title,
+        description: editBazaarData.description,
+        startDate: new Date(editBazaarData.startDate).toISOString(),
+        endDate: new Date(editBazaarData.endDate).toISOString(),
+        location: editBazaarData.location,
+        maxParticipants: Number(editBazaarData.maxParticipants),
+        registrationDeadline: new Date(
+          editBazaarData.registrationDeadline
+        ).toISOString(),
+        tags: editBazaarData.theme
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+      };
+      await api.put(`/bazaars/${editingBazaar._id}`, updatedEventData);
+      toast.success("Bazaar updated successfully!");
+      handleCloseEditModal();
+      fetchEvents();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update bazaar.");
+    }
+  };
+
   const eventTypeOptions = [
     { value: "", label: "All Types" },
     { value: "workshop", label: "Workshops" },
@@ -251,6 +496,178 @@ const EventsPage = () => {
       <LoadingScreen type="events" />
     </div>
   );
+
+  const renderEditModal = () => {
+    if (!isEditModalOpen) return null;
+    return (
+      <div
+        role="dialog"
+        aria-modal="true"
+        style={{
+          animation: "slide-down 0.3s ease-out",
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.5)",
+          zIndex: 20000,
+          display: "flex",
+          justifyContent: "center",
+          paddingTop: theme.spacing[6],
+        }}
+        onClick={handleCloseEditModal}
+      >
+        <div
+          style={{
+            width: "800px",
+            maxWidth: "95%",
+            background: theme.colors.background.paper,
+            borderRadius: theme.borderRadius.lg,
+            boxShadow: theme.shadows.lg,
+            padding: theme.spacing[6],
+            maxHeight: "90vh",
+            overflowY: "auto",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h2 style={{ marginTop: 0, marginBottom: theme.spacing[4] }}>
+            Edit Bazaar
+          </h2>
+          <div style={{ display: "grid", gap: theme.spacing[4] }}>
+            <Input
+              label="Bazaar Name *"
+              value={editBazaarData.title}
+              onChange={(e) =>
+                setEditBazaarData({ ...editBazaarData, title: e.target.value })
+              }
+            />
+            <Input
+              label="Theme *"
+              value={editBazaarData.theme}
+              onChange={(e) =>
+                setEditBazaarData({ ...editBazaarData, theme: e.target.value })
+              }
+            />
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: theme.spacing[2],
+                  color: theme.colors.text.secondary,
+                }}
+              >
+                Description *
+              </label>
+              <textarea
+                rows="4"
+                value={editBazaarData.description}
+                onChange={(e) =>
+                  setEditBazaarData({ ...editBazaarData, description: e.target.value })
+                }
+                style={{
+                  width: "100%",
+                  padding: theme.spacing[3],
+                  fontSize: theme.typography.fontSize.base,
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: theme.borderRadius.base,
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: theme.spacing[4],
+              }}
+            >
+              <Input
+                label="Start Date *"
+                type="datetime-local"
+                value={editBazaarData.startDate}
+                onChange={(e) => {
+                  const newStartDate = e.target.value;
+                  const updatedData = {
+                    ...editBazaarData,
+                    startDate: newStartDate,
+                  };
+                  if (updatedData.endDate && newStartDate > updatedData.endDate)
+                    updatedData.endDate = "";
+                  if (
+                    updatedData.registrationDeadline &&
+                    newStartDate <= updatedData.registrationDeadline
+                  )
+                    updatedData.registrationDeadline = "";
+                  setEditBazaarData(updatedData);
+                }}
+              />
+              <Input
+                label="End Date *"
+                type="datetime-local"
+                value={editBazaarData.endDate}
+                min={editBazaarData.startDate}
+                onChange={(e) =>
+                  setEditBazaarData({ ...editBazaarData, endDate: e.target.value })
+                }
+              />
+            </div>
+            <Input
+              label="Location *"
+              value={editBazaarData.location}
+              onChange={(e) =>
+                setEditBazaarData({ ...editBazaarData, location: e.target.value })
+              }
+            />
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: theme.spacing[4],
+              }}
+            >
+              <Input
+                label="Max Participants *"
+                type="number"
+                min="1"
+                value={editBazaarData.maxParticipants}
+                onChange={(e) =>
+                  setEditBazaarData({
+                    ...editBazaarData,
+                    maxParticipants: e.target.value,
+                  })
+                }
+              />
+              <Input
+                label="Registration Deadline *"
+                type="datetime-local"
+                value={editBazaarData.registrationDeadline}
+                max={editBazaarData.startDate}
+                onChange={(e) =>
+                  setEditBazaarData({
+                    ...editBazaarData,
+                    registrationDeadline: e.target.value,
+                  })
+                }
+              />
+            </div>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: theme.spacing[3],
+              marginTop: theme.spacing[5],
+            }}
+          >
+            <Button variant="outline" onClick={handleCloseEditModal}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleUpdateBazaar}>
+              Save Changes
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -573,13 +990,26 @@ const EventsPage = () => {
               gap: theme.spacing[6],
             }}
           >
-            {filteredEvents.map((event) => (
-              <EventCard
-                key={event._id}
-                event={event}
-                onRegistrationSuccess={handleRegistrationSuccess}
-              />
-            ))}
+            {filteredEvents.map((event) => {
+              const isOwner = (typeof event.organizer === "object" && event.organizer?._id === auth.user?.id) || (typeof event.organizer === "string" && event.organizer === auth.user?.id);
+              if (event.type === 'bazaar' && auth.isEventsOffice && isOwner) {
+                return (
+                  <BazaarManagementCard
+                    key={event._id}
+                    bazaar={event}
+                    onEdit={handleOpenEditModal}
+                    onDelete={handleDeleteBazaar}
+                  />
+                );
+              }
+              return (
+                <EventCard
+                  key={event._id}
+                  event={event}
+                  onRegistrationSuccess={handleRegistrationSuccess}
+                />
+              );
+            })}
           </div>
         ) : (
           <div
@@ -944,19 +1374,19 @@ const EventsPage = () => {
             
             <div style={{ display: "grid", gap: theme.spacing[4] }}>
               <Input
-                label="Bazaar Name"
+                label="Bazaar Name *"
                 placeholder="e.g., Annual Spring Fair"
                 value={bazaarData.title}
                 onChange={(e) => setBazaarData({ ...bazaarData, title: e.target.value })}
               />
               <Input
-                label="Theme"
+                label="Theme *"
                 placeholder="e.g., 80s Retro, Sci-Fi, etc."
                 value={bazaarData.theme}
                 onChange={(e) => setBazaarData({ ...bazaarData, theme: e.target.value })}
               />
               <div>
-                <label style={{ display: 'block', marginBottom: theme.spacing[2], color: theme.colors.text.secondary }}>Description</label>
+                <label style={{ display: 'block', marginBottom: theme.spacing[2], color: theme.colors.text.secondary }}>Description *</label>
                 <textarea
                   rows="4"
                   placeholder="A brief summary of the bazaar, what vendors can expect, and any special attractions."
@@ -974,7 +1404,7 @@ const EventsPage = () => {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing[4] }}>
                 <Input
-                  label="Start Date"
+                  label="Start Date *"
                   type="datetime-local"
                   value={bazaarData.startDate}
                   onChange={(e) => {
@@ -998,7 +1428,7 @@ const EventsPage = () => {
                   }}
                 />
                 <Input
-                  label="End Date"
+                  label="End Date *"
                   type="datetime-local"
                   value={bazaarData.endDate}
                   min={bazaarData.startDate} // Prevent selecting an end date before the start date
@@ -1006,13 +1436,13 @@ const EventsPage = () => {
                 />
               </div>
               <Input
-                label="Location"
+                label="Location *"
                 value={bazaarData.location}
                 onChange={(e) => setBazaarData({ ...bazaarData, location: e.target.value })}
               />
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing[4] }}>
                 <Input
-                  label="Max Participants"
+                  label="Max Participants *"
                   type="number"
                   placeholder="50"
                   min="1"
@@ -1020,7 +1450,7 @@ const EventsPage = () => {
                   onChange={(e) => setBazaarData({ ...bazaarData, maxParticipants: e.target.value })}
                 />
                 <Input
-                  label="Registration Deadline"
+                  label="Registration Deadline *"
                   type="datetime-local"
                   value={bazaarData.registrationDeadline}
                   max={bazaarData.startDate}
@@ -1086,6 +1516,7 @@ const EventsPage = () => {
           </div>
         </div>
       )}
+      {renderEditModal()}
     </>
   );
 };
