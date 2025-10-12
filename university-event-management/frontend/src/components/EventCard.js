@@ -4,27 +4,10 @@ import theme, { getEventTypeColor } from "../theme";
 import Button from "./Button";
 import RegistrationForm from "./RegistrationForm";
 import { useAuth } from "../context/AuthContext";
-import { conferenceAPI } from "../services/api";
+import { eventAPI } from "../services/api";
 import toast from "react-hot-toast";
 
-const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit }) => {
-  // Normalize event/conference object for consistent display
-  const normalizedEvent = {
-    ...event,
-    type: event.type || "conference",
-    title: event.name || event.title || "",
-    description: event.shortDescription || event.description || "",
-    status: event.status || "published",
-    registrationRequired: event.registrationRequired !== undefined ? event.registrationRequired : true,
-    currentParticipants: event.currentParticipants || 0,
-    maxParticipants: event.maxParticipants || event.capacity || 0,
-    registrationDeadline: event.registrationDeadline || null,
-    cost: event.cost || 0,
-    // Ensure dates are present
-    startDate: event.startDate || event.date || new Date().toISOString(),
-    endDate: event.endDate || event.startDate || event.date || new Date().toISOString(),
-  };
-
+const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate }) => {
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
@@ -54,32 +37,34 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
       workshop: "Workshop",
       trip: "Trip",
       bazaar: "Bazaar",
-      competition: "Competition",
       conference: "Conference",
+      booth: "Booth",
     };
     return labels[type] || type;
   };
 
   const getStatusInfo = () => {
     const now = new Date();
-    const startDate = new Date(normalizedEvent.startDate);
-    const registrationDeadline = normalizedEvent.registrationDeadline
-      ? new Date(normalizedEvent.registrationDeadline)
+    const endDate = new Date(event.endDate);
+    const registrationDeadline = event.registrationDeadline
+      ? new Date(event.registrationDeadline)
       : null;
 
-    if (normalizedEvent.status !== "published") {
+    const acceptedStatuses = ["accepted", "published", "approved"];
+
+    if (!acceptedStatuses.includes(event.status)) {
       return { status: "Not Published", color: theme.colors.neutral.gray500 };
     }
 
-    if (startDate < now) {
+    if (endDate < now) {
       return { status: "Event Ended", color: theme.colors.neutral.gray500 };
     }
 
-    if (!normalizedEvent.registrationRequired) {
+    if (!event.registrationRequired) {
       return { status: "No Registration Required", color: theme.colors.info.main };
     }
 
-    if (normalizedEvent.currentParticipants >= normalizedEvent.maxParticipants) {
+    if (event.currentParticipants >= event.maxParticipants) {
       return { status: "Full", color: theme.colors.error.main };
     }
 
@@ -92,46 +77,42 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
 
   const canRegister = () => {
     const now = new Date();
-    const startDate = new Date(normalizedEvent.startDate);
-    const registrationDeadline = normalizedEvent.registrationDeadline
-      ? new Date(normalizedEvent.registrationDeadline)
+    const endDate = new Date(event.endDate);
+    const registrationDeadline = event.registrationDeadline
+      ? new Date(event.registrationDeadline)
       : null;
 
+    const acceptedStatuses = ["accepted", "published", "approved"];
+
     return (
-      normalizedEvent.status === "published" &&
-      normalizedEvent.registrationRequired &&
-      startDate > now &&
-      normalizedEvent.currentParticipants < normalizedEvent.maxParticipants &&
+      acceptedStatuses.includes(event.status) &&
+      event.registrationRequired &&
+      endDate > now &&
+      event.currentParticipants < event.maxParticipants &&
       (!registrationDeadline || now <= registrationDeadline)
     );
   };
 
-  const handleEditClick = () => {
-  if (onEditConference && normalizedEvent.type === "conference") {
-    onEditConference(normalizedEvent);
-  }
-};
-
-const handleDeleteConference = async () => {
-  if (!window.confirm("Are you sure you want to delete this conference? This action cannot be undone.")) {
-    return;
-  }
-
-  try {
-    setIsDeleting(true);
-    await conferenceAPI.deleteConference(normalizedEvent._id);
-    toast.success("Conference deleted successfully!");
-    if (onEventUpdate) {
-      onEventUpdate(); // Refresh the events list
+  const handleDelete = async () => {
+    const eventType = getEventTypeLabel(event.type);
+    if (!window.confirm(`Are you sure you want to delete this ${eventType}? This action cannot be undone.`)) {
+      return;
     }
-  } catch (error) {
-    console.error("Error deleting conference:", error);
-    const errorMessage = error.response?.data?.message || error.message || "Failed to delete conference";
-    toast.error(errorMessage);
-  } finally {
-    setIsDeleting(false);
-  }
-};
+
+    try {
+      setIsDeleting(true);
+      await eventAPI.deleteEvent(event._id);
+      toast.success(`${eventType} deleted successfully!`);
+      if (onEventUpdate) {
+        onEventUpdate();
+      }
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      toast.error(error.response?.data?.message || `Failed to delete ${eventType}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleRegistrationSuccess = (registrationData) => {
     setShowRegistrationForm(false);
@@ -143,7 +124,7 @@ const handleDeleteConference = async () => {
   if (showRegistrationForm) {
     return (
       <RegistrationForm
-        event={normalizedEvent}
+        event={event}
         onSuccess={handleRegistrationSuccess}
         onCancel={() => setShowRegistrationForm(false)}
       />
@@ -172,7 +153,7 @@ const handleDeleteConference = async () => {
       {/* Event Header */}
       <div
         style={{
-          background: `linear-gradient(135deg, ${getEventTypeColor(normalizedEvent.type)} 0%, ${getEventTypeColor(normalizedEvent.type)}dd 100%)`,
+          background: `linear-gradient(135deg, ${getEventTypeColor(event.type)} 0%, ${getEventTypeColor(event.type)}dd 100%)`,
           padding: theme.spacing[4],
           color: theme.colors.text.white,
         }}
@@ -196,7 +177,7 @@ const handleDeleteConference = async () => {
               letterSpacing: "0.05em",
             }}
           >
-            {getEventTypeLabel(normalizedEvent.type)}
+            {getEventTypeLabel(event.type)}
           </div>
           <div
             style={{
@@ -219,7 +200,7 @@ const handleDeleteConference = async () => {
             margin: 0,
           }}
         >
-          {normalizedEvent.title}
+          {event.title || event.name}
         </h3>
       </div>
 
@@ -239,8 +220,8 @@ const handleDeleteConference = async () => {
           >
             <span>📅</span>
             <span>
-              {formatDate(normalizedEvent.startDate)}
-              {normalizedEvent.startDate !== normalizedEvent.endDate && ` - ${formatDate(normalizedEvent.endDate)}`}
+              {formatDate(event.startDate)}
+              {event.startDate !== event.endDate && ` - ${formatDate(event.endDate)}`}
             </span>
           </div>
           <div
@@ -254,7 +235,7 @@ const handleDeleteConference = async () => {
             }}
           >
             <span>🕐</span>
-            <span>{formatTime(normalizedEvent.startDate)}</span>
+            <span>{formatTime(event.startDate)}</span>
           </div>
           <div
             style={{
@@ -267,7 +248,7 @@ const handleDeleteConference = async () => {
             }}
           >
             <span>📍</span>
-            <span>{normalizedEvent.location}</span>
+            <span>{event.location}</span>
           </div>
         </div>
 
@@ -285,11 +266,90 @@ const handleDeleteConference = async () => {
             textOverflow: "ellipsis",
           }}
         >
-          {normalizedEvent.description}
+          {event.description}
         </p>
 
+        {/* Participating Vendors Section - Only for Bazaars */}
+        {event.type === 'bazaar' && event.participatingVendors && event.participatingVendors.length > 0 && (
+          <div
+            style={{
+              background: theme.colors.neutral.gray50,
+              padding: theme.spacing[4],
+              borderRadius: theme.borderRadius.base,
+              marginBottom: theme.spacing[4],
+              border: `1px solid ${theme.colors.border}`,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: theme.spacing[2],
+                marginBottom: theme.spacing[3],
+              }}
+            >
+              <span style={{ fontSize: theme.typography.fontSize.lg }}>🏪</span>
+              <h4
+                style={{
+                  margin: 0,
+                  fontSize: theme.typography.fontSize.base,
+                  fontWeight: theme.typography.fontWeight.semibold,
+                  color: theme.colors.text.primary,
+                }}
+              >
+                Participating Vendors ({event.participatingVendors.length})
+              </h4>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: theme.spacing[2],
+              }}
+            >
+              {event.participatingVendors.slice(0, 5).map((vendor, index) => (
+                <div
+                  key={vendor._id || index}
+                  style={{
+                    background: theme.colors.background.paper,
+                    border: `1px solid ${theme.colors.border}`,
+                    borderRadius: theme.borderRadius.sm,
+                    padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
+                    fontSize: theme.typography.fontSize.sm,
+                    fontWeight: theme.typography.fontWeight.medium,
+                    color: theme.colors.text.primary,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: theme.spacing[1],
+                  }}
+                >
+                  <span style={{ fontSize: "0.9em" }}>🏢</span>
+                  {vendor.companyName}
+                </div>
+              ))}
+              {event.participatingVendors.length > 5 && (
+                <div
+                  style={{
+                    background: theme.colors.primary.main,
+                    color: theme.colors.text.white,
+                    border: `1px solid ${theme.colors.primary.dark}`,
+                    borderRadius: theme.borderRadius.sm,
+                    padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
+                    fontSize: theme.typography.fontSize.sm,
+                    fontWeight: theme.typography.fontWeight.semibold,
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  +{event.participatingVendors.length - 5} more
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Registration Info */}
-        {normalizedEvent.registrationRequired && (
+        {event.registrationRequired && (
           <div
             style={{
               background: theme.colors.neutral.gray50,
@@ -321,10 +381,10 @@ const handleDeleteConference = async () => {
                   color: theme.colors.text.primary,
                 }}
               >
-                {normalizedEvent.currentParticipants} / {normalizedEvent.maxParticipants}
+                {event.currentParticipants} / {event.maxParticipants}
               </span>
             </div>
-            {normalizedEvent.registrationDeadline && (
+            {event.registrationDeadline && (
               <div
                 style={{
                   display: "flex",
@@ -348,11 +408,11 @@ const handleDeleteConference = async () => {
                     color: theme.colors.text.primary,
                   }}
                 >
-                  {formatDate(normalizedEvent.registrationDeadline)}
+                  {formatDate(event.registrationDeadline)}
                 </span>
               </div>
             )}
-            {normalizedEvent.cost > 0 && (
+            {event.cost > 0 && (
               <div
                 style={{
                   display: "flex",
@@ -375,7 +435,7 @@ const handleDeleteConference = async () => {
                     color: theme.colors.primary.main,
                   }}
                 >
-                  ${normalizedEvent.cost}
+                  ${event.cost}
                 </span>
               </div>
             )}
@@ -383,7 +443,7 @@ const handleDeleteConference = async () => {
         )}
 
         {/* Additional Info for specific event types */}
-        {normalizedEvent.type === "workshop" && normalizedEvent.instructor && (
+        {event.type === "workshop" && event.instructor && (
           <div style={{ marginBottom: theme.spacing[4] }}>
             <p
               style={{
@@ -392,9 +452,9 @@ const handleDeleteConference = async () => {
                 marginBottom: theme.spacing[1],
               }}
             >
-              <strong>Instructor:</strong> {normalizedEvent.instructor}
+              <strong>Instructor:</strong> {event.instructor}
             </p>
-            {normalizedEvent.duration && (
+            {event.duration && (
               <p
                 style={{
                   fontSize: theme.typography.fontSize.sm,
@@ -402,7 +462,7 @@ const handleDeleteConference = async () => {
                   margin: 0,
                 }}
               >
-                <strong>Duration:</strong> {normalizedEvent.duration} hours
+                <strong>Duration:</strong> {event.duration} hours
               </p>
             )}
           </div>
@@ -416,58 +476,21 @@ const handleDeleteConference = async () => {
             alignItems: "stretch",
           }}
         >
-          {/* Events Office buttons for conferences */}
-          {isEventsOffice && normalizedEvent.type === "conference" ? (
-            <>
-              <div style={{ flex: 1 }}>
-                <Button
-                  variant="primary"
-                  onClick={handleEditClick}
-                  style={{ 
-                    width: "100%",
-                    minHeight: "44px",
-                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Edit Conference
-                </Button>
-              </div>
-              <div style={{ flex: 1 }}>
-                <Button
-                  variant="danger"
-                  onClick={handleDeleteConference}
-                  disabled={isDeleting}
-                  style={{ 
-                    width: "100%",
-                    minHeight: "44px",
-                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                    whiteSpace: "nowrap",
-                    opacity: isDeleting ? 0.6 : 1,
-                  }}
-                >
-                  {isDeleting ? "Deleting..." : "Delete"}
-                </Button>
-              </div>
-            </>
-          ) : (
-            /* Single Register Now button for regular users */
-            showRegistration && canRegister() && (
-              <div style={{ flex: 1 }}>
-                <Button
-                  variant="primary"
-                  onClick={() => setShowRegistrationForm(true)}
-                  style={{ 
-                    width: "100%",
-                    minHeight: "44px",
-                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Register Now
-                </Button>
-              </div>
-            )
+          {showRegistration && canRegister() && (
+            <div style={{ flex: 1 }}>
+              <Button
+                variant="primary"
+                onClick={() => setShowRegistrationForm(true)}
+                style={{ 
+                  width: "100%",
+                  minHeight: "44px",
+                  padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Register Now
+              </Button>
+            </div>
           )}
         </div>
       </div>

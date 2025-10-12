@@ -27,9 +27,9 @@ const eventSchema = new mongoose.Schema(
       type: String,
       required: [true, "Event type is required"],
       enum: {
-        values: ["workshop", "trip", "bazaar", "competition", "conference"],
+        values: ["workshop", "trip", "bazaar", "booth", "conference"],
         message:
-          "Event type must be one of: workshop, trip, bazaar, competition, conference",
+          "Event type must be one of: workshop, trip, bazaar, booth, conference",
       },
     },
 
@@ -108,7 +108,7 @@ const eventSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["draft", "published", "cancelled", "completed"],
+      enum: ["draft", "published", "approved","accepted","rejected","cancelled", "completed"],
       default: "draft",
     },
 
