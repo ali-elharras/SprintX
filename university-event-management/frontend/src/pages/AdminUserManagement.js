@@ -138,29 +138,33 @@ const AdminUserManagement = () => {
   // ======== UI HELPERS ========
   const cardStyle = {
     background: theme.colors.background.paper,
-    borderRadius: 16,
+    borderRadius: theme.borderRadius.lg,
     border: `1px solid ${theme.colors.border.light}`,
     boxShadow: theme.shadows.lg,
+    transition: `all ${theme.transitions.duration.base} ${theme.transitions.timing.easeOut}`,
   };
 
   const badge = (label, variant = "neutral") => {
     const palette = {
-      success: { bg: "#D1FAE5", fg: "#065F46", bd: "#34D399" },
-      danger: { bg: "#FEE2E2", fg: "#991B1B", bd: "#FCA5A5" },
-      warning: { bg: "#FEF3C7", fg: "#92400E", bd: "#FCD34D" },
-      info: { bg: "#DBEAFE", fg: "#1E40AF", bd: "#93C5FD" },
-      neutral: { bg: "#F3F4F6", fg: "#374151", bd: "#D1D5DB" },
-    }[variant] || { bg: "#F3F4F6", fg: "#374151", bd: "#D1D5DB" };
+      success: { bg: theme.colors.success.light, fg: theme.colors.success.dark, bd: theme.colors.success.main },
+      danger: { bg: theme.colors.error.light, fg: theme.colors.error.dark, bd: theme.colors.error.main },
+      warning: { bg: theme.colors.warning.light, fg: theme.colors.warning.dark, bd: theme.colors.warning.main },
+      info: { bg: theme.colors.info.light, fg: theme.colors.info.dark, bd: theme.colors.info.main },
+      neutral: { bg: theme.colors.neutral.gray100, fg: theme.colors.neutral.gray700, bd: theme.colors.neutral.gray300 },
+    }[variant] || { bg: theme.colors.neutral.gray100, fg: theme.colors.neutral.gray700, bd: theme.colors.neutral.gray300 };
     return (
       <span style={{
         background: palette.bg,
         color: palette.fg,
         border: `1px solid ${palette.bd}`,
         padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
-        borderRadius: 999,
+        borderRadius: theme.borderRadius.full,
         fontSize: theme.typography.fontSize.xs,
         fontWeight: theme.typography.fontWeight.semibold,
         textTransform: "capitalize",
+        display: "inline-flex",
+        alignItems: "center",
+        whiteSpace: "nowrap",
       }}>{label}</span>
     );
   };
@@ -169,18 +173,29 @@ const AdminUserManagement = () => {
     <button
       {...props}
       style={{
-        background: theme.colors.primary.main,
-        color: "#fff",
-        border: `1px solid ${theme.colors.primary.dark}`,
-        padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
-        borderRadius: 10,
+        background: theme.components?.button?.primary?.background || theme.colors.primary.gradient,
+        color: theme.colors.text.white,
+        border: "none",
+        padding: theme.components?.button?.primary?.padding || `${theme.spacing[2]} ${theme.spacing[4]}`,
+        borderRadius: theme.borderRadius.md,
         cursor: "pointer",
-        fontWeight: theme.typography.fontWeight.medium,
+        fontWeight: theme.typography.fontWeight.semibold,
         boxShadow: theme.shadows.md,
+        transition: `all ${theme.transitions.duration.base} ${theme.transitions.timing.easeOut}`,
         ...props.style,
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.opacity = 0.95)}
-      onMouseLeave={(e) => (e.currentTarget.style.opacity = 1)}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-1px)";
+        e.currentTarget.style.boxShadow = theme.shadows.lg;
+        if (theme.components?.button?.primary?.hover?.background) {
+          e.currentTarget.style.background = theme.components.button.primary.hover.background;
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = theme.shadows.md;
+        e.currentTarget.style.background = theme.components?.button?.primary?.background || theme.colors.primary.gradient;
+      }}
     />
   );
 
@@ -188,28 +203,30 @@ const AdminUserManagement = () => {
     <button
       {...props}
       style={{
-        background: "#ef4444",
-        color: "#fff",
-        border: `1px solid #b91c1c`,
-        padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
-        borderRadius: 10,
+        background: `linear-gradient(135deg, ${theme.colors.error.main} 0%, #dc2626 100%)`,
+        color: theme.colors.text.white,
+        border: "none",
+        padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+        borderRadius: theme.borderRadius.md,
         cursor: "pointer",
         fontWeight: theme.typography.fontWeight.medium,
-        boxShadow: theme.shadows.md,
+        boxShadow: theme.shadows.sm,
+        transition: `all ${theme.transitions.duration.base} ${theme.transitions.timing.easeOut}`,
         ...props.style,
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.opacity = 0.95)}
-      onMouseLeave={(e) => (e.currentTarget.style.opacity = 1)}
+      onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
+      onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
     />
   );
 
   const inputStyle = {
     padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
-    borderRadius: 10,
-    border: `1px solid ${theme.colors.border.light}`,
+    borderRadius: theme.borderRadius.md,
+    border: `2px solid ${theme.colors.border.light}`,
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.primary,
     background: theme.colors.background.paper,
+    transition: `all ${theme.transitions.duration.base} ${theme.transitions.timing.easeOut}`,
   };
   const selectStyle = { ...inputStyle };
 
@@ -220,7 +237,7 @@ const AdminUserManagement = () => {
     fontSize: theme.typography.fontSize.xs,
     color: theme.colors.text.secondary,
     textTransform: "uppercase",
-    letterSpacing: theme.typography.letterSpacing?.wide || 0.8,
+    letterSpacing: theme.typography.letterSpacing.wide,
     background: theme.colors.neutral.gray50,
     borderBottom: `1px solid ${theme.colors.border.light}`,
   };
@@ -242,7 +259,7 @@ const AdminUserManagement = () => {
       ...cardStyle,
       padding: theme.spacing[6],
       marginBottom: theme.spacing[6],
-      background: `linear-gradient(135deg, ${theme.colors.primary.light} 0%, ${theme.colors.primary.main} 100%)`,
+      background: theme.colors.primary.gradient,
       color: "#fff",
       border: `1px solid ${theme.colors.primary.dark}`,
     }}>
@@ -268,13 +285,15 @@ const AdminUserManagement = () => {
             key={t.key}
             onClick={() => setActiveTab(t.key)}
             style={{
-              background: activeTab === t.key ? theme.colors.background.paper : theme.colors.neutral.gray50,
+              background: activeTab === t.key ? theme.colors.primary.gradient : theme.colors.neutral.gray50,
+              color: activeTab === t.key ? theme.colors.text.white : theme.colors.text.primary,
               border: `1px solid ${theme.colors.border.light}`,
               padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
-              borderRadius: 10,
+              borderRadius: theme.borderRadius.md,
               cursor: "pointer",
               fontWeight: theme.typography.fontWeight.medium,
               boxShadow: activeTab === t.key ? theme.shadows.md : "none",
+              transition: `all ${theme.transitions.duration.base} ${theme.transitions.timing.easeOut}`,
             }}
           >
             {t.label}
