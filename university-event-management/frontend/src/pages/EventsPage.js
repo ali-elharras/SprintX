@@ -421,7 +421,10 @@ const EventsPage = () => {
       !editBazaarData.description ||
       !editBazaarData.startDate ||
       !editBazaarData.endDate ||
-      !editBazaarData.registrationDeadline
+      !editBazaarData.registrationDeadline ||
+      !editBazaarData.theme ||
+      !editBazaarData.location ||
+      !editBazaarData.maxParticipants
     ) {
       toast.error("Please fill all required fields.");
       return;
@@ -941,7 +944,7 @@ const EventsPage = () => {
           <Button variant="outline" onClick={fetchEvents}>
             Refresh
           </Button>
-          <CreateDropdownButton onConferenceModalOpen={() => setShowConferenceModal(true)} />
+          <CreateDropdownButton onConferenceModalOpen={() => setShowConferenceModal(true)} onBazaarModalOpen={() => setCreateBazaarOpen(true)} />
           </div>
         </div>
 
