@@ -20,6 +20,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import VendorDashboard from "./pages/VendorDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+
 import EventsPage from "./pages/EventsPage";
 import CourtsPage from "./pages/CourtsPage";
 import MyRegistrations from "./pages/MyRegistrations";
@@ -27,8 +28,6 @@ import GymSchedulePage from "./pages/GymSchedulePage";
 import CreateWorkshop from "./pages/CreateWorkshop";
 import Workshops from "./pages/Workshops";
 import AdminUserManagement from "./pages/AdminUserManagement";
-import ConferenceModal  from "./pages/ConferenceModal"; 
-import CreateTrip from "./components/CreateTripModal";
 // ---------------------------
 // Protected Route Components
 // ---------------------------
@@ -287,26 +286,6 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <Workshops />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/conferences/",
-    element: (
-      <ProtectedRoute>
-        <AdminRoute>
-          <ConferenceModal />
-        </AdminRoute>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/trips/",
-    element: (
-      <ProtectedRoute>
-        <AdminRoute>
-          <CreateTrip />
-        </AdminRoute>
       </ProtectedRoute>
     ),
   },

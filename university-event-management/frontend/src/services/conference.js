@@ -4,8 +4,10 @@ export const conferenceService = {
     createConference: async (conferenceData) => {
         try {
             const response = await conferenceAPI.createConference(conferenceData);
-            // Remove the success check or adjust to match your API
-            return response.data; // Return the entire response data
+            if (!response.data.success) {
+                throw new Error(response.data.message);
+            }
+            return response.data;
         } catch (error) {
             const errorMessage = error.response?.data?.message || error.message || 'Failed to create conference';
             throw new Error(errorMessage);
@@ -15,6 +17,9 @@ export const conferenceService = {
     updateConference: async (id, conferenceData) => {
         try {
             const response = await conferenceAPI.updateConference(id, conferenceData);
+            if (!response.data.success) {
+                throw new Error(response.data.message);
+            }
             return response.data;
         } catch (error) {
             const errorMessage = error.response?.data?.message || error.message || 'Error updating conference';
