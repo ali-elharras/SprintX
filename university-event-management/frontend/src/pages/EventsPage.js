@@ -443,10 +443,7 @@ const EventsPage = () => {
         registrationDeadline: new Date(
           editBazaarData.registrationDeadline
         ).toISOString(),
-        tags: editBazaarData.theme
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean),
+        tags: editBazaarData.theme ? [editBazaarData.theme] : [],
       };
       await api.put(`/bazaars/${editingBazaar._id}`, updatedEventData);
       toast.success("Bazaar updated successfully!");

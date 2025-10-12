@@ -101,6 +101,7 @@ exports.updateBazaar = async (req, res) => {
       "location",
       "registrationDeadline",
       "maxParticipants",
+      "tags",
     ];
 
     updatableFields.forEach((field) => {
