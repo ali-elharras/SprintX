@@ -126,77 +126,19 @@ const EventsPage = () => {
   const [filters, setFilters] = useState({
     type: "",
     search: "",
-    upcoming: true,
+    upcoming: false, // Changed to false to show all events by default
   });
 
-  // Add ref for cancel token to prevent memory leaks and connection issues
   const cancelTokenRef = useRef(null);
 
-  // Pending workshops (visible only to Events Office on this page)
-  // Two dummy workshops for testing (follow the project's workshop structure)
-  const [pendingWorkshops, setPendingWorkshops] = useState([
-    {
-      id: "local-pw-1",
-      name: "Advanced Quantum Computing Workshop",
-      description:
-        "An advanced workshop exploring quantum algorithms, error correction, and near-term quantum devices.",
-      type: "workshop",
-      instructor: "Dr. Ayesha Khan",
-      professorName: "Dr. Ayesha Khan",
-      startDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(), // 1 week from now
-      endDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7 + 1000 * 60 * 60 * 3).toISOString(), // +3 hours
-      location: "Room 402, Engineering Building",
-      shortDescription:
-        "Hands-on sessions and lectures covering quantum circuits and algorithms.",
-      // Extended workshop fields (for details view)
-      details: {
-        agenda:
-          "09:00 - Welcome\n09:30 - Quantum Circuits\n11:00 - Break\n11:15 - Algorithms\n13:00 - Hands-on Lab",
-        facultyResponsible: "Prof. Omar Saeed",
-        budget: "$4,500",
-        fundingSource: "Department Research Fund",
-        contactEmail: "ayesha.khan@university.edu",
-        materials: "Laptop with Qiskit installed; basic linear algebra notes",
-        prerequisites: "Undergraduate quantum mechanics or equivalent",
-      },
-    },
-    {
-      id: "local-pw-2",
-      name: "Data Visualization for Researchers",
-      description:
-        "Practical techniques for creating publication-quality visualizations using Python and D3.",
-      type: "workshop",
-      instructor: "Dr. Miguel Alvarez",
-      professorName: "Dr. Miguel Alvarez",
-      startDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString(), // 2 weeks from now
-      endDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14 + 1000 * 60 * 60 * 4).toISOString(), // +4 hours
-      location: "Lab 2, Data Science Center",
-      shortDescription:
-        "Create compelling charts and interactive visuals for research and presentations.",
-      details: {
-        agenda:
-          "10:00 - Principles of Visual Encoding\n11:00 - Matplotlib & Seaborn\n12:30 - Lunch\n13:30 - Interactive D3 examples",
-        facultyResponsible: "Dr. Nina Patel",
-        budget: "$2,000",
-        fundingSource: "Graduate School Professional Development",
-        contactEmail: "miguel.alvarez@university.edu",
-        materials: "Laptop with Python 3.8+, Jupyter",
-        prerequisites: "Comfortable with Python basics",
-      },
-    },
-  ]);
+  const [pendingWorkshops, setPendingWorkshops] = useState([]);
 
-  // Modal state for viewing details of a pending workshop
   const [selectedPending, setSelectedPending] = useState(null);
-  // Candidate pending workshop to publish (for confirmation modal)
   const [publishCandidate, setPublishCandidate] = useState(null);
-  // Candidate pending workshop to reject (for confirmation modal)
   const [rejectCandidate, setRejectCandidate] = useState(null);
-  // Candidate pending workshop to request edits for (opens small message modal)
   const [requestEditsCandidate, setRequestEditsCandidate] = useState(null);
   const [requestEditsMessage, setRequestEditsMessage] = useState("");
 
-  // State for creating a new bazaar
   const [createBazaarOpen, setCreateBazaarOpen] = useState(false);
   const [bazaarData, setBazaarData] = useState({
     title: "",
@@ -209,7 +151,6 @@ const EventsPage = () => {
     registrationDeadline: "",
   });
 
-  // Edit Modal state
   const [editingBazaar, setEditingBazaar] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editBazaarData, setEditBazaarData] = useState({
@@ -224,12 +165,10 @@ const EventsPage = () => {
   });
 
   const fetchEvents = async () => {
-    // Cancel any existing request
     if (cancelTokenRef.current) {
       cancelTokenRef.current.cancel('Operation cancelled due to new request');
     }
 
-    // Create new cancel token
     cancelTokenRef.current = createCancelTokenSource();
     const currentCancelToken = cancelTokenRef.current;
 
@@ -237,29 +176,34 @@ const EventsPage = () => {
       setLoading(true);
       setError(null);
       
-      // Use cancel token for the main events request
+      // REMOVE status filtering to get ALL events
+      console.log("Fetching events...");
       const response = await eventAPI.getEvents(
-        { /*status: ["published", "accepted", "approved"]*/ }, 
+        { upcoming: "false" }, // Get all events, not just upcoming
         currentCancelToken
       );
       
+      console.log("API Response:", response);
+      console.log("Events data:", response.data?.data);
+      
       let allEvents = response.data?.data || [];
+      
+      // Filter out events with unwanted statuses on frontend if needed
+      const visibleStatuses = ["published", "accepted", "approved", "upcoming", "active", "completed", "pending", "needs_revision"];
+      allEvents = allEvents.filter(event => visibleStatuses.includes(event.status));
+      
+      console.log("Filtered events:", allEvents);
 
       // If current user is Events Office, fetch their other items
       if (auth?.isEventsOffice) {
         try {
-          // 1. Fetch pending and needs_revision workshops
-          const pendingCancelToken = createCancelTokenSource();
-          const revisionCancelToken = createCancelTokenSource();
-          
           const [pendingResp, revisionResp, userBazaarsResponse] = await Promise.all([
             api.get('/workshops?status=pending', {
-              cancelToken: pendingCancelToken.token
+              cancelToken: currentCancelToken.token
             }),
             api.get('/workshops?status=needs_revision', {
-              cancelToken: revisionCancelToken.token
+              cancelToken: currentCancelToken.token
             }),
-            // 2. Fetch user-created bazaars (drafts, etc.)
             api.get('/bazaars', {
               cancelToken: currentCancelToken.token
             })
@@ -284,7 +228,6 @@ const EventsPage = () => {
           allEvents = Array.from(eventsMap.values());
 
         } catch (err) {
-          // Only log if not a cancellation
           if (!err.isCancelled && err.name !== 'CanceledError') {
             console.warn('Could not fetch additional Events Office data', err);
           }
@@ -294,16 +237,14 @@ const EventsPage = () => {
       setEvents(allEvents);
 
     } catch (err) {
-      // Don't show error for cancelled requests
       if (err.isCancelled || err.name === 'CanceledError') {
         return;
       }
       
-      console.error(err);
+      console.error("Fetch error:", err);
       setError(err);
       toast.error("Failed to load events. Please try again.");
     } finally {
-      // Always update loading state to prevent UI stuck in loading
       setTimeout(() => setLoading(false), 1000);
     }
   };
@@ -311,28 +252,23 @@ const EventsPage = () => {
   useEffect(() => {
     fetchEvents();
     
-    // Listen for workshop deletion events from other tabs via localStorage
     const handleStorageChange = (e) => {
       if (e.key === 'workshop_deleted' && e.newValue) {
         console.log('Workshop deleted in another tab, refreshing events...');
         fetchEvents();
-        // Clear the flag
         localStorage.removeItem('workshop_deleted');
       }
     };
     
     window.addEventListener('storage', handleStorageChange);
     
-    // Cleanup function to cancel any pending requests when component unmounts
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       
-      // Cancel any pending requests to prevent connection issues
       if (cancelTokenRef.current) {
         try {
           cancelTokenRef.current.cancel('Component unmounting');
         } catch (error) {
-          // Ignore cancellation errors during cleanup
         }
       }
     };
@@ -373,8 +309,6 @@ const applyFilters = () => {
   
   setFilteredEvents(filtered);
 };
-// 1. First, fix the button:
-
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({
@@ -384,7 +318,6 @@ const applyFilters = () => {
   };
 
   const handleRegistrationSuccess = () => {
-    // Refresh events to update participant counts
     fetchEvents();
   };
 
@@ -694,7 +627,6 @@ const applyFilters = () => {
           margin: "0 auto",
         }}
       >
-        {/* Page Header */}
         <div style={{ marginBottom: theme.spacing[8] }}>
           <h1
             style={{
@@ -721,9 +653,7 @@ const applyFilters = () => {
           </p>
         </div>
 
-        {/* Filters */}
-  {/* Pending workshops — Events Office approvals (visible only to Events Office users) */}
-  {auth.isEventsOffice && pendingWorkshops.length > 0 && (
+        {auth.isEventsOffice && pendingWorkshops.length > 0 && (
           <div
             style={{
               background: theme.colors.background.paper,
@@ -743,8 +673,7 @@ const applyFilters = () => {
               Pending Workshop Approvals
             </h2>
             <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[4] }}>
-              These workshops were submitted by professors and are awaiting approval. They are not visible to other
-              stakeholders until published.
+              These workshops were submitted by professors and are awaiting approval.
             </p>
 
             <div style={{ display: "grid", gap: theme.spacing[4] }}>
@@ -778,7 +707,6 @@ const applyFilters = () => {
                     <Button
                       variant="primary"
                       onClick={() => {
-                        // Open custom confirmation modal for this pending workshop
                         setPublishCandidate(w);
                       }}
                     >
@@ -795,7 +723,6 @@ const applyFilters = () => {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        // Open small input modal to request edits
                         setRequestEditsCandidate(w);
                         setRequestEditsMessage("");
                       }}
@@ -806,7 +733,6 @@ const applyFilters = () => {
                     <Button
                       variant="danger"
                       onClick={() => {
-                        // Ask for confirmation before rejecting
                         setRejectCandidate(w);
                       }}
                     >
@@ -818,7 +744,6 @@ const applyFilters = () => {
             </div>
           </div>
         )}
-        {/* Request Edits modal */}
         {requestEditsCandidate && (
           <div
             role="dialog"
@@ -849,7 +774,7 @@ const applyFilters = () => {
                 Request Edits for "{requestEditsCandidate.name}"
               </h3>
               <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[2] }}>
-                Provide a short message that will be sent back to the professor explaining what needs to be changed. This will mark the workshop as "needs revision" and remove it from the pending approvals list.
+                Provide a short message that will be sent back to the professor explaining what needs to be changed.
               </p>
 
               <Input
@@ -869,13 +794,11 @@ const applyFilters = () => {
                   onClick={async () => {
                     const w = requestEditsCandidate;
 
-                    // Minimal validation
                     if (!requestEditsMessage || requestEditsMessage.trim().length < 3) {
                       toast.error("Please enter a short message to request edits.");
                       return;
                     }
 
-                    // Store edit request locally (for now) so professor can later view it.
                     try {
                       const key = "event_edit_requests";
                       const existing = JSON.parse(localStorage.getItem(key) || "{}");
@@ -894,16 +817,10 @@ const applyFilters = () => {
                       console.error("Failed to persist edit request locally:", err);
                     }
 
-                    // Remove from pending list locally
                     setPendingWorkshops((prev) => prev.filter((p) => p.id !== w.id));
 
-                    // If this has a backend id, attempt to update status to 'rejected' or 'needs_revision' via API
-                    // Since backend doesn't yet have a 'needs_revision' status in the controller allowed list,
-                    // we'll set status to 'rejected' for backend but keep a local note. This simulates the flow
-                    // until backend support is added.
                     if (w._id) {
                       try {
-                        // Send needs_revision with message to backend
                         await eventAPI.updateEventStatus(w._id, "needs_revision", requestEditsMessage.trim());
                         toast.success(`Requested edits for "${w.name}" (professor notified)`);
                       } catch (err) {
@@ -936,7 +853,7 @@ const applyFilters = () => {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr auto auto",
+              gridTemplateColumns: "1fr 1fr auto auto auto",
               gap: theme.spacing[4],
               alignItems: "end",
             }}
@@ -966,7 +883,6 @@ const applyFilters = () => {
           </div>
         </div>
 
-        {/* Events Grid */}
         {filteredEvents.length > 0 ? (
           <div
             style={{
@@ -1038,12 +954,12 @@ const applyFilters = () => {
             >
               {filters.search || filters.type
                 ? "Try adjusting your filters to see more events."
-                : "There are no upcoming events at the moment."}
+                : "There are no events at the moment."}
             </p>
             <Button
               variant="outline"
               onClick={() =>
-                setFilters({ type: "", search: "", upcoming: true })
+                setFilters({ type: "", search: "", upcoming: false })
               }
             >
               Clear Filters
@@ -1051,7 +967,6 @@ const applyFilters = () => {
           </div>
         )}
 
-        {/* Summary */}
         {filteredEvents.length > 0 && (
           <div
             style={{
@@ -1068,7 +983,6 @@ const applyFilters = () => {
           </div>
         )}
 
-        {/* Error state - Only show when there are no events AND there's an error */}
         {error && !loading && filteredEvents.length === 0 && (
           <div
             style={{
@@ -1113,7 +1027,6 @@ const applyFilters = () => {
             </Button>
           </div>
         )}
-        {/* Pending workshop details modal */}
         {selectedPending && (
           <div
             role="dialog"
@@ -1175,7 +1088,6 @@ const applyFilters = () => {
             </div>
           </div>
         )}
-        {/* Publish confirmation modal */}
         {publishCandidate && (
           <div
             role="dialog"
@@ -1207,8 +1119,7 @@ const applyFilters = () => {
                 Are you sure you want to publish this workshop?
               </h3>
               <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[4] }}>
-                Publishing will make the workshop visible to all stakeholders (students, staff, TAs, professors,
-                and admins). This action can be reversed later by an Events Office administrator.
+                Publishing will make the workshop visible to all stakeholders.
               </p>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing[3] }}>
@@ -1220,7 +1131,6 @@ const applyFilters = () => {
                   onClick={() => {
                     const w = publishCandidate;
 
-                    // Create a published event object consistent with EventCard expectations
                     const publishedEvent = {
                       _id: `local-published-${Date.now()}`,
                       title: w.name,
@@ -1233,20 +1143,16 @@ const applyFilters = () => {
                       instructor: w.instructor,
                       duration: w.duration || 3,
                       status: "published",
-                      // Ensure registration is required so the card shows "Registration Open"
                       registrationRequired: true,
                       currentParticipants: 0,
                       maxParticipants: 100,
-                      // No registrationDeadline provided so registration remains open until start
                       organizerDetails: { name: w.professorName },
                     };
 
-                    // Animate removal and insertion: update states
                     setPendingWorkshops((prev) => prev.filter((p) => p.id !== w.id));
                     setEvents((prev) => [publishedEvent, ...prev]);
                     toast.success(`Published "${w.name}"`);
 
-                    // Close modal
                     setPublishCandidate(null);
                   }}
                 >
@@ -1256,7 +1162,6 @@ const applyFilters = () => {
             </div>
           </div>
         )}
-        {/* Reject confirmation modal */}
         {rejectCandidate && (
           <div
             role="dialog"
@@ -1289,7 +1194,6 @@ const applyFilters = () => {
               </h3>
               <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[4] }}>
                 Rejecting this workshop will mark it as <strong>rejected</strong> and remove it from the pending approvals list.
-                This does not delete the workshop from the database and it will not appear in any public views.
               </p>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing[3] }}>
@@ -1301,10 +1205,8 @@ const applyFilters = () => {
                   onClick={async () => {
                     const w = rejectCandidate;
 
-                    // Remove locally
                     setPendingWorkshops((prev) => prev.filter((p) => p.id !== w.id));
 
-                    // If this pending has a backend id, call API to mark rejected
                     if (w._id) {
                       try {
                         await eventAPI.updateEventStatus(w._id, "rejected");
@@ -1328,7 +1230,6 @@ const applyFilters = () => {
         )}
       </div>
       </div>
-      {/* Create Bazaar Panel */}
       {createBazaarOpen && (
         <div
           role="dialog"
@@ -1401,12 +1302,10 @@ const applyFilters = () => {
                     const newStartDate = e.target.value;
                     const updatedData = { ...bazaarData, startDate: newStartDate };
 
-                    // If the new start date makes the end date invalid, clear it.
                     if (updatedData.endDate && newStartDate > updatedData.endDate) {
                       updatedData.endDate = "";
                     }
 
-                    // If the registration deadline is now invalid (i.e., not before the start date), clear it.
                     if (
                       updatedData.registrationDeadline &&
                       newStartDate <= updatedData.registrationDeadline
@@ -1421,7 +1320,7 @@ const applyFilters = () => {
                   label="End Date *"
                   type="datetime-local"
                   value={bazaarData.endDate}
-                  min={bazaarData.startDate} // Prevent selecting an end date before the start date
+                  min={bazaarData.startDate}
                   onChange={(e) => setBazaarData({ ...bazaarData, endDate: e.target.value })}
                 />
               </div>
@@ -1507,7 +1406,6 @@ const applyFilters = () => {
           </div>
         </div>
       )}
-      {/* Conference Modal */}
       <ConferenceModal
         isOpen={showConferenceModal}
         onClose={() => {
@@ -1516,7 +1414,7 @@ const applyFilters = () => {
         }}
         conference={editingConference}
         onSuccess={() => {
-          fetchEvents(); // Refresh events list
+          fetchEvents();
           setEditingConference(null);
         }}
       />
