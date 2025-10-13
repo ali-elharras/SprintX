@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -30,6 +30,7 @@ const Login = () => {
   const location = useLocation();
   const { loginUser, loginVendor, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const hasShownToast = useRef(false);
 
   // Get the intended destination from location state
   const from = location.state?.from?.pathname || "/dashboard";
@@ -50,18 +51,42 @@ const Login = () => {
   const watchedEmail = watch("email");
   const isUniversityEmail = isGUCEmail(watchedEmail);
 
-  // Check for email verification success
+  // Check for email verification success or failure
   useEffect(() => {
+    // Prevent duplicate toasts
+    if (hasShownToast.current) return;
+
     const urlParams = new URLSearchParams(location.search);
+
     if (urlParams.get("verified") === "true") {
       toast.success(
         "Email verified successfully! You can now log in to your account.",
         {
           duration: 5000,
-          position: "top-center",
         }
       );
-      // Clean up the URL
+      hasShownToast.current = true;
+    } else if (urlParams.get("verification") === "failed") {
+      const reason = urlParams.get("reason");
+      let message = "Email verification failed.";
+
+      if (reason === "expired") {
+        message =
+          "Verification link has expired. Please contact administrator for a new verification email.";
+      } else if (reason === "invalid") {
+        message = "Invalid verification link. Please contact administrator.";
+      } else if (reason === "no-token") {
+        message = "Invalid verification link format.";
+      }
+
+      toast.error(message, {
+        duration: 6000,
+      });
+      hasShownToast.current = true;
+    }
+
+    // Clean up the URL if there are verification parameters
+    if (urlParams.has("verified") || urlParams.has("verification")) {
       window.history.replaceState({}, document.title, location.pathname);
     }
   }, [location.search, location.pathname]);
@@ -134,6 +159,20 @@ const Login = () => {
         // Handle university member verification issues
         if (!isVendorLogin) {
           console.log("Login result:", result);
+
+          // Check if user has pending role (awaiting admin approval)
+          if (result.isPending) {
+            toast.error(
+              result.error ||
+                `Your ${
+                  result.data?.requestedRole || "role"
+                } request is pending admin approval. Please wait for approval to access your account.`,
+              {
+                duration: 6000,
+              }
+            );
+            return;
+          }
 
           // Check if verification email is required (incomplete registration)
           if (result.requiresVerificationEmail) {

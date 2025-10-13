@@ -96,18 +96,35 @@ const registerUser = async (req, res, next) => {
       });
     }
 
-    // For staff, TA, and professor, verificationEmail is required
-    if (
-      ["staff", "ta", "professor"].includes(targetRole) &&
-      !verificationEmail
-    ) {
-      // Create incomplete user record
+    // New role assignment logic with requestedRole system:
+    // - Students: Get immediate access with role "student"
+    // - Staff/TA/Professor: Get "pending" role until admin verification
+
+    let finalRole, needsAdminVerification;
+
+    if (targetRole === "student") {
+      finalRole = "student";
+      needsAdminVerification = false;
+    } else if (["staff", "ta", "professor"].includes(targetRole)) {
+      finalRole = "pending";
+      needsAdminVerification = true;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid role requested",
+      });
+    }
+
+    // For staff, TA, and professor requesting verification email process
+    if (needsAdminVerification && !verificationEmail) {
+      // Create incomplete user record for verification email selection
       const incompleteUserData = {
         firstName,
         lastName,
         email,
         password,
-        role: targetRole,
+        role: finalRole,
+        requestedRole: targetRole,
         universityId,
         phoneNumber,
         department,
@@ -127,7 +144,8 @@ const registerUser = async (req, res, next) => {
             firstName,
             lastName,
             email,
-            role: targetRole,
+            role: finalRole,
+            requestedRole: targetRole,
             universityId,
             department,
             phoneNumber,
@@ -142,10 +160,15 @@ const registerUser = async (req, res, next) => {
       lastName,
       email,
       password,
-      role: targetRole,
+      role: finalRole,
       universityId,
       phoneNumber,
     };
+
+    // Add requestedRole for non-student registrations
+    if (needsAdminVerification) {
+      userData.requestedRole = targetRole;
+    }
 
     // Add role-specific fields
     if (["student", "staff", "ta", "professor"].includes(targetRole)) {
@@ -156,17 +179,14 @@ const registerUser = async (req, res, next) => {
     }
 
     // Add verification email for staff, TA, professor
-    if (
-      ["staff", "ta", "professor"].includes(targetRole) &&
-      verificationEmail
-    ) {
+    if (needsAdminVerification && verificationEmail) {
       userData.verificationEmail = verificationEmail;
     }
 
     // Verification policy:
-    // - Students are auto-verified
-    // - Staff/TA/Professor require admin verification (isVerified remains false)
-    userData.isVerified = targetRole === "student";
+    // - Students are auto-verified and get immediate access
+    // - Staff/TA/Professor are verified but pending admin role approval
+    userData.isVerified = true; // All users are email-verified upon complete registration
     userData.isRegistrationComplete = true;
 
     const user = await User.create(userData);
@@ -177,9 +197,17 @@ const registerUser = async (req, res, next) => {
     // Update login tracking
     await user.updateLastLogin();
 
+    // Customize message based on role status
+    let successMessage;
+    if (user.role === "pending") {
+      successMessage = `Registration successful! Your ${user.requestedRole} role request is pending admin approval.`;
+    } else {
+      successMessage = "Registration successful! Welcome to Campus Events Hub!";
+    }
+
     res.status(201).json({
       success: true,
-      message: "User registered successfully",
+      message: successMessage,
       data: {
         token,
         user: {
@@ -188,6 +216,7 @@ const registerUser = async (req, res, next) => {
           lastName: user.lastName,
           email: user.email,
           role: user.role,
+          requestedRole: user.requestedRole,
           universityId: user.universityId,
           department: user.department,
           yearOfStudy: user.yearOfStudy,
@@ -494,7 +523,53 @@ const login = async (req, res, next) => {
       });
     }
 
-    // Enforce verification for academics (staff/ta/professor)
+    // Block users with pending role - but handle approved vs truly pending differently
+    if (accountType === "user" && account.role === "pending") {
+      // If user has approvedRole, they've been approved but need email verification
+      if (account.approvedRole) {
+        // Check if verification email has been sent
+        if (account.emailVerificationSent) {
+          return res.status(403).json({
+            success: false,
+            message:
+              "Verification email sent to your email. If email not received, you can reapply for verification.",
+            emailVerificationSent: true,
+            canReapply: true,
+            data: {
+              userId: account._id,
+              email: account.email,
+              verificationEmail: account.verificationEmail,
+            },
+          });
+        } else {
+          // Approved but email not sent yet - shouldn't happen, but handle gracefully
+          return res.status(403).json({
+            success: false,
+            message: `Your ${account.approvedRole} role has been approved but verification email is pending. Please contact administrator.`,
+            isPending: true,
+            data: {
+              userId: account._id,
+              requestedRole: account.requestedRole,
+            },
+          });
+        }
+      } else {
+        // Truly pending - awaiting admin approval
+        return res.status(403).json({
+          success: false,
+          message: `Your ${
+            account.requestedRole || "role"
+          } request is pending admin approval. You'll be able to log in once approved.`,
+          isPending: true,
+          data: {
+            userId: account._id,
+            requestedRole: account.requestedRole,
+          },
+        });
+      }
+    }
+
+    // Enforce verification for academics (staff/ta/professor) - legacy logic
     if (
       accountType === "user" &&
       ["staff", "ta", "professor"].includes(account.role) &&
@@ -938,10 +1013,9 @@ const verifyEmail = async (req, res, next) => {
     console.log(`🔍 [EMAIL VERIFICATION] Attempting to verify token: ${token}`);
 
     if (!token) {
-      return res.status(400).json({
-        success: false,
-        message: "Verification token is required",
-      });
+      return res.redirect(
+        `${process.env.FRONTEND_URL}/?verification=failed&reason=no-token`
+      );
     }
 
     // Look up user by verificationToken and ensure not expired
@@ -963,17 +1037,14 @@ const verifyEmail = async (req, res, next) => {
             expiredUser.verificationTokenExpires
           }, Now: ${new Date()}`
         );
-        return res.status(400).json({
-          success: false,
-          message:
-            "Verification link has expired. Please contact administrator for a new verification email.",
-        });
+        return res.redirect(
+          `${process.env.FRONTEND_URL}/?verification=failed&reason=expired`
+        );
       } else {
         console.log(`🚫 [EMAIL VERIFICATION] Token not found in database`);
-        return res.status(400).json({
-          success: false,
-          message: "Invalid verification link.",
-        });
+        return res.redirect(
+          `${process.env.FRONTEND_URL}/?verification=failed&reason=invalid`
+        );
       }
     }
 
@@ -981,8 +1052,13 @@ const verifyEmail = async (req, res, next) => {
       `✅ [EMAIL VERIFICATION] Valid user found - ID: ${user._id}, Name: ${user.firstName} ${user.lastName}`
     );
 
-    // Verify the user and clear verification token
+    // Verify the user, assign approved role, and clear verification token
     user.isVerified = true;
+    // Change role from "pending" to the approved role
+    if (user.approvedRole) {
+      user.role = user.approvedRole;
+      user.approvedRole = undefined; // Clean up - no longer needed
+    }
     user.verificationToken = undefined;
     user.verificationTokenExpires = undefined;
     await user.save();
@@ -1032,18 +1108,28 @@ const reapplyVerification = async (req, res, next) => {
       });
     }
 
-    if (!["staff", "ta", "professor"].includes(user.role)) {
+    // Check if user is in pending status (new system) or has staff/ta/professor role (legacy)
+    if (
+      user.role !== "pending" &&
+      !["staff", "ta", "professor"].includes(user.role)
+    ) {
       return res.status(400).json({
         success: false,
         message:
-          "Only staff, TA, and professor accounts can reapply for verification",
+          "Only pending or academic role accounts can reapply for verification",
       });
     }
 
     // Reset emailVerificationSent to false so admin can send verification email again
+    // Also reset approved role so they go back to admin verification queue
     user.emailVerificationSent = false;
     user.verificationToken = undefined;
     user.verificationTokenExpires = undefined;
+    if (user.approvedRole) {
+      // If they had an approved role but reapplying, clear it and make them go through approval again
+      user.approvedRole = undefined;
+      user.role = "pending"; // Ensure role is back to pending
+    }
     await user.save();
 
     console.log(

@@ -56,9 +56,26 @@ const userSchema = new mongoose.Schema(
           "professor",
           "admin",
           "events_office",
+          "pending", // For users awaiting role verification
         ],
         message:
-          "Role must be one of: student, staff, ta, professor, admin, events_office",
+          "Role must be one of: student, staff, ta, professor, admin, events_office, pending",
+      },
+    },
+    requestedRole: {
+      type: String,
+      required: false, // Only required for staff/TA/professor during registration
+      enum: {
+        values: ["student", "staff", "ta", "professor"],
+        message: "Requested role must be one of: student, staff, ta, professor",
+      },
+    },
+    approvedRole: {
+      type: String,
+      required: false, // Set when admin approves, before email verification
+      enum: {
+        values: ["staff", "ta", "professor"],
+        message: "Approved role must be one of: staff, ta, professor",
       },
     },
     universityId: {

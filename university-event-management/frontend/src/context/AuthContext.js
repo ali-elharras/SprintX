@@ -143,6 +143,16 @@ export const AuthProvider = ({ children }) => {
 
         return { success: true, data: response.data };
       } else {
+        // Check if user has pending role (awaiting admin approval)
+        if (response.isPending) {
+          return {
+            success: false,
+            isPending: true,
+            data: response.data,
+            error: response.message,
+          };
+        }
+
         // Check if this is an incomplete registration (verification email required)
         if (response.requiresVerificationEmail) {
           return {
