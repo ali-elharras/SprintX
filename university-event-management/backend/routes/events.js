@@ -7,6 +7,8 @@ const {
   updateEvent,
   deleteEvent,
   getEventsByType,
+  getUpcomingBazaars,
+  seedBazaar,
 } = require("../controllers/eventController");
 const { protect, authorize } = require("../middleware/auth");
 
@@ -115,5 +117,12 @@ router.delete(
   authorize("admin", "events_office"),
   deleteEvent
 );
+
+
+// =============================
+// Bazaar Routes
+// =============================
+router.get("/bazaars/upcoming", getUpcomingBazaars);
+
 
 module.exports = router;
