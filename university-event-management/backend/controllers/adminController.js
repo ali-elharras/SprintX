@@ -125,10 +125,12 @@ const getPendingAcademics = async (req, res) => {
   try {
     const users = await User.find(
       {
-        isVerified: false,
-        role: { $in: ["staff", "ta", "professor"] },
+        role: "pending",
+        requestedRole: { $in: ["staff", "ta", "professor"] },
+        emailVerificationSent: { $ne: true }, // Only show users who haven't been sent verification email yet, or who reapplied
+        isRegistrationComplete: true, // Only show users who completed registration (added verification email)
       },
-      "firstName lastName email universityId role createdAt"
+      "firstName lastName email universityId role requestedRole createdAt emailVerificationSent"
     ).sort({ createdAt: -1 });
 
     res.status(200).json(users);
@@ -151,9 +153,22 @@ const approveAcademic = async (req, res) => {
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Update role, ensure verification is pending until email link is clicked
-    user.role = role;
-    user.isVerified = false;
+    // Verify user is in pending status
+    if (user.role !== "pending") {
+      return res.status(400).json({ message: "User is not pending approval" });
+    }
+
+    // Ensure user has a verification email address
+    if (!user.verificationEmail) {
+      return res.status(400).json({
+        message: "User must have a verification email address before approval",
+      });
+    }
+
+    // Store approved role but keep role as "pending" until email verification
+    user.approvedRole = role;
+    user.role = "pending"; // Keep as pending until email verification
+    user.isVerified = false; // User must click email verification link
 
     // Generate verification token
     const crypto = require("crypto");
@@ -180,13 +195,14 @@ const approveAcademic = async (req, res) => {
       console.error("Failed to send verification email:", emailErr.message);
       // We keep the approval saved but inform the admin email failed
       return res.status(200).json({
-        message:
-          "User approved. Verification email could not be sent. You may need to resend later.",
+        message: `User approved as ${role}. Verification email could not be sent. You may need to resend later.`,
         user: {
           id: user._id,
           fullName: `${user.firstName} ${user.lastName}`,
           email: user.email,
-          role: user.role,
+          role: user.role, // Still "pending" until email verification
+          requestedRole: user.requestedRole,
+          approvedRole: user.approvedRole, // What they were approved as
           isVerified: user.isVerified,
           emailVerificationSent: user.emailVerificationSent,
         },
@@ -194,13 +210,14 @@ const approveAcademic = async (req, res) => {
     }
 
     return res.status(200).json({
-      message:
-        "User approved. Verification email sent. The user must click the link to activate their account.",
+      message: `User approved as ${role}. Verification email sent. The user must click the link to activate their account.`,
       user: {
         id: user._id,
         fullName: `${user.firstName} ${user.lastName}`,
         email: user.email,
-        role: user.role,
+        role: user.role, // Still "pending" until email verification
+        requestedRole: user.requestedRole,
+        approvedRole: user.approvedRole, // What they were approved as
         isVerified: user.isVerified,
         emailVerificationSent: user.emailVerificationSent,
       },
