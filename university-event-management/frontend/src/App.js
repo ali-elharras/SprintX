@@ -150,17 +150,15 @@ const VendorRoute = ({ children }) => {
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <UserTypeSelection />,
-  },
-
-  // Public Routes
-  {
-    path: "/login",
     element: (
       <PublicRoute>
         <Login />
       </PublicRoute>
     ),
+  },
+  {
+    path: "/signup",
+    element: <UserTypeSelection />,
   },
   {
     path: "/vendor-login",

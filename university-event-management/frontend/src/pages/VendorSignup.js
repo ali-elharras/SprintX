@@ -44,8 +44,7 @@ const vendorSchema = yup.object({
       "Please use your company email address. University emails should use the University Member registration.",
       function (value) {
         if (!value) return true;
-        const universityPattern =
-          /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor|admin|eventsoffice)\.[a-zA-Z0-9.-]+$/;
+        const universityPattern = /^[a-zA-Z0-9._%+-]+@guc\.edu\.eg$/i;
         return !universityPattern.test(value);
       }
     ),
@@ -273,10 +272,8 @@ const VendorSignup = () => {
       const result = await registerVendor(submitData);
 
       if (result.success) {
-        toast.success(
-          "Registration successful! Your account is pending admin approval."
-        );
-        navigate("/dashboard");
+        toast.success("Registration successful! Welcome to GUC Events!");
+        navigate("/vendor-dashboard");
       } else {
         console.error("🚨 [ERROR] Registration failed:", result.error);
         toast.error(result.error || "Registration failed. Please try again.");

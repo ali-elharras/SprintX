@@ -191,7 +191,7 @@ const VendorLogin = () => {
     <div style={containerStyles}>
       {/* University Access Button */}
       <Link
-        to="/login"
+        to="/"
         style={{
           position: "absolute",
           top: vendorTheme.spacing[6],

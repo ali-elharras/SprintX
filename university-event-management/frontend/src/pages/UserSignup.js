@@ -20,19 +20,15 @@ const emailDomainRoleMap = {
   professor: "professor",
 };
 
-// Function to extract role from email
-const getRoleFromEmail = (email) => {
-  if (!email || typeof email !== "string") return null;
+// Function to check if email is GUC email
+const isGUCEmail = (email) => {
+  if (!email || typeof email !== "string") return false;
 
   try {
-    // Only allow student, staff, ta, professor roles with guc.edu.eg domain
-    const emailPattern =
-      /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor)\.guc\.edu\.eg$/;
-    const match = email.match(emailPattern);
-    return match ? emailDomainRoleMap[match[1]] : null;
+    return /^[a-zA-Z0-9._%+-]+@guc\.edu\.eg$/i.test(email);
   } catch (error) {
     console.warn("Error parsing email:", error);
-    return null;
+    return false;
   }
 };
 
@@ -54,14 +50,16 @@ const userSchema = yup.object({
     .email("Please enter a valid email address")
     .test(
       "university-domain",
-      "Email must use GUC domain (@student.guc.edu.eg, @staff.guc.edu.eg, @ta.guc.edu.eg, or @professor.guc.edu.eg)",
+      "Email must use GUC domain (@guc.edu.eg)",
       function (value) {
         if (!value) return false;
-        const pattern =
-          /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor)\.guc\.edu\.eg$/;
-        return pattern.test(value);
+        return isGUCEmail(value);
       }
     ),
+  requestedRole: yup
+    .string()
+    .required("Please select your role")
+    .oneOf(["student", "staff", "ta", "professor"], "Invalid role selected"),
   password: yup
     .string()
     .required("Password is required")
@@ -88,15 +86,8 @@ const userSchema = yup.object({
   yearOfStudy: yup
     .mixed()
     .nullable()
-    .when("email", {
-      is: (email) => {
-        if (!email) return false;
-        try {
-          return getRoleFromEmail(email) === "student";
-        } catch {
-          return false;
-        }
-      },
+    .when("requestedRole", {
+      is: "student",
       then: (schema) =>
         schema.test(
           "valid-year",
@@ -144,6 +135,7 @@ const UserSignup = () => {
       firstName: "",
       lastName: "",
       email: "",
+      requestedRole: "",
       password: "",
       confirmPassword: "",
       universityId: "",
@@ -154,7 +146,8 @@ const UserSignup = () => {
   });
 
   const watchedEmail = watch("email") || "";
-  const detectedRole = getRoleFromEmail(watchedEmail);
+  const watchedRequestedRole = watch("requestedRole") || "";
+  const isGUCEmailDetected = isGUCEmail(watchedEmail);
 
   const yearOptions = Array.from({ length: 5 }, (_, i) => ({
     value: i + 1,
@@ -165,21 +158,16 @@ const UserSignup = () => {
     try {
       setIsSubmitting(true);
 
-      // Remove confirmPassword from data
+      // Remove confirmPassword from data and pass requestedRole to backend
       const { confirmPassword, ...submitData } = data;
 
-      // Extract role from email
-      const role = getRoleFromEmail(submitData.email);
-      if (!role) {
-        toast.error(
-          "Invalid email domain. Please use GUC email with @student.guc.edu.eg, @staff.guc.edu.eg, @ta.guc.edu.eg, or @professor.guc.edu.eg domain."
-        );
-        setIsSubmitting(false);
-        return;
+      // Handle role assignment logic:
+      // If requestedRole is "student", assign "student" to role field for immediate access
+      // Otherwise, send requestedRole to backend for admin verification
+      if (data.requestedRole === "student") {
+        submitData.role = "student";
       }
-
-      // Add role to submit data
-      submitData.role = role;
+      // requestedRole is always sent to backend for processing
 
       // Convert yearOfStudy to number if it exists and is not empty
       if (submitData.yearOfStudy && submitData.yearOfStudy !== "") {
@@ -188,6 +176,19 @@ const UserSignup = () => {
         // Remove yearOfStudy from submitData if it's empty or null
         delete submitData.yearOfStudy;
       }
+
+      // Clean up empty string fields that might cause backend validation issues
+      if (submitData.department === "") {
+        delete submitData.department;
+      }
+      if (submitData.phoneNumber === "") {
+        delete submitData.phoneNumber;
+      }
+
+      console.log(
+        "🔍 [DEBUG] Submitting user data:",
+        JSON.stringify(submitData, null, 2)
+      );
 
       // Proceed with registration
       const result = await registerUser(submitData);
@@ -299,8 +300,8 @@ const UserSignup = () => {
         <div style={headerStyles}>
           <h1 style={titleStyles}>Join Campus Events Hub</h1>
           <p style={subtitleStyles}>
-            Sign up as a {detectedRole || "university member"} to discover and
-            participate in campus events
+            Sign up as a {watchedRequestedRole || "university member"} to
+            discover and participate in campus events
           </p>
         </div>
 
@@ -329,10 +330,40 @@ const UserSignup = () => {
           <Input
             label="University Email Address"
             type="email"
-            placeholder="e.g., john@student.guc.edu.eg or jane@staff.guc.edu.eg"
+            placeholder="e.g., john.doe@guc.edu.eg"
             required
             error={errors.email?.message}
             {...register("email")}
+          />
+
+          {/* Show GUC email detection */}
+          {isGUCEmailDetected && (
+            <div
+              style={{
+                fontSize: theme.typography.fontSize.sm,
+                color: theme.colors.primary.main,
+                marginTop: `-${theme.spacing[3]}`,
+                marginBottom: theme.spacing[2],
+                fontWeight: theme.typography.fontWeight.medium,
+              }}
+            >
+              ✓ GUC Email Detected
+            </div>
+          )}
+
+          {/* Requested Role Selection */}
+          <Select
+            label="Requested Role"
+            placeholder="Select your role"
+            options={[
+              { value: "student", label: "Student" },
+              { value: "staff", label: "Staff" },
+              { value: "ta", label: "Teaching Assistant" },
+              { value: "professor", label: "Professor" },
+            ]}
+            required
+            error={errors.requestedRole?.message}
+            {...register("requestedRole")}
           />
 
           {/* Password Fields */}
@@ -384,7 +415,7 @@ const UserSignup = () => {
           </div>
 
           {/* Year of Study (for students only) */}
-          {detectedRole === "student" && (
+          {watchedRequestedRole === "student" && (
             <Select
               label="Year of Study"
               placeholder="Select your year"

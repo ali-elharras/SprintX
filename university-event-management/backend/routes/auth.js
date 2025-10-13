@@ -30,10 +30,8 @@ const userRegistrationValidation = [
   body("email")
     .isEmail()
     .normalizeEmail()
-    .matches(/^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor)\.guc\.edu\.eg$/)
-    .withMessage(
-      "Email must use GUC domain (@student.guc.edu.eg, @staff.guc.edu.eg, @ta.guc.edu.eg, or @professor.guc.edu.eg)"
-    ),
+    .matches(/^[a-zA-Z0-9._%+-]+@guc\.edu\.eg$/)
+    .withMessage("Email must use GUC domain (@guc.edu.eg)"),
   body("password")
     .isLength({ min: 8 })
     .withMessage("Password must be at least 8 characters long")
@@ -41,7 +39,13 @@ const userRegistrationValidation = [
     .withMessage(
       "Password must contain at least one uppercase letter, one lowercase letter, and one number"
     ),
+  body("requestedRole")
+    .isIn(["student", "staff", "ta", "professor"])
+    .withMessage(
+      "Requested role must be one of: student, staff, ta, professor"
+    ),
   body("role")
+    .optional()
     .isIn(["student", "staff", "ta", "professor"])
     .withMessage("Role must be one of: student, staff, ta, professor"),
   body("universityId")

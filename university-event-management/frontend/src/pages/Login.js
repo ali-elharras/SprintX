@@ -9,21 +9,11 @@ import { useAuth } from "../context/AuthContext";
 import theme from "../theme";
 import Card from "../components/Card";
 import Input from "../components/Input";
-import Select from "../components/Select";
 import Button from "../components/Button";
 
-// Function to detect university role from email
-const getUniversityRole = (email) => {
-  const match = email.match(
-    /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor|admin|eventsoffice)\.[a-zA-Z0-9.-]+$/
-  );
-  if (match) {
-    const role = match[1];
-    if (role === "eventsoffice") return "Events Office";
-    if (role === "ta") return "TA";
-    return role.charAt(0).toUpperCase() + role.slice(1);
-  }
-  return null;
+// Function to detect if email is GUC email format
+const isGUCEmail = (email) => {
+  return /^[a-zA-Z0-9._%+-]+@guc\.edu\.eg$/i.test(email);
 };
 
 // Validation schema
@@ -58,7 +48,7 @@ const Login = () => {
   });
 
   const watchedEmail = watch("email");
-  const detectedRole = getUniversityRole(watchedEmail);
+  const isUniversityEmail = isGUCEmail(watchedEmail);
 
   // Check for email verification success
   useEffect(() => {
@@ -91,75 +81,90 @@ const Login = () => {
         return;
       }
 
-      // Validate that this is a university email
-      const universityPattern =
-        /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor|admin|eventsoffice)\.[a-zA-Z0-9.-]+$/;
-      if (!universityPattern.test(data.email)) {
-        toast.error(
-          "Please use your university email address (@student, @staff, @ta, @professor, @admin, or @eventsoffice). For company emails, use Company Access."
-        );
-        setIsSubmitting(false);
-        return;
+      let result;
+      let isVendorLogin = false;
+
+      // Try university login first if it's a GUC email
+      if (isGUCEmail(data.email)) {
+        console.log("=== TRYING UNIVERSITY LOGIN ===");
+        result = await loginUser({
+          email: data.email,
+          password: data.password,
+        });
+        console.log("=== University LOGIN RESULT ===", result);
+      } else {
+        // Try vendor login for non-GUC emails
+        console.log("=== TRYING VENDOR LOGIN ===");
+        result = await loginVendor({
+          email: data.email,
+          password: data.password,
+        });
+        console.log("=== Vendor LOGIN RESULT ===", result);
+        isVendorLogin = true;
       }
 
-      // This is now university member login only
-      console.log("=== CALLING loginUser ===");
-      const result = await loginUser({
-        email: data.email,
-        password: data.password,
-      });
-      console.log("=== loginUser RESULT ===", result);
-
       if (result.success) {
-        const accountData = result.data.user;
+        if (isVendorLogin) {
+          // Vendor login successful
+          const accountData = result.data.vendor;
+          toast.success(
+            `Welcome back, ${
+              accountData.organizationName || accountData.email
+            }!`
+          );
+          navigate("/vendor-dashboard", { replace: true });
+        } else {
+          // University member login successful
+          const accountData = result.data.user;
+          toast.success(
+            `Welcome back, ${accountData.firstName} ${accountData.lastName}!`
+          );
 
-        toast.success(
-          `Welcome back, ${accountData.firstName} ${accountData.lastName}!`
-        );
-
-        // Navigate to intended destination or dashboard
-        navigate(from, { replace: true });
-      } else {
-        console.log("Login result:", result); // Debug log
-        console.log(
-          "result.emailVerificationSent:",
-          result.emailVerificationSent
-        );
-        console.log("result.canReapply:", result.canReapply);
-        console.log(
-          "Condition check:",
-          result.emailVerificationSent && result.canReapply
-        );
-
-        // Check if verification email is required (incomplete registration)
-        if (result.requiresVerificationEmail) {
-          console.log("Navigating to verification-email-selection");
-          navigate("/verification-email-selection", {
-            state: {
-              userData: result.data?.userData,
-              userId: result.data?.userId,
-            },
-          });
-          return;
+          // Route based on user role
+          if (
+            accountData.role === "admin" ||
+            accountData.role === "event-office"
+          ) {
+            navigate("/admin-dashboard", { replace: true });
+          } else {
+            navigate(from, { replace: true });
+          }
         }
+      } else {
+        // Handle university member verification issues
+        if (!isVendorLogin) {
+          console.log("Login result:", result);
 
-        // Check if verification email has been sent but user hasn't verified
-        if (result.emailVerificationSent && result.canReapply) {
-          console.log("Navigating to verification-pending with data:", {
-            userId: result.data?.userId,
-            email: result.data?.email,
-            verificationEmail: result.data?.verificationEmail,
-            message: result.error,
-          });
-          navigate("/verification-pending", {
-            state: {
+          // Check if verification email is required (incomplete registration)
+          if (result.requiresVerificationEmail) {
+            console.log("Navigating to verification-email-selection");
+            navigate("/verification-email-selection", {
+              state: {
+                userData: result.data?.userData,
+                userId: result.data?.userId,
+              },
+            });
+            return;
+          }
+
+          // Check if verification email has been sent but user hasn't verified
+          if (result.emailVerificationSent && result.canReapply) {
+            console.log("Navigating to verification-pending with data:", {
               userId: result.data?.userId,
               email: result.data?.email,
               verificationEmail: result.data?.verificationEmail,
               message: result.error,
-            },
-          });
-          return;
+            });
+            navigate("/verification-pending", {
+              state: {
+                userId: result.data?.userId,
+                email: result.data?.email,
+                verificationEmail: result.data?.verificationEmail,
+                message: result.error,
+              },
+            });
+            return;
+          }
         }
 
         console.log("Showing toast error for result:", result);
@@ -228,53 +233,12 @@ const Login = () => {
     fontWeight: theme.typography.fontWeight.medium,
   };
 
-  const dividerStyles = {
-    display: "flex",
-    alignItems: "center",
-    margin: `${theme.spacing[6]} 0`,
-    color: theme.colors.text.secondary,
-    fontSize: theme.typography.fontSize.sm,
-  };
-
-  const dividerLineStyles = {
-    flex: 1,
-    height: "1px",
-    backgroundColor: theme.colors.border.light,
-  };
-
   const title = "GUC Events Login";
   const subtitle =
     "Access your account to discover and participate in campus events";
 
   return (
     <div style={containerStyles}>
-      {/* Vendor Access Button */}
-      <Link
-        to="/vendor-login"
-        style={{
-          position: "absolute",
-          top: theme.spacing[6],
-          right: theme.spacing[6],
-          textDecoration: "none",
-        }}
-      >
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          style={{
-            fontSize: theme.typography.fontSize.sm,
-            padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
-            color: "#000000",
-            backgroundColor: "rgba(255, 255, 255, 0.1)",
-            backdropFilter: "blur(10px)",
-            border: `1px solid ${theme.colors.border.light}`,
-          }}
-        >
-          Company Access
-        </Button>
-      </Link>
-
       <Card style={cardStyles}>
         <div style={headerStyles}>
           <h1 style={titleStyles}>{title}</h1>
@@ -286,14 +250,14 @@ const Login = () => {
           <Input
             label="Email Address"
             type="email"
-            placeholder="Enter your university email"
+            placeholder="Enter your email address"
             required
             error={errors.email?.message}
             {...register("email")}
           />
 
-          {/* Show detected role only when actually detected */}
-          {detectedRole && (
+          {/* Show if GUC email is detected */}
+          {isUniversityEmail && (
             <div
               style={{
                 fontSize: theme.typography.fontSize.sm,
@@ -303,7 +267,7 @@ const Login = () => {
                 fontWeight: theme.typography.fontWeight.medium,
               }}
             >
-              ✓ Detected: {detectedRole}
+              ✓ GUC Email Detected
             </div>
           )}
 
@@ -329,26 +293,13 @@ const Login = () => {
             {isSubmitting || isLoading ? "Signing In..." : "Sign In"}
           </Button>
 
-          {/* Divider */}
-          <div style={dividerStyles}>
-            <div style={dividerLineStyles}></div>
-            <span style={{ margin: `0 ${theme.spacing[4]}` }}>
-              Don't have an account?
-            </span>
-            <div style={dividerLineStyles}></div>
+          {/* Signup Link */}
+          <div style={linkStyles}>
+            <span>Don't have an account? </span>
+            <Link to="/signup" style={linkAnchorStyles}>
+              Sign up here
+            </Link>
           </div>
-
-          {/* Registration Link */}
-          <Link to="/signup/user" style={{ textDecoration: "none" }}>
-            <Button
-              type="button"
-              variant="outline"
-              size="md"
-              style={{ width: "100%" }}
-            >
-              Register as University Member
-            </Button>
-          </Link>
 
           {/* Help Links */}
           <div style={linkStyles}>

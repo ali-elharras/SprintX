@@ -6,22 +6,18 @@ const crypto = require("crypto");
 
 // Helper function to determine if email is a vendor email
 const isVendorEmail = (email) => {
-  const vendorPattern =
-    /^[a-zA-Z0-9._%+-]+@(?!student\.|staff\.|ta\.|professor\.|admin\.|eventsoffice\.).+$/;
-  const universityPattern =
-    /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor|admin|eventsoffice)\.[a-zA-Z0-9.-]+$/;
-  return vendorPattern.test(email) && !universityPattern.test(email);
+  // With the new unified email format, GUC emails end with @guc.edu.eg
+  // All other emails are vendor emails
+  return !/^[a-zA-Z0-9._%+-]+@guc\.edu\.eg$/i.test(email);
 };
 
 // Helper function to extract role from university email
 const getRoleFromEmail = (email) => {
-  const match = email.match(
-    /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor|admin|eventsoffice)\.[a-zA-Z0-9.-]+$/
-  );
-  if (match) {
-    // Map email domain to database role
-    const domainRole = match[1];
-    return domainRole === "eventsoffice" ? "events_office" : domainRole;
+  // With the new unified email format, we can no longer extract role from email
+  // This function is kept for backward compatibility but will return null for new format
+  // Role determination now happens during registration with requestedRole field
+  if (/^[a-zA-Z0-9._%+-]+@guc\.edu\.eg$/i.test(email)) {
+    return "university_member"; // Generic designation for new format
   }
   return null;
 };
@@ -54,6 +50,7 @@ const registerUser = async (req, res, next) => {
       email,
       password,
       role,
+      requestedRole,
       universityId,
       department,
       yearOfStudy,
@@ -61,29 +58,23 @@ const registerUser = async (req, res, next) => {
       verificationEmail,
     } = req.body;
 
-    // Validate that the provided role matches the email domain
-    const emailRole = getRoleFromEmail(email);
-    if (!emailRole) {
+    // Validate that email is using the new GUC format
+    if (!email.endsWith("@guc.edu.eg")) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid university email domain. Please use @student, @staff, @ta, or @professor domain for registration.",
+        message: "Email must use GUC domain (@guc.edu.eg)",
       });
     }
 
-    // Block registration for admin and events office - these are login-only accounts
-    if (emailRole === "admin" || emailRole === "events_office") {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Registration not allowed for this email domain. Please contact your administrator.",
-      });
-    }
+    // Determine the role logic:
+    // 1. If role is provided (for students), use it
+    // 2. If requestedRole is provided, use it for role assignment logic
+    const targetRole = role || requestedRole;
 
-    if (role !== emailRole) {
+    if (!targetRole) {
       return res.status(400).json({
         success: false,
-        message: `Role mismatch. Email domain suggests '${emailRole}' but '${role}' was provided.`,
+        message: "Either role or requestedRole must be provided",
       });
     }
 
@@ -106,14 +97,17 @@ const registerUser = async (req, res, next) => {
     }
 
     // For staff, TA, and professor, verificationEmail is required
-    if (["staff", "ta", "professor"].includes(role) && !verificationEmail) {
+    if (
+      ["staff", "ta", "professor"].includes(targetRole) &&
+      !verificationEmail
+    ) {
       // Create incomplete user record
       const incompleteUserData = {
         firstName,
         lastName,
         email,
         password,
-        role,
+        role: targetRole,
         universityId,
         phoneNumber,
         department,
@@ -133,7 +127,7 @@ const registerUser = async (req, res, next) => {
             firstName,
             lastName,
             email,
-            role,
+            role: targetRole,
             universityId,
             department,
             phoneNumber,
@@ -148,28 +142,31 @@ const registerUser = async (req, res, next) => {
       lastName,
       email,
       password,
-      role,
+      role: targetRole,
       universityId,
       phoneNumber,
     };
 
     // Add role-specific fields
-    if (["student", "staff", "ta", "professor"].includes(role)) {
+    if (["student", "staff", "ta", "professor"].includes(targetRole)) {
       userData.department = department;
     }
-    if (role === "student") {
+    if (targetRole === "student") {
       userData.yearOfStudy = yearOfStudy;
     }
 
     // Add verification email for staff, TA, professor
-    if (["staff", "ta", "professor"].includes(role) && verificationEmail) {
+    if (
+      ["staff", "ta", "professor"].includes(targetRole) &&
+      verificationEmail
+    ) {
       userData.verificationEmail = verificationEmail;
     }
 
     // Verification policy:
     // - Students are auto-verified
     // - Staff/TA/Professor require admin verification (isVerified remains false)
-    userData.isVerified = role === "student";
+    userData.isVerified = targetRole === "student";
     userData.isRegistrationComplete = true;
 
     const user = await User.create(userData);
@@ -441,10 +438,12 @@ const login = async (req, res, next) => {
       account = await User.findByEmail(email).select("+password");
       accountType = "user";
 
-      // Log for debugging new email types
-      const userRole = getRoleFromEmail(email);
-      if (userRole === "admin" || userRole === "events_office") {
-        console.log(`🔐 [LOGIN] ${userRole} login attempt for: ${email}`);
+      // Log for debugging login attempts
+      if (
+        account &&
+        (account.role === "admin" || account.role === "events_office")
+      ) {
+        console.log(`🔐 [LOGIN] ${account.role} login attempt for: ${email}`);
       }
     }
 
