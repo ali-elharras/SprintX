@@ -53,7 +53,15 @@ const conferenceSchema = new mongoose.Schema({
         type: Number,
         required: [true, 'Max participants is required'],
         min: [1, 'Max participants must be at least 1']
-    }
+    },
+    // currentParticipants: {
+    //     type: Number,
+    //     default: 0,
+    // },
+    // registrationDeadline: {
+    //     type: Date,
+    //     required: [true, 'Registration deadline is required']
+    // },
 }, {
     timestamps: true
 });

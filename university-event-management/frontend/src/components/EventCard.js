@@ -529,7 +529,6 @@ const handleDeleteConference = async () => {
             )}
           </div>
         )}
-
         {/* Action Buttons */}
         <div
           style={{
@@ -552,7 +551,7 @@ const handleDeleteConference = async () => {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  Edit Conference
+                  Edit
                 </Button>
               </div>
               <div style={{ flex: 1 }}>
@@ -573,8 +572,8 @@ const handleDeleteConference = async () => {
               </div>
             </>
           ) : (
-            /* Single Register Now button for regular users */
-            showRegistration && canRegister() && (
+            /* Single Register Now button for regular users only */
+            !isEventsOffice && showRegistration && canRegister() && (
               <div style={{ flex: 1 }}>
                 <Button
                   variant="primary"
