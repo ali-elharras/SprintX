@@ -207,6 +207,15 @@ export const applicationServices = {
       throw error;
     }
   },
+
+  getApprovedVendorsForBazaar: async (bazaarId) => {
+    try {
+      const response = await api.get(`/applications/bazaar/${bazaarId}/approved-vendors`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 // ============================================
