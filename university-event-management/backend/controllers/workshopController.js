@@ -260,34 +260,38 @@ exports.rejectWorkshop = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Cannot reject a published workshop' });
         }
         
-        // Update workshop status to rejected
-        workshop.status = 'rejected';
-        await workshop.save();
+        // Store workshop details before deletion for notification
+        const workshopName = workshop.workshopName;
+        const creatorId = workshop.createdBy?._id;
         
-        // Create notification for professor about rejection
-        if (workshop.createdBy && workshop.createdBy._id) {
+        // Create notification for professor about rejection BEFORE deleting
+        if (creatorId) {
             try {
                 const rejectionMessage = reason 
-                    ? `Your workshop "${workshop.workshopName}" has been rejected. Reason: ${reason}`
-                    : `Your workshop "${workshop.workshopName}" has been rejected by Events Office.`;
+                    ? `Your workshop "${workshopName}" has been rejected and removed. Reason: ${reason}`
+                    : `Your workshop "${workshopName}" has been rejected and removed by Events Office.`;
                 
                 await createNotification(
-                    workshop.createdBy._id,
+                    creatorId,
                     rejectionMessage,
                     'workshop_rejected',
                     workshop._id,
-                    workshop.workshopName,
+                    workshopName,
                     { reason: reason || 'No reason provided', rejectedBy: req.user ? `${req.user.firstName} ${req.user.lastName}` : 'Events Office' }
                 );
             } catch (notifError) {
                 console.error('Error creating rejection notification:', notifError);
+                // Continue with deletion even if notification fails
             }
         }
         
+        // Delete the workshop from the database
+        await Workshop.findByIdAndDelete(workshopId);
+        
         res.status(200).json({
             success: true,
-            message: 'Workshop rejected successfully',
-            workshop
+            message: 'Workshop rejected and deleted successfully',
+            workshopName: workshopName
         });
     } catch (error) {
         console.error('Error rejecting workshop:', error);
