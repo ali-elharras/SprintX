@@ -271,7 +271,7 @@ const MyRegistrations = () => {
         <div style={headerStyles}>
           <h1 style={titleStyles}>My Events</h1>
           <p style={subtitleStyles}>
-            View and manage your registered and created events.
+            View and manage your registered events.
           </p>
         </div>
 
