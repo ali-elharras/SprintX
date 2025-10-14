@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import theme, { getEventTypeColor } from "../theme";
 import Button from "./Button";
 import RegistrationForm from "./RegistrationForm";
 import { useAuth } from "../context/AuthContext";
 import { conferenceAPI } from "../services/api";
+import { eventAPI } from "../services/api";
+import { applicationServices } from "../services/api";
 import toast from "react-hot-toast";
 
 const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit }) => {
@@ -27,6 +29,8 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
 
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [participatingVendors, setParticipatingVendors] = useState([]);
+  const [vendorsLoading, setVendorsLoading] = useState(false);
   const navigate = useNavigate();
   const { isEventsOffice, user } = useAuth();
 
@@ -139,6 +143,27 @@ const handleDeleteConference = async () => {
   };
 
   const statusInfo = getStatusInfo();
+
+  // Fetch participating vendors for bazaar events
+  useEffect(() => {
+    const fetchParticipatingVendors = async () => {
+      if (event.type === 'bazaar' && event._id) {
+        setVendorsLoading(true);
+        try {
+          const response = await applicationServices.getApprovedVendorsForBazaar(event._id);
+          setParticipatingVendors(response.data || []);
+        } catch (error) {
+          console.error('Error fetching participating vendors:', error);
+          // Don't show error toast for this - it's not critical for event display
+          setParticipatingVendors([]);
+        } finally {
+          setVendorsLoading(false);
+        }
+      }
+    };
+
+    fetchParticipatingVendors();
+  }, [event.type, event._id]);
 
   if (showRegistrationForm) {
     return (
@@ -287,6 +312,103 @@ const handleDeleteConference = async () => {
         >
           {normalizedEvent.description}
         </p>
+
+        {/* Participating Vendors Section - Only for Bazaars */}
+        {event.type === 'bazaar' && participatingVendors.length > 0 && (
+          <div
+            style={{
+              background: theme.colors.neutral.gray50,
+              padding: theme.spacing[4],
+              borderRadius: theme.borderRadius.base,
+              marginBottom: theme.spacing[4],
+              border: `1px solid ${theme.colors.border}`,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: theme.spacing[2],
+                marginBottom: theme.spacing[3],
+              }}
+            >
+              <span style={{ fontSize: theme.typography.fontSize.lg }}>🏪</span>
+              <h4
+                style={{
+                  margin: 0,
+                  fontSize: theme.typography.fontSize.base,
+                  fontWeight: theme.typography.fontWeight.semibold,
+                  color: theme.colors.text.primary,
+                }}
+              >
+                Participating Vendors ({participatingVendors.length})
+              </h4>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: theme.spacing[2],
+              }}
+            >
+              {participatingVendors.slice(0, 5).map((vendor) => (
+                <div
+                  key={vendor._id}
+                  style={{
+                    background: theme.colors.background.paper,
+                    border: `1px solid ${theme.colors.border}`,
+                    borderRadius: theme.borderRadius.sm,
+                    padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
+                    fontSize: theme.typography.fontSize.sm,
+                    fontWeight: theme.typography.fontWeight.medium,
+                    color: theme.colors.text.primary,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: theme.spacing[1],
+                  }}
+                >
+                  <span style={{ fontSize: "0.9em" }}>🏢</span>
+                  {vendor.companyName}
+                </div>
+              ))}
+              {participatingVendors.length > 5 && (
+                <div
+                  style={{
+                    background: theme.colors.primary.main,
+                    color: theme.colors.text.white,
+                    border: `1px solid ${theme.colors.primary.dark}`,
+                    borderRadius: theme.borderRadius.sm,
+                    padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
+                    fontSize: theme.typography.fontSize.sm,
+                    fontWeight: theme.typography.fontWeight.semibold,
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  +{participatingVendors.length - 5} more
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Loading state for vendors */}
+        {event.type === 'bazaar' && vendorsLoading && (
+          <div
+            style={{
+              background: theme.colors.neutral.gray50,
+              padding: theme.spacing[4],
+              borderRadius: theme.borderRadius.base,
+              marginBottom: theme.spacing[4],
+              border: `1px solid ${theme.colors.border}`,
+              textAlign: 'center',
+            }}
+          >
+            <p style={{ margin: 0, fontSize: theme.typography.fontSize.sm, color: theme.colors.text.secondary }}>
+              Loading vendors...
+            </p>
+          </div>
+        )}
 
         {/* Registration Info */}
         {normalizedEvent.registrationRequired && (
