@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
+import toast from 'react-hot-toast';
 
 // --- Configuration ---
 const API_URL = 'http://localhost:5000/api/workshops';
@@ -321,7 +322,7 @@ const CreateWorkshop = () => {
         throw new Error(errorMessage);
       }
 
-      alert('✅ Workshop created successfully and saved to the database!');
+      toast.success('Workshop successfully created and waiting for approval!');
       // Navigate to workshops page to see the pending workshop
       navigate('/workshops');
     } catch (error) {

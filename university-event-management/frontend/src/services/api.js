@@ -244,6 +244,28 @@ export const eventAPI = {
 };
 
 // ============================================
+// WORKSHOP API ENDPOINTS
+// ============================================
+export const workshopAPI = {
+  getAllWorkshops: (params = {}, cancelToken = null) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return retryRequest(async () =>
+      api.get(`/workshops${queryParams ? `?${queryParams}` : ""}`, {
+        ...(cancelToken && { cancelToken: cancelToken.token }),
+      })
+    );
+  },
+  createWorkshop: (workshopData) => api.post("/workshops", workshopData),
+  updateWorkshop: (id, workshopData) => api.patch(`/workshops/${id}`, workshopData),
+  deleteWorkshop: (id) => api.delete(`/workshops/${id}`),
+  publishWorkshop: (id) => api.post(`/workshops/${id}/publish`),
+  rejectWorkshop: (id, reason = null) => 
+    api.post(`/workshops/${id}/reject`, reason ? { reason } : {}),
+  requestEditWorkshop: (id, message) => 
+    api.post(`/workshops/${id}/request-edit`, { message }),
+};
+
+// ============================================
 // REGISTRATION API ENDPOINTS
 // ============================================
 export const registrationAPI = {

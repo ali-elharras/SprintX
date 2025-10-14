@@ -9,7 +9,7 @@ import Select from "../components/Select";
 import Navbar from "../components/Navbar";
 import ConferenceModal from "./ConferenceModal";
 import LoadingScreen from "../components/LoadingScreen";
-import api, { eventAPI, createCancelTokenSource } from "../services/api";
+import api, { eventAPI, workshopAPI, createCancelTokenSource } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 import CreateDropdownButton from '../components/CreateDropdownButton';
@@ -763,10 +763,10 @@ const applyFilters = () => {
                 >
                   <div style={{ maxWidth: "75%" }}>
                     <div style={{ fontSize: theme.typography.fontSize.lg, fontWeight: 600 }}>
-                      {w.name}
+                      {w.workshopName || w.name}
                     </div>
                     <div style={{ color: theme.colors.text.secondary, marginTop: theme.spacing[1] }}>
-                      <strong>Professor:</strong> {w.professorName} • <strong>Date:</strong>{" "}
+                      <strong>Professor:</strong> {w.createdBy ? `${w.createdBy.firstName} ${w.createdBy.lastName}` : (w.professorName || 'N/A')} • <strong>Date:</strong>{" "}
                       {new Date(w.startDate).toLocaleString()} • <strong>Location:</strong> {w.location}
                     </div>
                     <div style={{ marginTop: theme.spacing[2], color: theme.colors.text.primary }}>
@@ -875,43 +875,20 @@ const applyFilters = () => {
                       return;
                     }
 
-                    // Store edit request locally (for now) so professor can later view it.
-                    try {
-                      const key = "event_edit_requests";
-                      const existing = JSON.parse(localStorage.getItem(key) || "{}");
-                      existing[w.id || w._id || `local-${Date.now()}`] = {
-                        eventId: w._id || w.id,
-                        message: requestEditsMessage.trim(),
-                        requestedBy: {
-                          name: auth.user?.firstName ? `${auth.user.firstName} ${auth.user.lastName}` : "Events Office",
-                          id: auth.user?.id || null,
-                        },
-                        requestedAt: new Date().toISOString(),
-                        status: "needs_revision",
-                      };
-                      localStorage.setItem(key, JSON.stringify(existing));
-                    } catch (err) {
-                      console.error("Failed to persist edit request locally:", err);
-                    }
-
                     // Remove from pending list locally
-                    setPendingWorkshops((prev) => prev.filter((p) => p.id !== w.id));
+                    setPendingWorkshops((prev) => prev.filter((p) => p._id !== w._id));
 
-                    // If this has a backend id, attempt to update status to 'rejected' or 'needs_revision' via API
-                    // Since backend doesn't yet have a 'needs_revision' status in the controller allowed list,
-                    // we'll set status to 'rejected' for backend but keep a local note. This simulates the flow
-                    // until backend support is added.
+                    // Call backend API to request edits
                     if (w._id) {
                       try {
-                        // Send needs_revision with message to backend
-                        await eventAPI.updateEventStatus(w._id, "needs_revision", requestEditsMessage.trim());
-                        toast.success(`Requested edits for "${w.name}" (professor notified)`);
+                        await workshopAPI.requestEditWorkshop(w._id, requestEditsMessage.trim());
+                        toast.success("Edit request sent successfully!");
                       } catch (err) {
-                        console.error("Failed to update event status on server:", err);
-                        toast.error("Edit request saved locally. Server update failed.");
+                        console.error("Failed to send edit request:", err);
+                        toast.error("Failed to send edit request. Please try again.");
                       }
                     } else {
-                      toast.success(`Requested edits for "${w.name}"`);
+                      toast.success("Edit request sent successfully!");
                     }
 
                     setRequestEditsCandidate(null);
@@ -1143,7 +1120,7 @@ const applyFilters = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h2 style={{ margin: 0 }}>{selectedPending.name}</h2>
+                <h2 style={{ margin: 0 }}>{selectedPending.workshopName || selectedPending.name}</h2>
                 <div style={{ display: "flex", gap: theme.spacing[3] }}>
                   <Button variant="outline" onClick={() => setSelectedPending(null)}>
                     Close
@@ -1152,25 +1129,27 @@ const applyFilters = () => {
               </div>
 
               <div style={{ marginTop: theme.spacing[4], color: theme.colors.text.secondary }}>
-                <p><strong>Professor / Instructor:</strong> {selectedPending.professorName || selectedPending.instructor}</p>
+                <p><strong>Professor / Instructor:</strong> {selectedPending.createdBy ? `${selectedPending.createdBy.firstName} ${selectedPending.createdBy.lastName}` : (selectedPending.professorName || selectedPending.instructor || 'N/A')}</p>
                 <p>
                   <strong>Date:</strong> {new Date(selectedPending.startDate).toLocaleString()} - {new Date(selectedPending.endDate).toLocaleString()}
                 </p>
                 <p><strong>Location:</strong> {selectedPending.location}</p>
-                <p style={{ marginTop: theme.spacing[3] }}>{selectedPending.description || selectedPending.shortDescription}</p>
+                <p style={{ marginTop: theme.spacing[3] }}>{selectedPending.shortDescription || selectedPending.description}</p>
 
                 <hr style={{ margin: `${theme.spacing[4]} 0`, borderColor: theme.colors.border }} />
 
                 <h3>Full Details</h3>
                 <p><strong>Agenda</strong></p>
-                <pre style={{ whiteSpace: 'pre-wrap', background: theme.colors.background.default, padding: theme.spacing[3], borderRadius: theme.borderRadius.sm }}>{selectedPending.details?.agenda}</pre>
+                <pre style={{ whiteSpace: 'pre-wrap', background: theme.colors.background.default, padding: theme.spacing[3], borderRadius: theme.borderRadius.sm }}>{selectedPending.fullAgenda || selectedPending.details?.agenda || 'No agenda provided'}</pre>
 
-                <p><strong>Faculty Responsible:</strong> {selectedPending.details?.facultyResponsible}</p>
-                <p><strong>Budget:</strong> {selectedPending.details?.budget}</p>
-                <p><strong>Funding Source:</strong> {selectedPending.details?.fundingSource}</p>
-                <p><strong>Contact Email:</strong> {selectedPending.details?.contactEmail}</p>
-                <p><strong>Materials:</strong> {selectedPending.details?.materials}</p>
-                <p><strong>Prerequisites:</strong> {selectedPending.details?.prerequisites}</p>
+                <p><strong>Faculty Responsible:</strong> {selectedPending.facultyResponsible || selectedPending.details?.facultyResponsible || 'N/A'}</p>
+                <p><strong>Budget:</strong> {selectedPending.requiredBudget || selectedPending.details?.budget || 'N/A'}</p>
+                <p><strong>Funding Source:</strong> {selectedPending.fundingSource || selectedPending.details?.fundingSource || 'N/A'}</p>
+                <p><strong>Contact Email:</strong> {selectedPending.contactEmail || selectedPending.details?.contactEmail || 'N/A'}</p>
+                <p><strong>Extra Resources:</strong> {selectedPending.extraRequiredResources || selectedPending.details?.materials || 'N/A'}</p>
+                <p><strong>Professors Participating:</strong> {selectedPending.professorsParticipating || selectedPending.details?.prerequisites || 'N/A'}</p>
+                <p><strong>Registration Deadline:</strong> {selectedPending.registrationDeadline ? new Date(selectedPending.registrationDeadline).toLocaleString() : 'N/A'}</p>
+                <p><strong>Capacity:</strong> {selectedPending.capacity || 'N/A'}</p>
               </div>
             </div>
           </div>
@@ -1217,34 +1196,31 @@ const applyFilters = () => {
                 </Button>
                 <Button
                   variant="primary"
-                  onClick={() => {
+                  onClick={async () => {
                     const w = publishCandidate;
 
-                    // Create a published event object consistent with EventCard expectations
-                    const publishedEvent = {
-                      _id: `local-published-${Date.now()}`,
-                      title: w.name,
-                      name: w.name,
-                      description: w.description || w.shortDescription,
-                      type: "workshop",
-                      startDate: w.startDate,
-                      endDate: w.endDate,
-                      location: w.location,
-                      instructor: w.instructor,
-                      duration: w.duration || 3,
-                      status: "published",
-                      // Ensure registration is required so the card shows "Registration Open"
-                      registrationRequired: true,
-                      currentParticipants: 0,
-                      maxParticipants: 100,
-                      // No registrationDeadline provided so registration remains open until start
-                      organizerDetails: { name: w.professorName },
-                    };
-
-                    // Animate removal and insertion: update states
-                    setPendingWorkshops((prev) => prev.filter((p) => p.id !== w.id));
-                    setEvents((prev) => [publishedEvent, ...prev]);
-                    toast.success(`Published "${w.name}"`);
+                    try {
+                      // Call the backend API to publish the workshop
+                      const response = await workshopAPI.publishWorkshop(w._id);
+                      
+                      if (response.data.success && response.data.event) {
+                        const publishedEvent = response.data.event;
+                        
+                        // Remove from pending workshops
+                        setPendingWorkshops((prev) => prev.filter((p) => p._id !== w._id));
+                        
+                        // Add to events list
+                        setEvents((prev) => [publishedEvent, ...prev]);
+                        
+                        // Show success message with workshop name
+                        toast.success(`Workshop "${w.workshopName || 'successfully'}" published!`);
+                      } else {
+                        toast.error("Failed to publish workshop. Please try again.");
+                      }
+                    } catch (err) {
+                      console.error("Failed to publish workshop:", err);
+                      toast.error(err.response?.data?.message || "Failed to publish workshop on server.");
+                    }
 
                     // Close modal
                     setPublishCandidate(null);
@@ -1307,14 +1283,14 @@ const applyFilters = () => {
                     // If this pending has a backend id, call API to mark rejected
                     if (w._id) {
                       try {
-                        await eventAPI.updateEventStatus(w._id, "rejected");
-                        toast.success(`Rejected "${w.name}"`);
+                        await workshopAPI.rejectWorkshop(w._id);
+                        toast.success(`Workshop successfully rejected!`);
                       } catch (err) {
-                        console.error("Failed to mark event as rejected:", err);
-                        toast.error("Failed to reject event on server. See console for details.");
+                        console.error("Failed to reject workshop:", err);
+                        toast.error("Failed to reject workshop on server. See console for details.");
                       }
                     } else {
-                      toast.success(`Rejected "${w.name}"`);
+                      toast.success(`Workshop successfully rejected!`);
                     }
 
                     setRejectCandidate(null);
