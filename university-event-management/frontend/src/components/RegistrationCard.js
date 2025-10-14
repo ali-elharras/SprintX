@@ -259,9 +259,9 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false }) => {
         </div>
         
         <div style={buttonGroupStyles}>
-          <Link to={`/events/${event._id}`}>
+          <Link to="/events">
             <Button variant="outline" size="sm">
-              View Event
+              Browse Events
             </Button>
           </Link>
           
