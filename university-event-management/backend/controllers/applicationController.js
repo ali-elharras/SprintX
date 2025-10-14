@@ -148,6 +148,36 @@ const getMyRequests = async (req, res, next) => {
   }
 };
 
+// @desc    Get applications for a specific bazaar (for event cards)
+// @route   GET /api/applications/bazaar/:bazaarId/approved-vendors
+// @access  Public (for event display)
+const getApprovedVendorsForBazaar = async (req, res, next) => {
+  try {
+    const { bazaarId } = req.params;
+
+    // Get all approved bazaar applications for this bazaar
+    const approvedApplications = await BazaarApplication.find({
+      bazaar: bazaarId,
+      status: 'approved'
+    }).populate('vendor', 'companyName logo');
+
+    // Extract vendor information
+    const vendors = approvedApplications.map(app => ({
+      _id: app.vendor._id,
+      companyName: app.vendor.companyName,
+      logo: app.vendor.logo
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: vendors,
+      count: vendors.length
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Get all applications (for admins)
 // @route   GET /api/applications
 // @access  Private (Admin/Events Office)
@@ -220,5 +250,6 @@ module.exports = {
   getMyParticipations,
   getMyRequests,
   getAllApplications,
+  getApprovedVendorsForBazaar,
   updateApplicationStatus,
 };
