@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import theme, { getEventTypeColor } from "../theme";
@@ -13,6 +13,558 @@ import api, { eventAPI, workshopAPI, createCancelTokenSource } from "../services
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 import CreateDropdownButton from '../components/CreateDropdownButton';
+
+// Workshop Components and Styles (from Workshops.js)
+const themeColors = {
+  indigo600: '#4f46e5',
+  indigo50: '#eef2ff',
+  orange600: '#ea580c',
+  fuchsia600: '#c026d3',
+  gray100: '#f3f4f6',
+  gray900: '#111827',
+  gray500: '#6b7280',
+  red600: '#dc2626',
+  red50: '#fef2f2',
+};
+
+const workshopStyleSheet = {
+  'card-border-MET': { borderTopColor: themeColors.indigo600 },
+  'card-border-IET': { borderTopColor: themeColors.orange600 },
+  'card-border-MGT': { borderTopColor: '#16a34a' },
+  'card-border-PHAR': { borderTopColor: '#0ea5e9' },
+  'card-border-ARCH': { borderTopColor: '#f59e42' },
+  'card-border-ART': { borderTopColor: themeColors.fuchsia600 },
+  'card-border-Other': { borderTopColor: themeColors.gray500 },
+  'badge-MET': { backgroundColor: themeColors.indigo50, color: themeColors.indigo600 },
+  'badge-IET': { backgroundColor: '#fff7ed', color: '#c2410c' },
+  'badge-MGT': { backgroundColor: '#dcfce7', color: '#16a34a' },
+  'badge-PHAR': { backgroundColor: '#e0f2fe', color: '#0ea5e9' },
+  'badge-ARCH': { backgroundColor: '#fef9c3', color: '#f59e42' },
+  'badge-ART': { backgroundColor: '#fae8ff', color: '#a215b9' },
+  'badge-Other': { backgroundColor: themeColors.gray100, color: themeColors.gray500 },
+  'badge-default': { backgroundColor: themeColors.gray100, color: themeColors.gray500 },
+  'card-btn-edit-default': { 
+    color: themeColors.indigo600, 
+    borderColor: themeColors.indigo600, 
+    backgroundColor: 'transparent' 
+  },
+  'card-btn-view-toggle-default': { 
+    color: themeColors.indigo600, 
+    backgroundColor: themeColors.indigo50, 
+    borderColor: 'transparent' 
+  },
+  'card-btn-delete-default': {
+    color: themeColors.red600,
+    borderColor: themeColors.red600,
+    backgroundColor: 'transparent',
+  }
+};
+
+const FacultyBadge = ({ faculty }) => {
+  let styleKey = '';
+  switch (faculty) {
+    case 'MET': styleKey = 'badge-MET'; break;
+    case 'IET': styleKey = 'badge-IET'; break;
+    case 'MGT': styleKey = 'badge-MGT'; break;
+    case 'PHAR': styleKey = 'badge-PHAR'; break;
+    case 'ARCH': styleKey = 'badge-ARCH'; break;
+    case 'ART': styleKey = 'badge-ART'; break;
+    case 'Other': styleKey = 'badge-Other'; break;
+    default: styleKey = 'badge-default';
+  }
+  const baseStyle = {
+    padding: '0.25rem 0.75rem',
+    fontSize: '0.75rem', 
+    fontWeight: 600,
+    borderRadius: '9999px',
+  };
+  return <span style={{ ...baseStyle, ...workshopStyleSheet[styleKey] }}>{faculty}</span>;
+};
+
+const StatusBadge = ({ status }) => {
+  const getStatusStyle = () => {
+    switch (status) {
+      case 'pending': return { backgroundColor: '#fef3c7', color: '#d97706' };
+      case 'published': return { backgroundColor: '#dcfce7', color: '#16a34a' };
+      case 'rejected': return { backgroundColor: '#fecaca', color: '#dc2626' };
+      case 'needs_revision': return { backgroundColor: '#dbeafe', color: '#2563eb' };
+      default: return { backgroundColor: '#f3f4f6', color: '#6b7280' };
+    }
+  };
+  const getStatusLabel = () => {
+    switch (status) {
+      case 'pending': return '⏳ Pending for Approval';
+      case 'published': return '✅ Published';
+      case 'rejected': return '❌ Rejected';
+      case 'needs_revision': return '📝 Needs Revision';
+      default: return status;
+    }
+  };
+  const baseStyle = {
+    padding: '0.25rem 0.75rem',
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    borderRadius: '9999px',
+    display: 'inline-block',
+    marginLeft: '0.5rem',
+  };
+  return <span style={{ ...baseStyle, ...getStatusStyle() }}>{getStatusLabel()}</span>;
+};
+
+const WorkshopIconMap = {
+  Location: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>,
+  People: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 17H10"/></svg>,
+  Agenda: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>,
+  Finance: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+  ChevronDown: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>,
+  ChevronUp: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>,
+  Trash: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+};
+
+const DetailSectionHeader = ({ title, icon }) => (
+  <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: themeColors.indigo600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center' }}>
+    <span style={{ marginRight: '0.25rem', width: '14px', height: '14px' }}>{icon}</span>
+    {title}
+  </h4>
+);
+
+const WorkshopCard = ({ workshop, onEdit, onDelete }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isToggleHovered, setIsToggleHovered] = useState(false);
+  const [isEditHovered, setIsEditHovered] = useState(false);
+  const [isDeleteHovered, setIsDeleteHovered] = useState(false);
+
+  const getBorderClassKey = (faculty) => {
+    switch (faculty) {
+      case 'MET': return 'card-border-MET';
+      case 'IET': return 'card-border-IET';
+      case 'MGT': return 'card-border-MGT';
+      case 'PHAR': return 'card-border-PHAR';
+      case 'ARCH': return 'card-border-ARCH';
+      case 'ART': return 'card-border-ART';
+      case 'Other': return 'card-border-Other';
+      default: return 'card-border-Other';
+    }
+  };
+  const borderStyle = workshopStyleSheet[getBorderClassKey(workshop.facultyResponsible)] || {};
+  const uniqueId = workshop._id || workshop.id;
+  const isRejected = workshop.status === 'rejected';
+  
+  const cardBaseStyle = {
+    backgroundColor: isRejected ? '#fef2f2' : 'white',
+    padding: '1.5rem',
+    borderRadius: '1rem',
+    boxShadow: isHovered 
+      ? '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+      : '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05)',
+    border: isRejected ? '2px solid #ef4444' : '1px solid #e5e7eb',
+    transition: 'box-shadow 0.3s, transform 0.3s',
+    transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
+    display: 'flex',
+    flexDirection: 'column',
+    borderTopWidth: isRejected ? '6px' : '6px', 
+    borderTopStyle: 'solid',
+    borderTopColor: isRejected ? '#dc2626' : '#9ca3af',
+    cursor: 'default'
+  };
+
+  const professorsList = Array.isArray(workshop.professorsParticipating) 
+    ? workshop.professorsParticipating 
+    : (workshop.professors || []); 
+
+  return (
+    <div 
+      style={{ ...cardBaseStyle, ...(isRejected ? {} : borderStyle) }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: themeColors.gray900, lineHeight: 1.4, marginRight: '0.5rem' }}>
+            {workshop.workshopName}
+          </h3>
+          {workshop.status && <StatusBadge status={workshop.status} />}
+        </div>
+        <FacultyBadge faculty={workshop.facultyResponsible} />
+      </div>
+      <p style={{ fontSize: '0.875rem', color: '#4b5563', marginBottom: '1rem' }}>
+        {workshop.shortDescription}
+      </p>
+      
+      {workshop.editRequests && workshop.editRequests.length > 0 && workshop.status === 'needs_revision' && (
+        <div style={{ backgroundColor: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '0.5rem', padding: '0.75rem', marginBottom: '1rem' }}>
+          <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#92400e', marginBottom: '0.5rem', display: 'flex', alignItems: 'center' }}>
+            ✏️ Edit Request
+          </h4>
+          {workshop.editRequests.map((editReq, index) => (
+            <div key={index} style={{ marginBottom: index < workshop.editRequests.length - 1 ? '0.5rem' : 0 }}>
+              <p style={{ fontSize: '0.875rem', color: '#78350f', marginBottom: '0.25rem' }}>
+                <strong>Message:</strong> {editReq.message}
+              </p>
+              {editReq.requestedBy && editReq.requestedBy.name && (
+                <p style={{ fontSize: '0.75rem', color: '#92400e' }}>
+                  Requested by: {editReq.requestedBy.name}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      
+      <div style={{ flexGrow: 1 }}> 
+        <div style={{ paddingTop: '0.75rem', paddingBottom: '0.75rem', marginTop: '0.25rem' }}>
+          <DetailSectionHeader title="Faculty & Logistics" icon={WorkshopIconMap.People} />
+          <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
+            <strong style={{ color: '#1f2937', fontWeight: 600 }}>Responsible Faculty:</strong> {workshop.facultyResponsible}
+          </p>
+          <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
+            <strong style={{ color: '#1f2937', fontWeight: 600 }}>Professors:</strong> {professorsList.join(', ')}
+          </p>
+          <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
+            <strong style={{ color: '#1f2937', fontWeight: 600 }}>Capacity:</strong> {workshop.attendees || 0} / {workshop.capacity}
+          </p>
+          <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
+            <strong style={{ color: '#1f2937', fontWeight: 600 }}>Required Resources:</strong> {workshop.extraRequiredResources}
+          </p>
+        </div>
+
+        {isExpanded && (
+          <>
+            <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '0.75rem', paddingBottom: '0.75rem', marginTop: '0.25rem' }}>
+              <DetailSectionHeader title="Location & Dates" icon={WorkshopIconMap.Location} />
+              <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
+                <strong style={{ color: '#1f2937', fontWeight: 600 }}>Campus:</strong> {workshop.location}
+              </p>
+              <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
+                <strong style={{ color: '#1f2937', fontWeight: 600 }}>Start:</strong> {workshop.startDate} @ {workshop.startTime}
+              </p>
+              <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
+                <strong style={{ color: '#1f2937', fontWeight: 600 }}>End:</strong> {workshop.endDate} @ {workshop.endTime}
+              </p>
+              <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
+                <strong style={{ color: '#1f2937', fontWeight: 600 }}>Duration:</strong> {workshop.duration}
+              </p>
+              <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
+                <strong style={{ color: '#1f2937', fontWeight: 600 }}>Reg. Deadline:</strong> {workshop.registrationDeadline}
+              </p>
+            </div>
+            
+            <div style={{ borderTop: '1px solid solid #f3f4f6', paddingTop: '0.75rem', paddingBottom: '0.75rem', marginTop: '0.25rem' }}>
+              <DetailSectionHeader title="Agenda Summary" icon={WorkshopIconMap.Agenda} />
+              <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>{workshop.fullAgenda}</p>
+            </div>
+
+            <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '0.75rem', paddingBottom: '0.75rem', marginTop: '0.25rem' }}>
+              <DetailSectionHeader title="Finance" icon={WorkshopIconMap.Finance} />
+              <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
+                <strong style={{ color: '#1f2937', fontWeight: 600 }}>Required Budget:</strong> {workshop.requiredBudget}
+              </p>
+              <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
+                <strong style={{ color: '#1f2937', fontWeight: 600 }}>Funding Source:</strong> {workshop.fundingSource}
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+        <button 
+          style={{ 
+            ...workshopStyleSheet['card-btn-view-toggle-default'], 
+            padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: 600, 
+            borderRadius: '0.5rem', transition: 'all 0.15s', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', border: 'none',
+            backgroundColor: isToggleHovered ? themeColors.indigo600 : themeColors.indigo50,
+            color: isToggleHovered ? 'white' : themeColors.indigo600,
+          }}
+          onMouseEnter={() => setIsToggleHovered(true)}
+          onMouseLeave={() => setIsToggleHovered(false)}
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          {isExpanded ? 'Hide Details' : 'View Details'}
+          <span style={{ marginLeft: '0.5rem', width: '16px', height: '16px' }}>
+            {isExpanded ? WorkshopIconMap.ChevronUp : WorkshopIconMap.ChevronDown}
+          </span>
+        </button>
+
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button 
+            style={{ 
+              ...workshopStyleSheet['card-btn-edit-default'],
+              padding: '0.35rem 1rem', fontSize: '0.875rem', fontWeight: 500, 
+              borderRadius: '0.5rem', transition: 'all 0.15s', cursor: 'pointer',
+              border: `1px solid ${themeColors.indigo600}`, 
+              backgroundColor: isEditHovered ? themeColors.indigo600 : 'transparent',
+              color: isEditHovered ? 'white' : themeColors.indigo600,
+            }}
+            onMouseEnter={() => setIsEditHovered(true)}
+            onMouseLeave={() => setIsEditHovered(false)}
+            onClick={() => onEdit(uniqueId, workshop.workshopName)} 
+          >
+            Edit
+          </button>
+          
+          <button 
+            style={{ 
+              ...workshopStyleSheet['card-btn-delete-default'],
+              padding: '0.35rem 1rem', fontSize: '0.875rem', fontWeight: 500, 
+              borderRadius: '0.5rem', transition: 'all 0.15s', cursor: 'pointer',
+              border: `1px solid ${themeColors.red600}`, 
+              backgroundColor: isDeleteHovered ? themeColors.red600 : 'transparent',
+              color: isDeleteHovered ? 'white' : themeColors.red600,
+              display: 'flex', alignItems: 'center', gap: '0.25rem'
+            }}
+            onMouseEnter={() => setIsDeleteHovered(true)}
+            onMouseLeave={() => setIsDeleteHovered(false)}
+            onClick={() => onDelete(uniqueId, workshop.workshopName)} 
+          >
+            {WorkshopIconMap.Trash}
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Edit Workshop Modal Component
+const workshopModalStyles = {
+  overlay: {
+    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+    background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+    overflow: 'auto',
+  },
+  container: {
+    background: 'white', borderRadius: '1rem', padding: '2rem', minWidth: '350px', maxWidth: '90vw',
+    maxHeight: '90vh', overflowY: 'auto',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.15)', fontFamily: 'Inter, sans-serif',
+    display: 'flex', flexDirection: 'column',
+  },
+  title: {
+    fontSize: '1.5rem', fontWeight: 800, color: themeColors.indigo600, marginBottom: '1rem', textAlign: 'center',
+  },
+  label: {
+    fontWeight: 600, color: themeColors.gray900, marginBottom: '0.25rem', fontSize: '1rem',
+  },
+  input: {
+    padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '0.75rem', fontSize: '1rem', marginBottom: '0.75rem',
+    width: '100%', boxSizing: 'border-box',
+  },
+  textarea: {
+    padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '0.75rem', fontSize: '1rem', marginBottom: '0.75rem',
+    width: '100%', minHeight: '80px', boxSizing: 'border-box',
+  },
+  button: {
+    backgroundColor: themeColors.indigo600, color: 'white', padding: '0.75rem 1.5rem', borderRadius: '0.75rem',
+    fontWeight: 700, fontSize: '1rem', border: 'none', cursor: 'pointer', marginTop: '0.5rem',
+    boxShadow: '0 2px 6px rgba(79,70,229,0.15)', transition: 'background 0.2s',
+  },
+  cancelButton: {
+    backgroundColor: themeColors.gray100, color: themeColors.gray900, padding: '0.75rem 1.5rem', borderRadius: '0.75rem',
+    fontWeight: 600, fontSize: '1rem', border: 'none', cursor: 'pointer', marginTop: '0.5rem',
+  }
+};
+
+const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
+  const [formData, setFormData] = useState(workshop || {});
+  const [errorMsg, setErrorMsg] = useState('');
+  
+  useEffect(() => {
+    setFormData(workshop || {});
+    setErrorMsg('');
+  }, [workshop]);
+
+  if (!open) return null;
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrorMsg('');
+  };
+
+  const validateForm = () => {
+    const requiredFields = [
+      'workshopName', 'shortDescription', 'location', 'startDate', 'endDate',
+      'fullAgenda', 'facultyResponsible', 'capacity', 'registrationDeadline', 'requiredBudget', 'fundingSource'
+    ];
+    for (const field of requiredFields) {
+      if (!formData[field] || (typeof formData[field] === 'string' && formData[field].trim() === '')) {
+        setErrorMsg('Please fill in all required fields.');
+        return false;
+      }
+    }
+    const startDate = new Date(formData.startDate);
+    const endDate = new Date(formData.endDate);
+    const regDeadline = new Date(formData.registrationDeadline);
+    if (endDate <= startDate) {
+      setErrorMsg('End date must be after start date.');
+      return false;
+    }
+    if (regDeadline > startDate) {
+      setErrorMsg('Registration deadline must be on or before the start date.');
+      return false;
+    }
+    setErrorMsg('');
+    return true;
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    const changedFields = {};
+    Object.keys(formData).forEach((key) => {
+      if (formData[key] !== workshop[key]) {
+        changedFields[key] = formData[key];
+      }
+    });
+    onSubmit(changedFields);
+  };
+
+  return (
+    <div style={workshopModalStyles.overlay}>
+      <div style={workshopModalStyles.container}>
+        <div style={workshopModalStyles.title}>Edit Workshop</div>
+        {errorMsg && (
+          <div style={{ color: themeColors.red600, background: themeColors.red50, padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '0.5rem', textAlign: 'center', fontWeight: 600 }}>
+            {errorMsg}
+          </div>
+        )}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <label style={workshopModalStyles.label}>Workshop Name</label>
+          <input
+            style={workshopModalStyles.input}
+            name="workshopName"
+            value={formData.workshopName || ''}
+            onChange={handleChange}
+            placeholder="Workshop Name"
+          />
+          <label style={workshopModalStyles.label}>Short Description</label>
+          <textarea
+            style={workshopModalStyles.textarea}
+            name="shortDescription"
+            value={formData.shortDescription || ''}
+            onChange={handleChange}
+            placeholder="Short Description"
+            maxLength={200}
+          />
+          <label style={workshopModalStyles.label}>Full Agenda</label>
+          <textarea
+            style={workshopModalStyles.textarea}
+            name="fullAgenda"
+            value={formData.fullAgenda || ''}
+            onChange={handleChange}
+            placeholder="Full Agenda"
+          />
+          <label style={workshopModalStyles.label}>Location</label>
+          <select
+            style={workshopModalStyles.input}
+            name="location"
+            value={formData.location || ''}
+            onChange={handleChange}
+          >
+            <option value="">Select Location</option>
+            <option value="GUC Cairo">GUC Cairo</option>
+            <option value="GUC Berlin">GUC Berlin</option>
+          </select>
+          <label style={workshopModalStyles.label}>Start Date</label>
+          <input
+            style={workshopModalStyles.input}
+            type="date"
+            name="startDate"
+            value={formData.startDate ? formData.startDate.slice(0,10) : ''}
+            onChange={handleChange}
+          />
+          <label style={workshopModalStyles.label}>End Date</label>
+          <input
+            style={workshopModalStyles.input}
+            type="date"
+            name="endDate"
+            value={formData.endDate ? formData.endDate.slice(0,10) : ''}
+            onChange={handleChange}
+          />
+          <label style={workshopModalStyles.label}>Faculty Responsible</label>
+          <select
+            style={workshopModalStyles.input}
+            name="facultyResponsible"
+            value={formData.facultyResponsible || ''}
+            onChange={handleChange}
+          >
+            <option value="">Select Faculty</option>
+            <option value="MET">MET</option>
+            <option value="IET">IET</option>
+            <option value="MGT">MGT</option>
+            <option value="PHAR">PHAR</option>
+            <option value="ARCH">ARCH</option>
+            <option value="ART">ART</option>
+            <option value="Other">Other</option>
+          </select>
+          <label style={workshopModalStyles.label}>Professors Participating (comma separated)</label>
+          <input
+            style={workshopModalStyles.input}
+            name="professorsParticipating"
+            value={Array.isArray(formData.professorsParticipating) ? formData.professorsParticipating.join(', ') : (formData.professorsParticipating || '')}
+            onChange={e => {
+              setFormData(prev => ({ ...prev, professorsParticipating: e.target.value.split(',').map(s => s.trim()) }));
+            }}
+            placeholder="Professors Participating"
+          />
+          <label style={workshopModalStyles.label}>Capacity</label>
+          <input
+            style={workshopModalStyles.input}
+            type="number"
+            name="capacity"
+            min={1}
+            value={formData.capacity || ''}
+            onChange={handleChange}
+            placeholder="Capacity"
+          />
+          <label style={workshopModalStyles.label}>Registration Deadline</label>
+          <input
+            style={workshopModalStyles.input}
+            type="date"
+            name="registrationDeadline"
+            value={formData.registrationDeadline ? formData.registrationDeadline.slice(0,10) : ''}
+            onChange={handleChange}
+          />
+          <label style={workshopModalStyles.label}>Extra Required Resources</label>
+          <textarea
+            style={workshopModalStyles.textarea}
+            name="extraRequiredResources"
+            value={formData.extraRequiredResources || ''}
+            onChange={handleChange}
+            placeholder="Extra Required Resources"
+            maxLength={500}
+          />
+          <label style={workshopModalStyles.label}>Required Budget</label>
+          <input
+            style={workshopModalStyles.input}
+            type="number"
+            name="requiredBudget"
+            min={0}
+            value={formData.requiredBudget || ''}
+            onChange={handleChange}
+            placeholder="Required Budget"
+          />
+          <label style={workshopModalStyles.label}>Funding Source</label>
+          <select
+            style={workshopModalStyles.input}
+            name="fundingSource"
+            value={formData.fundingSource || ''}
+            onChange={handleChange}
+          >
+            <option value="">Select Funding Source</option>
+            <option value="External">External</option>
+            <option value="GUC">GUC</option>
+            <option value="Joint">Joint</option>
+          </select>
+          <button type="submit" style={workshopModalStyles.button}>Save Changes</button>
+          <button type="button" style={workshopModalStyles.cancelButton} onClick={onClose}>Cancel</button>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
   const cardStyle = {
@@ -140,6 +692,15 @@ const EventsPage = () => {
   const cancelTokenRef = useRef(null);
 
   const [pendingWorkshops, setPendingWorkshops] = useState([]);
+  const [professorWorkshops, setProfessorWorkshops] = useState([]); // For professors to see their own workshops
+  
+  // Workshop-specific states for professor dashboard
+  const [workshopSearchTerm, setWorkshopSearchTerm] = useState('');
+  const [workshopsLoading, setWorkshopsLoading] = useState(false);
+  const [workshopsError, setWorkshopsError] = useState(null);
+  const [editWorkshopModalOpen, setEditWorkshopModalOpen] = useState(false);
+  const [editingWorkshop, setEditingWorkshop] = useState(null);
+  const [deleteWorkshopCandidate, setDeleteWorkshopCandidate] = useState(null);
 
   const [selectedPending, setSelectedPending] = useState(null);
   const [publishCandidate, setPublishCandidate] = useState(null);
@@ -198,8 +759,19 @@ const EventsPage = () => {
       const visibleStatuses = ["published", "accepted", "approved", "upcoming", "active", "completed", "pending", "needs_revision"];
       allEvents = allEvents.filter(event => visibleStatuses.includes(event.status));
       
+      // Don't filter out published workshops - they should be visible to all users for registration
+      // Only filter out non-published workshops (pending, needs_revision, rejected)
+      allEvents = allEvents.filter(event => {
+        if (event.type !== 'workshop') return true; // Keep all non-workshop events
+        // For workshops: only show published ones to regular users
+        // Events Office will see pending workshops in a separate section
+        if (auth?.isEventsOffice) return event.status === 'published'; // Events Office sees published workshops in main grid
+        return event.status === 'published'; // All other users (students, staff, TAs, professors) see published workshops
+      });
+      
       console.log("Filtered events:", allEvents);
 
+      // Fetch workshops for Events Office (pending approvals)
       if (auth?.isEventsOffice) {
         try {
           const [pendingResp, revisionResp, userBazaarsResponse] = await Promise.all([
@@ -234,6 +806,29 @@ const EventsPage = () => {
         } catch (err) {
           if (!err.isCancelled && err.name !== 'CanceledError') {
             console.warn('Could not fetch additional Events Office data', err);
+          }
+        }
+      }
+
+      // Fetch workshops for Professors (their own workshops with all statuses)
+      if (auth?.user?.role === 'professor') {
+        try {
+          const workshopsResponse = await api.get('/workshops', {
+            cancelToken: currentCancelToken.token
+          });
+          
+          const allWorkshops = workshopsResponse.data || [];
+          // Filter to show only workshops created by this professor
+          const myWorkshops = allWorkshops.filter(workshop => {
+            const isOwner = (typeof workshop.createdBy === "object" && workshop.createdBy?._id === auth.user?.id) || 
+                           (typeof workshop.createdBy === "string" && workshop.createdBy === auth.user?.id);
+            return isOwner;
+          });
+          
+          setProfessorWorkshops(myWorkshops);
+        } catch (err) {
+          if (!err.isCancelled && err.name !== 'CanceledError') {
+            console.warn('Could not fetch professor workshops', err);
           }
         }
       }
@@ -314,6 +909,88 @@ const EventsPage = () => {
     
     setFilteredEvents(filtered);
   };
+
+  // Workshop Action Handlers
+  const handleEditWorkshop = useCallback((id, title) => {
+    const workshop = professorWorkshops.find(w => (w._id || w.id) === id);
+    setEditingWorkshop(workshop);
+    setEditWorkshopModalOpen(true);
+  }, [professorWorkshops]);
+
+  const handleWorkshopModalSubmit = async (changedFields) => {
+    if (!editingWorkshop || !editingWorkshop._id) return;
+    setWorkshopsLoading(true);
+    setWorkshopsError(null);
+    try {
+      const updatedFields = { ...changedFields };
+      if (editingWorkshop.status === 'needs_revision') {
+        updatedFields.status = 'pending';
+      }
+      
+      await api.patch(`/workshops/${editingWorkshop._id}`, updatedFields);
+      
+      if (editingWorkshop.status === 'needs_revision') {
+        toast.success('✅ Workshop resubmitted successfully! It is now pending approval from the Events Office.');
+      } else {
+        toast.success('Workshop updated successfully!');
+      }
+      
+      setEditWorkshopModalOpen(false);
+      setEditingWorkshop(null);
+      fetchEvents();
+    } catch (e) {
+      setWorkshopsError(e.message || 'Failed to update workshop');
+      toast.error(e.message || 'Failed to update workshop');
+    } finally {
+      setWorkshopsLoading(false);
+    }
+  };
+
+  const handleDeleteWorkshop = useCallback(async (id, title) => {
+    setDeleteWorkshopCandidate({ id, title });
+  }, []);
+
+  const confirmDeleteWorkshop = async () => {
+    const { id, title } = deleteWorkshopCandidate;
+    setDeleteWorkshopCandidate(null);
+    setWorkshopsError(null);
+    setWorkshopsLoading(true);
+    try {
+      await api.delete(`/workshops/${id}`);
+      localStorage.setItem('workshop_deleted', Date.now().toString());
+      toast.success('Workshop deleted successfully!');
+      fetchEvents();
+    } catch (e) {
+      console.error('Delete error:', e);
+      
+      // Check if the error is due to existing registrations
+      const errorMessage = e.response?.data?.message || e.message;
+      
+      if (errorMessage.includes('students have already registered')) {
+        setWorkshopsError('Cannot delete workshop - students have already registered');
+        toast.error('Cannot delete workshop - students have already registered', { duration: 5000 });
+      } else {
+        setWorkshopsError(`Could not delete workshop. Error: ${errorMessage}`);
+        toast.error(`Could not delete workshop. Error: ${errorMessage}`);
+      }
+      setWorkshopsLoading(false);
+    }
+  };
+
+  const filteredProfessorWorkshops = useMemo(() => {
+    if (!auth?.user?.role === 'professor') return [];
+    const searchLower = workshopSearchTerm.toLowerCase();
+    const results = professorWorkshops.filter(workshop => {
+      if (!workshop) return false;
+      const nameMatch = workshop.workshopName && workshop.workshopName.toLowerCase().includes(searchLower);
+      const descriptionMatch = workshop.shortDescription && workshop.shortDescription.toLowerCase().includes(searchLower);
+      const locationMatch = workshop.location && workshop.location.toLowerCase().includes(searchLower);
+      const facultyMatch = workshop.facultyResponsible && workshop.facultyResponsible.toLowerCase().includes(searchLower);
+      const statusMatch = workshop.status && workshop.status.toLowerCase().includes(searchLower);
+      return nameMatch || descriptionMatch || locationMatch || facultyMatch || statusMatch;
+    });
+    return results.sort((a, b) => new Date(a.startDate) - new Date(b.startDate)); 
+  }, [workshopSearchTerm, professorWorkshops, auth]);
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({
@@ -651,6 +1328,84 @@ const EventsPage = () => {
             </p>
           </div>
 
+          {/* Professor's Own Workshops Dashboard */}
+          {auth?.user?.role === 'professor' && professorWorkshops.length > 0 && (
+            <div style={{ marginBottom: theme.spacing[6], backgroundColor: '#f9fafb', padding: theme.spacing[5], borderRadius: theme.borderRadius.lg }}>
+              <div style={{ maxWidth: '80rem', marginLeft: 'auto', marginRight: 'auto', marginBottom: theme.spacing[6] }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing[4] }}>
+                  <h2 style={{ fontSize: '1.875rem', fontWeight: 800, color: themeColors.gray900, margin: 0 }}>
+                    My Workshops Dashboard
+                  </h2>
+                  <button
+                    style={{ 
+                      display: 'flex', alignItems: 'center', backgroundColor: themeColors.indigo600, color: 'white', 
+                      padding: '0.65rem 1.25rem', borderRadius: '0.75rem', 
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
+                      transition: 'all 0.3s', fontSize: '1rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+                    }}
+                    onClick={() => navigate('/create-workshop')}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.5rem' }}>
+                      <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Create New Workshop
+                  </button>
+                </div>
+
+                <div style={{ marginTop: theme.spacing[4], marginBottom: theme.spacing[5] }}>
+                  <input
+                    type="text"
+                    placeholder="Search workshops by title, description, location, or faculty..."
+                    value={workshopSearchTerm}
+                    onChange={(e) => setWorkshopSearchTerm(e.target.value)}
+                    style={{ 
+                      width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', 
+                      borderRadius: '0.75rem', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', 
+                      transition: 'border-color 0.15s, box-shadow 0.15s', fontSize: '1rem',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ maxWidth: '80rem', marginLeft: 'auto', marginRight: 'auto' }}>
+                {workshopsLoading && (
+                  <div style={{ textAlign: 'center', padding: '3rem 0', backgroundColor: 'white', borderRadius: '0.75rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', border: '1px solid #f3f4f6' }}>
+                    <p style={{ fontSize: '1.125rem', color: '#4b5563' }}>Loading workshops from database... ⏳</p>
+                  </div>
+                )}
+
+                {workshopsError && (
+                  <div style={{ textAlign: 'center', padding: '1.5rem', backgroundColor: themeColors.red50, borderRadius: '0.75rem', border: `1px solid ${themeColors.red600}` }}>
+                    <p style={{ fontSize: '1rem', fontWeight: 600, color: themeColors.red600 }}>Error: {workshopsError}</p>
+                  </div>
+                )}
+
+                {!workshopsLoading && !workshopsError && filteredProfessorWorkshops.length === 0 && workshopSearchTerm === '' ? (
+                  <div style={{ textAlign: 'center', padding: '3rem 0', backgroundColor: 'white', borderRadius: '0.75rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', border: '1px solid #f3f4f6' }}>
+                    <p style={{ fontSize: '1.125rem', color: '#4b5563' }}>
+                      No workshops found. Start by creating a new one!
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+                    gap: '1.5rem', 
+                  }}>
+                    {filteredProfessorWorkshops.map((workshop) => (
+                      <WorkshopCard 
+                        key={workshop._id || workshop.id} 
+                        workshop={workshop} 
+                        onEdit={handleEditWorkshop}
+                        onDelete={handleDeleteWorkshop}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {auth.isEventsOffice && pendingWorkshops.length > 0 && (
             <div
               style={{
@@ -689,8 +1444,11 @@ const EventsPage = () => {
                     }}
                   >
                     <div style={{ maxWidth: "75%" }}>
-                      <div style={{ fontSize: theme.typography.fontSize.lg, fontWeight: 600 }}>
-                        {w.workshopName || w.name}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing[2], marginBottom: theme.spacing[1] }}>
+                        <div style={{ fontSize: theme.typography.fontSize.lg, fontWeight: 600 }}>
+                          {w.workshopName || w.name}
+                        </div>
+                        {w.status && <StatusBadge status={w.status} />}
                       </div>
                       <div style={{ color: theme.colors.text.secondary, marginTop: theme.spacing[1] }}>
                         <strong>Professor:</strong> {w.createdBy ? `${w.createdBy.firstName} ${w.createdBy.lastName}` : (w.professorName || 'N/A')} • <strong>Date:</strong>{" "}
@@ -699,6 +1457,28 @@ const EventsPage = () => {
                       <div style={{ marginTop: theme.spacing[2], color: theme.colors.text.primary }}>
                         {w.shortDescription}
                       </div>
+                      
+                      {/* Show edit requests if any */}
+                      {w.editRequests && w.editRequests.length > 0 && w.status === 'needs_revision' && (
+                        <div style={{ 
+                          marginTop: theme.spacing[2],
+                          backgroundColor: '#fef3c7', 
+                          border: '1px solid #fbbf24', 
+                          borderRadius: theme.borderRadius.base, 
+                          padding: theme.spacing[2]
+                        }}>
+                          <div style={{ fontSize: theme.typography.fontSize.sm, fontWeight: 600, color: '#92400e', marginBottom: theme.spacing[1] }}>
+                            ✏️ Edit Request Sent
+                          </div>
+                          {w.editRequests.map((editReq, index) => (
+                            <div key={index}>
+                              <p style={{ fontSize: theme.typography.fontSize.sm, color: '#78350f', margin: 0 }}>
+                                <strong>Message:</strong> {editReq.message}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div style={{ display: "flex", gap: theme.spacing[3] }}>
@@ -798,41 +1578,18 @@ const EventsPage = () => {
                       }
 
                       try {
-                        const key = "event_edit_requests";
-                        const existing = JSON.parse(localStorage.getItem(key) || "{}");
-                        existing[w.id || w._id || `local-${Date.now()}`] = {
-                          eventId: w._id || w.id,
-                          message: requestEditsMessage.trim(),
-                          requestedBy: {
-                            name: auth.user?.firstName ? `${auth.user.firstName} ${auth.user.lastName}` : "Events Office",
-                            id: auth.user?.id || null,
-                          },
-                          requestedAt: new Date().toISOString(),
-                          status: "needs_revision",
-                        };
-                        localStorage.setItem(key, JSON.stringify(existing));
-                      } catch (err) {
-                        console.error("Failed to persist edit request locally:", err);
-                      }
-
-                      setPendingWorkshops((prev) => prev.filter((p) => p.id !== w.id));
-
-                      if (w._id) {
-                        try {
-                          await eventAPI.updateEventStatus(w._id, "needs_revision", requestEditsMessage.trim());
-                          toast.success(`Requested edits for "${w.name}" (professor notified)`);
-                          // Remove from pending list locally
-                          setPendingWorkshops((prev) => prev.filter((p) => p._id !== w._id));
-
-                          // Call backend API to request edits
-                          await workshopAPI.requestEditWorkshop(w._id, requestEditsMessage.trim());
-                          toast.success("Edit request sent successfully!");
-                        } catch (err) {
-                          console.error("Failed to send edit request:", err);
-                          toast.error("Failed to send edit request. Please try again.");
-                        }
-                      } else {
+                        // Call backend API to request edits for workshop
+                        await workshopAPI.requestEditWorkshop(w._id, requestEditsMessage.trim());
                         toast.success("Edit request sent successfully!");
+                        
+                        // Remove from pending list locally
+                        setPendingWorkshops((prev) => prev.filter((p) => p._id !== w._id));
+                        
+                        // Refresh events to update the list
+                        fetchEvents();
+                      } catch (err) {
+                        console.error("Failed to send edit request:", err);
+                        toast.error(err.response?.data?.message || "Failed to send edit request. Please try again.");
                       }
 
                       setRequestEditsCandidate(null);
@@ -1128,7 +1885,7 @@ const EventsPage = () => {
                   Are you sure you want to publish this workshop?
                 </h3>
                 <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[4] }}>
-                  Publishing will make the workshop visible to all stakeholders.
+                  This will make the workshop publicly available for registration.
                 </p>
 
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing[3] }}>
@@ -1201,11 +1958,19 @@ const EventsPage = () => {
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <h3 style={{ marginTop: 0, marginBottom: theme.spacing[2] }}>
-                  Confirm rejection
+                <h3 style={{ marginTop: 0, marginBottom: theme.spacing[2], color: theme.colors.danger }}>
+                  Reject Workshop Submission?
                 </h3>
-                <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[4] }}>
-                  Rejecting this workshop will mark it as <strong>rejected</strong> and remove it from the pending approvals list.
+                <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[2], lineHeight: 1.6 }}>
+                  Are you sure you want to reject this workshop? This action will:
+                </p>
+                <ul style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[4], paddingLeft: theme.spacing[5], lineHeight: 1.8 }}>
+                  <li>Permanently delete the workshop submission</li>
+                  <li>Notify the professor of the rejection</li>
+                  <li>Remove it from the pending approvals list</li>
+                </ul>
+                <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[4], fontWeight: 600 }}>
+                  <strong>Note:</strong> If you want the professor to make changes instead, consider using "Request Edits" option.
                 </p>
 
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing[3] }}>
@@ -1235,6 +2000,62 @@ const EventsPage = () => {
                     }}
                   >
                     Confirm Rejection
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Workshop Confirmation Modal */}
+          {deleteWorkshopCandidate && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              style={{
+                position: "fixed",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(0,0,0,0.35)",
+                zIndex: 10000,
+              }}
+              onClick={() => setDeleteWorkshopCandidate(null)}
+            >
+              <div
+                style={{
+                  width: "480px",
+                  maxWidth: "95%",
+                  background: theme.colors.background.paper,
+                  borderRadius: theme.borderRadius.lg,
+                  padding: theme.spacing[5],
+                  boxShadow: theme.shadows.lg,
+                  transition: "transform 180ms ease, opacity 180ms ease",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 style={{ marginTop: 0, marginBottom: theme.spacing[2], color: theme.colors.danger }}>
+                  Delete Workshop?
+                </h3>
+                <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[2], lineHeight: 1.6 }}>
+                  Are you sure you want to permanently delete this workshop?
+                </p>
+                <p style={{ color: theme.colors.text.primary, marginBottom: theme.spacing[4], fontWeight: 600, fontSize: '1.05em' }}>
+                  "{deleteWorkshopCandidate.title}"
+                </p>
+                <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[4] }}>
+                  <strong>This action cannot be undone.</strong> All registrations and related data will be permanently removed.
+                </p>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing[3] }}>
+                  <Button variant="outline" onClick={() => setDeleteWorkshopCandidate(null)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="danger"
+                    onClick={confirmDeleteWorkshop}
+                  >
+                    Delete Workshop
                   </Button>
                 </div>
               </div>
@@ -1430,6 +2251,15 @@ const EventsPage = () => {
           }}
         />
         {renderEditModal()}
+        <EditWorkshopModal
+          open={editWorkshopModalOpen}
+          workshop={editingWorkshop}
+          onClose={() => { 
+            setEditWorkshopModalOpen(false); 
+            setEditingWorkshop(null); 
+          }}
+          onSubmit={handleWorkshopModalSubmit}
+        />
       </div>
     </>
   );
