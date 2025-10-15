@@ -6,6 +6,7 @@ const {
     getMyRequests, 
     getAllApplications, 
     getApprovedVendorsForBazaar,
+    getBoothConflicts,
     updateApplicationStatus 
 } = require("../controllers/applicationController");
 const { protect, requireVendor, requireApprovedVendor, requireAdminOrEventsOffice } = require("../middleware/auth");
@@ -18,6 +19,7 @@ router.get("/bazaar/:bazaarId/approved-vendors", getApprovedVendorsForBazaar);
 // Vendor routes
 router.post("/bazaar/:bazaarId", [protect, requireVendor, ], applyToBazaar);
 router.post("/booth", [protect, requireVendor, ], applyForBooth);
+router.post("/booth-conflicts", [protect, requireVendor], getBoothConflicts);
 router.get("/my-participations", [protect, requireVendor], getMyParticipations);
 router.get("/my-requests", [protect, requireVendor], getMyRequests);
 

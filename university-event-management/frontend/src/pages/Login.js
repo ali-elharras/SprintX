@@ -148,7 +148,7 @@ const Login = () => {
           // Route based on user role
           if (
             accountData.role === "admin" ||
-            accountData.role === "event-office"
+            accountData.role === "events_office"
           ) {
             navigate("/admin-dashboard", { replace: true });
           } else {
