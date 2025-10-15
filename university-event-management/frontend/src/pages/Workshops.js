@@ -688,8 +688,8 @@ const Workshops = () => {
     const navigate = useNavigate();
     const { token, user } = useAuth(); // Get auth token and user info
 
-    // Use environment variable or constant for API URL
-    const API_URL = 'http://localhost:5000/api/workshops'; 
+    // Use environment variable for API URL
+    const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:8080/api'}/workshops`; 
     
     // --- Data Fetching Logic with Authentication ---
     const fetchWorkshops = useCallback(async () => {

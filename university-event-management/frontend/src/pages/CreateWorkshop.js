@@ -5,7 +5,7 @@ import Navbar from '../components/Navbar';
 import toast from 'react-hot-toast';
 
 // --- Configuration ---
-const API_URL = 'http://localhost:5000/api/workshops';
+const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:8080/api'}/workshops`;
 
 // A simplified theme object (Ensured to be complete)
 const theme = {

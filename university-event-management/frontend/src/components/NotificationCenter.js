@@ -8,7 +8,7 @@ const NotificationCenter = () => {
     const [isLoading, setIsLoading] = useState(false);
     const dropdownRef = useRef(null);
     const { token, isProfessor, isStaff } = useAuth();
-    const API_URL = 'http://localhost:5000/api/notifications';
+    const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:8080/api'}/notifications`;
 
     // Fetch notifications
     const fetchNotifications = useCallback(async () => {
