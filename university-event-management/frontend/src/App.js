@@ -308,11 +308,7 @@ const router = createBrowserRouter([
   },
   {
     path: "/workshops",
-    element: (
-      <ProtectedRoute>
-        <Workshops />
-      </ProtectedRoute>
-    ),
+    element: <Navigate to="/events" replace />,
   },
 
   // 404 Fallback

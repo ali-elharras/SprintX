@@ -550,8 +550,19 @@ const EventsPage = () => {
       const visibleStatuses = ["published", "accepted", "approved", "upcoming", "active", "completed", "pending", "needs_revision"];
       allEvents = allEvents.filter(event => visibleStatuses.includes(event.status));
       
+      // Don't filter out published workshops - they should be visible to all users for registration
+      // Only filter out non-published workshops (pending, needs_revision, rejected)
+      allEvents = allEvents.filter(event => {
+        if (event.type !== 'workshop') return true; // Keep all non-workshop events
+        // For workshops: only show published ones to regular users
+        // Events Office will see pending workshops in a separate section
+        if (auth?.isEventsOffice) return event.status === 'published'; // Events Office sees published workshops in main grid
+        return event.status === 'published'; // All other users (students, staff, TAs, professors) see published workshops
+      });
+      
       console.log("Filtered events:", allEvents);
 
+      // Fetch workshops for Events Office (pending approvals)
       if (auth?.isEventsOffice) {
         try {
           const [pendingResp, revisionResp, userBazaarsResponse] = await Promise.all([
@@ -586,6 +597,29 @@ const EventsPage = () => {
         } catch (err) {
           if (!err.isCancelled && err.name !== 'CanceledError') {
             console.warn('Could not fetch additional Events Office data', err);
+          }
+        }
+      }
+
+      // Fetch workshops for Professors (their own workshops with all statuses)
+      if (auth?.user?.role === 'professor') {
+        try {
+          const workshopsResponse = await api.get('/workshops', {
+            cancelToken: currentCancelToken.token
+          });
+          
+          const allWorkshops = workshopsResponse.data || [];
+          // Filter to show only workshops created by this professor
+          const myWorkshops = allWorkshops.filter(workshop => {
+            const isOwner = (typeof workshop.createdBy === "object" && workshop.createdBy?._id === auth.user?.id) || 
+                           (typeof workshop.createdBy === "string" && workshop.createdBy === auth.user?.id);
+            return isOwner;
+          });
+          
+          setProfessorWorkshops(myWorkshops);
+        } catch (err) {
+          if (!err.isCancelled && err.name !== 'CanceledError') {
+            console.warn('Could not fetch professor workshops', err);
           }
         }
       }
@@ -666,6 +700,88 @@ const EventsPage = () => {
     
     setFilteredEvents(filtered);
   };
+
+  // Workshop Action Handlers
+  const handleEditWorkshop = useCallback((id, title) => {
+    const workshop = professorWorkshops.find(w => (w._id || w.id) === id);
+    setEditingWorkshop(workshop);
+    setEditWorkshopModalOpen(true);
+  }, [professorWorkshops]);
+
+  const handleWorkshopModalSubmit = async (changedFields) => {
+    if (!editingWorkshop || !editingWorkshop._id) return;
+    setWorkshopsLoading(true);
+    setWorkshopsError(null);
+    try {
+      const updatedFields = { ...changedFields };
+      if (editingWorkshop.status === 'needs_revision') {
+        updatedFields.status = 'pending';
+      }
+      
+      await api.patch(`/workshops/${editingWorkshop._id}`, updatedFields);
+      
+      if (editingWorkshop.status === 'needs_revision') {
+        toast.success('✅ Workshop resubmitted successfully! It is now pending approval from the Events Office.');
+      } else {
+        toast.success('Workshop updated successfully!');
+      }
+      
+      setEditWorkshopModalOpen(false);
+      setEditingWorkshop(null);
+      fetchEvents();
+    } catch (e) {
+      setWorkshopsError(e.message || 'Failed to update workshop');
+      toast.error(e.message || 'Failed to update workshop');
+    } finally {
+      setWorkshopsLoading(false);
+    }
+  };
+
+  const handleDeleteWorkshop = useCallback(async (id, title) => {
+    setDeleteWorkshopCandidate({ id, title });
+  }, []);
+
+  const confirmDeleteWorkshop = async () => {
+    const { id, title } = deleteWorkshopCandidate;
+    setDeleteWorkshopCandidate(null);
+    setWorkshopsError(null);
+    setWorkshopsLoading(true);
+    try {
+      await api.delete(`/workshops/${id}`);
+      localStorage.setItem('workshop_deleted', Date.now().toString());
+      toast.success('Workshop deleted successfully!');
+      fetchEvents();
+    } catch (e) {
+      console.error('Delete error:', e);
+      
+      // Check if the error is due to existing registrations
+      const errorMessage = e.response?.data?.message || e.message;
+      
+      if (errorMessage.includes('students have already registered')) {
+        setWorkshopsError('Cannot delete workshop - students have already registered');
+        toast.error('Cannot delete workshop - students have already registered', { duration: 5000 });
+      } else {
+        setWorkshopsError(`Could not delete workshop. Error: ${errorMessage}`);
+        toast.error(`Could not delete workshop. Error: ${errorMessage}`);
+      }
+      setWorkshopsLoading(false);
+    }
+  };
+
+  const filteredProfessorWorkshops = useMemo(() => {
+    if (!auth?.user?.role === 'professor') return [];
+    const searchLower = workshopSearchTerm.toLowerCase();
+    const results = professorWorkshops.filter(workshop => {
+      if (!workshop) return false;
+      const nameMatch = workshop.workshopName && workshop.workshopName.toLowerCase().includes(searchLower);
+      const descriptionMatch = workshop.shortDescription && workshop.shortDescription.toLowerCase().includes(searchLower);
+      const locationMatch = workshop.location && workshop.location.toLowerCase().includes(searchLower);
+      const facultyMatch = workshop.facultyResponsible && workshop.facultyResponsible.toLowerCase().includes(searchLower);
+      const statusMatch = workshop.status && workshop.status.toLowerCase().includes(searchLower);
+      return nameMatch || descriptionMatch || locationMatch || facultyMatch || statusMatch;
+    });
+    return results.sort((a, b) => new Date(a.startDate) - new Date(b.startDate)); 
+  }, [workshopSearchTerm, professorWorkshops, auth]);
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({
@@ -1036,6 +1152,84 @@ const EventsPage = () => {
             </p>
           </div>
 
+          {/* Professor's Own Workshops Dashboard */}
+          {auth?.user?.role === 'professor' && professorWorkshops.length > 0 && (
+            <div style={{ marginBottom: theme.spacing[6], backgroundColor: '#f9fafb', padding: theme.spacing[5], borderRadius: theme.borderRadius.lg }}>
+              <div style={{ maxWidth: '80rem', marginLeft: 'auto', marginRight: 'auto', marginBottom: theme.spacing[6] }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing[4] }}>
+                  <h2 style={{ fontSize: '1.875rem', fontWeight: 800, color: themeColors.gray900, margin: 0 }}>
+                    My Workshops Dashboard
+                  </h2>
+                  <button
+                    style={{ 
+                      display: 'flex', alignItems: 'center', backgroundColor: themeColors.indigo600, color: 'white', 
+                      padding: '0.65rem 1.25rem', borderRadius: '0.75rem', 
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
+                      transition: 'all 0.3s', fontSize: '1rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+                    }}
+                    onClick={() => navigate('/create-workshop')}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.5rem' }}>
+                      <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Create New Workshop
+                  </button>
+                </div>
+
+                <div style={{ marginTop: theme.spacing[4], marginBottom: theme.spacing[5] }}>
+                  <input
+                    type="text"
+                    placeholder="Search workshops by title, description, location, or faculty..."
+                    value={workshopSearchTerm}
+                    onChange={(e) => setWorkshopSearchTerm(e.target.value)}
+                    style={{ 
+                      width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', 
+                      borderRadius: '0.75rem', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', 
+                      transition: 'border-color 0.15s, box-shadow 0.15s', fontSize: '1rem',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ maxWidth: '80rem', marginLeft: 'auto', marginRight: 'auto' }}>
+                {workshopsLoading && (
+                  <div style={{ textAlign: 'center', padding: '3rem 0', backgroundColor: 'white', borderRadius: '0.75rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', border: '1px solid #f3f4f6' }}>
+                    <p style={{ fontSize: '1.125rem', color: '#4b5563' }}>Loading workshops from database... ⏳</p>
+                  </div>
+                )}
+
+                {workshopsError && (
+                  <div style={{ textAlign: 'center', padding: '1.5rem', backgroundColor: themeColors.red50, borderRadius: '0.75rem', border: `1px solid ${themeColors.red600}` }}>
+                    <p style={{ fontSize: '1rem', fontWeight: 600, color: themeColors.red600 }}>Error: {workshopsError}</p>
+                  </div>
+                )}
+
+                {!workshopsLoading && !workshopsError && filteredProfessorWorkshops.length === 0 && workshopSearchTerm === '' ? (
+                  <div style={{ textAlign: 'center', padding: '3rem 0', backgroundColor: 'white', borderRadius: '0.75rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', border: '1px solid #f3f4f6' }}>
+                    <p style={{ fontSize: '1.125rem', color: '#4b5563' }}>
+                      No workshops found. Start by creating a new one!
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+                    gap: '1.5rem', 
+                  }}>
+                    {filteredProfessorWorkshops.map((workshop) => (
+                      <WorkshopCard 
+                        key={workshop._id || workshop.id} 
+                        workshop={workshop} 
+                        onEdit={handleEditWorkshop}
+                        onDelete={handleDeleteWorkshop}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {auth.isEventsOffice && pendingWorkshops.length > 0 && (
             <div
               style={{
@@ -1074,8 +1268,11 @@ const EventsPage = () => {
                     }}
                   >
                     <div style={{ maxWidth: "75%" }}>
-                      <div style={{ fontSize: theme.typography.fontSize.lg, fontWeight: 600 }}>
-                        {w.workshopName || w.name}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing[2], marginBottom: theme.spacing[1] }}>
+                        <div style={{ fontSize: theme.typography.fontSize.lg, fontWeight: 600 }}>
+                          {w.workshopName || w.name}
+                        </div>
+                        {w.status && <StatusBadge status={w.status} />}
                       </div>
                       <div style={{ color: theme.colors.text.secondary, marginTop: theme.spacing[1] }}>
                         <strong>Professor:</strong> {w.createdBy ? `${w.createdBy.firstName} ${w.createdBy.lastName}` : (w.professorName || 'N/A')} • <strong>Date:</strong>{" "}
@@ -1084,6 +1281,28 @@ const EventsPage = () => {
                       <div style={{ marginTop: theme.spacing[2], color: theme.colors.text.primary }}>
                         {w.shortDescription}
                       </div>
+                      
+                      {/* Show edit requests if any */}
+                      {w.editRequests && w.editRequests.length > 0 && w.status === 'needs_revision' && (
+                        <div style={{ 
+                          marginTop: theme.spacing[2],
+                          backgroundColor: '#fef3c7', 
+                          border: '1px solid #fbbf24', 
+                          borderRadius: theme.borderRadius.base, 
+                          padding: theme.spacing[2]
+                        }}>
+                          <div style={{ fontSize: theme.typography.fontSize.sm, fontWeight: 600, color: '#92400e', marginBottom: theme.spacing[1] }}>
+                            ✏️ Edit Request Sent
+                          </div>
+                          {w.editRequests.map((editReq, index) => (
+                            <div key={index}>
+                              <p style={{ fontSize: theme.typography.fontSize.sm, color: '#78350f', margin: 0 }}>
+                                <strong>Message:</strong> {editReq.message}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div style={{ display: "flex", gap: theme.spacing[3] }}>
@@ -1552,7 +1771,7 @@ const EventsPage = () => {
                   Are you sure you want to publish this workshop?
                 </h3>
                 <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[4] }}>
-                  Publishing will make the workshop visible to all stakeholders.
+                  This will make the workshop publicly available for registration.
                 </p>
 
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing[3] }}>
@@ -1625,11 +1844,19 @@ const EventsPage = () => {
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <h3 style={{ marginTop: 0, marginBottom: theme.spacing[2] }}>
-                  Confirm rejection
+                <h3 style={{ marginTop: 0, marginBottom: theme.spacing[2], color: theme.colors.danger }}>
+                  Reject Workshop Submission?
                 </h3>
-                <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[4] }}>
-                  Rejecting this workshop will mark it as <strong>rejected</strong> and remove it from the pending approvals list.
+                <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[2], lineHeight: 1.6 }}>
+                  Are you sure you want to reject this workshop? This action will:
+                </p>
+                <ul style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[4], paddingLeft: theme.spacing[5], lineHeight: 1.8 }}>
+                  <li>Permanently delete the workshop submission</li>
+                  <li>Notify the professor of the rejection</li>
+                  <li>Remove it from the pending approvals list</li>
+                </ul>
+                <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[4], fontWeight: 600 }}>
+                  <strong>Note:</strong> If you want the professor to make changes instead, consider using "Request Edits" option.
                 </p>
 
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing[3] }}>
@@ -1659,6 +1886,62 @@ const EventsPage = () => {
                     }}
                   >
                     Confirm Rejection
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Workshop Confirmation Modal */}
+          {deleteWorkshopCandidate && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              style={{
+                position: "fixed",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(0,0,0,0.35)",
+                zIndex: 10000,
+              }}
+              onClick={() => setDeleteWorkshopCandidate(null)}
+            >
+              <div
+                style={{
+                  width: "480px",
+                  maxWidth: "95%",
+                  background: theme.colors.background.paper,
+                  borderRadius: theme.borderRadius.lg,
+                  padding: theme.spacing[5],
+                  boxShadow: theme.shadows.lg,
+                  transition: "transform 180ms ease, opacity 180ms ease",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 style={{ marginTop: 0, marginBottom: theme.spacing[2], color: theme.colors.danger }}>
+                  Delete Workshop?
+                </h3>
+                <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[2], lineHeight: 1.6 }}>
+                  Are you sure you want to permanently delete this workshop?
+                </p>
+                <p style={{ color: theme.colors.text.primary, marginBottom: theme.spacing[4], fontWeight: 600, fontSize: '1.05em' }}>
+                  "{deleteWorkshopCandidate.title}"
+                </p>
+                <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[4] }}>
+                  <strong>This action cannot be undone.</strong> All registrations and related data will be permanently removed.
+                </p>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing[3] }}>
+                  <Button variant="outline" onClick={() => setDeleteWorkshopCandidate(null)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="danger"
+                    onClick={confirmDeleteWorkshop}
+                  >
+                    Delete Workshop
                   </Button>
                 </div>
               </div>
@@ -1854,6 +2137,15 @@ const EventsPage = () => {
           }}
         />
         {renderEditModal()}
+        <EditWorkshopModal
+          open={editWorkshopModalOpen}
+          workshop={editingWorkshop}
+          onClose={() => { 
+            setEditWorkshopModalOpen(false); 
+            setEditingWorkshop(null); 
+          }}
+          onSubmit={handleWorkshopModalSubmit}
+        />
       </div>
     </>
   );

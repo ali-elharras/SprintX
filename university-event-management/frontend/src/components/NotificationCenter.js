@@ -119,8 +119,6 @@ const NotificationCenter = () => {
 
     // Clear all notifications
     const clearAll = async () => {
-        if (!window.confirm('Are you sure you want to delete all notifications?')) return;
-
         setIsLoading(true);
         try {
             const response = await fetch(API_URL, {
