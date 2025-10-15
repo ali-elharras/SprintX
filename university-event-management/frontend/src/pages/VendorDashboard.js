@@ -318,30 +318,35 @@ const cssKeyframes = `
 }
 `;
 
-const BazaarCard = ({ bazaar, onApply, isApplied }) => (
-  <div className="card-hover" style={styles.card}>
-    <div className="card-gradient" style={styles.cardGradient}></div>
-    <div>
-      <h3 style={styles.bazaarTitle}>{bazaar.name || bazaar.title}</h3>
-      <div style={styles.dateContainer}>
-        <span style={styles.dateIcon}>📅</span>
-        <p style={styles.bazaarDate}>
-          {new Date(bazaar.startDate).toLocaleDateString()} - {new Date(bazaar.endDate).toLocaleDateString()}
-        </p>
+const BazaarCard = ({ bazaar, onApply, application }) => {
+  const hasApplied = !application;
+
+  return (
+    <div className="card-hover" style={styles.card}>
+      <div className="card-gradient" style={styles.cardGradient}></div>
+      <div>
+        <h3 style={styles.bazaarTitle}>{bazaar.name || bazaar.title}</h3>
+        <div style={styles.dateContainer}>
+          <span style={styles.dateIcon}>📅</span>
+          <p style={styles.bazaarDate}>
+            {new Date(bazaar.startDate).toLocaleDateString()} - {new Date(bazaar.endDate).toLocaleDateString()}
+          </p>
+        </div>
+        <p style={styles.bazaarDescription}>{bazaar.description}</p>
       </div>
-      <p style={styles.bazaarDescription}>{bazaar.description}</p>
+
+      {hasApplied ? (
+        <button style={{...styles.applyButton, ...styles.appliedButton}} disabled>
+          ✓ Applied
+        </button>
+      ) : (
+        <button className="apply-button" style={styles.applyButton} onClick={() => onApply(bazaar)}>
+          Apply to Bazaar →
+        </button>
+      )}
     </div>
-    {isApplied ? (
-      <button style={{...styles.applyButton, ...styles.appliedButton}} disabled>
-        ✓ Applied
-      </button>
-    ) : (
-      <button className="apply-button" style={styles.applyButton} onClick={() => onApply(bazaar)}>
-        Apply to Bazaar →
-      </button>
-    )}
-  </div>
-);
+  );
+};
 
 const ApplicationItem = ({ application }) => (
   <div className="application-card" style={styles.applicationCard}>
@@ -467,10 +472,11 @@ const VendorDashboard = () => {
     }
   };
 
-  const appliedBazaarIds = new Set(
+  // Create a map of bazaar applications for quick lookup
+  const bazaarApplications = new Map(
     myApplications
       .filter(app => app.bazaar && app.bazaar._id)
-      .map(app => String(app.bazaar._id))
+      .map(app => [String(app.bazaar._id), app])
   );
 
   return (
@@ -519,7 +525,7 @@ const VendorDashboard = () => {
                     key={bazaar._id} 
                     bazaar={bazaar} 
                     onApply={handleApplyClick} 
-                    isApplied={appliedBazaarIds.has(String(bazaar._id))}
+                    application={bazaarApplications.get(String(bazaar._id))}
                   />
                 ))}
               </div>

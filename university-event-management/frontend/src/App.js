@@ -108,7 +108,7 @@ const AdminRoute = ({ children }) => {
     );
   }
 
-  if (!user || (user.role !== "admin" && user.role !== "event-office")) {
+  if (!user || (user.role !== "admin" && user.role !== "events_office")) {
     return <Navigate to="/dashboard" replace />;
   }
 

@@ -216,6 +216,15 @@ export const applicationServices = {
       throw error;
     }
   },
+
+  getBoothConflicts: async (conflictData) => {
+    try {
+      const response = await api.post("/applications/booth-conflicts", conflictData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 // ============================================
