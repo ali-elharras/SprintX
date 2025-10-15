@@ -52,7 +52,7 @@ const getEvents = async (req, res) => {
       // If specifically asking for booths, only return booths
       if (type === "booth") {
         const booths = await BoothApplication.find(boothQuery)
-          .populate("vendor", "firstName lastName email")
+          .populate("vendor", "companyName firstName lastName email")
           .sort({ startDate: 1 });
         
         return res.status(200).json({
@@ -73,7 +73,7 @@ const getEvents = async (req, res) => {
         .populate("organizer", "firstName lastName email")
         .sort({ startDate: 1 }),
       BoothApplication.find(boothQuery)
-        .populate("vendor", "firstName lastName email")
+        .populate("vendor", "companyName firstName lastName email")
         .sort({ startDate: 1 }),
       Conference.find(conferenceQuery).sort({ startDate: 1 }),
       Workshop.find(workshopQuery)
@@ -142,6 +142,7 @@ const transformBoothToEvent = (booth) => {
     durationWeeks: boothObj.durationWeeks,
     organizer: boothObj.vendor || null,
     vendorId: boothObj.vendor?._id || boothObj.vendor,
+    companyName: boothObj.vendor?.companyName || null,
     attendees: boothObj.attendees || [],
     createdAt: boothObj.createdAt,
     updatedAt: boothObj.updatedAt,
@@ -229,7 +230,7 @@ const getEvent = async (req, res) => {
 
     const booth = await BoothApplication.findById(req.params.id).populate(
       "vendor",
-      "firstName lastName email phone"
+      "companyName firstName lastName email phone"
     );
 
     if (booth) {
@@ -464,7 +465,7 @@ const getEventsByType = async (req, res) => {
         status: { $in: acceptedStatuses },
         startDate: { $gte: now }
       })
-        .populate("vendor", "firstName lastName email")
+        .populate("vendor", "companyName firstName lastName email")
         .sort({ startDate: 1 });
       
       return res.status(200).json({
