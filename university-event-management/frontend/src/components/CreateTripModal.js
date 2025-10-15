@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import theme from '../theme';
 import { eventAPI } from '../services/api';
+import { toast } from 'react-toastify';
 
 const modalStyles = {
   overlay: {
@@ -25,9 +26,15 @@ const CreateTripModal = ({ open, onClose, onCreated, currentUser }) => {
     name: '', description: '', location: '', cost: 0, startDate: '', endDate: '', maxParticipants: 1, registrationDeadline: ''
   });
   const [errors, setErrors] = useState({});
+  const [serverMessages, setServerMessages] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(()=>{ if (!open) setForm({ name: '', description: '', location: '', cost: 0, startDate: '', endDate: '', maxParticipants: 1, registrationDeadline: '' }); }, [open]);
+  useEffect(()=>{
+    if (!open) setForm({ name: '', description: '', location: '', cost: 0, startDate: '', endDate: '', maxParticipants: 1, registrationDeadline: '' });
+    // clear server messages/errors when modal opens/closes
+    setErrors({});
+    setServerMessages([]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -53,6 +60,7 @@ const CreateTripModal = ({ open, onClose, onCreated, currentUser }) => {
     try {
       const payload = {
         name: form.name,
+        title: form.name,
         description: form.description,
         type: 'trip',
         startDate: new Date(form.startDate),
@@ -61,21 +69,71 @@ const CreateTripModal = ({ open, onClose, onCreated, currentUser }) => {
         registrationRequired: true,
         registrationDeadline: new Date(form.registrationDeadline),
         maxParticipants: Number(form.maxParticipants),
-        cost: Number(form.cost) || 0,
-
-        ...(currentUser && currentUser._id ? { organizer: currentUser._id } : {}),
+        cost: Number(form.cost) || 0 ,
       };
       const resp = await eventAPI.createEvent(payload);
+      // show success toast and call callbacks
+      try { toast.success(resp?.data?.message || 'Trip created successfully'); } catch(e) {}
+      setServerMessages([]);
       onCreated && onCreated(resp.data?.data || resp.data);
       onClose && onClose();
     } catch (err) {
       console.error('Create trip failed', err);
-      const resp = err?.response?.data;
-      if (resp && resp.errors) {
+        const resp = err?.response?.data || err?.response || err;
         const map = {};
-        Object.keys(resp.errors).forEach(k => { map[k] = resp.errors[k].message || resp.errors[k]; });
+        const msgs = [];
+
+        // Helper to push a message
+        const pushMsg = (key, message) => {
+          if (key) map[key] = message;
+          msgs.push(key ? `${key}: ${message}` : message);
+        };
+
+        // Try several common shapes
+        const tryArray = (arr) => {
+          arr.forEach(item => {
+            const m = item.msg || item.message || item.msg || String(item);
+            const key = item.param || item.path || item.field || null;
+            pushMsg(key, m);
+          });
+        };
+
+        if (resp) {
+          if (Array.isArray(resp.errors) && resp.errors.length > 0) {
+            tryArray(resp.errors);
+          } else if (Array.isArray(resp.data) && resp.data.length > 0 && resp.data[0] && resp.data[0].msg) {
+            // some shapes put the array inside data
+            tryArray(resp.data);
+          } else if (resp.data && Array.isArray(resp.data.errors)) {
+            tryArray(resp.data.errors);
+          } else if (resp.errors && typeof resp.errors === 'object') {
+            Object.keys(resp.errors).forEach(k => {
+              const v = resp.errors[k];
+              const m = (v && (v.message || v.msg)) || String(v);
+              pushMsg(k, m);
+            });
+          } else if (resp.data && typeof resp.data === 'object' && resp.data.errors && typeof resp.data.errors === 'object') {
+            Object.keys(resp.data.errors).forEach(k => {
+              const v = resp.data.errors[k];
+              const m = (v && (v.message || v.msg)) || String(v);
+              pushMsg(k, m);
+            });
+          }
+
+          if (resp.message && typeof resp.message === 'string') {
+            // put server message at the top
+            msgs.unshift(resp.message);
+          }
+        }
+
+        // Fallbacks
+        if (msgs.length === 0) {
+          if (err?.message) msgs.push(err.message);
+          else msgs.push('Failed to create trip');
+        }
+
         setErrors(map);
-      }
+        setServerMessages(msgs);
     } finally {
       setSubmitting(false);
     }
@@ -86,6 +144,14 @@ const CreateTripModal = ({ open, onClose, onCreated, currentUser }) => {
       <div style={modalStyles.container}>
         <div style={modalStyles.title}>Create Trip</div>
         <form onSubmit={handleSubmit}>
+          {serverMessages && serverMessages.length > 0 && (
+            <div style={{ background: '#fff5f5', border: `1px solid ${theme.colors.error.main}`, color: theme.colors.error.main, padding: theme.spacing[3], borderRadius: theme.borderRadius.md, marginBottom: theme.spacing[3] }}>
+              <strong>Errors:</strong>
+              <ul style={{ margin: '8px 0 0 16px' }}>
+                {serverMessages.map((m, i) => <li key={i}>{m}</li>)}
+              </ul>
+            </div>
+          )}
           <label style={modalStyles.label}>Trip name</label>
           <input style={modalStyles.input} value={form.name} onChange={(e)=>setForm(f=>({...f,name:e.target.value}))} />
           {errors.name && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.name}</div>}
