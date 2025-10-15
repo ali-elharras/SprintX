@@ -1,4 +1,6 @@
+
 import React, { useState, useEffect, useRef } from "react";
+import ReactDOM from "react-dom";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import theme, { getEventTypeColor } from "../theme";
@@ -13,6 +15,353 @@ import api, { eventAPI, workshopAPI, createCancelTokenSource } from "../services
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 import CreateDropdownButton from '../components/CreateDropdownButton';
+
+// --- Modal Styles (copied from CreateWorkshop.js) ---
+const modalStyles = {
+  overlay: {
+    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+    background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+    overflow: 'auto',
+  },
+  container: {
+    background: 'white', borderRadius: '1rem', padding: '2rem', minWidth: '350px', maxWidth: '90vw',
+    maxHeight: '90vh', overflowY: 'auto',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.15)', fontFamily: 'Inter, sans-serif',
+    display: 'flex', flexDirection: 'column',
+  },
+  title: {
+    fontSize: '1.5rem', fontWeight: 800, color: theme.colors.primary, marginBottom: '1rem', textAlign: 'center',
+  },
+  label: {
+    fontWeight: 600, color: theme.colors.text.primary, marginBottom: '0.25rem', fontSize: '1rem',
+  },
+  input: {
+    padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '0.75rem', fontSize: '1rem', marginBottom: '0.75rem',
+    width: '100%', boxSizing: 'border-box',
+  },
+  textarea: {
+    padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '0.75rem', fontSize: '1rem', marginBottom: '0.75rem',
+    width: '100%', minHeight: '80px', boxSizing: 'border-box',
+  },
+  button: {
+    backgroundColor: theme.colors.primary, color: 'white', padding: '0.75rem 1.5rem', borderRadius: '0.75rem',
+    fontWeight: 700, fontSize: '1rem', border: 'none', cursor: 'pointer', marginTop: '0.5rem',
+    boxShadow: '0 2px 6px rgba(79,70,229,0.15)', transition: 'background 0.2s',
+  },
+  cancelButton: {
+    backgroundColor: theme.colors.background.default, color: theme.colors.text.primary, padding: '0.75rem 1.5rem', borderRadius: '0.75rem',
+    fontWeight: 600, fontSize: '1rem', border: 'none', cursor: 'pointer', marginTop: '0.5rem',
+  }
+};
+
+function CreateWorkshopModal({ open, onClose, onCreated, initialData = null, isEdit = false }) {
+  const [formData, setFormData] = useState(initialData ? {
+    workshopName: initialData.workshopName || initialData.name || '',
+    location: initialData.location || 'GUC Cairo',
+    startDate: initialData.startDate ? initialData.startDate.slice(0, 16) : '',
+    endDate: initialData.endDate ? initialData.endDate.slice(0, 16) : '',
+    shortDescription: initialData.shortDescription || '',
+    fullAgenda: initialData.fullAgenda || '',
+    facultyResponsible: initialData.facultyResponsible || 'MET',
+    professors: initialData.professorsParticipating ? initialData.professorsParticipating.join(', ') : (initialData.professors || ''),
+    requiredBudget: initialData.requiredBudget ? String(initialData.requiredBudget) : '',
+    fundingSource: initialData.fundingSource || 'GUC',
+    extraResources: initialData.extraRequiredResources || '',
+    capacity: initialData.capacity ? String(initialData.capacity) : '',
+    registrationDeadline: initialData.registrationDeadline ? initialData.registrationDeadline.slice(0, 16) : '',
+  } : {
+    workshopName: '',
+    location: 'GUC Cairo',
+    startDate: '',
+    endDate: '',
+    shortDescription: '',
+    fullAgenda: '',
+    facultyResponsible: 'MET',
+    professors: '',
+    requiredBudget: '',
+    fundingSource: 'GUC',
+    extraResources: '',
+    capacity: '',
+    registrationDeadline: '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (!open) {
+      setFormData(initialData ? {
+        workshopName: initialData.workshopName || initialData.name || '',
+        location: initialData.location || 'GUC Cairo',
+        startDate: initialData.startDate ? initialData.startDate.slice(0, 16) : '',
+        endDate: initialData.endDate ? initialData.endDate.slice(0, 16) : '',
+        shortDescription: initialData.shortDescription || '',
+        fullAgenda: initialData.fullAgenda || '',
+        facultyResponsible: initialData.facultyResponsible || 'MET',
+        professors: initialData.professorsParticipating ? initialData.professorsParticipating.join(', ') : (initialData.professors || ''),
+        requiredBudget: initialData.requiredBudget ? String(initialData.requiredBudget) : '',
+        fundingSource: initialData.fundingSource || 'GUC',
+        extraResources: initialData.extraRequiredResources || '',
+        capacity: initialData.capacity ? String(initialData.capacity) : '',
+        registrationDeadline: initialData.registrationDeadline ? initialData.registrationDeadline.slice(0, 16) : '',
+      } : {
+        workshopName: '',
+        location: 'GUC Cairo',
+        startDate: '',
+        endDate: '',
+        shortDescription: '',
+        fullAgenda: '',
+        facultyResponsible: 'MET',
+        professors: '',
+        requiredBudget: '',
+        fundingSource: 'GUC',
+        extraResources: '',
+        capacity: '',
+        registrationDeadline: '',
+      });
+      setErrorMsg('');
+      setIsSubmitting(false);
+    }
+  }, [open, initialData]);
+
+  if (!open) return null;
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrorMsg('');
+  };
+
+  const validateForm = () => {
+    // Required fields
+    const requiredFields = [
+      'workshopName', 'shortDescription', 'location', 'startDate', 'endDate',
+      'fullAgenda', 'facultyResponsible', 'capacity', 'registrationDeadline', 'requiredBudget', 'fundingSource'
+    ];
+    for (const field of requiredFields) {
+      if (!formData[field] || (typeof formData[field] === 'string' && formData[field].trim() === '')) {
+        setErrorMsg('Please fill in all required fields.');
+        return false;
+      }
+    }
+    // Date logic
+    const startDate = new Date(formData.startDate);
+    const endDate = new Date(formData.endDate);
+    const regDeadline = new Date(formData.registrationDeadline);
+    if (endDate <= startDate) {
+      setErrorMsg('End date must be after start date.');
+      return false;
+    }
+    if (regDeadline > startDate) {
+      setErrorMsg('Registration deadline must be on or before the start date.');
+      return false;
+    }
+    setErrorMsg('');
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    setIsSubmitting(true);
+    const professorsArray = formData.professors
+      .split(',')
+      .map((name) => name.trim())
+      .filter((name) => name.length > 0);
+    const payload = {
+      workshopName: formData.workshopName,
+      shortDescription: formData.shortDescription,
+      fullAgenda: formData.fullAgenda,
+      location: formData.location,
+      startDate: formData.startDate,
+      endDate: formData.endDate,
+      facultyResponsible: formData.facultyResponsible,
+      professorsParticipating: professorsArray,
+      capacity: Number(formData.capacity),
+      registrationDeadline: formData.registrationDeadline,
+      requiredBudget: Number(formData.requiredBudget),
+      fundingSource: formData.fundingSource,
+      extraRequiredResources: formData.extraResources,
+    };
+    try {
+      let response;
+      if (isEdit && initialData && initialData._id) {
+        // Only send changed fields for PATCH
+        const changedFields = {};
+        Object.keys(payload).forEach((key) => {
+          if (payload[key] !== (initialData[key] || (key === 'professorsParticipating' ? initialData.professorsParticipating : undefined))) {
+            changedFields[key] = payload[key];
+          }
+        });
+        response = await workshopAPI.updateWorkshop(initialData._id, changedFields);
+        if (response.status === 200 || response.data?.success) {
+          setIsSubmitting(false);
+          setErrorMsg('');
+          onCreated && onCreated();
+          onClose();
+          toast.success('Workshop updated successfully!');
+        } else {
+          throw new Error(response.data?.message || 'Failed to update workshop');
+        }
+      } else {
+        response = await workshopAPI.createWorkshop(payload);
+        if (response.status === 201 || response.data?.success) {
+          setIsSubmitting(false);
+          setErrorMsg('');
+          onCreated && onCreated();
+          onClose();
+          toast.success('Workshop created successfully!');
+        } else {
+          throw new Error(response.data?.message || 'Failed to create workshop');
+        }
+      }
+    } catch (error) {
+      setErrorMsg(error.message || (isEdit ? 'Failed to update workshop' : 'Failed to create workshop'));
+      setIsSubmitting(false);
+    }
+  };
+
+  return ReactDOM.createPortal(
+    <div style={{ ...modalStyles.overlay }}>
+      <div style={{ ...modalStyles.container, width: '900px', maxWidth: '98vw' }}>
+        <div style={modalStyles.title}>{isEdit ? 'Edit Workshop' : 'Create Workshop'}</div>
+        {errorMsg && (
+          <div style={{ color: theme.colors.text.danger, background: '#fef2f2', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '0.5rem', textAlign: 'center', fontWeight: 600 }}>
+            {errorMsg}
+          </div>
+        )}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <label style={modalStyles.label}>Workshop Name</label>
+          <input
+            style={modalStyles.input}
+            name="workshopName"
+            value={formData.workshopName}
+            onChange={handleChange}
+            placeholder="Workshop Name"
+          />
+          <label style={modalStyles.label}>Short Description</label>
+          <textarea
+            style={modalStyles.textarea}
+            name="shortDescription"
+            value={formData.shortDescription}
+            onChange={handleChange}
+            placeholder="Short Description"
+            maxLength={200}
+          />
+          <label style={modalStyles.label}>Full Agenda</label>
+          <textarea
+            style={modalStyles.textarea}
+            name="fullAgenda"
+            value={formData.fullAgenda}
+            onChange={handleChange}
+            placeholder="Full Agenda"
+          />
+          <label style={modalStyles.label}>Location</label>
+          <select
+            style={modalStyles.input}
+            name="location"
+            value={formData.location}
+            onChange={handleChange}
+          >
+            <option value="GUC Cairo">GUC Cairo</option>
+            <option value="GUC Berlin">GUC Berlin</option>
+          </select>
+          <label style={modalStyles.label}>Start Date</label>
+          <input
+            style={modalStyles.input}
+            type="datetime-local"
+            name="startDate"
+            value={formData.startDate}
+            onChange={handleChange}
+          />
+          <label style={modalStyles.label}>End Date</label>
+          <input
+            style={modalStyles.input}
+            type="datetime-local"
+            name="endDate"
+            value={formData.endDate}
+            onChange={handleChange}
+          />
+          <label style={modalStyles.label}>Faculty Responsible</label>
+          <select
+            style={modalStyles.input}
+            name="facultyResponsible"
+            value={formData.facultyResponsible}
+            onChange={handleChange}
+          >
+            <option value="MET">MET</option>
+            <option value="IET">IET</option>
+            <option value="MGT">MGT</option>
+            <option value="PHAR">PHAR</option>
+            <option value="ARCH">ARCH</option>
+            <option value="ART">ART</option>
+            <option value="Other">Other</option>
+          </select>
+          <label style={modalStyles.label}>Professors Participating (comma separated)</label>
+          <input
+            style={modalStyles.input}
+            name="professors"
+            value={formData.professors}
+            onChange={handleChange}
+            placeholder="Professors Participating"
+          />
+          <label style={modalStyles.label}>Capacity</label>
+          <input
+            style={modalStyles.input}
+            type="number"
+            name="capacity"
+            min={1}
+            value={formData.capacity}
+            onChange={handleChange}
+            placeholder="Capacity"
+          />
+          <label style={modalStyles.label}>Registration Deadline</label>
+          <input
+            style={modalStyles.input}
+            type="datetime-local"
+            name="registrationDeadline"
+            value={formData.registrationDeadline}
+            onChange={handleChange}
+          />
+          <label style={modalStyles.label}>Extra Required Resources</label>
+          <textarea
+            style={modalStyles.textarea}
+            name="extraResources"
+            value={formData.extraResources}
+            onChange={handleChange}
+            placeholder="Extra Required Resources"
+            maxLength={500}
+          />
+          <label style={modalStyles.label}>Required Budget</label>
+          <input
+            style={modalStyles.input}
+            type="number"
+            name="requiredBudget"
+            min={0}
+            value={formData.requiredBudget}
+            onChange={handleChange}
+            placeholder="Required Budget"
+          />
+          <label style={modalStyles.label}>Funding Source</label>
+          <select
+            style={modalStyles.input}
+            name="fundingSource"
+            value={formData.fundingSource}
+            onChange={handleChange}
+          >
+            <option value="GUC">GUC</option>
+            <option value="External">External</option>
+            <option value="Joint">Joint</option>
+          </select>
+          <button type="submit" style={modalStyles.button} disabled={isSubmitting}>
+            {isSubmitting ? 'Submitting...' : (isEdit ? 'Save Changes' : 'Create Workshop')}
+          </button>
+          <button type="button" style={modalStyles.cancelButton} onClick={onClose}>Cancel</button>
+        </form>
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
   const cardStyle = {
@@ -140,6 +489,9 @@ const EventsPage = () => {
   const cancelTokenRef = useRef(null);
 
   const [pendingWorkshops, setPendingWorkshops] = useState([]);
+  const [showCreateWorkshopModal, setShowCreateWorkshopModal] = useState(false);
+  const [editWorkshopModalOpen, setEditWorkshopModalOpen] = useState(false);
+  const [editingWorkshop, setEditingWorkshop] = useState(null);
 
   const [selectedPending, setSelectedPending] = useState(null);
   const [publishCandidate, setPublishCandidate] = useState(null);
@@ -422,6 +774,39 @@ const EventsPage = () => {
     <div style={{ minHeight: "100vh", background: theme.colors.background.default }}>
       <Navbar />
       <LoadingScreen type="events" />
+      <CreateWorkshopModal open={showCreateWorkshopModal} onClose={() => setShowCreateWorkshopModal(false)} onCreated={fetchEvents} />
+      {editWorkshopModalOpen && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.5)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <div style={{
+            width: '900px',
+            maxWidth: '98vw',
+            background: 'white',
+            borderRadius: '1rem',
+            padding: '2.5rem',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            <CreateWorkshopModal
+              open={true}
+              onClose={() => { setEditWorkshopModalOpen(false); setEditingWorkshop(null); }}
+              onCreated={fetchEvents}
+              initialData={editingWorkshop}
+              isEdit={true}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -746,7 +1131,7 @@ const EventsPage = () => {
             <div
               role="dialog"
               aria-modal="true"
-              style={{
+                            style={{
                 position: "fixed",
                 inset: 0,
                 display: "flex",
@@ -798,9 +1183,12 @@ const EventsPage = () => {
                       }
 
                       try {
-                        const key = "event_edit_requests";
-                        const existing = JSON.parse(localStorage.getItem(key) || "{}");
-                        existing[w.id || w._id || `local-${Date.now()}`] = {
+                        // Fixed: Remove the undefined variables 'existing' and 'key'
+                        // Store edit request in localStorage if needed
+                        const editRequestsKey = 'workshop_edit_requests';
+                        const existingRequests = JSON.parse(localStorage.getItem(editRequestsKey) || '{}');
+                        
+                        existingRequests[w.id || w._id || `local-${Date.now()}`] = {
                           eventId: w._id || w.id,
                           message: requestEditsMessage.trim(),
                           requestedBy: {
@@ -810,7 +1198,8 @@ const EventsPage = () => {
                           requestedAt: new Date().toISOString(),
                           status: "needs_revision",
                         };
-                        localStorage.setItem(key, JSON.stringify(existing));
+                        
+                        localStorage.setItem(editRequestsKey, JSON.stringify(existingRequests));
                       } catch (err) {
                         console.error("Failed to persist edit request locally:", err);
                       }
@@ -910,6 +1299,31 @@ const EventsPage = () => {
                     />
                   );
                 }
+                if (event.type === 'workshop') {
+                  return (
+                    <div key={event._id} style={{ position: 'relative' }}>
+                      {/* Purple strip */}
+                      <div style={{ height: '8px', background: theme.colors.primary, borderTopLeftRadius: '1rem', borderTopRightRadius: '1rem' }} />
+                      {/* Edit button */}
+                      <button
+                        style={{ position: 'absolute', top: '100px', right: '16px', background: theme.colors.primary, color: 'black', border: 'none', borderRadius: '6px', padding: '4px 12px', fontWeight: 600, cursor: 'pointer', fontSize: '0.95rem', zIndex: 2 }}
+                        onClick={() => { setEditingWorkshop(event); setEditWorkshopModalOpen(true); }}
+                        title="Edit Workshop"
+                      >
+                        Edit
+                      </button>
+                      <EventCard
+                        event={event}
+                        onRegistrationSuccess={handleRegistrationSuccess}
+                        onEventUpdate={fetchEvents}
+                        onEditConference={(conference) => {
+                          setEditingConference(conference);
+                          setShowConferenceModal(true);
+                        }}
+                      />
+                    </div>
+                  );
+                }
                 return (
                   <EventCard
                     key={event._id}
@@ -923,6 +1337,16 @@ const EventsPage = () => {
                   />
                 );
               })}
+      {/* Edit Workshop Modal */}
+      {editWorkshopModalOpen && (
+        <CreateWorkshopModal
+          open={editWorkshopModalOpen}
+          onClose={() => { setEditWorkshopModalOpen(false); setEditingWorkshop(null); }}
+          onCreated={fetchEvents}
+          initialData={editingWorkshop}
+          isEdit={true}
+        />
+      )}
             </div>
           ) : (
             <div

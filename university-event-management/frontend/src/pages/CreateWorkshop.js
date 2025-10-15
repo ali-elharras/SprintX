@@ -391,7 +391,7 @@ const CreateWorkshop = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`, // Add authentication token
+                    'Authorization': `Bearer ${token}`,
                 },
                 body: JSON.stringify(payload),
             });
@@ -399,34 +399,42 @@ const CreateWorkshop = () => {
             if (!response.ok) {
                 const errorText = await response.text();
                 let errorMessage = `Server responded with status ${response.status}.`;
+                let fieldErrorMap = {};
+
+                // Detect MongoDB duplicate key error (E11000)
+                if (errorText.includes('E11000') && errorText.includes('workshopName')) {
+                    fieldErrorMap.workshopName = 'A workshop with this name already exists.';
+                    setFieldErrors((prev) => ({ ...prev, ...fieldErrorMap }));
+                    toast.error('Workshop name must be unique.');
+                    document.querySelector('#form-top').scrollIntoView({ behavior: 'smooth' });
+                    return;
+                }
 
                 try {
                     const errorData = JSON.parse(errorText);
                     // Attempt to extract Mongoose validation errors
                     if (errorData.errors) {
-                        const fieldErrorMap = {};
                         for (const key in errorData.errors) {
                             fieldErrorMap[key] = errorData.errors[key].message;
                         }
-                        // This handles server-side field validation errors like 'unique: true' for workshopName
                         setFieldErrors((prev) => ({ ...prev, ...fieldErrorMap }));
                         errorMessage = errorData.message || 'Validation failed on the server.';
                         toast.error('Server validation failed. Please check your inputs.');
                         document.querySelector('#form-top').scrollIntoView({ behavior: 'smooth' });
+                        return;
                     } else {
                         errorMessage = errorData.error || errorData.message || errorMessage;
                     }
-
                 } catch (e) {
                     errorMessage = errorText;
                 }
 
+                // For other errors, show a general error box
                 throw new Error(errorMessage);
             }
 
             toast.success('Workshop successfully created and waiting for approval! 🎉');
-            // Navigate to workshops page to see the pending workshop
-            navigate('/workshops');
+            navigate('/events');
         } catch (error) {
             console.error('Submission Error:', error.message);
             setSubmissionError(`Error submitting workshop: ${error.message}`);
