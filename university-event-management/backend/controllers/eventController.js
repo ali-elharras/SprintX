@@ -1,6 +1,9 @@
 const Event = require("../models/Event");
 const User = require("../models/User");
 const Registration = require("../models/Registration");
+const BoothApplication = require("../models/BoothApplication");
+const Conference = require("../models/Conference");
+const Workshop = require("../models/Workshop");
 const { validationResult } = require("express-validator");
 
 /* --------------------------------------------------------
@@ -84,10 +87,13 @@ const getEvents = async (req, res) => {
   try {
     const { type, status = "published", upcoming = false } = req.query;
 
-    let query = { status };
+    let eventQuery = { status };
+    let boothQuery = { status };
+    let conferenceQuery = {};
+    let workshopQuery = {};
 
     if (type) {
-      query.type = type;
+      eventQuery.type = type;
     }
 
     if (upcoming === "true") {
@@ -147,17 +153,11 @@ const getEvents = async (req, res) => {
 
     // Sort combined results by date
     allEvents.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
-      query.startDate = { $gte: new Date() };
-    }
 
-    const events = await Event.find(query)
-      .populate("organizer", "firstName lastName email")
-      .sort({ startDate: 1 });
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      count: events.length,
-      data: events,
+      count: allEvents.length,
+      data: allEvents,
     });
   } catch (error) {
     console.error("Error fetching events:", error);
@@ -317,10 +317,7 @@ const getEvent = async (req, res) => {
       });
     }
 
-    return res.status(404).json({
-      success: false,
-      message: "Event not found",
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: event,
     });
@@ -373,7 +370,8 @@ const createEvent = async (req, res) => {
       registrationDeadline,
       maxParticipants,
       cost: typeof cost !== 'undefined' ? cost : 0,
-      organizer: req.user.id
+      organizer: req.user.id,
+      status : "published"
     };
 
     // If workshop, copy over workshop-specific fields if provided
@@ -601,10 +599,6 @@ const getEventsByType = async (req, res) => {
     })
       .populate("organizer", "firstName lastName email")
       .sort({ startDate: 1 });
-    const events = await Event.findByType(type).populate(
-      "organizer",
-      "firstName lastName email"
-    );
 
     res.status(200).json({
       success: true,
