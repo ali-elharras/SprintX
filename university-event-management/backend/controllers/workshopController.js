@@ -158,23 +158,8 @@ exports.deleteWorkshop = async (req, res) => {
             return res.status(404).json({ message: 'Workshop not found' });
         }
 
-        // Check if workshop was published and has an associated Event
+        // If workshop was published, also delete the associated Event
         if (workshop.publishedEventId) {
-            // Check if there are any registrations for this workshop's published event
-            const Registration = require('../models/Registration');
-            const registrationCount = await Registration.countDocuments({ 
-                event: workshop.publishedEventId,
-                status: { $in: ['confirmed', 'pending', 'attended'] } // Only count active registrations
-            });
-
-            if (registrationCount > 0) {
-                return res.status(400).json({ 
-                    message: 'Cannot delete workshop - students have already registered',
-                    registrationCount: registrationCount
-                });
-            }
-
-            // No registrations, safe to delete the associated Event
             try {
                 await Event.findByIdAndDelete(workshop.publishedEventId);
                 console.log(`✅ Deleted associated Event with ID: ${workshop.publishedEventId}`);
