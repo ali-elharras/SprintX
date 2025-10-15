@@ -379,7 +379,6 @@ const App = () => {
         }}
       >
         <RouterProvider router={router} />
-
         {/* Toast Notifications */}
         <Toaster
           position="bottom-right"
