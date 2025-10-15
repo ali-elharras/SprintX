@@ -1,4 +1,5 @@
 const Event = require("../models/Event");
+const BazaarApplication = require("../models/BazaarApplication");
 
 // ================================
 // @desc    Create a new bazaar
@@ -217,6 +218,36 @@ exports.deleteBazaar = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while deleting bazaar",
+      error: error.message,
+    });
+  }
+};
+
+// ================================
+// @desc    Get bazaar application by vendor
+// @route   GET /api/bazaars/:id/application/vendor
+// @access  Private (Vendor)
+// ================================
+exports.getBazaarApplicationByVendor = async (req, res) => {
+  try {
+    const bazaarApplication = await BazaarApplication.findOne({
+      bazaar: req.params.id,
+      vendor: req.user.id,
+    });
+
+    if (!bazaarApplication) {
+      return res.status(404).json({ success: false, message: "Application not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: bazaarApplication,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching bazaar application:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching bazaar application",
       error: error.message,
     });
   }
