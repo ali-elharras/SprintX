@@ -323,8 +323,8 @@ const CreateWorkshop = () => {
       }
 
       toast.success('Workshop successfully created and waiting for approval!');
-      // Navigate to workshops page to see the pending workshop
-      navigate('/workshops');
+      // Navigate to events page to see the pending workshop
+      navigate('/events');
     } catch (error) {
       console.error('Submission Error:', error.message);
       setSubmissionError(`Error submitting workshop: ${error.message}`);
