@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { applicationServices } from '../../services/api';
 import theme from '../../theme';
 
 const styles = {
@@ -32,6 +33,13 @@ const styles = {
     stroke: theme.colors.primary.dark,
     strokeWidth: 2,
   },
+  occupiedBooth: {
+    fill: theme.colors.error.light,
+    stroke: theme.colors.error.main,
+    strokeWidth: 1,
+    cursor: 'not-allowed',
+    opacity: 0.7,
+  },
   entryExit: {
     fill: theme.colors.success.main,
     stroke: theme.colors.success.dark,
@@ -49,13 +57,26 @@ const styles = {
     fontSize: theme.typography.fontSize.sm,
     marginBottom: theme.spacing[3],
   },
+  conflictWarning: {
+    backgroundColor: theme.colors.error.light,
+    color: theme.colors.error.dark,
+    padding: theme.spacing[2],
+    borderRadius: '4px',
+    fontSize: theme.typography.fontSize.sm,
+    textAlign: 'center',
+    marginTop: theme.spacing[2],
+    border: `1px solid ${theme.colors.error.main}`,
+  },
 };
 
-const BoothMapSelector = ({ onSelectBooth, selectedBoothId }) => {
+const BoothMapSelector = ({ onSelectBooth, selectedBoothId, startDate, durationWeeks }) => {
   const platformWidth = 300;
   const platformHeight = 200;
   const boothSize = 20;
   const padding = 10;
+
+  const [occupiedBooths, setOccupiedBooths] = useState(new Set());
+  const [loading, setLoading] = useState(false);
 
   // Define booth positions (example: 15 booths around the edges)
   const boothPositions = [
@@ -80,13 +101,68 @@ const BoothMapSelector = ({ onSelectBooth, selectedBoothId }) => {
     { id: 'B15', x: padding, y: platformHeight - 3 * (boothSize + padding) },
   ];
 
+  useEffect(() => {
+    if (startDate && durationWeeks) {
+      checkBoothConflicts();
+    } else {
+      setOccupiedBooths(new Set());
+    }
+  }, [startDate, durationWeeks]);
+
+  const checkBoothConflicts = async () => {
+    if (!startDate || !durationWeeks) return;
+
+    setLoading(true);
+    try {
+      const start = new Date(startDate);
+      const end = new Date(start);
+      end.setDate(start.getDate() + (durationWeeks * 7));
+
+      const response = await applicationServices.getBoothConflicts({
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+      });
+
+      if (response.success) {
+        setOccupiedBooths(new Set(response.data.occupiedBooths || []));
+      }
+    } catch (error) {
+      console.error('Error checking booth conflicts:', error);
+      setOccupiedBooths(new Set());
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleBoothClick = (boothId) => {
+    if (occupiedBooths.has(boothId)) {
+      return; // Don't allow selection of occupied booths
+    }
     onSelectBooth(boothId);
+  };
+
+  const getBoothStyle = (boothId) => {
+    if (occupiedBooths.has(boothId)) {
+      return { ...styles.booth, ...styles.occupiedBooth };
+    }
+    if (selectedBoothId === boothId) {
+      return { ...styles.booth, ...styles.selectedBooth };
+    }
+    return styles.booth;
   };
 
   return (
     <div style={styles.mapContainer}>
-      <p style={styles.instructionText}>Select your preferred booth location:</p>
+      <p style={styles.instructionText}>
+        Select your preferred booth location{startDate && durationWeeks ? ' (conflicts checked)' : ''}:
+      </p>
+
+      {loading && (
+        <p style={{ textAlign: 'center', color: theme.colors.text.secondary }}>
+          Checking availability...
+        </p>
+      )}
+
       <svg width={platformWidth} height={platformHeight} style={styles.svg}>
         {/* Platform */}
         <rect
@@ -115,7 +191,7 @@ const BoothMapSelector = ({ onSelectBooth, selectedBoothId }) => {
               y={booth.y}
               width={boothSize}
               height={boothSize}
-              style={selectedBoothId === booth.id ? { ...styles.booth, ...styles.selectedBooth } : styles.booth}
+              style={getBoothStyle(booth.id)}
             />
             <text
               x={booth.x + boothSize / 2}
@@ -128,6 +204,12 @@ const BoothMapSelector = ({ onSelectBooth, selectedBoothId }) => {
           </g>
         ))}
       </svg>
+
+      {occupiedBooths.size > 0 && (
+        <div style={styles.conflictWarning}>
+          ⚠️ Some booths are occupied during your requested period
+        </div>
+      )}
     </div>
   );
 };
