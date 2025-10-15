@@ -135,6 +135,10 @@ const WorkshopCard = ({ workshop, onEdit, onDelete }) => {
   const [isEditHovered, setIsEditHovered] = useState(false);
   const [isDeleteHovered, setIsDeleteHovered] = useState(false);
 
+  // Check if editing is allowed
+  const isPublished = workshop.status === 'published';
+  const canEdit = !isPublished; // Can only edit if NOT published (pending or needs_revision)
+
   const getBorderClassKey = (faculty) => {
     switch (faculty) {
       case 'MET': return 'card-border-MET';
@@ -289,21 +293,27 @@ const WorkshopCard = ({ workshop, onEdit, onDelete }) => {
         </button>
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button 
-            style={{ 
-              ...workshopStyleSheet['card-btn-edit-default'],
-              padding: '0.35rem 1rem', fontSize: '0.875rem', fontWeight: 500, 
-              borderRadius: '0.5rem', transition: 'all 0.15s', cursor: 'pointer',
-              border: `1px solid ${themeColors.indigo600}`, 
-              backgroundColor: isEditHovered ? themeColors.indigo600 : 'transparent',
-              color: isEditHovered ? 'white' : themeColors.indigo600,
-            }}
-            onMouseEnter={() => setIsEditHovered(true)}
-            onMouseLeave={() => setIsEditHovered(false)}
-            onClick={() => onEdit(uniqueId, workshop.workshopName)} 
-          >
-            Edit
-          </button>
+          <div style={{ position: 'relative' }}>
+            <button 
+              disabled={!canEdit}
+              title={!canEdit ? "Cannot edit a published workshop" : "Edit workshop"}
+              style={{ 
+                ...workshopStyleSheet['card-btn-edit-default'],
+                padding: '0.35rem 1rem', fontSize: '0.875rem', fontWeight: 500, 
+                borderRadius: '0.5rem', transition: 'all 0.15s', 
+                cursor: canEdit ? 'pointer' : 'not-allowed',
+                border: `1px solid ${canEdit ? themeColors.indigo600 : '#d1d5db'}`, 
+                backgroundColor: !canEdit ? '#f3f4f6' : (isEditHovered ? themeColors.indigo600 : 'transparent'),
+                color: !canEdit ? '#9ca3af' : (isEditHovered ? 'white' : themeColors.indigo600),
+                opacity: !canEdit ? 0.6 : 1,
+              }}
+              onMouseEnter={() => canEdit && setIsEditHovered(true)}
+              onMouseLeave={() => setIsEditHovered(false)}
+              onClick={() => canEdit && onEdit(uniqueId, workshop.workshopName)} 
+            >
+              Edit
+            </button>
+          </div>
           
           <button 
             style={{ 
