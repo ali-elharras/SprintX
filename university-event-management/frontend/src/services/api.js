@@ -276,6 +276,7 @@ export const workshopAPI = {
   createWorkshop: (workshopData) => api.post("/workshops", workshopData),
   updateWorkshop: (id, workshopData) => api.patch(`/workshops/${id}`, workshopData),
   deleteWorkshop: (id) => api.delete(`/workshops/${id}`),
+  deleteWorkshopByEventId: (eventId) => api.delete(`/workshops/by-event/${eventId}`),
   publishWorkshop: (id) => api.post(`/workshops/${id}/publish`),
   rejectWorkshop: (id, reason = null) => 
     api.post(`/workshops/${id}/reject`, reason ? { reason } : {}),

@@ -31,6 +31,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   const [isDeleting, setIsDeleting] = useState(false);
   const [participatingVendors, setParticipatingVendors] = useState([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const navigate = useNavigate();
   const { isEventsOffice, user } = useAuth();
 
@@ -137,6 +138,50 @@ const handleDeleteConference = async () => {
   }
 };
 
+const handleDeleteWorkshop = async () => {
+  // Check if there are registrations before showing modal
+  if (normalizedEvent.currentParticipants > 0) {
+    toast.error("This workshop cannot be deleted because there are registered users.");
+    return;
+  }
+
+  // Show modal instead of browser confirm
+  setShowDeleteModal(true);
+};
+
+const confirmDeleteWorkshop = async () => {
+  setShowDeleteModal(false);
+  
+  try {
+    setIsDeleting(true);
+    // Import workshopAPI at the top and use it here
+    const { workshopAPI } = await import("../services/api");
+    
+    // Published workshops are displayed as Event documents, so we need to delete by Event ID
+    await workshopAPI.deleteWorkshopByEventId(normalizedEvent._id);
+    
+    // Signal other tabs that a workshop was deleted
+    localStorage.setItem('workshop_deleted', Date.now().toString());
+    
+    toast.success("Workshop deleted successfully!");
+    if (onEventUpdate) {
+      onEventUpdate(); // Refresh the events list
+    }
+  } catch (error) {
+    console.error("Error deleting workshop:", error);
+    const errorMessage = error.response?.data?.message || error.message || "Failed to delete workshop";
+    
+    // Show specific error for registered users
+    if (errorMessage.includes('students have already registered')) {
+      toast.error("This workshop cannot be deleted because there are registered users.");
+    } else {
+      toast.error(errorMessage);
+    }
+  } finally {
+    setIsDeleting(false);
+  }
+};
+
   const handleRegistrationSuccess = (registrationData) => {
     setShowRegistrationForm(false);
     onRegistrationSuccess && onRegistrationSuccess(registrationData);
@@ -176,15 +221,36 @@ const handleDeleteConference = async () => {
   }
 
   return (
-    <div
-      style={{
-        background: theme.colors.background.paper,
-        borderRadius: theme.borderRadius.card,
-        boxShadow: theme.shadows.card,
-        overflow: "hidden",
-        transition: "all 0.3s ease",
-        cursor: "pointer",
-      }}
+    <>
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        @keyframes slideUp {
+          from {
+            transform: translateY(20px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
+      <div
+        style={{
+          background: theme.colors.background.paper,
+          borderRadius: theme.borderRadius.card,
+          boxShadow: theme.shadows.card,
+          overflow: "hidden",
+          transition: "all 0.3s ease",
+          cursor: "pointer",
+        }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "translateY(-5px)";
         e.currentTarget.style.boxShadow = theme.shadows.cardHover;
@@ -537,39 +603,63 @@ const handleDeleteConference = async () => {
             alignItems: "stretch",
           }}
         >
-          {/* Events Office buttons for conferences */}
-          {isEventsOffice && normalizedEvent.type === "conference" ? (
+          {/* Events Office buttons for conferences and workshops */}
+          {isEventsOffice && (normalizedEvent.type === "conference" || normalizedEvent.type === "workshop") ? (
             <>
-              <div style={{ flex: 1 }}>
-                <Button
-                  variant="primary"
-                  onClick={handleEditClick}
-                  style={{ 
-                    width: "100%",
-                    minHeight: "44px",
-                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Edit
-                </Button>
-              </div>
-              <div style={{ flex: 1 }}>
-                <Button
-                  variant="danger"
-                  onClick={handleDeleteConference}
-                  disabled={isDeleting}
-                  style={{ 
-                    width: "100%",
-                    minHeight: "44px",
-                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                    whiteSpace: "nowrap",
-                    opacity: isDeleting ? 0.6 : 1,
-                  }}
-                >
-                  {isDeleting ? "Deleting..." : "Delete"}
-                </Button>
-              </div>
+              {normalizedEvent.type === "conference" && (
+                <>
+                  <div style={{ flex: 1 }}>
+                    <Button
+                      variant="primary"
+                      onClick={handleEditClick}
+                      style={{ 
+                        width: "100%",
+                        minHeight: "44px",
+                        padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Button
+                      variant="danger"
+                      onClick={handleDeleteConference}
+                      disabled={isDeleting}
+                      style={{ 
+                        width: "100%",
+                        minHeight: "44px",
+                        padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                        whiteSpace: "nowrap",
+                        opacity: isDeleting ? 0.6 : 1,
+                      }}
+                    >
+                      {isDeleting ? "Deleting..." : "Delete"}
+                    </Button>
+                  </div>
+                </>
+              )}
+              {normalizedEvent.type === "workshop" && (
+                <div style={{ flex: 1 }}>
+                  <Button
+                    variant="danger"
+                    onClick={handleDeleteWorkshop}
+                    disabled={isDeleting || normalizedEvent.currentParticipants > 0}
+                    title={normalizedEvent.currentParticipants > 0 ? "Cannot delete - students are registered" : "Delete workshop"}
+                    style={{ 
+                      width: "100%",
+                      minHeight: "44px",
+                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      whiteSpace: "nowrap",
+                      opacity: (isDeleting || normalizedEvent.currentParticipants > 0) ? 0.6 : 1,
+                      cursor: (isDeleting || normalizedEvent.currentParticipants > 0) ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {isDeleting ? "Deleting..." : "Delete"}
+                  </Button>
+                </div>
+              )}
             </>
           ) : (
             /* Single Register Now button for regular users only */
@@ -592,7 +682,114 @@ const handleDeleteConference = async () => {
           )}
         </div>
       </div>
+
+      {/* Delete Workshop Confirmation Modal */}
+      {showDeleteModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.5)",
+            zIndex: 10000,
+            animation: "fadeIn 0.2s ease-out",
+          }}
+          onClick={() => setShowDeleteModal(false)}
+        >
+          <div
+            style={{
+              width: "480px",
+              maxWidth: "95%",
+              background: theme.colors.background.paper,
+              borderRadius: theme.borderRadius.lg,
+              padding: theme.spacing[6],
+              boxShadow: theme.shadows.xl,
+              animation: "slideUp 0.3s ease-out",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              style={{
+                marginTop: 0,
+                marginBottom: theme.spacing[3],
+                color: theme.colors.error.main,
+                fontSize: theme.typography.fontSize.xl,
+                fontWeight: theme.typography.fontWeight.bold,
+              }}
+            >
+              🗑️ Delete Workshop?
+            </h3>
+            <p
+              style={{
+                color: theme.colors.text.secondary,
+                marginBottom: theme.spacing[2],
+                lineHeight: 1.6,
+                fontSize: theme.typography.fontSize.base,
+              }}
+            >
+              Are you sure you want to permanently delete this workshop?
+            </p>
+            <p
+              style={{
+                color: theme.colors.text.primary,
+                marginBottom: theme.spacing[4],
+                fontWeight: theme.typography.fontWeight.semibold,
+                fontSize: theme.typography.fontSize.lg,
+                padding: theme.spacing[3],
+                background: theme.colors.neutral.gray50,
+                borderRadius: theme.borderRadius.base,
+                borderLeft: `4px solid ${theme.colors.error.main}`,
+              }}
+            >
+              "{normalizedEvent.title}"
+            </p>
+            <p
+              style={{
+                color: theme.colors.text.secondary,
+                marginBottom: theme.spacing[5],
+                fontSize: theme.typography.fontSize.sm,
+              }}
+            >
+              <strong>⚠️ Warning:</strong> This action cannot be undone. The workshop will be completely removed from the system.
+            </p>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: theme.spacing[3],
+              }}
+            >
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteModal(false)}
+                style={{
+                  minWidth: "100px",
+                  padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={confirmDeleteWorkshop}
+                style={{
+                  minWidth: "100px",
+                  padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+                }}
+              >
+                Delete Workshop
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </>
   );
 };
 

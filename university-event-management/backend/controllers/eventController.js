@@ -67,6 +67,10 @@ const getEvents = async (req, res) => {
       workshopQuery = { ...workshopQuery, ...(type === 'workshop' ? {} : { _id: null }) };
     }
 
+    // Exclude published workshops from Workshop collection since they appear as Event documents
+    // Published workshops should only be returned from the Event collection, not Workshop collection
+    workshopQuery.publishedEventId = { $exists: false };
+
     // Fetch all event types in parallel
     const [events, booths, conferences, workshops] = await Promise.all([
       Event.find(eventQuery)
@@ -489,7 +493,8 @@ const getEventsByType = async (req, res) => {
     if (type === "workshop") {
       const workshops = await Workshop.find({
         status: { $in: [...acceptedStatuses, "pending", "needs_revision"] },
-        startDate: { $gte: now }
+        startDate: { $gte: now },
+        publishedEventId: { $exists: false } // Exclude published workshops - they appear as Event documents
       })
         .populate("createdBy", "firstName lastName email")
         .sort({ startDate: 1 });

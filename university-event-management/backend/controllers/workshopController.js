@@ -196,6 +196,56 @@ exports.deleteWorkshop = async (req, res) => {
     }
 };
 
+// DELETE /api/workshops/by-event/:eventId - Delete a published workshop by its Event ID
+exports.deleteWorkshopByEventId = async (req, res) => {
+    try {
+        const eventId = req.params.eventId;
+        
+        // Find the workshop that has this eventId as its publishedEventId
+        const workshop = await Workshop.findOne({ publishedEventId: eventId });
+
+        if (!workshop) {
+            return res.status(404).json({ message: 'Workshop not found for this event' });
+        }
+
+        // Check if there are any registrations for this event
+        const Registration = require('../models/Registration');
+        const registrationCount = await Registration.countDocuments({ 
+            event: eventId,
+            status: { $in: ['confirmed', 'pending', 'attended'] }
+        });
+
+        if (registrationCount > 0) {
+            return res.status(400).json({ 
+                message: 'Cannot delete workshop - students have already registered',
+                registrationCount: registrationCount
+            });
+        }
+
+        // No registrations, safe to delete both the Event and Workshop
+        try {
+            await Event.findByIdAndDelete(eventId);
+            console.log(`✅ Deleted Event with ID: ${eventId}`);
+        } catch (eventError) {
+            console.error('Error deleting event:', eventError);
+            // Continue with workshop deletion even if event deletion fails
+        }
+
+        // Delete the workshop
+        await Workshop.findByIdAndDelete(workshop._id);
+        console.log(`✅ Deleted Workshop with ID: ${workshop._id}`);
+
+        res.status(200).json({ 
+            message: 'Workshop successfully deleted',
+            deletedWorkshopId: workshop._id,
+            deletedEventId: eventId
+        });
+    } catch (error) {
+        console.error('Error deleting workshop by event ID:', error);
+        res.status(500).json({ message: 'Error deleting workshop', error: error.message });
+    }
+};
+
 // POST /api/workshops/:id/request-edit - Request edits for a pending workshop (Admin/Events Office)
 exports.requestEditWorkshop = async (req, res) => {
     try {
@@ -323,7 +373,28 @@ exports.publishWorkshop = async (req, res) => {
         const workshop = await Workshop.findById(workshopId).populate('createdBy', 'firstName lastName email');
         if (!workshop) return res.status(404).json({ success: false, message: 'Workshop not found' });
 
-        if (workshop.status === 'published') return res.status(400).json({ message: 'Workshop already published' });
+        // Check if workshop is already published and has an event
+        if (workshop.status === 'published' && workshop.publishedEventId) {
+            // Return the existing event instead of creating a duplicate
+            try {
+                const existingEvent = await Event.findById(workshop.publishedEventId).populate("organizer", "firstName lastName email");
+                if (existingEvent) {
+                    console.log('Workshop already published with existing Event ID:', workshop.publishedEventId);
+                    return res.status(200).json({ 
+                        success: true,
+                        message: `Workshop "${workshop.workshopName}" is already published!`, 
+                        event: existingEvent.toObject({ virtuals: true }) 
+                    });
+                }
+                // If event was deleted but workshop still marked as published, continue to create new event
+                console.log('Published event not found, creating new event for already-published workshop');
+            } catch (err) {
+                console.error('Error checking existing event:', err);
+            }
+        } else if (workshop.status === 'published') {
+            // Workshop is marked as published but has no event ID - should not normally happen
+            console.warn('Workshop marked as published but missing publishedEventId');
+        }
 
         // Create a new Event using the same fields/mapping expected by Event model
         // Map workshop fields to event fields
