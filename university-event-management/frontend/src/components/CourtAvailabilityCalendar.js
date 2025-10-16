@@ -24,6 +24,7 @@ const CourtAvailabilityCalendar = ({ court, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isClosing, setIsClosing] = useState(false);
+  const [unavailabilityReason, setUnavailabilityReason] = useState(null);
   
   // Ref to track the last error shown to prevent duplicates
   const lastErrorRef = useRef(null);
@@ -60,6 +61,7 @@ const CourtAvailabilityCalendar = ({ court, onClose }) => {
       
       console.log('Availability response:', response.data);
       setAvailability(response.data.data?.availableSlots || []);
+      setUnavailabilityReason(response.data.data?.unavailabilityReason || null);
       
       // Clear any previous errors on successful fetch
       lastErrorRef.current = null;
@@ -73,14 +75,9 @@ const CourtAvailabilityCalendar = ({ court, onClose }) => {
       console.error("Error fetching availability:", error);
       console.error("Error details:", error.response?.data);
       
-      // Only show error toast if it's different from the last error
+      // Extract error message from backend and set it for display (no toast)
       const errorMessage = error.response?.data?.message || "Failed to load availability";
-      const errorKey = `${courtId}-${dateStr}-${errorMessage}`;
-      
-      if (lastErrorRef.current !== errorKey) {
-        toast.error("Failed to load availability");
-        lastErrorRef.current = errorKey;
-      }
+      setUnavailabilityReason(errorMessage);
       
       setAvailability([]);
     } finally {
@@ -684,7 +681,9 @@ const CourtAvailabilityCalendar = ({ court, onClose }) => {
                         {(() => {
                           const dayHours = getOperatingHours(selectedDate);
                           
-                          if (!dayHours?.isOpen) {
+                          // Show unavailability message if we have a specific reason
+                          if (unavailabilityReason || (!dayHours?.isOpen && availability.length === 0)) {
+                            const displayMessage = unavailabilityReason || `This court is closed on ${selectedDate.toLocaleDateString('en-US', { weekday: 'long' })}s`;
                             return (
                               <div
                                 style={{
@@ -704,10 +703,15 @@ const CourtAvailabilityCalendar = ({ court, onClose }) => {
                                     marginBottom: theme.spacing[2],
                                   }}
                                 >
-                                  Court Closed
+                                  Court Unavailable
                                 </h3>
-                                <p style={{ color: "#991b1b", margin: 0 }}>
-                                  This court is closed on the selected day
+                                <p style={{ 
+                                  color: "#991b1b", 
+                                  margin: 0,
+                                  fontSize: theme.typography.fontSize.base,
+                                  lineHeight: theme.typography.lineHeight.relaxed,
+                                }}>
+                                  {displayMessage}
                                 </p>
                               </div>
                             );
@@ -997,7 +1001,7 @@ const CourtAvailabilityCalendar = ({ court, onClose }) => {
                                       border: "2px dashed #cbd5e1",
                                     }}
                                   >
-                                    <div style={{ fontSize: "48px", marginBottom: theme.spacing[3] }}>📅</div>
+                                    <div style={{ fontSize: "48px", marginBottom: theme.spacing[3] }}>�</div>
                                     <h3
                                       style={{
                                         fontSize: theme.typography.fontSize.lg,

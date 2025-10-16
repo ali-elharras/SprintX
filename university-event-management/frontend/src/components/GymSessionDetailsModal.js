@@ -10,9 +10,8 @@ const styles = {
   actions: { display: 'flex', justifyContent: 'flex-end', gap: theme.spacing[2] },
 };
 
-const GymSessionDetailsModal = ({ session, isOpen, onClose, onSaved, isAdminOrEventsOffice = false, onOptimisticRegister, onCancelRegistration, getRegistrationForSession }) => {
+const GymSessionDetailsModal = ({ session, isOpen, onClose, onSaved, isAdminOrEventsOffice = false, viewOnly = false }) => {
   const [isEditOpen, setIsEditOpen] = React.useState(false);
-  const [isCancelling, setIsCancelling] = React.useState(false);
 
   if (!isOpen || !session) return null;
 
@@ -51,33 +50,13 @@ const GymSessionDetailsModal = ({ session, isOpen, onClose, onSaved, isAdminOrEv
         </div>
 
         <div style={styles.actions}>
-          {isAdminOrEventsOffice && (
+          {isAdminOrEventsOffice && !viewOnly && (
             <button onClick={() => setIsEditOpen(true)} style={{ ...theme.components.button.primary }}>Edit</button>
-          )}
-          {/* If user is registered, show cancel action */}
-          {typeof getRegistrationForSession === 'function' && getRegistrationForSession(session._id) && (
-            <button
-              onClick={async () => {
-                try {
-                  setIsCancelling(true);
-                  const reg = getRegistrationForSession(session._id);
-                  if (typeof onCancelRegistration === 'function') {
-                    await onCancelRegistration({ registrationId: reg._id, sessionId: session._id });
-                  }
-                  setIsCancelling(false);
-                  onClose && onClose();
-                } catch (err) {
-                  setIsCancelling(false);
-                }
-              }}
-              style={{ ...theme.components.button.secondary, backgroundColor: theme.colors.background.paper }}
-              disabled={isCancelling}
-            >{isCancelling ? 'Cancelling...' : 'Cancel Registration'}</button>
           )}
           <button onClick={onClose} style={{ ...theme.components.button.secondary }}>Close</button>
         </div>
 
-        {isAdminOrEventsOffice && (
+        {isAdminOrEventsOffice && !viewOnly && (
           <EditSessionModal session={session} isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} onSaved={(id)=>{ setIsEditOpen(false); onSaved && onSaved(id); onClose && onClose(); }} />
         )}
       </div>

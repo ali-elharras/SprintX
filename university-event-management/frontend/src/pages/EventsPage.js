@@ -13,6 +13,7 @@ import api, { eventAPI, workshopAPI, createCancelTokenSource } from "../services
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 import CreateDropdownButton from '../components/CreateDropdownButton';
+import CreateTripModal from '../components/CreateTripModal';
 
 // Workshop Components and Styles (from Workshops.js)
 const themeColors = {
@@ -730,6 +731,7 @@ const EventsPage = () => {
   const [requestEditsMessage, setRequestEditsMessage] = useState("");
 
   const [createBazaarOpen, setCreateBazaarOpen] = useState(false);
+  const [createTripOpen, setCreateTripOpen] = useState(false);
   const [bazaarData, setBazaarData] = useState({
     title: "",
     description: "",
@@ -925,7 +927,7 @@ const EventsPage = () => {
     
     if (filters.upcoming) {
       const now = new Date();
-      filtered = filtered.filter((e) => new Date(e.startDate) > now);
+      filtered = filtered.filter((e) => new Date(e.startDate) >= now);
     }
     
     setFilteredEvents(filtered);
@@ -1665,9 +1667,18 @@ const EventsPage = () => {
               <CreateDropdownButton 
                 onConferenceModalOpen={() => setShowConferenceModal(true)} 
                 onBazaarModalOpen={() => setCreateBazaarOpen(true)} 
+                onTripCreate={() => setCreateTripOpen(true)}
               />
             </div>
           </div>
+
+          {/* Create Trip modal wired to the Create dropdown */}
+          <CreateTripModal
+            open={createTripOpen}
+            onClose={() => setCreateTripOpen(false)}
+            onCreated={async () => { setCreateTripOpen(false); await fetchEvents(); }}
+            currentUser={auth.user}
+          />
 
           {filteredEvents.length > 0 ? (
             <div
