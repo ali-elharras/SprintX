@@ -59,9 +59,39 @@ const createAdminOrEventOffice = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating admin/event office:", error);
-    return res
-      .status(500)
-      .json({ message: "Server error", error: error.message });
+    
+    // Handle MongoDB duplicate key error
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      const value = error.keyValue[field];
+      
+      if (field === 'universityId') {
+        return res.status(400).json({ 
+          message: `University ID "${value}" is already in use. Please use a different ID.`
+        });
+      } else if (field === 'email') {
+        return res.status(400).json({ 
+          message: `Email address "${value}" is already in use. Please use a different email.`
+        });
+      } else {
+        return res.status(400).json({ 
+          message: `This ${field} is already in use. Please use a different value.`
+        });
+      }
+    }
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ 
+        message: messages.join('. ')
+      });
+    }
+    
+    // Generic error fallback
+    return res.status(500).json({ 
+      message: "An error occurred while creating the user. Please try again."
+    });
   }
 };
 
@@ -127,7 +157,7 @@ const getPendingAcademics = async (req, res) => {
       {
         role: "pending",
         requestedRole: { $in: ["staff", "ta", "professor"] },
-        emailVerificationSent: { $ne: true }, // Only show users who haven't been sent verification email yet, or who reapplied
+        approvedRole: { $exists: false }, // Exclude users who have been approved already
         isRegistrationComplete: true, // Only show users who completed registration (added verification email)
       },
       "firstName lastName email universityId role requestedRole createdAt emailVerificationSent"

@@ -25,6 +25,7 @@ const AdminUserManagement = () => {
   const [rowRoleSelections, setRowRoleSelections] = useState({});
   const [roleFilter, setRoleFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("admins"); // 'admins' | 'verification'
+  const [approvingUsers, setApprovingUsers] = useState({}); // Track which users are being approved
 
   // Ref for request cancellation
   const cancelTokenRef = useRef(null);
@@ -121,12 +122,33 @@ const AdminUserManagement = () => {
   };
 
   const handleApproveAcademic = async (id, role) => {
+    // Set this user as being approved
+    setApprovingUsers((prev) => ({ ...prev, [id]: true }));
+    
     try {
       const data = await adminAPI.approveAcademic(id, role);
       if (data?.message) toast.success(data.message);
+      
+      // Immediately remove the user from the pending list in the UI
+      setPendingAcademics((prev) => prev.filter((u) => (u._id || u.id) !== id));
+      
+      // Also refresh the data from the server to stay in sync
       await Promise.all([fetchPendingAcademics(), fetchUsers()]);
     } catch (err) {
       toast.error(err.message || "Failed to approve user");
+      // On error, remove the approving state so they can try again
+      setApprovingUsers((prev) => {
+        const newState = { ...prev };
+        delete newState[id];
+        return newState;
+      });
+    } finally {
+      // Clear the approving state for this user
+      setApprovingUsers((prev) => {
+        const newState = { ...prev };
+        delete newState[id];
+        return newState;
+      });
     }
   };
 
@@ -705,6 +727,7 @@ const AdminUserManagement = () => {
                       // Default selection should be the role they originally requested/were approved for
                       const defaultRole = u.role === "pending" ? u.requestedRole : u.role;
                       const selected = rowRoleSelections[uid] || defaultRole;
+                      const isApproving = approvingUsers[uid];
                       return (
                         <select
                           value={selected}
@@ -714,7 +737,12 @@ const AdminUserManagement = () => {
                               [uid]: e.target.value,
                             }))
                           }
-                          style={selectStyle}
+                          disabled={isApproving}
+                          style={{
+                            ...selectStyle,
+                            opacity: isApproving ? 0.6 : 1,
+                            cursor: isApproving ? "not-allowed" : "pointer",
+                          }}
                         >
                           <option value="staff">Staff</option>
                           <option value="ta">TA</option>
@@ -728,12 +756,18 @@ const AdminUserManagement = () => {
                       const uid = u._id || u.id;
                       const selected =
                         rowRoleSelections[uid] || u.requestedRole;
-                      const label = `Approve as ${
-                        selected.charAt(0).toUpperCase() + selected.slice(1)
-                      }`;
+                      const isApproving = approvingUsers[uid];
+                      const label = isApproving 
+                        ? "Approving..." 
+                        : `Approve as ${selected.charAt(0).toUpperCase() + selected.slice(1)}`;
                       return primaryButton({
                         onClick: () => handleApproveAcademic(uid, selected),
                         children: label,
+                        disabled: isApproving,
+                        style: {
+                          opacity: isApproving ? 0.6 : 1,
+                          cursor: isApproving ? "not-allowed" : "pointer",
+                        },
                       });
                     })()}
                   </td>

@@ -1014,7 +1014,7 @@ const verifyEmail = async (req, res, next) => {
 
     if (!token) {
       return res.redirect(
-        `${process.env.FRONTEND_URL}/?verification=failed&reason=no-token`
+        `${process.env.FRONTEND_URL}/email-verified?success=false&reason=no-token`
       );
     }
 
@@ -1038,12 +1038,12 @@ const verifyEmail = async (req, res, next) => {
           }, Now: ${new Date()}`
         );
         return res.redirect(
-          `${process.env.FRONTEND_URL}/?verification=failed&reason=expired`
+          `${process.env.FRONTEND_URL}/email-verified?success=false&reason=expired`
         );
       } else {
         console.log(`🚫 [EMAIL VERIFICATION] Token not found in database`);
         return res.redirect(
-          `${process.env.FRONTEND_URL}/?verification=failed&reason=invalid`
+          `${process.env.FRONTEND_URL}/email-verified?success=false&reason=invalid`
         );
       }
     }
@@ -1067,8 +1067,8 @@ const verifyEmail = async (req, res, next) => {
       `🎉 [EMAIL VERIFICATION] User verified successfully - ID: ${user._id}`
     );
 
-    // Redirect to login page with success message
-    res.redirect(`${process.env.FRONTEND_URL}/?verified=true`);
+    // Redirect to a dedicated verification complete page (not login directly)
+    res.redirect(`${process.env.FRONTEND_URL}/email-verified?success=true&email=${encodeURIComponent(user.email)}`);
   } catch (error) {
     console.error(`❌ [EMAIL VERIFICATION] Error occurred:`, error);
     next(error);

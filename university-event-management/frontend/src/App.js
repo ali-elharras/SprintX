@@ -17,6 +17,7 @@ import UserSignup from "./pages/UserSignup";
 import VerificationEmailSelection from "./pages/VerificationEmailSelection";
 import VerificationSuccess from "./pages/VerificationSuccess";
 import VerificationPending from "./pages/VerificationPending";
+import EmailVerified from "./pages/EmailVerified";
 import VendorSignup from "./pages/VendorSignup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -157,6 +158,14 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: "/login",
+    element: (
+      <PublicRoute>
+        <Login />
+      </PublicRoute>
+    ),
+  },
+  {
     path: "/signup",
     element: <UserTypeSelection />,
   },
@@ -207,6 +216,10 @@ const router = createBrowserRouter([
         <VerificationPending />
       </PublicRoute>
     ),
+  },
+  {
+    path: "/email-verified",
+    element: <EmailVerified />,
   },
   {
     path: "/forgot-password",

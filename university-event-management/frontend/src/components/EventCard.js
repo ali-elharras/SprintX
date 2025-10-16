@@ -33,7 +33,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   const [vendorsLoading, setVendorsLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const navigate = useNavigate();
-  const { isEventsOffice, user } = useAuth();
+  const { isEventsOffice, user, isAdmin } = useAuth();
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -181,6 +181,35 @@ const confirmDeleteWorkshop = async () => {
     setIsDeleting(false);
   }
 };
+
+  const handleDeleteEvent = async () => {
+    if (!window.confirm(`Are you sure you want to delete this ${normalizedEvent.type}? This action cannot be undone.`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await eventAPI.deleteEvent(normalizedEvent._id);
+      toast.success(`${getEventTypeLabel(normalizedEvent.type)} deleted successfully!`);
+      
+      // Trigger refresh on parent component
+      if (onEventUpdate) {
+        onEventUpdate();
+      }
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Failed to delete event";
+      
+      // Check if error is due to registrations
+      if (errorMessage.includes('registration')) {
+        toast.error(errorMessage, { duration: 6000 });
+      } else {
+        toast.error(errorMessage);
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleRegistrationSuccess = (registrationData) => {
     setShowRegistrationForm(false);
@@ -603,8 +632,28 @@ const confirmDeleteWorkshop = async () => {
             alignItems: "stretch",
           }}
         >
-          {/* Events Office buttons for conferences and workshops */}
-          {isEventsOffice && (normalizedEvent.type === "conference" || normalizedEvent.type === "workshop") ? (
+          {/* Admin buttons - can delete any event type if no registrations */}
+          {isAdmin ? (
+            <div style={{ flex: 1 }}>
+              <Button
+                variant="danger"
+                onClick={handleDeleteEvent}
+                disabled={isDeleting}
+                title="Delete event (only if no registrations)"
+                style={{ 
+                  width: "100%",
+                  minHeight: "44px",
+                  padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                  whiteSpace: "nowrap",
+                  opacity: isDeleting ? 0.6 : 1,
+                  cursor: isDeleting ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isDeleting ? "Deleting..." : "Delete Event"}
+              </Button>
+            </div>
+          ) : /* Events Office buttons for conferences and workshops */
+          isEventsOffice && (normalizedEvent.type === "conference" || normalizedEvent.type === "workshop") ? (
             <>
               {normalizedEvent.type === "conference" && (
                 <>
@@ -663,7 +712,7 @@ const confirmDeleteWorkshop = async () => {
             </>
           ) : (
             /* Single Register Now button for regular users only */
-            !isEventsOffice && showRegistration && canRegister() && (
+            !isEventsOffice && !isAdmin && showRegistration && canRegister() && (
               <div style={{ flex: 1 }}>
                 <Button
                   variant="primary"

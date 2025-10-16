@@ -529,6 +529,21 @@ const deleteEvent = async (req, res) => {
       });
     }
 
+    // Check if there are any registrations for this event
+    const Registration = require("../models/Registration");
+    const registrationCount = await Registration.countDocuments({
+      event: req.params.id,
+      status: { $in: ["confirmed", "pending", "attended"] }, // Only count active registrations
+    });
+
+    if (registrationCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete event. There are ${registrationCount} active registration(s). Please cancel all registrations before deleting the event.`,
+        registrationCount,
+      });
+    }
+
     await Event.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
