@@ -128,7 +128,7 @@ const DetailSectionHeader = ({ title, icon }) => (
   </h4>
 );
 
-const WorkshopCard = ({ workshop, onEdit, onDelete }) => {
+const WorkshopCard = ({ workshop, onEdit, onDelete, isEventsOffice = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isToggleHovered, setIsToggleHovered] = useState(false);
@@ -138,6 +138,10 @@ const WorkshopCard = ({ workshop, onEdit, onDelete }) => {
   // Check if editing is allowed
   const isPublished = workshop.status === 'published';
   const canEdit = !isPublished; // Can only edit if NOT published (pending or needs_revision)
+  
+  // Check if deletion is allowed (Events Office only, published workshops, no attendees)
+  const hasAttendees = workshop.attendees && workshop.attendees > 0;
+  const canDelete = isEventsOffice && isPublished && !hasAttendees;
 
   const getBorderClassKey = (faculty) => {
     switch (faculty) {
@@ -315,23 +319,30 @@ const WorkshopCard = ({ workshop, onEdit, onDelete }) => {
             </button>
           </div>
           
-          <button 
-            style={{ 
-              ...workshopStyleSheet['card-btn-delete-default'],
-              padding: '0.35rem 1rem', fontSize: '0.875rem', fontWeight: 500, 
-              borderRadius: '0.5rem', transition: 'all 0.15s', cursor: 'pointer',
-              border: `1px solid ${themeColors.red600}`, 
-              backgroundColor: isDeleteHovered ? themeColors.red600 : 'transparent',
-              color: isDeleteHovered ? 'white' : themeColors.red600,
-              display: 'flex', alignItems: 'center', gap: '0.25rem'
-            }}
-            onMouseEnter={() => setIsDeleteHovered(true)}
-            onMouseLeave={() => setIsDeleteHovered(false)}
-            onClick={() => onDelete(uniqueId, workshop.workshopName)} 
-          >
-            {WorkshopIconMap.Trash}
-            Delete
-          </button>
+          {/* Delete button - Only visible to Events Office for published workshops with no attendees */}
+          {isEventsOffice && isPublished && (
+            <button 
+              disabled={!canDelete}
+              title={hasAttendees ? "Cannot delete - students are registered" : "Delete workshop"}
+              style={{ 
+                ...workshopStyleSheet['card-btn-delete-default'],
+                padding: '0.35rem 1rem', fontSize: '0.875rem', fontWeight: 500, 
+                borderRadius: '0.5rem', transition: 'all 0.15s', 
+                cursor: canDelete ? 'pointer' : 'not-allowed',
+                border: `1px solid ${canDelete ? themeColors.red600 : '#d1d5db'}`, 
+                backgroundColor: !canDelete ? '#f3f4f6' : (isDeleteHovered ? themeColors.red600 : 'transparent'),
+                color: !canDelete ? '#9ca3af' : (isDeleteHovered ? 'white' : themeColors.red600),
+                display: 'flex', alignItems: 'center', gap: '0.25rem',
+                opacity: !canDelete ? 0.6 : 1,
+              }}
+              onMouseEnter={() => canDelete && setIsDeleteHovered(true)}
+              onMouseLeave={() => setIsDeleteHovered(false)}
+              onClick={() => canDelete && onDelete(uniqueId, workshop.workshopName)} 
+            >
+              {WorkshopIconMap.Trash}
+              Delete
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -1408,6 +1419,7 @@ const EventsPage = () => {
                         workshop={workshop} 
                         onEdit={handleEditWorkshop}
                         onDelete={handleDeleteWorkshop}
+                        isEventsOffice={auth.isEventsOffice}
                       />
                     ))}
                   </div>
@@ -1442,7 +1454,7 @@ const EventsPage = () => {
               <div style={{ display: "grid", gap: theme.spacing[4] }}>
                 {pendingWorkshops.map((w) => (
                   <div
-                    key={w.id}
+                    key={w._id || w.id}
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
@@ -1907,20 +1919,18 @@ const EventsPage = () => {
                     onClick={async () => {
                       const w = publishCandidate;
 
-                      setPendingWorkshops((prev) => prev.filter((p) => p.id !== w.id));
+                      setPendingWorkshops((prev) => prev.filter((p) => p._id !== w._id));
                       
                       try {
                         // Call the backend API to publish the workshop
                         const response = await workshopAPI.publishWorkshop(w._id);
                         
                         if (response.data.success && response.data.event) {
-                          const publishedEvent = response.data.event;
-                          
                           // Remove from pending workshops
                           setPendingWorkshops((prev) => prev.filter((p) => p._id !== w._id));
                           
-                          // Add to events list
-                          setEvents((prev) => [publishedEvent, ...prev]);
+                          // Refresh events list to include the newly published workshop
+                          await fetchEvents();
                           
                           // Show success message with workshop name
                           toast.success(`Workshop "${w.workshopName || w.name || 'successfully'}" published!`);
@@ -1992,7 +2002,7 @@ const EventsPage = () => {
                     onClick={async () => {
                       const w = rejectCandidate;
 
-                      setPendingWorkshops((prev) => prev.filter((p) => p.id !== w.id));
+                      setPendingWorkshops((prev) => prev.filter((p) => p._id !== w._id));
 
                       if (w._id) {
                         try {
