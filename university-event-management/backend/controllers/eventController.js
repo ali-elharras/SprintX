@@ -85,7 +85,7 @@ const seedBazaar = async (req, res, next) => {
 // @access  Public
 const getEvents = async (req, res) => {
   try {
-    const { type, status = "published", upcoming = false } = req.query;
+    const { type, status = ["approved", "accepted", "published"], upcoming = false } = req.query;
 
     let eventQuery = { status };
     let boothQuery = { status };
