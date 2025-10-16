@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import theme from '../theme';
 import { useAuth } from '../context/AuthContext';
 
-const CreateDropdownButton = ({ onConferenceModalOpen, onBazaarModalOpen }) => {
+const CreateDropdownButton = ({ onConferenceModalOpen, onBazaarModalOpen, onTripCreate }) => {
   const navigate = useNavigate();
   const auth = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -63,7 +63,7 @@ const CreateDropdownButton = ({ onConferenceModalOpen, onBazaarModalOpen }) => {
           icon: '🚌', 
           onClick: () => { 
             setIsOpen(false); 
-            navigate('/create-trip');
+            if (onTripCreate) onTripCreate(); else navigate('/create-trip');
           } 
         }
       );

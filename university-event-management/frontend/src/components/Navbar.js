@@ -205,7 +205,7 @@ const Navbar = () => {
                 }
               }}
             >
-              Admin Dashboard
+              Dashboard
             </button>
             <button
               onClick={() => navigate("/events")}
@@ -241,40 +241,7 @@ const Navbar = () => {
             >
               Events
             </button>
-            <button
-              onClick={() => navigate("/trips")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/trips"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/trips"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/trips") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/trips") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Trips
-            </button>
+            
             <button
               onClick={() => navigate("/gym-schedule")}
               style={{
@@ -555,43 +522,7 @@ const Navbar = () => {
               Events
             </button>
 
-            {/* Trips link - visible to Events Office and Admin only */}
-            {user && (user.role === "events_office" || user.role === "admin") && (
-              <button
-                onClick={() => navigate("/trips")}
-                style={{
-                  background: "none",
-                  border: "none",
-                  fontSize: theme.typography.fontSize.base,
-                  fontWeight: theme.typography.fontWeight.medium,
-                  color:
-                    location.pathname === "/trips"
-                      ? theme.colors.primary.main
-                      : theme.colors.text.secondary,
-                  cursor: "pointer",
-                  padding: theme.spacing[2],
-                  textDecoration: "none",
-                  borderBottom:
-                    location.pathname === "/trips"
-                      ? `2px solid ${theme.colors.primary.main}`
-                      : "2px solid transparent",
-                  transition: "all 0.2s ease",
-                  fontFamily: theme.typography.fontFamily.primary,
-                }}
-                onMouseEnter={(e) => {
-                  if (location.pathname !== "/trips") {
-                    e.target.style.color = theme.colors.primary.main;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (location.pathname !== "/trips") {
-                    e.target.style.color = theme.colors.text.secondary;
-                  }
-                }}
-              >
-                Trips
-              </button>
-            )}
+            
 
             {user.role !== "events_office" && (
               <button

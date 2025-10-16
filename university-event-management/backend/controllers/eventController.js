@@ -7,6 +7,76 @@ const Workshop = require("../models/Workshop");
 const { validationResult } = require("express-validator");
 
 /* --------------------------------------------------------
+   BAZAAR-SPECIFIC CONTROLLERS
+-------------------------------------------------------- */
+
+// @desc    Get all upcoming bazaars
+// @route   GET /api/events/bazaars/upcoming
+// @access  Private (for Vendors)
+const getUpcomingBazaars = async (req, res, next) => {
+  try {
+    const bazaars = await Event.find({
+      startDate: { $gte: new Date() },
+      type: "bazaar",
+      status: "published",
+    }).sort({ startDate: 1 });
+
+    return res.status(200).json({
+      success: true,
+      count: bazaars.length,
+      data: bazaars,
+    });
+  } catch (error) {
+    console.error("Error fetching upcoming bazaars:", error);
+    next(error);
+  }
+};
+
+
+// @desc    Seed a sample bazaar (Temporary)
+// @route   POST /api/events/seed/bazaar
+// @access  Public
+const seedBazaar = async (req, res, next) => {
+  try {
+    // Create a dummy admin user if it doesn't exist
+    let admin = await User.findOne({ email: "admin@events.internal" });
+    if (!admin) {
+      admin = await User.create({
+        firstName: "Admin",
+        lastName: "User",
+        email: "admin@events.internal",
+        password: "AdminPassword123",
+        role: "admin",
+        universityId: "admin001",
+      });
+    }
+
+    // Create a sample bazaar
+    const today = new Date();
+    const futureDate = new Date(today.setDate(today.getDate() + 30));
+
+    const bazaar = await Event.create({
+      name: "Annual Spring Bazaar",
+      description: "A wonderful bazaar with lots of vendors and activities.",
+      eventType: "bazaar",
+      startDate: futureDate,
+      endDate: new Date(futureDate.getTime() + 86400000), // 1-day duration
+      location: "University Main Courtyard",
+      status: "upcoming",
+      organizer: admin._id,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Sample bazaar created successfully.",
+      data: bazaar,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/* --------------------------------------------------------
    GENERAL EVENT CONTROLLERS
 -------------------------------------------------------- */
 
@@ -15,30 +85,17 @@ const { validationResult } = require("express-validator");
 // @access  Public
 const getEvents = async (req, res) => {
   try {
-    const { type, status, upcoming = false } = req.query;
+    const { type, status = "published", upcoming = false } = req.query;
 
-    // BROADEN STATUS FILTER - include all active statuses
-    const acceptedStatuses = ["accepted", "published", "approved", "upcoming", "active", "completed"];
-    
-    // If specific status is requested, use it; otherwise use broader acceptedStatuses
-    let eventQuery = {};
-    let boothQuery = {};
+    let eventQuery = { status };
+    let boothQuery = { status };
     let conferenceQuery = {};
     let workshopQuery = {};
 
-    if (status) {
-      eventQuery.status = status;
-      boothQuery.status = status;
-      conferenceQuery = {};
-      workshopQuery.status = status;
-    } else {
-      // Use broader status filter for events and booths
-      eventQuery.status = { $in: acceptedStatuses };
-      boothQuery.status = { $in: acceptedStatuses };
-      workshopQuery.status = { $in: [...acceptedStatuses, "pending", "needs_revision"] };
+    if (type) {
+      eventQuery.type = type;
     }
 
-    // Handle upcoming filter
     if (upcoming === "true") {
       const now = new Date();
       eventQuery.startDate = { $gte: now };
@@ -52,7 +109,7 @@ const getEvents = async (req, res) => {
       // If specifically asking for booths, only return booths
       if (type === "booth") {
         const booths = await BoothApplication.find(boothQuery)
-          .populate("vendor", "firstName lastName email")
+          .populate("vendor", "companyName firstName lastName email")
           .sort({ startDate: 1 });
         
         return res.status(200).json({
@@ -73,7 +130,7 @@ const getEvents = async (req, res) => {
         .populate("organizer", "firstName lastName email")
         .sort({ startDate: 1 }),
       BoothApplication.find(boothQuery)
-        .populate("vendor", "firstName lastName email")
+        .populate("vendor", "companyName firstName lastName email")
         .sort({ startDate: 1 }),
       Conference.find(conferenceQuery).sort({ startDate: 1 }),
       Workshop.find(workshopQuery)
@@ -97,7 +154,7 @@ const getEvents = async (req, res) => {
     // Sort combined results by date
     allEvents.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: allEvents.length,
       data: allEvents,
@@ -142,6 +199,7 @@ const transformBoothToEvent = (booth) => {
     durationWeeks: boothObj.durationWeeks,
     organizer: boothObj.vendor || null,
     vendorId: boothObj.vendor?._id || boothObj.vendor,
+    companyName: boothObj.vendor?.companyName || null,
     attendees: boothObj.attendees || [],
     createdAt: boothObj.createdAt,
     updatedAt: boothObj.updatedAt,
@@ -211,25 +269,26 @@ const transformWorkshopToEvent = (workshop) => {
 };
 
 // @desc    Get single event (handles all event types)
+// @desc    Get single event
 // @route   GET /api/events/:id
 // @access  Public
 const getEvent = async (req, res) => {
   try {
-    let event = await Event.findById(req.params.id).populate(
+    const event = await Event.findById(req.params.id).populate(
       "organizer",
       "firstName lastName email phone"
     );
 
-    if (event) {
-      return res.status(200).json({
-        success: true,
-        data: event,
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
       });
     }
 
     const booth = await BoothApplication.findById(req.params.id).populate(
       "vendor",
-      "firstName lastName email phone"
+      "companyName firstName lastName email phone"
     );
 
     if (booth) {
@@ -258,9 +317,9 @@ const getEvent = async (req, res) => {
       });
     }
 
-    return res.status(404).json({
-      success: false,
-      message: "Event not found",
+    return res.status(200).json({
+      success: true,
+      data: event,
     });
   } catch (error) {
     console.error("Error fetching event:", error);
@@ -277,27 +336,54 @@ const getEvent = async (req, res) => {
 // @access  Private (Admin/Events Office)
 const createEvent = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
+    // Manual validation similar to createBazaar: require core fields
+    const {
+      title,
+      description,
+      type,
+      startDate,
+      endDate,
+      location,
+      registrationDeadline,
+      maxParticipants,
+      cost,
+    } = req.body;
+
+    // Basic required fields for a generic event
+    if (!title || !description || !startDate || !endDate || !location || !registrationDeadline || !maxParticipants) {
       return res.status(400).json({
         success: false,
-        message: "Validation failed",
-        errors: errors.array(),
+        message: 'Missing required fields',
       });
     }
 
-    const event = await Event.create({
-      ...req.body,
+    // Build event payload
+    const eventPayload = {
+      title,
+      name: title,
+      description,
+      type: type || 'workshop',
+      startDate,
+      endDate,
+      location,
+      registrationRequired: true,
+      registrationDeadline,
+      maxParticipants,
+      cost: typeof cost !== 'undefined' ? cost : 0,
       organizer: req.user.id,
-    });
+      status : "published"
+    };
 
-    await event.populate("organizer", "firstName lastName email");
+    // If workshop, copy over workshop-specific fields if provided
+    if (String(eventPayload.type) === 'workshop') {
+      if (req.body.instructor) eventPayload.instructor = req.body.instructor;
+      if (req.body.duration) eventPayload.duration = req.body.duration;
+    }
 
-    res.status(201).json({
-      success: true,
-      message: "Event created successfully",
-      data: event,
-    });
+    const newEvent = await Event.create(eventPayload);
+    await newEvent.populate('organizer', 'firstName lastName email');
+
+    res.status(201).json({ success: true, message: 'Event created successfully', data: newEvent });
   } catch (error) {
     console.error("Error creating event:", error);
     res.status(500).json({
@@ -322,6 +408,7 @@ const updateEvent = async (req, res) => {
       });
     }
 
+    // Check if user is authorized to update this event
     if (
       event.organizer.toString() !== req.user.id &&
       !["admin", "events_office"].includes(req.user.role)
@@ -353,7 +440,7 @@ const updateEvent = async (req, res) => {
   }
 };
 
-// @desc    Update only the status of an event
+// @desc    Update only the status of an event (e.g., publish, reject, needs_revision)
 // @route   PUT /api/events/:id/status
 // @access  Private (Admin/Events Office)
 const updateEventStatus = async (req, res) => {
@@ -364,7 +451,7 @@ const updateEventStatus = async (req, res) => {
       return res.status(400).json({ success: false, message: "Status is required" });
     }
 
-    const allowedStatuses = ["pending", "published", "rejected", "cancelled", "upcoming", "needs_revision", "accepted", "approved"];
+    const allowedStatuses = ["pending", "published", "rejected", "cancelled", "upcoming", "needs_revision"];
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({ success: false, message: "Invalid status" });
     }
@@ -375,10 +462,12 @@ const updateEventStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: "Event not found" });
     }
 
+    // Only Events Office or admin can change status
     if (!["admin", "events_office"].includes(req.user.role)) {
       return res.status(403).json({ success: false, message: "Not authorized to update event status" });
     }
 
+    // When requesting edits, attach message into editRequests and set status to needs_revision
     if (status === "needs_revision") {
       if (!message || message.trim().length < 3) {
         return res.status(400).json({ success: false, message: "Message is required when requesting edits" });
@@ -398,6 +487,7 @@ const updateEventStatus = async (req, res) => {
       return res.status(200).json({ success: true, message: "Edit request saved", data: event });
     }
 
+    // For other status updates we only update the status field
     event.status = status;
     await event.save();
 
@@ -424,6 +514,7 @@ const deleteEvent = async (req, res) => {
       });
     }
 
+    // Check if user is authorized to delete this event
     if (
       event.organizer.toString() !== req.user.id &&
       !["admin", "events_office"].includes(req.user.role)
@@ -464,7 +555,7 @@ const getEventsByType = async (req, res) => {
         status: { $in: acceptedStatuses },
         startDate: { $gte: now }
       })
-        .populate("vendor", "firstName lastName email")
+        .populate("vendor", "companyName firstName lastName email")
         .sort({ startDate: 1 });
       
       return res.status(200).json({
@@ -525,83 +616,15 @@ const getEventsByType = async (req, res) => {
 };
 
 /* --------------------------------------------------------
-   BAZAAR-SPECIFIC CONTROLLERS
--------------------------------------------------------- */
-
-// @desc    Get all upcoming bazaars
-// @route   GET /api/events/bazaars/upcoming
-// @access  Private (for Vendors)
-const getUpcomingBazaars = async (req, res, next) => {
-  try {
-    const bazaars = await Event.find({
-      startDate: { $gte: new Date() },
-      type: "bazaar",
-      status: { $in: ["published", "accepted", "approved", "upcoming", "active"] }
-    }).sort({ startDate: 1 });
-
-    return res.status(200).json({
-      success: true,
-      count: bazaars.length,
-      data: bazaars,
-    });
-  } catch (error) {
-    console.error("Error fetching upcoming bazaars:", error);
-    next(error);
-  }
-};
-
-// @desc    Seed a sample bazaar (Temporary)
-// @route   POST /api/events/seed/bazaar
-// @access  Public
-const seedBazaar = async (req, res, next) => {
-  try {
-    let admin = await User.findOne({ email: "admin@events.internal" });
-    if (!admin) {
-      admin = await User.create({
-        firstName: "Admin",
-        lastName: "User",
-        email: "admin@events.internal",
-        password: "AdminPassword123",
-        role: "admin",
-        universityId: "admin001",
-      });
-    }
-
-    const today = new Date();
-    const futureDate = new Date(today.setDate(today.getDate() + 30));
-
-    const bazaar = await Event.create({
-      name: "Annual Spring Bazaar",
-      description: "A wonderful bazaar with lots of vendors and activities.",
-      eventType: "bazaar",
-      startDate: futureDate,
-      endDate: new Date(futureDate.getTime() + 86400000),
-      location: "University Main Courtyard",
-      status: "upcoming",
-      organizer: admin._id,
-    });
-
-    res.status(201).json({
-      success: true,
-      message: "Sample bazaar created successfully.",
-      data: bazaar,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/* --------------------------------------------------------
    EXPORTS
 -------------------------------------------------------- */
 module.exports = {
+  getUpcomingBazaars,
+  seedBazaar,
   getEvents,
   getEvent,
   createEvent,
   updateEvent,
-  updateEventStatus,
   deleteEvent,
   getEventsByType,
-  getUpcomingBazaars,
-  seedBazaar
 };
