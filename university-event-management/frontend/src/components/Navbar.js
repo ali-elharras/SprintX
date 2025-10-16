@@ -170,8 +170,114 @@ const Navbar = () => {
       <div style={logoStyles}>🎓 Campus Events Hub</div>
 
       {/* Navigation Links */}
-  <div style={{ display: "flex", gap: theme.spacing[6] }}>
-        {user && (user.role === "admin" || user.role === "event-office") ? (
+      <div style={{ display: "flex", gap: theme.spacing[6] }}>
+        {user && user.role === "events_office" ? (
+          <>
+            <button
+              onClick={() => navigate("/admin-dashboard")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color:
+                  location.pathname === "/admin-dashboard"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom:
+                  location.pathname === "/admin-dashboard"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/admin-dashboard") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/admin-dashboard") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              Dashboard
+            </button>
+            <button
+              onClick={() => navigate("/events")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color:
+                  location.pathname === "/events"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom:
+                  location.pathname === "/events"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/events") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/events") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              Events
+            </button>
+            
+            <button
+              onClick={() => navigate("/gym-schedule")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color:
+                  location.pathname === "/gym-schedule"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom:
+                  location.pathname === "/gym-schedule"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/gym-schedule") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/gym-schedule") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              Gym Schedule
+            </button>
+          </>
+        ) : user && user.role === "admin" ? (
           <>
             <button
               onClick={() => navigate("/dashboard")}
@@ -345,42 +451,42 @@ const Navbar = () => {
               Vendor Dashboard
             </button>
           </>
-) : (
-  <>
-    {isUser && user && user.role === 'staff' && (
-      <button
-        onClick={() => navigate("/workshops")}
-        style={{
-          background: "none",
-          border: "none",
-          fontSize: theme.typography.fontSize.base,
-          fontWeight: theme.typography.fontWeight.medium,
-          color: location.pathname === "/workshops"
-            ? theme.colors.primary.main
-            : theme.colors.text.secondary,
-          cursor: "pointer",
-          padding: theme.spacing[2],
-          textDecoration: "none",
-          borderBottom: location.pathname === "/workshops"
-            ? `2px solid ${theme.colors.primary.main}`
-            : "2px solid transparent",
-          transition: "all 0.2s ease",
-          fontFamily: theme.typography.fontFamily.primary,
-        }}
-        onMouseEnter={(e) => {
-          if (location.pathname !== "/workshops") {
-            e.target.style.color = theme.colors.primary.main;
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (location.pathname !== "/workshops") {
-            e.target.style.color = theme.colors.text.secondary;
-          }
-        }}
-      >
-        Workshops
-      </button>
-    )}
+        ) : (
+          <>
+            {isUser && user && user.role === 'staff' && (
+              <button
+                onClick={() => navigate("/workshops")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: theme.typography.fontSize.base,
+                  fontWeight: theme.typography.fontWeight.medium,
+                  color: location.pathname === "/workshops"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                  cursor: "pointer",
+                  padding: theme.spacing[2],
+                  textDecoration: "none",
+                  borderBottom: location.pathname === "/workshops"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                  transition: "all 0.2s ease",
+                  fontFamily: theme.typography.fontFamily.primary,
+                }}
+                onMouseEnter={(e) => {
+                  if (location.pathname !== "/workshops") {
+                    e.target.style.color = theme.colors.primary.main;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (location.pathname !== "/workshops") {
+                    e.target.style.color = theme.colors.text.secondary;
+                  }
+                }}
+              >
+                Workshops
+              </button>
+            )}
             <button
               onClick={() => navigate("/events")}
               style={{
@@ -416,78 +522,8 @@ const Navbar = () => {
               Events
             </button>
 
-            {/* Trips link - visible to Events Office and Admin only */}
-            {user && (user.role === "events_office" || user.role === "admin") && (
-              <button
-                onClick={() => navigate("/trips")}
-                style={{
-                  background: "none",
-                  border: "none",
-                  fontSize: theme.typography.fontSize.base,
-                  fontWeight: theme.typography.fontWeight.medium,
-                  color:
-                    location.pathname === "/trips"
-                      ? theme.colors.primary.main
-                      : theme.colors.text.secondary,
-                  cursor: "pointer",
-                  padding: theme.spacing[2],
-                  textDecoration: "none",
-                  borderBottom:
-                    location.pathname === "/trips"
-                      ? `2px solid ${theme.colors.primary.main}`
-                      : "2px solid transparent",
-                  transition: "all 0.2s ease",
-                  fontFamily: theme.typography.fontFamily.primary,
-                }}
-                onMouseEnter={(e) => {
-                  if (location.pathname !== "/trips") {
-                    e.target.style.color = theme.colors.primary.main;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (location.pathname !== "/trips") {
-                    e.target.style.color = theme.colors.text.secondary;
-                  }
-                }}
-              >
-                Trips
-              </button>
-            )}
+            
 
-            {/* <button
-              onClick={() => navigate("/courts")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/courts"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/courts"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/courts") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/courts") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Courts
-            </button> */}
             {user.role !== "events_office" && (
               <button
                 onClick={() => navigate("/courts")}
@@ -560,8 +596,7 @@ const Navbar = () => {
               Gym Schedule
             </button>
 
-            {/* My Registrations link - only show for users, not vendors
-            {isUser && (
+            {isUser && user.role !== "events_office" && (
               <button
                 onClick={() => navigate("/my-registrations")}
                 style={{
@@ -596,43 +631,7 @@ const Navbar = () => {
               >
                 My Registrations
               </button>
-            )} */}
-            {isUser && user.role !== "events_office" && (
-            <button
-              onClick={() => navigate("/my-registrations")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/my-registrations"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/my-registrations"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/my-registrations") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/my-registrations") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              My Registrations
-            </button>
-          )}
+            )}
 
             <button
               onClick={() => navigate("/dashboard")}

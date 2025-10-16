@@ -2,7 +2,79 @@ const Event = require("../models/Event");
 const User = require("../models/User");
 const Registration = require("../models/Registration");
 const BoothApplication = require("../models/BoothApplication");
+const Conference = require("../models/Conference");
+const Workshop = require("../models/Workshop");
 const { validationResult } = require("express-validator");
+
+/* --------------------------------------------------------
+   BAZAAR-SPECIFIC CONTROLLERS
+-------------------------------------------------------- */
+
+// @desc    Get all upcoming bazaars
+// @route   GET /api/events/bazaars/upcoming
+// @access  Private (for Vendors)
+const getUpcomingBazaars = async (req, res, next) => {
+  try {
+    const bazaars = await Event.find({
+      startDate: { $gte: new Date() },
+      type: "bazaar",
+      status: "published",
+    }).sort({ startDate: 1 });
+
+    return res.status(200).json({
+      success: true,
+      count: bazaars.length,
+      data: bazaars,
+    });
+  } catch (error) {
+    console.error("Error fetching upcoming bazaars:", error);
+    next(error);
+  }
+};
+
+
+// @desc    Seed a sample bazaar (Temporary)
+// @route   POST /api/events/seed/bazaar
+// @access  Public
+const seedBazaar = async (req, res, next) => {
+  try {
+    // Create a dummy admin user if it doesn't exist
+    let admin = await User.findOne({ email: "admin@events.internal" });
+    if (!admin) {
+      admin = await User.create({
+        firstName: "Admin",
+        lastName: "User",
+        email: "admin@events.internal",
+        password: "AdminPassword123",
+        role: "admin",
+        universityId: "admin001",
+      });
+    }
+
+    // Create a sample bazaar
+    const today = new Date();
+    const futureDate = new Date(today.setDate(today.getDate() + 30));
+
+    const bazaar = await Event.create({
+      name: "Annual Spring Bazaar",
+      description: "A wonderful bazaar with lots of vendors and activities.",
+      eventType: "bazaar",
+      startDate: futureDate,
+      endDate: new Date(futureDate.getTime() + 86400000), // 1-day duration
+      location: "University Main Courtyard",
+      status: "upcoming",
+      organizer: admin._id,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Sample bazaar created successfully.",
+      data: bazaar,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 /* --------------------------------------------------------
    GENERAL EVENT CONTROLLERS
@@ -13,29 +85,23 @@ const { validationResult } = require("express-validator");
 // @access  Public
 const getEvents = async (req, res) => {
   try {
-    const { type, status, upcoming = false } = req.query;
+    const { type, status = "published", upcoming = false } = req.query;
 
-    // Define accepted statuses for display
-    const acceptedStatuses = ["accepted", "published", "approved"];
+    let eventQuery = { status };
+    let boothQuery = { status };
+    let conferenceQuery = {};
+    let workshopQuery = {};
 
-    // Fetch regular events with accepted statuses
-    let eventQuery = {};
-    let boothQuery = {};
-
-    // If status is explicitly provided, use it; otherwise use acceptedStatuses
-    if (status) {
-      eventQuery.status = status;
-      boothQuery.status = status;
-    } else {
-      eventQuery.status = { $in: acceptedStatuses };
-      boothQuery.status = { $in: acceptedStatuses };
+    if (type) {
+      eventQuery.type = type;
     }
 
-    // Handle upcoming filter - event is upcoming if endDate hasn't passed yet
     if (upcoming === "true") {
       const now = new Date();
-      eventQuery.endDate = { $gte: now };
-      boothQuery.endDate = { $gte: now };
+      eventQuery.startDate = { $gte: now };
+      boothQuery.startDate = { $gte: now };
+      conferenceQuery.startDate = { $gte: now };
+      workshopQuery.startDate = { $gte: now };
     }
 
     // Handle type filter
@@ -43,7 +109,7 @@ const getEvents = async (req, res) => {
       // If specifically asking for booths, only return booths
       if (type === "booth") {
         const booths = await BoothApplication.find(boothQuery)
-          .populate("vendor", "firstName lastName email")
+          .populate("vendor", "companyName firstName lastName email")
           .sort({ startDate: 1 });
         
         return res.status(200).json({
@@ -53,17 +119,22 @@ const getEvents = async (req, res) => {
         });
       }
 
-      // For other types (workshop, trip, bazaar, conference), filter by type
+      // For other types, filter by type
       eventQuery.type = type;
+      workshopQuery = { ...workshopQuery, ...(type === 'workshop' ? {} : { _id: null }) };
     }
 
     // Fetch all event types in parallel
-    const [events, booths] = await Promise.all([
+    const [events, booths, conferences, workshops] = await Promise.all([
       Event.find(eventQuery)
         .populate("organizer", "firstName lastName email")
         .sort({ startDate: 1 }),
       BoothApplication.find(boothQuery)
-        .populate("vendor", "firstName lastName email")
+        .populate("vendor", "companyName firstName lastName email")
+        .sort({ startDate: 1 }),
+      Conference.find(conferenceQuery).sort({ startDate: 1 }),
+      Workshop.find(workshopQuery)
+        .populate("createdBy", "firstName lastName email")
         .sort({ startDate: 1 })
     ]);
 
@@ -72,14 +143,18 @@ const getEvents = async (req, res) => {
       ...events.map(event => ({
         ...event.toObject(),
         name: event.title || event.name,
+        _id: event._id,
+        type: event.type,
       })),
-      ...booths.map(booth => transformBoothToEvent(booth))
+      ...booths.map(booth => transformBoothToEvent(booth)),
+      ...conferences.map(conference => transformConferenceToEvent(conference)),
+      ...workshops.map(workshop => transformWorkshopToEvent(workshop))
     ];
 
     // Sort combined results by date
     allEvents.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: allEvents.length,
       data: allEvents,
@@ -98,7 +173,6 @@ const getEvents = async (req, res) => {
 const transformBoothToEvent = (booth) => {
   const boothObj = booth.toObject();
   
-  // Calculate duration in weeks if durationWeeks exists
   let duration = "TBD";
   if (boothObj.durationWeeks) {
     duration = boothObj.durationWeeks === 1 
@@ -124,36 +198,97 @@ const transformBoothToEvent = (booth) => {
     duration: duration,
     durationWeeks: boothObj.durationWeeks,
     organizer: boothObj.vendor || null,
-    // Include original booth fields for reference
     vendorId: boothObj.vendor?._id || boothObj.vendor,
+    companyName: boothObj.vendor?.companyName || null,
     attendees: boothObj.attendees || [],
     createdAt: boothObj.createdAt,
     updatedAt: boothObj.updatedAt,
   };
 };
 
-// @desc    Get single event (handles both regular events and booths)
+// Helper function to transform conference to event format
+const transformConferenceToEvent = (conference) => {
+  const conferenceObj = conference.toObject();
+  
+  return {
+    _id: conference._id,
+    type: "conference",
+    name: conferenceObj.name,
+    title: conferenceObj.name,
+    description: conferenceObj.shortDescription || "Conference event",
+    shortDescription: conferenceObj.shortDescription,
+    fullAgenda: conferenceObj.fullAgenda,
+    location: conferenceObj.location,
+    startDate: conferenceObj.startDate,
+    endDate: conferenceObj.endDate,
+    status: "published",
+    registrationRequired: true,
+    currentParticipants: 0,
+    maxParticipants: conferenceObj.maxParticipants,
+    cost: 0,
+    websiteLink: conferenceObj.websiteLink,
+    requiredBudget: conferenceObj.requiredBudget,
+    sourceOfFunding: conferenceObj.sourceOfFunding,
+    extraRequiredResources: conferenceObj.extraRequiredResources,
+    createdAt: conferenceObj.createdAt,
+    updatedAt: conferenceObj.updatedAt,
+  };
+};
+
+// Helper function to transform workshop to event format
+const transformWorkshopToEvent = (workshop) => {
+  const workshopObj = workshop.toObject();
+  
+  return {
+    _id: workshop._id,
+    type: "workshop",
+    name: workshopObj.workshopName,
+    title: workshopObj.workshopName,
+    description: workshopObj.shortDescription,
+    shortDescription: workshopObj.shortDescription,
+    location: workshopObj.location,
+    startDate: workshopObj.startDate,
+    endDate: workshopObj.endDate,
+    status: workshopObj.status || "pending",
+    registrationRequired: true,
+    currentParticipants: 0,
+    maxParticipants: workshopObj.capacity,
+    cost: 0,
+    instructor: workshopObj.facultyResponsible,
+    professorName: workshopObj.facultyResponsible,
+    fullAgenda: workshopObj.fullAgenda,
+    registrationDeadline: workshopObj.registrationDeadline,
+    duration: Math.round((new Date(workshopObj.endDate) - new Date(workshopObj.startDate)) / (1000 * 60 * 60)),
+    facultyResponsible: workshopObj.facultyResponsible,
+    requiredBudget: workshopObj.requiredBudget,
+    fundingSource: workshopObj.fundingSource,
+    extraRequiredResources: workshopObj.extraRequiredResources,
+    createdAt: workshopObj.createdAt,
+    updatedAt: workshopObj.updatedAt,
+  };
+};
+
+// @desc    Get single event (handles all event types)
+// @desc    Get single event
 // @route   GET /api/events/:id
 // @access  Public
 const getEvent = async (req, res) => {
   try {
-    // Try to find as regular event first
-    let event = await Event.findById(req.params.id).populate(
+    const event = await Event.findById(req.params.id).populate(
       "organizer",
       "firstName lastName email phone"
     );
 
-    if (event) {
-      return res.status(200).json({
-        success: true,
-        data: event,
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
       });
     }
 
-    // If not found, try to find as booth
     const booth = await BoothApplication.findById(req.params.id).populate(
       "vendor",
-      "firstName lastName email phone"
+      "companyName firstName lastName email phone"
     );
 
     if (booth) {
@@ -163,9 +298,28 @@ const getEvent = async (req, res) => {
       });
     }
 
-    return res.status(404).json({
-      success: false,
-      message: "Event not found",
+    const conference = await Conference.findById(req.params.id);
+    if (conference) {
+      return res.status(200).json({
+        success: true,
+        data: transformConferenceToEvent(conference),
+      });
+    }
+
+    const workshop = await Workshop.findById(req.params.id).populate(
+      "createdBy",
+      "firstName lastName email phone"
+    );
+    if (workshop) {
+      return res.status(200).json({
+        success: true,
+        data: transformWorkshopToEvent(workshop),
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: event,
     });
   } catch (error) {
     console.error("Error fetching event:", error);
@@ -182,28 +336,54 @@ const getEvent = async (req, res) => {
 // @access  Private (Admin/Events Office)
 const createEvent = async (req, res) => {
   try {
-    // Check for validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
+    // Manual validation similar to createBazaar: require core fields
+    const {
+      title,
+      description,
+      type,
+      startDate,
+      endDate,
+      location,
+      registrationDeadline,
+      maxParticipants,
+      cost,
+    } = req.body;
+
+    // Basic required fields for a generic event
+    if (!title || !description || !startDate || !endDate || !location || !registrationDeadline || !maxParticipants) {
       return res.status(400).json({
         success: false,
-        message: "Validation failed",
-        errors: errors.array(),
+        message: 'Missing required fields',
       });
     }
 
-    const event = await Event.create({
-      ...req.body,
+    // Build event payload
+    const eventPayload = {
+      title,
+      name: title,
+      description,
+      type: type || 'workshop',
+      startDate,
+      endDate,
+      location,
+      registrationRequired: true,
+      registrationDeadline,
+      maxParticipants,
+      cost: typeof cost !== 'undefined' ? cost : 0,
       organizer: req.user.id,
-    });
+      status : "published"
+    };
 
-    await event.populate("organizer", "firstName lastName email");
+    // If workshop, copy over workshop-specific fields if provided
+    if (String(eventPayload.type) === 'workshop') {
+      if (req.body.instructor) eventPayload.instructor = req.body.instructor;
+      if (req.body.duration) eventPayload.duration = req.body.duration;
+    }
 
-    res.status(201).json({
-      success: true,
-      message: "Event created successfully",
-      data: event,
-    });
+    const newEvent = await Event.create(eventPayload);
+    await newEvent.populate('organizer', 'firstName lastName email');
+
+    res.status(201).json({ success: true, message: 'Event created successfully', data: newEvent });
   } catch (error) {
     console.error("Error creating event:", error);
     res.status(500).json({
@@ -271,7 +451,7 @@ const updateEventStatus = async (req, res) => {
       return res.status(400).json({ success: false, message: "Status is required" });
     }
 
-    const allowedStatuses = ["pending", "published", "rejected", "cancelled", "upcoming", "needs_revision", "accepted", "approved"];
+    const allowedStatuses = ["pending", "published", "rejected", "cancelled", "upcoming", "needs_revision"];
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({ success: false, message: "Invalid status" });
     }
@@ -367,16 +547,15 @@ const deleteEvent = async (req, res) => {
 const getEventsByType = async (req, res) => {
   try {
     const { type } = req.params;
-    const acceptedStatuses = ["accepted", "published", "approved"];
+    const acceptedStatuses = ["accepted", "published", "approved", "upcoming", "active", "completed"];
     const now = new Date();
 
-    // Handle booths
     if (type === "booth") {
       const booths = await BoothApplication.find({
         status: { $in: acceptedStatuses },
-        endDate: { $gte: now }
+        startDate: { $gte: now }
       })
-        .populate("vendor", "firstName lastName email")
+        .populate("vendor", "companyName firstName lastName email")
         .sort({ startDate: 1 });
       
       return res.status(200).json({
@@ -386,11 +565,37 @@ const getEventsByType = async (req, res) => {
       });
     }
 
-    // Handle other event types (workshop, trip, bazaar, conference)
+    if (type === "conference") {
+      const conferences = await Conference.find({
+        startDate: { $gte: now }
+      }).sort({ startDate: 1 });
+      
+      return res.status(200).json({
+        success: true,
+        count: conferences.length,
+        data: conferences.map(conference => transformConferenceToEvent(conference))
+      });
+    }
+
+    if (type === "workshop") {
+      const workshops = await Workshop.find({
+        status: { $in: [...acceptedStatuses, "pending", "needs_revision"] },
+        startDate: { $gte: now }
+      })
+        .populate("createdBy", "firstName lastName email")
+        .sort({ startDate: 1 });
+      
+      return res.status(200).json({
+        success: true,
+        count: workshops.length,
+        data: workshops.map(workshop => transformWorkshopToEvent(workshop))
+      });
+    }
+
     const events = await Event.find({
       type,
       status: { $in: acceptedStatuses },
-      endDate: { $gte: now }
+      startDate: { $gte: now }
     })
       .populate("organizer", "firstName lastName email")
       .sort({ startDate: 1 });
@@ -410,89 +615,16 @@ const getEventsByType = async (req, res) => {
   }
 };
 
-
-
-
-/* --------------------------------------------------------
-   BAZAAR-SPECIFIC CONTROLLERS
--------------------------------------------------------- */
-
-// @desc    Get all upcoming bazaars
-// @route   GET /api/events/bazaars/upcoming
-// @access  Private (for Vendors)
-const getUpcomingBazaars = async (req, res, next) => {
-  try {
-    const bazaars = await Event.find({
-      startDate: { $gte: new Date() },
-      type: "bazaar",
-    }).sort({ startDate: 1 });
-
-    return res.status(200).json({
-      success: true,
-      count: bazaars.length,
-      data: bazaars,
-    });
-  } catch (error) {
-    console.error("Error fetching upcoming bazaars:", error);
-    next(error);
-  }
-};
-
-
-// @desc    Seed a sample bazaar (Temporary)
-// @route   POST /api/events/seed/bazaar
-// @access  Public
-const seedBazaar = async (req, res, next) => {
-  try {
-    // Create a dummy admin user if it doesn't exist
-    let admin = await User.findOne({ email: "admin@events.internal" });
-    if (!admin) {
-      admin = await User.create({
-        firstName: "Admin",
-        lastName: "User",
-        email: "admin@events.internal",
-        password: "AdminPassword123",
-        role: "admin",
-        universityId: "admin001",
-      });
-    }
-
-    // Create a sample bazaar
-    const today = new Date();
-    const futureDate = new Date(today.setDate(today.getDate() + 30));
-
-    const bazaar = await Event.create({
-      name: "Annual Spring Bazaar",
-      description: "A wonderful bazaar with lots of vendors and activities.",
-      eventType: "bazaar",
-      startDate: futureDate,
-      endDate: new Date(futureDate.getTime() + 86400000), // 1-day duration
-      location: "University Main Courtyard",
-      status: "upcoming",
-      organizer: admin._id,
-    });
-
-    res.status(201).json({
-      success: true,
-      message: "Sample bazaar created successfully.",
-      data: bazaar,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 /* --------------------------------------------------------
    EXPORTS
 -------------------------------------------------------- */
 module.exports = {
+  getUpcomingBazaars,
+  seedBazaar,
   getEvents,
   getEvent,
   createEvent,
   updateEvent,
-  updateEventStatus,
   deleteEvent,
   getEventsByType,
-  getUpcomingBazaars,
-  seedBazaar
 };

@@ -77,6 +77,7 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
   const [durationWeeks, setDurationWeeks] = useState(1); // Duration in weeks
   const [selectedBoothId, setSelectedBoothId] = useState(null); // State for selected booth from map
   const [attendees, setAttendees] = useState([{ name: "", email: "" }]);
+  const today = new Date().toISOString().split("T")[0];
 
   if (!isOpen) return null;
 
@@ -134,7 +135,12 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
             <label style={styles.label}>
               Preferred Location
             </label>
-            <BoothMapSelector onSelectBooth={setSelectedBoothId} selectedBoothId={selectedBoothId} />
+            <BoothMapSelector
+              onSelectBooth={setSelectedBoothId}
+              selectedBoothId={selectedBoothId}
+              startDate={startDate}
+              durationWeeks={durationWeeks}
+            />
           </div>
 
           <div style={styles.formGroup}>
@@ -147,6 +153,7 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
               style={styles.input}
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
+              min={today} // Prevent selecting past dates
               required
             />
           </div>

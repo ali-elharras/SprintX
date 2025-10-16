@@ -112,8 +112,20 @@ The application uses a comprehensive design system with:
 
 3. Configure environment variables:
 
-   - Copy `.env` file and update with your MongoDB URI and JWT secret
-   - Set `MONGODB_URI`, `JWT_SECRET`, `PORT`, and `FRONTEND_URL`
+   - Copy `.env.example` to `.env` and update with your configuration:
+   
+   ```bash
+   cp .env.example .env
+   ```
+   
+   - Update the following variables:
+     - `MONGODB_URI`: Your MongoDB connection string
+     - `JWT_SECRET`: A secure secret key for JWT tokens
+     - `PORT`: Backend server port (default: 8080, alternative: 5000)
+     - `BACKEND_URL`: Full backend URL for email links (e.g., http://localhost:8080)
+     - `FRONTEND_URL`: Frontend URL for CORS (default: http://localhost:3000)
+
+   **Note for macOS users**: If you encounter `EADDRINUSE` error on port 5000, use port 8080 instead, as macOS uses port 5000 for AirPlay Receiver.
 
 4. Start the server:
 
@@ -141,17 +153,44 @@ The application uses a comprehensive design system with:
 
 3. Configure environment variables:
 
-   - Update `.env` with your backend API URL (`REACT_APP_API_URL`)
+   - Copy `.env.example` to `.env` and update with your configuration:
+   
+   ```bash
+   cp .env.example .env
+   ```
+   
+   - Update `REACT_APP_API_URL` to match your backend port:
+     - For port 8080: `REACT_APP_API_URL=http://localhost:8080/api`
+     - For port 5000: `REACT_APP_API_URL=http://localhost:5000/api`
 
 4. Start the development server:
    ```bash
    npm start
    ```
 
-The application will be available at:
+## Port Configuration
 
+### Default Ports
 - Frontend: http://localhost:3000
-- Backend API: http://localhost:5000
+- Backend API: http://localhost:8080 (default) or http://localhost:5000 (alternative)
+
+### Changing Ports
+
+To run on different ports:
+
+1. **Backend**: Update `PORT` in `backend/.env`
+2. **Frontend**: Update `REACT_APP_API_URL` in `frontend/.env` to match your backend port
+
+### macOS Port 5000 Conflict
+
+On macOS Monterey and later, port 5000 is used by AirPlay Receiver. If you encounter this error:
+```
+Error: listen EADDRINUSE: address already in use :::5000
+```
+
+**Solutions:**
+1. **Recommended**: Use port 8080 by setting `PORT=8080` in `backend/.env`
+2. **Alternative**: Disable AirPlay Receiver in System Preferences > Sharing > AirPlay Receiver
 
 ## API Endpoints
 

@@ -4,11 +4,29 @@ import theme, { getEventTypeColor } from "../theme";
 import Button from "./Button";
 import RegistrationForm from "./RegistrationForm";
 import { useAuth } from "../context/AuthContext";
+import { conferenceAPI } from "../services/api";
 import { eventAPI } from "../services/api";
 import { applicationServices } from "../services/api";
 import toast from "react-hot-toast";
 
-const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate }) => {
+const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit }) => {
+  // Normalize event/conference object for consistent display
+  const normalizedEvent = {
+    ...event,
+    type: event.type || "conference",
+    title: event.name || event.title || "",
+    description: event.shortDescription || event.description || "",
+    status: event.status || "published",
+    registrationRequired: event.registrationRequired !== undefined ? event.registrationRequired : true,
+    currentParticipants: event.currentParticipants || 0,
+    maxParticipants: event.maxParticipants || event.capacity || 0,
+    registrationDeadline: event.registrationDeadline || null,
+    cost: event.cost || 0,
+    // Ensure dates are present
+    startDate: event.startDate || event.date || new Date().toISOString(),
+    endDate: event.endDate || event.startDate || event.date || new Date().toISOString(),
+  };
+
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [participatingVendors, setParticipatingVendors] = useState([]);
@@ -40,34 +58,32 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
       workshop: "Workshop",
       trip: "Trip",
       bazaar: "Bazaar",
+      competition: "Competition",
       conference: "Conference",
-      booth: "Booth",
     };
     return labels[type] || type;
   };
 
   const getStatusInfo = () => {
     const now = new Date();
-    const endDate = new Date(event.endDate);
-    const registrationDeadline = event.registrationDeadline
-      ? new Date(event.registrationDeadline)
+    const startDate = new Date(normalizedEvent.startDate);
+    const registrationDeadline = normalizedEvent.registrationDeadline
+      ? new Date(normalizedEvent.registrationDeadline)
       : null;
 
-    const acceptedStatuses = ["accepted", "published", "approved"];
-
-    if (!acceptedStatuses.includes(event.status)) {
+    if (normalizedEvent.status !== "published") {
       return { status: "Not Published", color: theme.colors.neutral.gray500 };
     }
 
-    if (endDate < now) {
+    if (startDate < now) {
       return { status: "Event Ended", color: theme.colors.neutral.gray500 };
     }
 
-    if (!event.registrationRequired) {
+    if (!normalizedEvent.registrationRequired) {
       return { status: "No Registration Required", color: theme.colors.info.main };
     }
 
-    if (event.currentParticipants >= event.maxParticipants) {
+    if (normalizedEvent.currentParticipants >= normalizedEvent.maxParticipants) {
       return { status: "Full", color: theme.colors.error.main };
     }
 
@@ -80,42 +96,46 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
 
   const canRegister = () => {
     const now = new Date();
-    const endDate = new Date(event.endDate);
-    const registrationDeadline = event.registrationDeadline
-      ? new Date(event.registrationDeadline)
+    const startDate = new Date(normalizedEvent.startDate);
+    const registrationDeadline = normalizedEvent.registrationDeadline
+      ? new Date(normalizedEvent.registrationDeadline)
       : null;
 
-    const acceptedStatuses = ["accepted", "published", "approved"];
-
     return (
-      acceptedStatuses.includes(event.status) &&
-      event.registrationRequired &&
-      endDate > now &&
-      event.currentParticipants < event.maxParticipants &&
+      normalizedEvent.status === "published" &&
+      normalizedEvent.registrationRequired &&
+      startDate > now &&
+      normalizedEvent.currentParticipants < normalizedEvent.maxParticipants &&
       (!registrationDeadline || now <= registrationDeadline)
     );
   };
 
-  const handleDelete = async () => {
-    const eventType = getEventTypeLabel(event.type);
-    if (!window.confirm(`Are you sure you want to delete this ${eventType}? This action cannot be undone.`)) {
-      return;
-    }
+  const handleEditClick = () => {
+  if (onEditConference && normalizedEvent.type === "conference") {
+    onEditConference(normalizedEvent);
+  }
+};
 
-    try {
-      setIsDeleting(true);
-      await eventAPI.deleteEvent(event._id);
-      toast.success(`${eventType} deleted successfully!`);
-      if (onEventUpdate) {
-        onEventUpdate();
-      }
-    } catch (error) {
-      console.error("Error deleting event:", error);
-      toast.error(error.response?.data?.message || `Failed to delete ${eventType}`);
-    } finally {
-      setIsDeleting(false);
+const handleDeleteConference = async () => {
+  if (!window.confirm("Are you sure you want to delete this conference? This action cannot be undone.")) {
+    return;
+  }
+
+  try {
+    setIsDeleting(true);
+    await conferenceAPI.deleteConference(normalizedEvent._id);
+    toast.success("Conference deleted successfully!");
+    if (onEventUpdate) {
+      onEventUpdate(); // Refresh the events list
     }
-  };
+  } catch (error) {
+    console.error("Error deleting conference:", error);
+    const errorMessage = error.response?.data?.message || error.message || "Failed to delete conference";
+    toast.error(errorMessage);
+  } finally {
+    setIsDeleting(false);
+  }
+};
 
   const handleRegistrationSuccess = (registrationData) => {
     setShowRegistrationForm(false);
@@ -148,7 +168,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   if (showRegistrationForm) {
     return (
       <RegistrationForm
-        event={event}
+        event={normalizedEvent}
         onSuccess={handleRegistrationSuccess}
         onCancel={() => setShowRegistrationForm(false)}
       />
@@ -177,7 +197,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
       {/* Event Header */}
       <div
         style={{
-          background: `linear-gradient(135deg, ${getEventTypeColor(event.type)} 0%, ${getEventTypeColor(event.type)}dd 100%)`,
+          background: `linear-gradient(135deg, ${getEventTypeColor(normalizedEvent.type)} 0%, ${getEventTypeColor(normalizedEvent.type)}dd 100%)`,
           padding: theme.spacing[4],
           color: theme.colors.text.white,
         }}
@@ -201,7 +221,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
               letterSpacing: "0.05em",
             }}
           >
-            {getEventTypeLabel(event.type)}
+            {getEventTypeLabel(normalizedEvent.type)}
           </div>
           <div
             style={{
@@ -224,7 +244,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
             margin: 0,
           }}
         >
-          {event.title || event.name}
+          {normalizedEvent.title}
         </h3>
       </div>
 
@@ -244,8 +264,8 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
           >
             <span>📅</span>
             <span>
-              {formatDate(event.startDate)}
-              {event.startDate !== event.endDate && ` - ${formatDate(event.endDate)}`}
+              {formatDate(normalizedEvent.startDate)}
+              {normalizedEvent.startDate !== normalizedEvent.endDate && ` - ${formatDate(normalizedEvent.endDate)}`}
             </span>
           </div>
           <div
@@ -259,7 +279,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
             }}
           >
             <span>🕐</span>
-            <span>{formatTime(event.startDate)}</span>
+            <span>{formatTime(normalizedEvent.startDate)}</span>
           </div>
           <div
             style={{
@@ -272,7 +292,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
             }}
           >
             <span>📍</span>
-            <span>{event.location}</span>
+            <span>{normalizedEvent.location}</span>
           </div>
         </div>
 
@@ -290,8 +310,23 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
             textOverflow: "ellipsis",
           }}
         >
-          {event.description}
+          {normalizedEvent.description}
         </p>
+
+        {/* Company Name for Booths */}
+        {normalizedEvent.type === "booth" && normalizedEvent.organizer && (
+          <div style={{ marginBottom: theme.spacing[4] }}>
+            <p
+              style={{
+                fontSize: theme.typography.fontSize.sm,
+                color: theme.colors.text.secondary,
+                marginBottom: theme.spacing[1],
+              }}
+            >
+              <strong>Company:</strong> {normalizedEvent.organizer.companyName}
+            </p>
+          </div>
+        )}
 
         {/* Participating Vendors Section - Only for Bazaars */}
         {event.type === 'bazaar' && participatingVendors.length > 0 && (
@@ -391,7 +426,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
         )}
 
         {/* Registration Info */}
-        {event.registrationRequired && (
+        {normalizedEvent.registrationRequired && (
           <div
             style={{
               background: theme.colors.neutral.gray50,
@@ -423,10 +458,10 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
                   color: theme.colors.text.primary,
                 }}
               >
-                {event.currentParticipants} / {event.maxParticipants}
+                {normalizedEvent.currentParticipants} / {normalizedEvent.maxParticipants}
               </span>
             </div>
-            {event.registrationDeadline && (
+            {normalizedEvent.registrationDeadline && (
               <div
                 style={{
                   display: "flex",
@@ -450,11 +485,11 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
                     color: theme.colors.text.primary,
                   }}
                 >
-                  {formatDate(event.registrationDeadline)}
+                  {formatDate(normalizedEvent.registrationDeadline)}
                 </span>
               </div>
             )}
-            {event.cost > 0 && (
+            {normalizedEvent.cost > 0 && (
               <div
                 style={{
                   display: "flex",
@@ -477,7 +512,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
                     color: theme.colors.primary.main,
                   }}
                 >
-                  ${event.cost}
+                  ${normalizedEvent.cost}
                 </span>
               </div>
             )}
@@ -485,7 +520,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
         )}
 
         {/* Additional Info for specific event types */}
-        {event.type === "workshop" && event.instructor && (
+        {normalizedEvent.type === "workshop" && normalizedEvent.instructor && (
           <div style={{ marginBottom: theme.spacing[4] }}>
             <p
               style={{
@@ -494,9 +529,9 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
                 marginBottom: theme.spacing[1],
               }}
             >
-              <strong>Instructor:</strong> {event.instructor}
+              <strong>Instructor:</strong> {normalizedEvent.instructor}
             </p>
-            {event.duration && (
+            {normalizedEvent.duration && (
               <p
                 style={{
                   fontSize: theme.typography.fontSize.sm,
@@ -504,12 +539,11 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
                   margin: 0,
                 }}
               >
-                <strong>Duration:</strong> {event.duration} hours
+                <strong>Duration:</strong> {normalizedEvent.duration} hours
               </p>
             )}
           </div>
         )}
-
         {/* Action Buttons */}
         <div
           style={{
@@ -518,21 +552,58 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
             alignItems: "stretch",
           }}
         >
-          {showRegistration && canRegister() && (
-            <div style={{ flex: 1 }}>
-              <Button
-                variant="primary"
-                onClick={() => setShowRegistrationForm(true)}
-                style={{ 
-                  width: "100%",
-                  minHeight: "44px",
-                  padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Register Now
-              </Button>
-            </div>
+          {/* Events Office buttons for conferences */}
+          {isEventsOffice && normalizedEvent.type === "conference" ? (
+            <>
+              <div style={{ flex: 1 }}>
+                <Button
+                  variant="primary"
+                  onClick={handleEditClick}
+                  style={{ 
+                    width: "100%",
+                    minHeight: "44px",
+                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Edit
+                </Button>
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  variant="danger"
+                  onClick={handleDeleteConference}
+                  disabled={isDeleting}
+                  style={{ 
+                    width: "100%",
+                    minHeight: "44px",
+                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                    whiteSpace: "nowrap",
+                    opacity: isDeleting ? 0.6 : 1,
+                  }}
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </Button>
+              </div>
+            </>
+          ) : (
+            /* Single Register Now button for regular users only */
+            !isEventsOffice && showRegistration && canRegister() && (
+              <div style={{ flex: 1 }}>
+                <Button
+                  variant="primary"
+                  onClick={() => setShowRegistrationForm(true)}
+                  style={{ 
+                    width: "100%",
+                    minHeight: "44px",
+                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Register Now
+                </Button>
+              </div>
+            )
           )}
         </div>
       </div>

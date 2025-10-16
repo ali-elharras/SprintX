@@ -216,6 +216,30 @@ export const applicationServices = {
       throw error;
     }
   },
+
+  getBoothConflicts: async (conflictData) => {
+    try {
+      const response = await api.post("/applications/booth-conflicts", conflictData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
+
+export const bazaarServices = {
+  getBazaarApplication: async (bazaarId, cancelToken = null) => {
+    try {
+      return await retryRequest(async () => {
+        const response = await api.get(`/bazaars/${bazaarId}/application/vendor`, {
+          ...(cancelToken && { cancelToken: cancelToken.token }),
+        });
+        return response.data;
+      });
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 // ============================================

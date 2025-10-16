@@ -8,7 +8,7 @@ const NotificationCenter = () => {
     const [isLoading, setIsLoading] = useState(false);
     const dropdownRef = useRef(null);
     const { token, isProfessor, isStaff } = useAuth();
-    const API_URL = 'http://localhost:5000/api/notifications';
+    const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:8080/api'}/notifications`;
 
     // Fetch notifications
     const fetchNotifications = useCallback(async () => {
@@ -119,8 +119,6 @@ const NotificationCenter = () => {
 
     // Clear all notifications
     const clearAll = async () => {
-        if (!window.confirm('Are you sure you want to delete all notifications?')) return;
-
         setIsLoading(true);
         try {
             const response = await fetch(API_URL, {

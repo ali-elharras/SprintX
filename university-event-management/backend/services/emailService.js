@@ -61,10 +61,12 @@ class EmailService {
     fullName = "",
     requestedRole = ""
   ) {
+    // Construct backend URL using environment variables
+    const backendPort = process.env.PORT || 8080;
     const backendBase =
       process.env.BACKEND_URL ||
       process.env.API_BASE_URL ||
-      "http://localhost:5000";
+      `http://localhost:${backendPort}`;
     const verifyUrl = `${backendBase.replace(
       /\/$/,
       ""
@@ -379,8 +381,10 @@ class EmailService {
     );
     console.log(`🔧 Transporter status:`, !!this.transporter);
 
+    // Construct backend URL using environment variables
+    const backendPort = process.env.PORT || 8080;
     const verifyUrl = `${
-      process.env.BACKEND_URL || "http://localhost:5000"
+      process.env.BACKEND_URL || `http://localhost:${backendPort}`
     }/api/auth/verify-email/${verificationToken}`;
 
     const mailOptions = {

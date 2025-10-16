@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { eventServices, applicationServices } from "../services/api";
+import { eventServices, applicationServices, bazaarServices } from "../services/api";
 import toast from "react-hot-toast";
 import theme from "../theme";
 import ApplyBazaarModal from "../components/vendor/ApplyBazaarModal";
@@ -318,30 +318,45 @@ const cssKeyframes = `
 }
 `;
 
-const BazaarCard = ({ bazaar, onApply, isApplied }) => (
-  <div className="card-hover" style={styles.card}>
-    <div className="card-gradient" style={styles.cardGradient}></div>
-    <div>
-      <h3 style={styles.bazaarTitle}>{bazaar.name || bazaar.title}</h3>
-      <div style={styles.dateContainer}>
-        <span style={styles.dateIcon}>📅</span>
-        <p style={styles.bazaarDate}>
-          {new Date(bazaar.startDate).toLocaleDateString()} - {new Date(bazaar.endDate).toLocaleDateString()}
-        </p>
+const BazaarCard = ({ bazaar, onApply, application }) => {
+  const canApply = !application || application.status === 'rejected';
+  const buttonText = !application && application.status === 'approved'
+    ? 'Apply to Bazaar →'
+    : application.status === 'rejected'
+    ? 'Apply Again →'
+    : application.status === 'pending'
+    ? '✓ Pending Already'
+    : '✓ Accepted Already';
+  const isButtonDisabled = !canApply;
+
+  return (
+    <div className="card-hover" style={styles.card}>
+      <div className="card-gradient" style={styles.cardGradient}></div>
+      <div>
+        <h3 style={styles.bazaarTitle}>{bazaar.name || bazaar.title}</h3>
+        <div style={styles.dateContainer}>
+          <span style={styles.dateIcon}>📅</span>
+          <p style={styles.bazaarDate}>
+            {new Date(bazaar.startDate).toLocaleDateString()} - {new Date(bazaar.endDate).toLocaleDateString()}
+          </p>
+        </div>
+        <p style={styles.bazaarDescription}>{bazaar.description}</p>
       </div>
-      <p style={styles.bazaarDescription}>{bazaar.description}</p>
+
+      <button
+        className="apply-button"
+        style={{
+          ...styles.applyButton,
+          ...(isButtonDisabled ? styles.appliedButton : {}),
+        }}
+        onClick={() => canApply && onApply(bazaar)}
+        disabled={isButtonDisabled}
+      >
+        {buttonText}
+      </button>
     </div>
-    {isApplied ? (
-      <button style={{...styles.applyButton, ...styles.appliedButton}} disabled>
-        ✓ Applied
-      </button>
-    ) : (
-      <button className="apply-button" style={styles.applyButton} onClick={() => onApply(bazaar)}>
-        Apply to Bazaar →
-      </button>
-    )}
-  </div>
-);
+  );
+};
 
 const ApplicationItem = ({ application }) => (
   <div className="application-card" style={styles.applicationCard}>
@@ -380,6 +395,7 @@ const VendorDashboard = () => {
   const [upcomingBazaars, setUpcomingBazaars] = useState([]);
   const [myApplications, setMyApplications] = useState([]);
   const [myParticipations, setMyParticipations] = useState([]);
+  const [bazaarApplications, setBazaarApplications] = useState(new Map());
   const [loading, setLoading] = useState({ bazaars: true, applications: true, participations: true });
   const [error, setError] = useState({ bazaars: null, applications: null, participations: null });
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -391,6 +407,21 @@ const VendorDashboard = () => {
       setLoading(prev => ({ ...prev, bazaars: true }));
       const data = await eventServices.getUpcomingBazaars();
       setUpcomingBazaars(data.data || []);
+      const applications = new Map();
+      for (const bazaar of data.data) {
+        try {
+          const appData = await bazaarServices.getBazaarApplication(bazaar._id);
+          if (appData.success) {
+            applications.set(bazaar._id, appData.data);
+          }
+        } catch (error) {
+          // if the vendor has not applied, the server will return 404, which is fine
+          if (error.status !== 404) {
+            console.error(`Failed to fetch application for bazaar ${bazaar._id}`, error);
+          }
+        }
+      }
+      setBazaarApplications(applications);
     } catch (err) {
       setError(prev => ({ ...prev, bazaars: err.message || "Failed to fetch bazaars" }));
       toast.error("Could not load upcoming bazaars.");
@@ -434,8 +465,11 @@ const VendorDashboard = () => {
   }, []);
 
   const handleApplyClick = (bazaar) => {
-    setSelectedBazaar(bazaar);
-    setIsModalOpen(true);
+    const application = bazaarApplications.get(bazaar._id);
+    if (!application || application.status === 'rejected') {
+      setSelectedBazaar(bazaar);
+      setIsModalOpen(true);
+    }
   };
 
   const handleModalClose = () => {
@@ -449,6 +483,7 @@ const VendorDashboard = () => {
       const response = await applicationServices.applyToBazaar(selectedBazaar._id, applicationData);
       toast.success(response.message || "Successfully applied to bazaar!");
       handleModalClose();
+      fetchBazaars(); // refetch bazaars to update application status
       fetchApplications();
     } catch (err) {
       toast.error(err.message || "Application failed.");
@@ -467,11 +502,7 @@ const VendorDashboard = () => {
     }
   };
 
-  const appliedBazaarIds = new Set(
-    myApplications
-      .filter(app => app.bazaar && app.bazaar._id)
-      .map(app => String(app.bazaar._id))
-  );
+  
 
   return (
     <>
@@ -519,7 +550,7 @@ const VendorDashboard = () => {
                     key={bazaar._id} 
                     bazaar={bazaar} 
                     onApply={handleApplyClick} 
-                    isApplied={appliedBazaarIds.has(String(bazaar._id))}
+                    application={bazaarApplications.get(bazaar._id)}
                   />
                 ))}
               </div>
