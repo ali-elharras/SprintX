@@ -67,6 +67,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   const getStatusInfo = () => {
     const now = new Date();
     const startDate = new Date(normalizedEvent.startDate);
+    const endDate = new Date(normalizedEvent.endDate);
     const registrationDeadline = normalizedEvent.registrationDeadline
       ? new Date(normalizedEvent.registrationDeadline)
       : null;
@@ -75,7 +76,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
       return { status: "Not Published", color: theme.colors.neutral.gray500 };
     }
 
-    if (startDate < now) {
+    if (endDate < now) {
       return { status: "Event Ended", color: theme.colors.neutral.gray500 };
     }
 
@@ -312,21 +313,6 @@ const handleDeleteConference = async () => {
         >
           {normalizedEvent.description}
         </p>
-
-        {/* Company Name for Booths */}
-        {normalizedEvent.type === "booth" && normalizedEvent.organizer && (
-          <div style={{ marginBottom: theme.spacing[4] }}>
-            <p
-              style={{
-                fontSize: theme.typography.fontSize.sm,
-                color: theme.colors.text.secondary,
-                marginBottom: theme.spacing[1],
-              }}
-            >
-              <strong>Company:</strong> {normalizedEvent.organizer.companyName}
-            </p>
-          </div>
-        )}
 
         {/* Participating Vendors Section - Only for Bazaars */}
         {event.type === 'bazaar' && participatingVendors.length > 0 && (

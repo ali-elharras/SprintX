@@ -179,7 +179,7 @@ const editConference = async (req, res) => {
             location: location,
             maxParticipants: parseInt(maxParticipants),
             currentParticipants: parseInt(currentParticipants) || 0,
-            registrationDeadline: endDateTime,
+            registrationDeadline: startDateTime, // Ensure deadline is before start date
         };
 
         console.log('Update data dates:', {
