@@ -682,7 +682,7 @@ const logout = async (req, res, next) => {
 const getProfile = async (req, res, next) => {
   try {
     if (req.userType === "vendor") {
-      const vendor = await Vendor.findById(req.user._id);
+      const vendor = await Vendor.findById(req.vendor._id);
       res.status(200).json({
         success: true,
         data: {

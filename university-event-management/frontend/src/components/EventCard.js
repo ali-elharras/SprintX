@@ -313,21 +313,6 @@ const handleDeleteConference = async () => {
           {normalizedEvent.description}
         </p>
 
-        {/* Company Name for Booths */}
-        {normalizedEvent.type === "booth" && normalizedEvent.organizer && (
-          <div style={{ marginBottom: theme.spacing[4] }}>
-            <p
-              style={{
-                fontSize: theme.typography.fontSize.sm,
-                color: theme.colors.text.secondary,
-                marginBottom: theme.spacing[1],
-              }}
-            >
-              <strong>Company:</strong> {normalizedEvent.organizer.companyName}
-            </p>
-          </div>
-        )}
-
         {/* Participating Vendors Section - Only for Bazaars */}
         {event.type === 'bazaar' && participatingVendors.length > 0 && (
           <div
