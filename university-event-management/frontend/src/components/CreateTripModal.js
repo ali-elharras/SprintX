@@ -69,7 +69,7 @@ const CreateTripModal = ({ open, onClose, onCreated, currentUser }) => {
         registrationRequired: true,
         registrationDeadline: new Date(form.registrationDeadline),
         maxParticipants: Number(form.maxParticipants),
-        cost: Number(form.cost) || 0 ,
+        cost: Number(form.cost) || 0
       };
       const resp = await eventAPI.createEvent(payload);
       // show success toast and call callbacks
@@ -79,19 +79,19 @@ const CreateTripModal = ({ open, onClose, onCreated, currentUser }) => {
       onClose && onClose();
     } catch (err) {
       console.error('Create trip failed', err);
-        const resp = err?.response?.data || err?.response || err;
-        const map = {};
-        const msgs = [];
+      const resp = err?.response?.data || err?.response || err;
+      const map = {};
+      const msgs = [];
 
-        // Helper to push a message
-        const pushMsg = (key, message) => {
-          if (key) map[key] = message;
-          msgs.push(key ? `${key}: ${message}` : message);
-        };
+      // Helper to push a message
+      const pushMsg = (key, message) => {
+        if (key) map[key] = message;
+        msgs.push(key ? `${key}: ${message}` : message);
+      };
 
-        // Try several common shapes
-        const tryArray = (arr) => {
-          arr.forEach(item => {
+      // Try several common shapes
+      const tryArray = (arr) => {
+        arr.forEach(item => {
             const m = item.msg || item.message || item.msg || String(item);
             const key = item.param || item.path || item.field || null;
             pushMsg(key, m);
