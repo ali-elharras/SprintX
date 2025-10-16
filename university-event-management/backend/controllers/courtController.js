@@ -144,9 +144,43 @@ const getCourtAvailability = async (req, res) => {
       });
     }
     
-    const availableSlots = court.getAvailableSlots(date);
+    // Get day of week and operating hours
     const dayOfWeek = requestDate.toLocaleDateString('en-US', { weekday: 'long' });
-    const operatingHours = court.todayHours;
+    const dayOfWeekLower = dayOfWeek.toLowerCase();
+    const operatingHours = court.operatingHours[dayOfWeekLower];
+    
+    // Check court status
+    let unavailabilityReason = null;
+    if (court.status !== "active") {
+      unavailabilityReason = court.status === "maintenance" 
+        ? "Court is currently under maintenance"
+        : court.status === "closed" 
+          ? "Court is permanently closed"
+          : "Court is under construction";
+    }
+    
+    // Check if court is open on this day
+    if (!unavailabilityReason && !operatingHours.isOpen) {
+      unavailabilityReason = `Court is closed on ${dayOfWeek}s`;
+    }
+    
+    // Check for scheduled maintenance
+    if (!unavailabilityReason) {
+      const hasMaintenanceConflict = court.maintenanceSchedule.some(maintenance => {
+        return requestDate >= maintenance.startDate && requestDate <= maintenance.endDate;
+      });
+      
+      if (hasMaintenanceConflict) {
+        const maintenanceInfo = court.maintenanceSchedule.find(maintenance => 
+          requestDate >= maintenance.startDate && requestDate <= maintenance.endDate
+        );
+        unavailabilityReason = maintenanceInfo?.reason 
+          ? `Scheduled maintenance: ${maintenanceInfo.reason}`
+          : "Court has scheduled maintenance on this date";
+      }
+    }
+    
+    const availableSlots = court.getAvailableSlots(date);
     
     res.status(200).json({
       success: true,
@@ -160,6 +194,8 @@ const getCourtAvailability = async (req, res) => {
         availableSlots,
         totalSlots: availableSlots.length,
         availableSlotsCount: availableSlots.filter(slot => slot.available).length,
+        courtStatus: court.status,
+        unavailabilityReason,
       },
     });
   } catch (error) {
