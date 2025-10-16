@@ -916,7 +916,7 @@ const EventsPage = () => {
     
     if (filters.upcoming) {
       const now = new Date();
-      filtered = filtered.filter((e) => new Date(e.startDate) > now);
+      filtered = filtered.filter((e) => new Date(e.startDate) >= now);
     }
     
     setFilteredEvents(filtered);
