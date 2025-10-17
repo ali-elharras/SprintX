@@ -1759,11 +1759,13 @@ const EventsPage = () => {
               <Button variant="outline" onClick={fetchEvents}>
                 Refresh
               </Button>
-              <CreateDropdownButton 
-                onConferenceModalOpen={() => setShowConferenceModal(true)} 
-                onBazaarModalOpen={() => setCreateBazaarOpen(true)} 
-                onTripCreate={() => setCreateTripOpen(true)}
-              />
+              {!auth.isAdmin && (
+                <CreateDropdownButton 
+                  onConferenceModalOpen={() => setShowConferenceModal(true)} 
+                  onBazaarModalOpen={() => setCreateBazaarOpen(true)} 
+                  onTripCreate={() => setCreateTripOpen(true)}
+                />
+              )}
             </div>
           </div>
 

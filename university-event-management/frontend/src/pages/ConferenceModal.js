@@ -455,6 +455,7 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
                   name="fullAgenda"
                   value={formData.fullAgenda}
                   onChange={handleChange}
+                  required
                   disabled={loading}
                   style={styles.textarea}
                   placeholder="Enter full agenda..."
@@ -467,6 +468,7 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
                 name="websiteLink"
                 value={formData.websiteLink}
                 onChange={handleChange}
+                required
                 disabled={loading}
               />
 
@@ -476,6 +478,7 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
                 name="requiredBudget"
                 value={formData.requiredBudget}
                 onChange={handleChange}
+                required
                 min="0"
                 step="0.01"
                 disabled={loading}
@@ -526,6 +529,7 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
                   name="extraRequiredResources"
                   value={formData.extraRequiredResources}
                   onChange={handleChange}
+                  required
                   disabled={loading}
                   style={styles.textarea}
                   placeholder="Enter extra required resources..."
