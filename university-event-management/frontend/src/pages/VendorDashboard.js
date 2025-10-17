@@ -319,8 +319,12 @@ const cssKeyframes = `
 `;
 
 const BazaarCard = ({ bazaar, onApply, application }) => {
+  const registrationClosed = new Date(bazaar.registrationDeadline) < new Date();
   const canApply = !application || application.status === 'rejected';
-  const buttonText = !application
+
+  const buttonText = registrationClosed && !application
+    ? 'Registration Closed'
+    : !application
     ? 'Apply to Bazaar →'
     : application.status === 'approved'
     ? '✓ Accepted Already'
@@ -329,7 +333,8 @@ const BazaarCard = ({ bazaar, onApply, application }) => {
     : application.status === 'pending'
     ? '✓ Pending Already'
     : 'Apply to Bazaar →';
-  const isButtonDisabled = !canApply;
+
+  const isButtonDisabled = !canApply || (registrationClosed && !application);
 
   return (
     <div className="card-hover" style={styles.card}>
