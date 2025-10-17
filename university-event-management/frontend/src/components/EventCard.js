@@ -9,7 +9,7 @@ import { eventAPI } from "../services/api";
 import { applicationServices } from "../services/api";
 import toast from "react-hot-toast";
 
-const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit }) => {
+const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEditTrip, onEdit }) => {
   // Normalize event/conference object for consistent display
   const normalizedEvent = {
     ...event,
@@ -112,10 +112,12 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   };
 
   const handleEditClick = () => {
-  if (onEditConference && normalizedEvent.type === "conference") {
-    onEditConference(normalizedEvent);
-  }
-};
+    if (onEditConference && normalizedEvent.type === "conference") {
+      onEditConference(normalizedEvent);
+    } else if (onEditTrip && normalizedEvent.type === "trip") {
+      onEditTrip(normalizedEvent);
+    }
+  };
 
 const handleDeleteConference = async () => {
   if (!window.confirm("Are you sure you want to delete this conference? This action cannot be undone.")) {
@@ -652,8 +654,8 @@ const confirmDeleteWorkshop = async () => {
                 {isDeleting ? "Deleting..." : "Delete Event"}
               </Button>
             </div>
-          ) : /* Events Office buttons for conferences and workshops */
-          isEventsOffice && (normalizedEvent.type === "conference" || normalizedEvent.type === "workshop") ? (
+          ) : /* Events Office buttons for conferences, trips, and workshops */
+          isEventsOffice && (normalizedEvent.type === "conference" || normalizedEvent.type === "trip" || normalizedEvent.type === "workshop") ? (
             <>
               {normalizedEvent.type === "conference" && (
                 <>
@@ -675,6 +677,40 @@ const confirmDeleteWorkshop = async () => {
                     <Button
                       variant="danger"
                       onClick={handleDeleteConference}
+                      disabled={isDeleting}
+                      style={{ 
+                        width: "100%",
+                        minHeight: "44px",
+                        padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                        whiteSpace: "nowrap",
+                        opacity: isDeleting ? 0.6 : 1,
+                      }}
+                    >
+                      {isDeleting ? "Deleting..." : "Delete"}
+                    </Button>
+                  </div>
+                </>
+              )}
+              {normalizedEvent.type === "trip" && (
+                <>
+                  <div style={{ flex: 1 }}>
+                    <Button
+                      variant="primary"
+                      onClick={handleEditClick}
+                      style={{ 
+                        width: "100%",
+                        minHeight: "44px",
+                        padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Button
+                      variant="danger"
+                      onClick={handleDeleteEvent}
                       disabled={isDeleting}
                       style={{ 
                         width: "100%",
