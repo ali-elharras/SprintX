@@ -11,6 +11,7 @@ import Card from "../components/Card";
 import Input from "../components/Input";
 import Select from "../components/Select";
 import Button from "../components/Button";
+import PreLoginNavbar from "../components/PreLoginNavbar";
 
 // Validation schema
 const vendorSchema = yup.object({
@@ -272,7 +273,7 @@ const VendorSignup = () => {
       const result = await registerVendor(submitData);
 
       if (result.success) {
-        toast.success("Registration successful! Welcome to GUC Events!");
+        toast.success("Registration successful! Welcome to SprintX!");
         navigate("/vendor-dashboard");
       } else {
         console.error("🚨 [ERROR] Registration failed:", result.error);
@@ -402,304 +403,307 @@ const VendorSignup = () => {
   };
 
   return (
-    <div style={containerStyles}>
-      <Card style={cardStyles}>
-        <div style={headerStyles}>
-          <h1 style={titleStyles}>Vendor Registration</h1>
-          <p style={subtitleStyles}>
-            Join Campus Events Hub as a vendor to participate in university
-            events
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)}>
-          {/* Company Information */}
-          <div style={sectionStyles}>
-            <h2 style={sectionTitleStyles}>Company Information</h2>
-            <div style={formStyles}>
-              <Input
-                label="Company Name"
-                type="text"
-                placeholder="Enter your company name"
-                required
-                error={errors.companyName?.message}
-                {...register("companyName")}
-              />
-
-              <div style={rowStyles}>
-                <Input
-                  label="Business Registration Number"
-                  type="text"
-                  placeholder="Enter registration number"
-                  error={errors.businessRegistrationNumber?.message}
-                  {...register("businessRegistrationNumber")}
-                />
-                <Select
-                  label="Company Size"
-                  placeholder="Select company size"
-                  options={companySizeOptions}
-                  error={errors.companySize?.message}
-                  {...register("companySize")}
-                />
-              </div>
-
-              <div style={rowStyles}>
-                <Input
-                  label="Industry"
-                  type="text"
-                  placeholder="e.g., Technology, Food & Beverage"
-                  error={errors.industry?.message}
-                  {...register("industry")}
-                />
-                <Input
-                  label="Website"
-                  type="url"
-                  placeholder="https://www.yourcompany.com"
-                  error={errors.website?.message}
-                  {...register("website")}
-                />
-              </div>
-
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: theme.spacing[2],
-                    fontSize: theme.typography.fontSize.sm,
-                    fontWeight: theme.typography.fontWeight.medium,
-                    color: theme.colors.text.primary,
-                  }}
-                >
-                  Company Description
-                </label>
-                <textarea
-                  placeholder="Describe your company and what you offer..."
-                  style={{
-                    ...theme.components.input.base,
-                    width: "100%",
-                    minHeight: "100px",
-                    resize: "vertical",
-                    fontFamily: theme.typography.fontFamily.primary,
-                    borderColor: errors.description
-                      ? theme.colors.error.main
-                      : theme.colors.border.light,
-                  }}
-                  {...register("description")}
-                />
-                {errors.description && (
-                  <div
-                    style={{
-                      marginTop: theme.spacing[1],
-                      fontSize: theme.typography.fontSize.sm,
-                      color: theme.colors.error.main,
-                    }}
-                  >
-                    {errors.description.message}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Contact Information */}
-          <div style={sectionStyles}>
-            <h2 style={sectionTitleStyles}>Contact Information</h2>
-            <div style={formStyles}>
-              <div style={rowStyles}>
-                <Input
-                  label="Contact Person First Name"
-                  type="text"
-                  placeholder="Enter first name"
-                  error={errors.contactPersonFirstName?.message}
-                  {...register("contactPersonFirstName")}
-                />
-                <Input
-                  label="Contact Person Last Name"
-                  type="text"
-                  placeholder="Enter last name"
-                  error={errors.contactPersonLastName?.message}
-                  {...register("contactPersonLastName")}
-                />
-              </div>
-
-              <div style={rowStyles}>
-                <Input
-                  label="Email Address"
-                  type="email"
-                  placeholder="name@company.com"
-                  required
-                  error={errors.email?.message}
-                  {...register("email")}
-                />
-                <Input
-                  label="Phone Number"
-                  type="tel"
-                  placeholder="Enter phone number"
-                  error={errors.phoneNumber?.message}
-                  {...register("phoneNumber")}
-                />
-              </div>
-
-              <div style={rowStyles}>
-                <Input
-                  label="Password"
-                  type="password"
-                  placeholder="Create a strong password"
-                  required
-                  error={errors.password?.message}
-                  {...register("password")}
-                />
-                <Input
-                  label="Confirm Password"
-                  type="password"
-                  placeholder="Confirm your password"
-                  required
-                  error={errors.confirmPassword?.message}
-                  {...register("confirmPassword")}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Address Information */}
-          <div style={sectionStyles}>
-            <h2 style={sectionTitleStyles}>Business Address</h2>
-            <div style={formStyles}>
-              <Input
-                label="Street Address"
-                type="text"
-                placeholder="Enter street address"
-                error={errors.street?.message}
-                {...register("street")}
-              />
-
-              <div style={rowStyles}>
-                <Input
-                  label="City"
-                  type="text"
-                  placeholder="Enter city"
-                  error={errors.city?.message}
-                  {...register("city")}
-                />
-                <Input
-                  label="State/Province"
-                  type="text"
-                  placeholder="Enter state or province"
-                  error={errors.state?.message}
-                  {...register("state")}
-                />
-              </div>
-
-              <div style={rowStyles}>
-                <Input
-                  label="Zip/Postal Code"
-                  type="text"
-                  placeholder="Enter zip code"
-                  error={errors.zipCode?.message}
-                  {...register("zipCode")}
-                />
-                <Input
-                  label="Country"
-                  type="text"
-                  placeholder="Enter country"
-                  error={errors.country?.message}
-                  {...register("country")}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Event Interests */}
-          <div style={sectionStyles}>
-            <h2 style={sectionTitleStyles}>Event Interests</h2>
-            <p
-              style={{
-                color: theme.colors.text.secondary,
-                marginBottom: theme.spacing[4],
-                fontSize: theme.typography.fontSize.sm,
-              }}
-            >
-              Select the types of events you're interested in participating in :
+    <>
+      <PreLoginNavbar />
+      <div style={containerStyles}>
+        <Card style={cardStyles}>
+          <div style={headerStyles}>
+            <h1 style={titleStyles}>Vendor Registration</h1>
+            <p style={subtitleStyles}>
+              Join SprintX as a vendor to participate in university events
             </p>
+          </div>
 
-            <div style={checkboxGroupStyles}>
-              {eventTypeOptions.map((option) => (
-                <div
-                  key={option.value}
-                  style={{
-                    ...checkboxItemStyles,
-                    borderColor: selectedEventTypes.includes(option.value)
-                      ? theme.colors.primary.main
-                      : theme.colors.border.light,
-                    backgroundColor: selectedEventTypes.includes(option.value)
-                      ? theme.colors.primary.light + "20"
-                      : "transparent",
-                  }}
-                  onClick={() => handleEventTypeChange(option.value)}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedEventTypes.includes(option.value)}
-                    onChange={() => handleEventTypeChange(option.value)}
-                    style={{ accentColor: theme.colors.primary.main }}
+          <form onSubmit={handleSubmit(onSubmit)}>
+            {/* Company Information */}
+            <div style={sectionStyles}>
+              <h2 style={sectionTitleStyles}>Company Information</h2>
+              <div style={formStyles}>
+                <Input
+                  label="Company Name"
+                  type="text"
+                  placeholder="Enter your company name"
+                  required
+                  error={errors.companyName?.message}
+                  {...register("companyName")}
+                />
+
+                <div style={rowStyles}>
+                  <Input
+                    label="Business Registration Number"
+                    type="text"
+                    placeholder="Enter registration number"
+                    error={errors.businessRegistrationNumber?.message}
+                    {...register("businessRegistrationNumber")}
                   />
+                  <Select
+                    label="Company Size"
+                    placeholder="Select company size"
+                    options={companySizeOptions}
+                    error={errors.companySize?.message}
+                    {...register("companySize")}
+                  />
+                </div>
+
+                <div style={rowStyles}>
+                  <Input
+                    label="Industry"
+                    type="text"
+                    placeholder="e.g., Technology, Food & Beverage"
+                    error={errors.industry?.message}
+                    {...register("industry")}
+                  />
+                  <Input
+                    label="Website"
+                    type="url"
+                    placeholder="https://www.yourcompany.com"
+                    error={errors.website?.message}
+                    {...register("website")}
+                  />
+                </div>
+
+                <div style={{ gridColumn: "1 / -1" }}>
                   <label
                     style={{
-                      cursor: "pointer",
+                      display: "block",
+                      marginBottom: theme.spacing[2],
+                      fontSize: theme.typography.fontSize.sm,
                       fontWeight: theme.typography.fontWeight.medium,
+                      color: theme.colors.text.primary,
                     }}
                   >
-                    {option.label}
+                    Company Description
                   </label>
+                  <textarea
+                    placeholder="Describe your company and what you offer..."
+                    style={{
+                      ...theme.components.input.base,
+                      width: "100%",
+                      minHeight: "100px",
+                      resize: "vertical",
+                      fontFamily: theme.typography.fontFamily.primary,
+                      borderColor: errors.description
+                        ? theme.colors.error.main
+                        : theme.colors.border.light,
+                    }}
+                    {...register("description")}
+                  />
+                  {errors.description && (
+                    <div
+                      style={{
+                        marginTop: theme.spacing[1],
+                        fontSize: theme.typography.fontSize.sm,
+                        color: theme.colors.error.main,
+                      }}
+                    >
+                      {errors.description.message}
+                    </div>
+                  )}
                 </div>
-              ))}
+              </div>
             </div>
 
-            {errors.interestedEventTypes && (
-              <div
+            {/* Contact Information */}
+            <div style={sectionStyles}>
+              <h2 style={sectionTitleStyles}>Contact Information</h2>
+              <div style={formStyles}>
+                <div style={rowStyles}>
+                  <Input
+                    label="Contact Person First Name"
+                    type="text"
+                    placeholder="Enter first name"
+                    error={errors.contactPersonFirstName?.message}
+                    {...register("contactPersonFirstName")}
+                  />
+                  <Input
+                    label="Contact Person Last Name"
+                    type="text"
+                    placeholder="Enter last name"
+                    error={errors.contactPersonLastName?.message}
+                    {...register("contactPersonLastName")}
+                  />
+                </div>
+
+                <div style={rowStyles}>
+                  <Input
+                    label="Email Address"
+                    type="email"
+                    placeholder="name@company.com"
+                    required
+                    error={errors.email?.message}
+                    {...register("email")}
+                  />
+                  <Input
+                    label="Phone Number"
+                    type="tel"
+                    placeholder="Enter phone number"
+                    error={errors.phoneNumber?.message}
+                    {...register("phoneNumber")}
+                  />
+                </div>
+
+                <div style={rowStyles}>
+                  <Input
+                    label="Password"
+                    type="password"
+                    placeholder="Create a strong password"
+                    required
+                    error={errors.password?.message}
+                    {...register("password")}
+                  />
+                  <Input
+                    label="Confirm Password"
+                    type="password"
+                    placeholder="Confirm your password"
+                    required
+                    error={errors.confirmPassword?.message}
+                    {...register("confirmPassword")}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Address Information */}
+            <div style={sectionStyles}>
+              <h2 style={sectionTitleStyles}>Business Address</h2>
+              <div style={formStyles}>
+                <Input
+                  label="Street Address"
+                  type="text"
+                  placeholder="Enter street address"
+                  error={errors.street?.message}
+                  {...register("street")}
+                />
+
+                <div style={rowStyles}>
+                  <Input
+                    label="City"
+                    type="text"
+                    placeholder="Enter city"
+                    error={errors.city?.message}
+                    {...register("city")}
+                  />
+                  <Input
+                    label="State/Province"
+                    type="text"
+                    placeholder="Enter state or province"
+                    error={errors.state?.message}
+                    {...register("state")}
+                  />
+                </div>
+
+                <div style={rowStyles}>
+                  <Input
+                    label="Zip/Postal Code"
+                    type="text"
+                    placeholder="Enter zip code"
+                    error={errors.zipCode?.message}
+                    {...register("zipCode")}
+                  />
+                  <Input
+                    label="Country"
+                    type="text"
+                    placeholder="Enter country"
+                    error={errors.country?.message}
+                    {...register("country")}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Event Interests */}
+            <div style={sectionStyles}>
+              <h2 style={sectionTitleStyles}>Event Interests</h2>
+              <p
                 style={{
-                  marginTop: theme.spacing[2],
+                  color: theme.colors.text.secondary,
+                  marginBottom: theme.spacing[4],
                   fontSize: theme.typography.fontSize.sm,
-                  color: theme.colors.error.main,
                 }}
               >
-                {errors.interestedEventTypes.message}
+                Select the types of events you're interested in participating in
+                :
+              </p>
+
+              <div style={checkboxGroupStyles}>
+                {eventTypeOptions.map((option) => (
+                  <div
+                    key={option.value}
+                    style={{
+                      ...checkboxItemStyles,
+                      borderColor: selectedEventTypes.includes(option.value)
+                        ? theme.colors.primary.main
+                        : theme.colors.border.light,
+                      backgroundColor: selectedEventTypes.includes(option.value)
+                        ? theme.colors.primary.light + "20"
+                        : "transparent",
+                    }}
+                    onClick={() => handleEventTypeChange(option.value)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedEventTypes.includes(option.value)}
+                      onChange={() => handleEventTypeChange(option.value)}
+                      style={{ accentColor: theme.colors.primary.main }}
+                    />
+                    <label
+                      style={{
+                        cursor: "pointer",
+                        fontWeight: theme.typography.fontWeight.medium,
+                      }}
+                    >
+                      {option.label}
+                    </label>
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
 
-          {/* Submit Button */}
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            loading={isSubmitting || isLoading}
-            disabled={isSubmitting || isLoading}
-            style={{
-              width: "100%",
-              marginTop: vendorTheme.spacing[4],
-              background: vendorTheme.colors.primary.main,
-              backgroundColor: vendorTheme.colors.primary.main,
-              borderColor: vendorTheme.colors.primary.main,
-              color: "white",
-              backgroundImage: "none",
-            }}
-          >
-            {isSubmitting || isLoading
-              ? "Submitting Application..."
-              : "Submit Vendor Application"}
-          </Button>
+              {errors.interestedEventTypes && (
+                <div
+                  style={{
+                    marginTop: theme.spacing[2],
+                    fontSize: theme.typography.fontSize.sm,
+                    color: theme.colors.error.main,
+                  }}
+                >
+                  {errors.interestedEventTypes.message}
+                </div>
+              )}
+            </div>
 
-          {/* Links */}
-          <div style={linkStyles}>
-            Already have an account?{" "}
-            <Link to="/" style={linkAnchorStyles}>
-              Sign in here
-            </Link>
-          </div>
-        </form>
-      </Card>
-    </div>
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              loading={isSubmitting || isLoading}
+              disabled={isSubmitting || isLoading}
+              style={{
+                width: "100%",
+                marginTop: vendorTheme.spacing[4],
+                background: vendorTheme.colors.primary.main,
+                backgroundColor: vendorTheme.colors.primary.main,
+                borderColor: vendorTheme.colors.primary.main,
+                color: "white",
+                backgroundImage: "none",
+              }}
+            >
+              {isSubmitting || isLoading
+                ? "Submitting Application..."
+                : "Submit Vendor Application"}
+            </Button>
+
+            {/* Links */}
+            <div style={linkStyles}>
+              Already have an account?{" "}
+              <Link to="/" style={linkAnchorStyles}>
+                Sign in here
+              </Link>
+            </div>
+          </form>
+        </Card>
+      </div>
+    </>
   );
 };
 

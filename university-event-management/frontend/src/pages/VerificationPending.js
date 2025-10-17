@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import theme from "../theme";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import PreLoginNavbar from "../components/PreLoginNavbar";
 
 const VerificationPending = () => {
   const navigate = useNavigate();
@@ -114,86 +115,89 @@ const VerificationPending = () => {
   };
 
   return (
-    <div style={containerStyles}>
-      <Card style={cardStyles}>
-        <div style={iconStyles}>📧</div>
+    <>
+      <PreLoginNavbar />
+      <div style={containerStyles}>
+        <Card style={cardStyles}>
+          <div style={iconStyles}>📧</div>
 
-        <h1 style={titleStyles}>Verification Email Sent</h1>
+          <h1 style={titleStyles}>Verification Email Sent</h1>
 
-        <p style={messageStyles}>
-          {message ||
-            "Verification email sent to your email. Please check your inbox and click the verification link to complete your account setup."}
-        </p>
+          <p style={messageStyles}>
+            {message ||
+              "Verification email sent to your email. Please check your inbox and click the verification link to complete your account setup."}
+          </p>
 
-        <div style={infoBoxStyles}>
+          <div style={infoBoxStyles}>
+            <p
+              style={{
+                fontSize: theme.typography.fontSize.sm,
+                color: theme.colors.text.muted,
+                margin: 0,
+                marginBottom: theme.spacing[2],
+              }}
+            >
+              Verification email sent to:
+            </p>
+            <p style={emailStyles}>{verificationEmail || email}</p>
+          </div>
+
+          <div
+            style={{
+              backgroundColor: theme.colors.warning.light,
+              padding: theme.spacing[4],
+              borderRadius: theme.borderRadius.md,
+              marginBottom: theme.spacing[6],
+              border: `1px solid ${theme.colors.warning.border}`,
+            }}
+          >
+            <p
+              style={{
+                fontSize: theme.typography.fontSize.base,
+                color: theme.colors.warning.dark,
+                margin: 0,
+                fontWeight: theme.typography.fontWeight.medium,
+              }}
+            >
+              ⚠️ If you haven't received the email, check your spam folder or
+              click the button below to request a new verification email.
+            </p>
+          </div>
+
+          <div style={buttonContainerStyles}>
+            <Button
+              variant="secondary"
+              size="lg"
+              onClick={handleBackToLogin}
+              style={{ minWidth: "150px" }}
+            >
+              Back to Login
+            </Button>
+
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={handleReapply}
+              loading={isReapplying}
+              disabled={isReapplying}
+              style={{ minWidth: "200px" }}
+            >
+              {isReapplying ? "Processing..." : "Reapply for Verification"}
+            </Button>
+          </div>
+
           <p
             style={{
               fontSize: theme.typography.fontSize.sm,
               color: theme.colors.text.muted,
-              margin: 0,
-              marginBottom: theme.spacing[2],
+              marginTop: theme.spacing[6],
             }}
           >
-            Verification email sent to:
+            Need help? Contact your system administrator for assistance.
           </p>
-          <p style={emailStyles}>{verificationEmail || email}</p>
-        </div>
-
-        <div
-          style={{
-            backgroundColor: theme.colors.warning.light,
-            padding: theme.spacing[4],
-            borderRadius: theme.borderRadius.md,
-            marginBottom: theme.spacing[6],
-            border: `1px solid ${theme.colors.warning.border}`,
-          }}
-        >
-          <p
-            style={{
-              fontSize: theme.typography.fontSize.base,
-              color: theme.colors.warning.dark,
-              margin: 0,
-              fontWeight: theme.typography.fontWeight.medium,
-            }}
-          >
-            ⚠️ If you haven't received the email, check your spam folder or
-            click the button below to request a new verification email.
-          </p>
-        </div>
-
-        <div style={buttonContainerStyles}>
-          <Button
-            variant="secondary"
-            size="lg"
-            onClick={handleBackToLogin}
-            style={{ minWidth: "150px" }}
-          >
-            Back to Login
-          </Button>
-
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={handleReapply}
-            loading={isReapplying}
-            disabled={isReapplying}
-            style={{ minWidth: "200px" }}
-          >
-            {isReapplying ? "Processing..." : "Reapply for Verification"}
-          </Button>
-        </div>
-
-        <p
-          style={{
-            fontSize: theme.typography.fontSize.sm,
-            color: theme.colors.text.muted,
-            marginTop: theme.spacing[6],
-          }}
-        >
-          Need help? Contact your system administrator for assistance.
-        </p>
-      </Card>
-    </div>
+        </Card>
+      </div>
+    </>
   );
 };
 

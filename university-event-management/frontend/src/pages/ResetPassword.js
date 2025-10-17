@@ -9,6 +9,7 @@ import theme from "../theme";
 import Card from "../components/Card";
 import Input from "../components/Input";
 import Button from "../components/Button";
+import PreLoginNavbar from "../components/PreLoginNavbar";
 import { authAPI } from "../services/auth";
 
 // Validation schema
@@ -221,51 +222,54 @@ const ResetPassword = () => {
   }
 
   return (
-    <div style={containerStyles}>
-      <Card style={cardStyles}>
-        <div style={headerStyles}>
-          <h1 style={titleStyles}>Reset Your Password</h1>
-          <p style={subtitleStyles}>Enter your new password below</p>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} style={formStyles}>
-          <Input
-            label="New Password"
-            type="password"
-            placeholder="Enter your new password"
-            required
-            error={errors.password?.message}
-            {...register("password")}
-          />
-
-          <Input
-            label="Confirm New Password"
-            type="password"
-            placeholder="Confirm your new password"
-            required
-            error={errors.confirmPassword?.message}
-            {...register("confirmPassword")}
-          />
-
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            loading={isSubmitting}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Updating Password..." : "Update Password"}
-          </Button>
-
-          <div style={linkStyles}>
-            Remember your password?{" "}
-            <Link to="/" style={linkAnchorStyles}>
-              Back to Login
-            </Link>
+    <>
+      <PreLoginNavbar />
+      <div style={containerStyles}>
+        <Card style={cardStyles}>
+          <div style={headerStyles}>
+            <h1 style={titleStyles}>Reset Your Password</h1>
+            <p style={subtitleStyles}>Enter your new password below</p>
           </div>
-        </form>
-      </Card>
-    </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} style={formStyles}>
+            <Input
+              label="New Password"
+              type="password"
+              placeholder="Enter your new password"
+              required
+              error={errors.password?.message}
+              {...register("password")}
+            />
+
+            <Input
+              label="Confirm New Password"
+              type="password"
+              placeholder="Confirm your new password"
+              required
+              error={errors.confirmPassword?.message}
+              {...register("confirmPassword")}
+            />
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              loading={isSubmitting}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Updating Password..." : "Update Password"}
+            </Button>
+
+            <div style={linkStyles}>
+              Remember your password?{" "}
+              <Link to="/" style={linkAnchorStyles}>
+                Back to Login
+              </Link>
+            </div>
+          </form>
+        </Card>
+      </div>
+    </>
   );
 };
 
