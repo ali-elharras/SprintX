@@ -308,16 +308,26 @@ const updateApplicationStatus = async (req, res, next) => {
 
     let application;
     const model = applicationType === 'bazaar' ? BazaarApplication : BoothApplication;
-    
+
     if (!model) {
       return res.status(400).json({ success: false, message: "Invalid application type." });
     }
 
-    application = await model.findByIdAndUpdate(applicationId, { status }, { new: true, runValidators: true });
+    application = await model.findById(applicationId);
 
     if (!application) {
       return res.status(404).json({ success: false, message: "Application not found." });
     }
+
+    // Prevent changing status if it's already been decided (approved or rejected)
+    if (application.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot change status. Application has already been ${application.status}.`
+      });
+    }
+
+    application = await model.findByIdAndUpdate(applicationId, { status }, { new: true, runValidators: true });
 
     res.status(200).json({
       success: true,

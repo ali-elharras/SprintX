@@ -319,7 +319,17 @@ const cssKeyframes = `
 `;
 
 const BazaarCard = ({ bazaar, onApply, application }) => {
-  const hasApplied = !application;
+  const canApply = !application || application.status === 'rejected';
+  const buttonText = !application
+    ? 'Apply to Bazaar →'
+    : application.status === 'approved'
+    ? '✓ Accepted Already'
+    : application.status === 'rejected'
+    ? 'Apply Again →'
+    : application.status === 'pending'
+    ? '✓ Pending Already'
+    : 'Apply to Bazaar →';
+  const isButtonDisabled = !canApply;
 
   return (
     <div className="card-hover" style={styles.card}>
