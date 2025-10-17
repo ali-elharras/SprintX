@@ -708,11 +708,11 @@ const confirmDeleteWorkshop = async () => {
         {/* Action Buttons */}
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2, 1fr)",
+              display: "flex",
               gap: theme.spacing[3],
               alignItems: "stretch",
-              marginTop: theme.spacing[4],
+              marginTop: "auto",
+              paddingTop: theme.spacing[4]
             }}
           >
             {isAdmin ? (
