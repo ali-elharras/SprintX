@@ -50,7 +50,13 @@ const EventEditModal = ({ open, event, onClose, onSaved }) => {
     // compute changed fields only
     const changed = {};
     Object.keys(form).forEach(k => {
-      const original = (event.name && k === 'name') ? (event.name) : event[k];
+      // For the 'name' field, check both event.name and event.title as the original value
+      let original;
+      if (k === 'name') {
+        original = event.name || event.title || '';
+      } else {
+        original = event[k];
+      }
       // normalized compare for dates
       const origVal = original ? (typeof original === 'string' && original.length > 10 ? original.slice(0,16) : original) : original;
       if ((form[k] || '') !== (origVal || '')) changed[k] = form[k];
@@ -59,6 +65,11 @@ const EventEditModal = ({ open, event, onClose, onSaved }) => {
     if (Object.keys(changed).length === 0) {
       setError('No changes to save');
       return;
+    }
+
+    // If name is being changed, update both 'name' and 'title' fields in the backend
+    if (changed.name) {
+      changed.title = changed.name;
     }
 
     setSaving(true);
