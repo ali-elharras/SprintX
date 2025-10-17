@@ -9,7 +9,7 @@ const applyToBazaar = async (req, res, next) => {
   try {
     const { bazaarId } = req.params;
     const { attendees, boothSize } = req.body;
-    const vendorId = req.user._id;
+    const vendorId = req.vendor._id;
 
     // Check if the bazaar exists and is upcoming
     const bazaar = await Event.findById(bazaarId);
@@ -66,7 +66,7 @@ const applyToBazaar = async (req, res, next) => {
 const applyForBooth = async (req, res, next) => {
   try {
     const { attendees, startDate, endDate, durationWeeks, location, boothSize } = req.body;
-    const vendorId = req.user._id;
+    const vendorId = req.vendor._id;
 
     // Check for existing pending booth application for this vendor
     const existingPendingApplication = await BoothApplication.findOne({
@@ -119,7 +119,7 @@ const applyForBooth = async (req, res, next) => {
 // @access  Private (Vendor)
 const getMyParticipations = async (req, res, next) => {
   try {
-    const vendorId = req.user._id;
+    const vendorId = req.vendor._id;
 
     const bazaarParticipations = await BazaarApplication.find({
       vendor: vendorId,
@@ -154,7 +154,7 @@ const getMyParticipations = async (req, res, next) => {
 // @access  Private (Vendor)
 const getMyRequests = async (req, res, next) => {
   try {
-    const vendorId = req.user._id;
+    const vendorId = req.vendor._id;
 
     const bazaarRequests = await BazaarApplication.find({
       vendor: vendorId,
@@ -172,6 +172,35 @@ const getMyRequests = async (req, res, next) => {
         bazaars: bazaarRequests,
         booths: boothRequests,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get vendor's own application for a specific bazaar
+// @route   GET /api/applications/bazaar/:bazaarId
+// @access  Private (Vendor)
+const getMyBazaarApplication = async (req, res, next) => {
+  try {
+    const { bazaarId } = req.params;
+    const vendorId = req.vendor._id;
+
+    const application = await BazaarApplication.findOne({
+      vendor: vendorId,
+      bazaar: bazaarId,
+    }).populate('bazaar');
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: "No application found for this bazaar",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: application,
     });
   } catch (error) {
     next(error);
@@ -364,7 +393,7 @@ const updateBoothApplication = async (req, res, next) => {
   try {
     const { applicationId } = req.params;
     const { startDate, endDate, location, boothSize, attendees } = req.body;
-    const vendorId = req.user._id;
+    const vendorId = req.vendor._id;
 
     // Find the application and ensure it belongs to the vendor
     const application = await BoothApplication.findById(applicationId);
@@ -462,6 +491,7 @@ module.exports = {
   applyForBooth,
   getMyParticipations,
   getMyRequests,
+  getMyBazaarApplication,
   getAllApplications,
   getApprovedVendorsForBazaar,
   getBoothConflicts,

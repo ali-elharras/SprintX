@@ -228,6 +228,20 @@ export const applicationServices = {
 };
 
 // ============================================
+// BAZAAR SERVICES
+// ============================================
+export const bazaarServices = {
+  getBazaarApplication: async (bazaarId) => {
+    try {
+      const response = await api.get(`/applications/bazaar/${bazaarId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
+
+// ============================================
 // EVENT API ENDPOINTS (from main)
 // ============================================
 export const eventAPI = {

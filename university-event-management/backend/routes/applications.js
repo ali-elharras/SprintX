@@ -3,7 +3,8 @@ const {
     applyToBazaar, 
     applyForBooth, 
     getMyParticipations, 
-    getMyRequests, 
+    getMyRequests,
+    getMyBazaarApplication,
     getAllApplications, 
     getApprovedVendorsForBazaar,
     getBoothConflicts,
@@ -14,11 +15,13 @@ const { protect, requireVendor, requireApprovedVendor, requireAdminOrEventsOffic
 const router = express.Router();
 
 // Public route for getting approved vendors for a bazaar (for event display)
+// This must come BEFORE the /:bazaarId route to avoid conflicts
 router.get("/bazaar/:bazaarId/approved-vendors", getApprovedVendorsForBazaar);
 
 // Vendor routes
-router.post("/bazaar/:bazaarId", [protect, requireVendor, ], applyToBazaar);
-router.post("/booth", [protect, requireVendor, ], applyForBooth);
+router.get("/bazaar/:bazaarId", [protect, requireVendor], getMyBazaarApplication);
+router.post("/bazaar/:bazaarId", [protect, requireVendor], applyToBazaar);
+router.post("/booth", [protect, requireVendor], applyForBooth);
 router.post("/booth-conflicts", [protect, requireVendor], getBoothConflicts);
 router.get("/my-participations", [protect, requireVendor], getMyParticipations);
 router.get("/my-requests", [protect, requireVendor], getMyRequests);
