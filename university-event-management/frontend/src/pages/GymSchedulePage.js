@@ -328,13 +328,6 @@ const GymSchedulePage = () => {
     <div style={styles.container}>
       <Navbar />
       <div style={styles.content}>
-        {/* Events Office Create Session Button */}
-        <CreateSessionInline
-          isVisible={showCreateButton}
-          onCreated={() => fetchSessions()}
-          sessionTypes={sessionTypes}
-          styles={styles}
-        />
         {/* Header */}
         <div style={styles.header}>
           <h1 style={styles.title}>Gym Schedule</h1>
@@ -446,6 +439,17 @@ const GymSchedulePage = () => {
               />
               <label htmlFor="availableOnly">Available spots only</label>
             </div>
+
+            {/* Spacer to push create button to the right */}
+            <div style={{ flex: 1 }} />
+
+            {/* Events Office Create Session Button */}
+            <CreateSessionInline
+              isVisible={showCreateButton}
+              onCreated={() => fetchSessions()}
+              sessionTypes={sessionTypes}
+              styles={styles}
+            />
           </div>
         </div>
 
@@ -724,34 +728,61 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
 
   if (!show) return null;
 
-  const modalStyle = {
-    ...styles.controls,
-    padding: theme.spacing[4],
-    maxWidth: 800,
-    marginBottom: theme.spacing[4],
-    minWidth:'90vw',
-  };
-
   const inputStyle = styles.filterInput;
   const selectStyle = styles.filterSelect;
   const buttonPrimary = { ...theme.components.button.primary, marginRight: 8 };
   const buttonSecondary = { ...theme.components.button.secondary };
 
+  // Modal overlay and container styles
+  const modalOverlay = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    padding: theme.spacing[4],
+    overflow: 'auto',
+  };
+
+  const modalContainer = {
+    backgroundColor: theme.colors.background.paper,
+    borderRadius: theme.borderRadius.xl,
+    boxShadow: theme.shadows.xl,
+    maxWidth: '800px',
+    width: '100%',
+    maxHeight: '90vh',
+    overflow: 'auto',
+    padding: theme.spacing[6],
+  };
+
   return (
-    <div style={{ marginBottom: 16 }}>
+    <>
       <button
-        style={{ ...theme.components.button.primary, padding: '8px 12px', marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: theme.spacing[2] }}
+        style={{ 
+          ...theme.components.button.primary, 
+          padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+          display: 'inline-flex', 
+          alignItems: 'center', 
+          gap: theme.spacing[2],
+          whiteSpace: 'nowrap',
+        }}
         onClick={() => setOpen(true)}
         aria-label="Create Session"
       >
         <span style={{ display: 'inline-block' }}>Create Session</span>
-         <svg width="14" height="14" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style={{ display: 'inline-block' }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style={{ display: 'inline-block' }}>
           <path fill="#ffffff" d="M19 11H13V5h-2v6H5v2h6v6h2v-6h6z" />
         </svg>
       </button>
 
       {open && (
-        <div style={styles.controls}>
+        <div style={modalOverlay} onClick={() => setOpen(false)}>
+          <div style={modalContainer} onClick={(e) => e.stopPropagation()}>
           <h3 style={{ marginTop: 0 }}>Create Gym Session</h3>
           <p style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.secondary, marginBottom: theme.spacing[4] }}>
             Fill in the essential details to create a new gym session. By default, the session will occur only on the selected date.
@@ -929,13 +960,14 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
             </div>
           </div>
 
-          <div style={{ marginTop: theme.spacing[4], display: 'flex', justifyContent: 'flex-end', gap: theme.spacing[2] }}>
-            <button onClick={()=>setOpen(false)} style={buttonSecondary}>Cancel</button>
-            <button onClick={create} style={buttonPrimary}>Create Session</button>
+            <div style={{ marginTop: theme.spacing[4], display: 'flex', justifyContent: 'flex-end', gap: theme.spacing[2] }}>
+              <button onClick={()=>setOpen(false)} style={buttonSecondary}>Cancel</button>
+              <button onClick={create} style={buttonPrimary}>Create Session</button>
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

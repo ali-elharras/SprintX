@@ -328,13 +328,13 @@ const GymScheduleCalendar = ({ sessions, year, month, onSessionUpdated }) => {
               }}
               onClick={() => handleDayClick(day)}
               onMouseEnter={(e) => {
-                if (sessionsForDay.length > 0) {
-                  e.target.style.backgroundColor = styles.dayCellHover.backgroundColor;
+                if (sessionsForDay.length > 0 && !isSelected) {
+                  e.currentTarget.style.backgroundColor = styles.dayCellHover.backgroundColor;
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isSelected) {
-                  e.target.style.backgroundColor = "transparent";
+                  e.currentTarget.style.backgroundColor = "transparent";
                 }
               }}
             >
@@ -398,7 +398,27 @@ const GymScheduleCalendar = ({ sessions, year, month, onSessionUpdated }) => {
                         {session.maxParticipants - session.currentParticipants} spots available
                       </div>
                       <div style={{ marginTop: theme.spacing[2], display: 'flex', gap: theme.spacing[2] }}>
-                        <button onClick={() => setSelectedSessionModal(session)} style={{ ...theme.components.button.secondary }}>View Details</button>
+                        <button 
+                          onClick={() => setSelectedSessionModal(session)} 
+                          style={{ 
+                            ...theme.components.button.secondary,
+                            transition: 'all 0.2s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = theme.components.button.secondary.hover.background;
+                            e.currentTarget.style.borderColor = theme.components.button.secondary.hover.borderColor;
+                            e.currentTarget.style.transform = theme.components.button.secondary.hover.transform;
+                            e.currentTarget.style.boxShadow = theme.components.button.secondary.hover.boxShadow;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = theme.components.button.secondary.background;
+                            e.currentTarget.style.borderColor = theme.components.button.secondary.border.split(' ')[2];
+                            e.currentTarget.style.transform = 'none';
+                            e.currentTarget.style.boxShadow = theme.components.button.secondary.boxShadow;
+                          }}
+                        >
+                          View Details
+                        </button>
                       </div>
                     </div>
                   </div>
