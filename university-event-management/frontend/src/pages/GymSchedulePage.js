@@ -691,21 +691,37 @@ const CreateSessionButton = ({ onCreated, sessionTypes }) => {
       };
 
       await gymAPI.createSession(payload);
-      toast.success(form.isRecurring ? "Recurring gym session created" : "Gym session created");
+      toast.success(form.isRecurring ? "Recurring gym session created successfully!" : "Gym session created successfully!");
       setOpen(false);
       onCreated && onCreated();
     } catch (err) {
       console.error("Create session failed:", err);
+      
+      // Handle network errors
+      if (!err.response) {
+        toast.error("Network error. Please check your connection and try again.");
+        return;
+      }
+      
       // Parse backend validation errors if present
       const resp = err.response?.data;
-      if (resp && resp.errors) {
-        // resp.errors may be an array of { msg/message, param/field/path }
-        const errors = Array.isArray(resp.errors) ? resp.errors : (resp.errors.data || []);
+      
+      // Handle detailed field validation errors
+      if (resp && (resp.errors || resp.validationErrors)) {
+        const errors = Array.isArray(resp.errors) ? resp.errors : 
+                      Array.isArray(resp.validationErrors) ? resp.validationErrors :
+                      (resp.errors?.data || []);
+        
         const map = {};
+        let hasErrors = false;
+        
         errors.forEach(e => {
           const key = e.param || e.field || e.path || null;
           const msg = e.msg || e.message || (typeof e === 'string' ? e : 'Invalid value');
           if (!key) return;
+          
+          hasErrors = true;
+          
           // normalize field names used in our form
           const normalize = (k) => {
             if (!k) return k;
@@ -717,11 +733,22 @@ const CreateSessionButton = ({ onCreated, sessionTypes }) => {
           };
           map[normalize(key)] = msg;
         });
-        setFormErrors(map);
-        toast.error('Please fix the highlighted fields');
-      } else {
-        toast.error(err.message || "Failed to create session");
+        
+        if (hasErrors) {
+          setFormErrors(map);
+          toast.error('Please fix the highlighted fields below');
+          return;
+        }
       }
+      
+      // Handle specific error messages
+      const errorMessage = resp?.message || 
+                          resp?.error || 
+                          err.response?.statusText ||
+                          err.message || 
+                          "Failed to create session";
+      
+      toast.error(errorMessage, { duration: 5000 });
     }
   };
 
