@@ -2264,7 +2264,7 @@ const EventsPage = () => {
                   <Input
                     label="Start Date *"
                     type="datetime-local"
-                    min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+                    min={new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().slice(0, 10) + "T00:00"}
                     value={bazaarData.startDate}
                     onChange={(e) => {
                       const newStartDate = e.target.value;
