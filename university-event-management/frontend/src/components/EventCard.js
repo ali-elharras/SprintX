@@ -65,19 +65,50 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
     return labels[type] || type;
   };
 
-  const getStatusInfo = () => {
+  const canRegister = () => {
     const now = new Date();
     const startDate = new Date(normalizedEvent.startDate);
-    const endDate = new Date(normalizedEvent.endDate);
     const registrationDeadline = normalizedEvent.registrationDeadline
       ? new Date(normalizedEvent.registrationDeadline)
       : null;
 
-    if (normalizedEvent.status !== "published") {
+    return (
+      normalizedEvent.status === "published" &&
+      normalizedEvent.registrationRequired &&
+      startDate > now &&
+      normalizedEvent.currentParticipants < normalizedEvent.maxParticipants &&
+      (!registrationDeadline || now <= registrationDeadline)
+    );
+  };
+
+  const getStatusInfo = () => {
+    const now = new Date();
+    const startDate = normalizedEvent.startDate ? new Date(normalizedEvent.startDate) : null;
+    const endDate = normalizedEvent.endDate ? new Date(normalizedEvent.endDate) : startDate;
+    const registrationDeadline = normalizedEvent.registrationDeadline
+      ? new Date(normalizedEvent.registrationDeadline)
+      : null;
+
+    if (normalizedEvent.status && normalizedEvent.status !== "published") {
       return { status: "Not Published", color: theme.colors.neutral.gray500 };
     }
 
-    if (endDate < now) {
+    // Treat "same-day (today)" events as upcoming (do not mark ended even if end time passed)
+    const isSameCalendarDay =
+      startDate &&
+      endDate &&
+      startDate.getFullYear() === endDate.getFullYear() &&
+      startDate.getMonth() === endDate.getMonth() &&
+      startDate.getDate() === endDate.getDate();
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0,0,0,0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23,59,59,999);
+    const startIsToday = startDate && startDate >= startOfToday && startDate <= endOfToday;
+
+    // If event has ended and it's NOT a same-day-today event, show Event Ended
+    if (endDate && endDate < now && !(isSameCalendarDay && startIsToday)) {
       return { status: "Event Ended", color: theme.colors.neutral.gray500 };
     }
 
@@ -96,27 +127,11 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
     return { status: "Registration Open", color: theme.colors.success.main };
   };
 
-  const canRegister = () => {
-    const now = new Date();
-    const startDate = new Date(normalizedEvent.startDate);
-    const registrationDeadline = normalizedEvent.registrationDeadline
-      ? new Date(normalizedEvent.registrationDeadline)
-      : null;
-
-    return (
-      normalizedEvent.status === "published" &&
-      normalizedEvent.registrationRequired &&
-      startDate > now &&
-      normalizedEvent.currentParticipants < normalizedEvent.maxParticipants &&
-      (!registrationDeadline || now <= registrationDeadline)
-    );
-  };
-
   const handleEditClick = () => {
-  if (onEditConference && normalizedEvent.type === "conference") {
-    onEditConference(normalizedEvent);
-  }
-};
+    if (onEditConference && normalizedEvent.type === "conference") {
+      onEditConference(normalizedEvent);
+    }
+  };
 
 const handleDeleteConference = async () => {
   if (!window.confirm("Are you sure you want to delete this conference? This action cannot be undone.")) {
@@ -249,6 +264,32 @@ const confirmDeleteWorkshop = async () => {
       />
     );
   }
+
+  // helper: consider event started if startDate is today or earlier
+  const eventHasStarted = (event) => {
+    if (!event || !event.startDate) return false;
+    const now = new Date();
+    const start = new Date(event.startDate);
+    now.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
+    return start <= now; // started if start is today or in the past
+  };
+
+  // convenience flag used in JSX
+  const canShowEventsOfficeControls = isEventsOffice &&
+    ['conference', 'bazaar', 'trip', 'workshop'].includes(normalizedEvent.type) &&
+    !eventHasStarted(normalizedEvent);
+
+  // ownership helper (organizer or createdBy)
+  const isOwner = (() => {
+    const uid = user?.id || user?._id;
+    const owner = normalizedEvent.organizer || normalizedEvent.createdBy;
+    if (!uid || !owner) return false;
+    if (typeof owner === "object") return owner._id === uid || owner.id === uid;
+    return owner === uid;
+  })();
+
+  const hasStarted = eventHasStarted(normalizedEvent);
 
   return (
     <>
@@ -548,7 +589,6 @@ const confirmDeleteWorkshop = async () => {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  marginBottom: theme.spacing[2],
                 }}
               >
                 <span
@@ -626,43 +666,44 @@ const confirmDeleteWorkshop = async () => {
           </div>
         )}
         {/* Action Buttons */}
-        <div
-          style={{
-            display: "flex",
-            gap: theme.spacing[3],
-            alignItems: "stretch",
-          }}
-        >
-          {/* Admin buttons - can delete any event type if no registrations */}
-          {isAdmin ? (
-            <div style={{ flex: 1 }}>
-              <Button
-                variant="danger"
-                onClick={handleDeleteEvent}
-                disabled={isDeleting}
-                title="Delete event (only if no registrations)"
-                style={{ 
-                  width: "100%",
-                  minHeight: "44px",
-                  padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                  whiteSpace: "nowrap",
-                  opacity: isDeleting ? 0.6 : 1,
-                  cursor: isDeleting ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {isDeleting ? "Deleting..." : "Delete Event"}
-              </Button>
-            </div>
-          ) : /* Events Office buttons for conferences and workshops */
-          isEventsOffice && (normalizedEvent.type === "conference" || normalizedEvent.type === "workshop") ? (
-            <>
-              {normalizedEvent.type === "conference" && (
-                <>
+          <div
+            style={{
+              display: "flex",
+              gap: theme.spacing[3],
+              alignItems: "stretch",
+            }}
+          >
+            {isAdmin ? (
+              // Admin: show Delete button only when no participants
+              normalizedEvent.currentParticipants === 0 ? (
+                <div style={{ flex: 1 }}>
+                  <Button
+                    variant="danger"
+                    onClick={handleDeleteEvent}
+                    disabled={isDeleting}
+                    title="Delete event (only if no registrations)"
+                    style={{
+                      width: "100%",
+                      minHeight: "44px",
+                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      whiteSpace: "nowrap",
+                      opacity: isDeleting ? 0.6 : 1,
+                      cursor: isDeleting ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {isDeleting ? "Deleting..." : "Delete Event"}
+                  </Button>
+                </div>
+              ) : null
+            ) : isEventsOffice ? (
+              <>
+                {/* Events Office: Edit shown only for events they own and only if event has NOT started */}
+                {isOwner && !hasStarted && normalizedEvent.type !== 'workshop' && (
                   <div style={{ flex: 1 }}>
                     <Button
                       variant="primary"
                       onClick={handleEditClick}
-                      style={{ 
+                      style={{
                         width: "100%",
                         minHeight: "44px",
                         padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
@@ -672,12 +713,16 @@ const confirmDeleteWorkshop = async () => {
                       Edit
                     </Button>
                   </div>
+                )}
+
+                {/* Events Office: Delete shown only for events they own, only if NOT started AND participants === 0 */}
+                {isOwner && !hasStarted && normalizedEvent.currentParticipants === 0 && (
                   <div style={{ flex: 1 }}>
                     <Button
                       variant="danger"
-                      onClick={handleDeleteConference}
+                      onClick={handleDeleteEvent}
                       disabled={isDeleting}
-                      style={{ 
+                      style={{
                         width: "100%",
                         minHeight: "44px",
                         padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
@@ -688,49 +733,28 @@ const confirmDeleteWorkshop = async () => {
                       {isDeleting ? "Deleting..." : "Delete"}
                     </Button>
                   </div>
-                </>
-              )}
-              {normalizedEvent.type === "workshop" && (
+                )}
+              </>
+            ) : (
+              // Regular users: keep Register Now as-is
+              !isEventsOffice && !isAdmin && showRegistration && canRegister() && (
                 <div style={{ flex: 1 }}>
                   <Button
-                    variant="danger"
-                    onClick={handleDeleteWorkshop}
-                    disabled={isDeleting || normalizedEvent.currentParticipants > 0}
-                    title={normalizedEvent.currentParticipants > 0 ? "Cannot delete - students are registered" : "Delete workshop"}
-                    style={{ 
+                    variant="primary"
+                    onClick={() => setShowRegistrationForm(true)}
+                    style={{
                       width: "100%",
                       minHeight: "44px",
                       padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
                       whiteSpace: "nowrap",
-                      opacity: (isDeleting || normalizedEvent.currentParticipants > 0) ? 0.6 : 1,
-                      cursor: (isDeleting || normalizedEvent.currentParticipants > 0) ? 'not-allowed' : 'pointer',
                     }}
                   >
-                    {isDeleting ? "Deleting..." : "Delete"}
+                    Register Now
                   </Button>
                 </div>
-              )}
-            </>
-          ) : (
-            /* Single Register Now button for regular users only */
-            !isEventsOffice && !isAdmin && showRegistration && canRegister() && (
-              <div style={{ flex: 1 }}>
-                <Button
-                  variant="primary"
-                  onClick={() => setShowRegistrationForm(true)}
-                  style={{ 
-                    width: "100%",
-                    minHeight: "44px",
-                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Register Now
-                </Button>
-              </div>
-            )
-          )}
-        </div>
+              )
+            )}
+          </div>
       </div>
 
       {/* Delete Workshop Confirmation Modal */}

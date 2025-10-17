@@ -128,6 +128,8 @@ const editConference = async (req, res) => {
             requiredBudget,
             sourceOfFunding,
             extraRequiredResources,
+            maxParticipants,
+            currentParticipants,
             location,
         } = req.body;
 

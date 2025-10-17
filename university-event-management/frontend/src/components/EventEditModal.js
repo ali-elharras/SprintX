@@ -62,10 +62,11 @@ const EventEditModal = ({ open, event, onClose, onSaved }) => {
 
     setSaving(true);
     try {
-      await eventAPI.updateEvent(event._id || event.id, changed);
-      setSaving(false);
-      onSaved && onSaved();
-      onClose && onClose();
+  await eventAPI.updateEvent(event._id || event.id, changed);
+  setSaving(false);
+  try { toast.success('Trip updated successfully'); } catch (e) {}
+  onSaved && onSaved();
+  onClose && onClose();
     } catch (err) {
       console.error('Failed to update event', err);
       setError(err?.response?.data?.message || 'Failed to save changes');
