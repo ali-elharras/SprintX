@@ -319,6 +319,7 @@ const cssKeyframes = `
 `;
 
 const BazaarCard = ({ bazaar, onApply, application }) => {
+  const hasApplied = !application;
   const canApply = !application || application.status === 'rejected';
   const buttonText = !application
     ? 'Apply to Bazaar →'
