@@ -320,13 +320,15 @@ const cssKeyframes = `
 
 const BazaarCard = ({ bazaar, onApply, application }) => {
   const canApply = !application || application.status === 'rejected';
-  const buttonText = !application && application.status === 'approved'
+  const buttonText = !application
     ? 'Apply to Bazaar →'
+    : application.status === 'approved'
+    ? '✓ Accepted Already'
     : application.status === 'rejected'
     ? 'Apply Again →'
     : application.status === 'pending'
     ? '✓ Pending Already'
-    : '✓ Accepted Already';
+    : 'Apply to Bazaar →';
   const isButtonDisabled = !canApply;
 
   return (
