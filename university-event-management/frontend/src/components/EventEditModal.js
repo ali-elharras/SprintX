@@ -66,7 +66,8 @@ const EventEditModal = ({ open, event, onClose, onSaved }) => {
       setError('End date and time required');
       return false;
     }
-    if (form.startDate && form.endDate && new Date(form.endDate) < new Date(form.startDate)) {
+    // Compare datetime-local strings directly (they're in ISO format YYYY-MM-DDTHH:mm)
+    if (form.startDate && form.endDate && form.endDate <= form.startDate) {
       setError('End must be after start');
       return false;
     }
@@ -74,7 +75,8 @@ const EventEditModal = ({ open, event, onClose, onSaved }) => {
       setError('Registration deadline required');
       return false;
     }
-    if (form.registrationDeadline && form.startDate && new Date(form.registrationDeadline) >= new Date(form.startDate)) {
+    // Compare datetime-local strings directly (they're in ISO format YYYY-MM-DDTHH:mm)
+    if (form.registrationDeadline && form.startDate && form.registrationDeadline >= form.startDate) {
       setError('Registration deadline must be before the trip start');
       return false;
     }
@@ -111,6 +113,16 @@ const EventEditModal = ({ open, event, onClose, onSaved }) => {
     // If name changed, also update title to keep them in sync
     if (changed.name) {
       changed.title = changed.name;
+    }
+
+    // Convert datetime-local strings to ISO Date strings for backend
+    // Always include startDate and endDate together to ensure validation works
+    if (changed.endDate || changed.startDate) {
+      changed.startDate = new Date(form.startDate).toISOString();
+      changed.endDate = new Date(form.endDate).toISOString();
+    }
+    if (changed.registrationDeadline) {
+      changed.registrationDeadline = new Date(changed.registrationDeadline).toISOString();
     }
 
     setSaving(true);

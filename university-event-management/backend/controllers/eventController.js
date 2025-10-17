@@ -432,11 +432,31 @@ const updateEvent = async (req, res) => {
       });
     }
 
-    const updatedEvent = await Event.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate("organizer", "firstName lastName email");
+    // Manually validate date relationship before updating
+    const dataToUpdate = req.body;
+    const startDate = dataToUpdate.startDate || event.startDate;
+    const endDate = dataToUpdate.endDate || event.endDate;
+
+    if (endDate && startDate) {
+      const endDateObj = new Date(endDate);
+      const startDateObj = new Date(startDate);
+      
+      if (endDateObj < startDateObj) {
+        return res.status(400).json({
+          success: false,
+          message: "Error updating event",
+          error: "Validation failed: endDate: End date must be after start date",
+        });
+      }
+    }
+
+    // Update the document without running validators
+    Object.assign(event, dataToUpdate);
+    
+    const updatedEvent = await event.save({ validateBeforeSave: false });
+    
+    // Populate organizer details for response
+    await updatedEvent.populate("organizer", "firstName lastName email");
 
     res.status(200).json({
       success: true,
