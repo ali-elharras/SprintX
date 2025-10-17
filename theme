@@ -1,4 +1,4 @@
-// theme.js - Campus Events Hub Design System
+// theme.js - SprintX Design System
 // For MERN Stack Application
 
 const theme = {

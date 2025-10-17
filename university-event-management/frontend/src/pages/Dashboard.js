@@ -4,10 +4,8 @@ import theme, { getEventTypeColor, getRoleColor } from "../theme";
 import Card from "../components/Card";
 import Navbar from "../components/Navbar";
 
-
 const styles = {
   container: {
-
     minHeight: "100vh",
     background: `linear-gradient(135deg, ${theme.colors.background.default} 0%, ${theme.colors.neutral.gray50} 100%)`,
     fontFamily: theme.typography.fontFamily.primary,
@@ -42,7 +40,8 @@ const styles = {
     overflow: "hidden",
     padding: theme.spacing[8],
     borderRadius: "24px",
-    boxShadow: "0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.1) inset",
+    boxShadow:
+      "0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.1) inset",
     marginBottom: theme.spacing[8],
   }),
   welcomeGlow: {
@@ -51,7 +50,8 @@ const styles = {
     right: "-20%",
     width: "500px",
     height: "500px",
-    background: "radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)",
+    background:
+      "radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)",
     borderRadius: "50%",
     pointerEvents: "none",
   },
@@ -333,7 +333,9 @@ const Dashboard = () => {
     if (isVendor && vendor) {
       return {
         title: `Welcome, ${vendor.companyName}!`,
-        message: `Your vendor account is currently ${vendor.verificationStatus}. ${
+        message: `Your vendor account is currently ${
+          vendor.verificationStatus
+        }. ${
           vendor.verificationStatus === "approved"
             ? "You can now participate in university events!"
             : "Please wait for admin approval to access all features."
@@ -347,17 +349,21 @@ const Dashboard = () => {
       };
     } else if (isUser && user) {
       const roleMessages = {
-        student: "Discover events, workshops, and activities designed for students.",
-        staff: "Access staff events, training sessions, and university activities.",
+        student:
+          "Discover events, workshops, and activities designed for students.",
+        staff:
+          "Access staff events, training sessions, and university activities.",
         ta: "Find TA-specific events, workshops, and professional development opportunities.",
-        professor: "Propose academic events, manage workshops, and access faculty resources.",
+        professor:
+          "Propose academic events, manage workshops, and access faculty resources.",
         admin: "Manage all aspects of the university event system.",
-        events_office: "Oversee event planning, approvals, and campus activities.",
+        events_office:
+          "Oversee event planning, approvals, and campus activities.",
       };
 
       return {
         title: `Welcome, ${user.firstName}!`,
-        message: roleMessages[user.role] || "Welcome to Campus Events Hub!",
+        message: roleMessages[user.role] || "Welcome to SprintX!",
         features: [
           "Browse upcoming events",
           "Register for events",
@@ -368,7 +374,7 @@ const Dashboard = () => {
     }
 
     return {
-      title: "Welcome to Campus Events Hub!",
+      title: "Welcome to SprintX!",
       message: "Your gateway to university events and activities.",
       features: [],
     };
@@ -418,7 +424,9 @@ const Dashboard = () => {
         {
           label: "Account Status",
           value: user?.isVerified ? "Verified" : "Unverified",
-          color: user?.isVerified ? theme.colors.success.main : theme.colors.warning.main,
+          color: user?.isVerified
+            ? theme.colors.success.main
+            : theme.colors.warning.main,
         },
       ];
     }
@@ -437,7 +445,8 @@ const Dashboard = () => {
       key: "trip",
       name: "Trips",
       icon: "✈️",
-      description: "Educational and recreational trips to Cairo, Berlin, and more",
+      description:
+        "Educational and recreational trips to Cairo, Berlin, and more",
     },
     {
       key: "workshop",
@@ -475,7 +484,7 @@ const Dashboard = () => {
             <div style={styles.welcomeGlow}></div>
             <div style={styles.decorCircle1}></div>
             <div style={styles.decorCircle2}></div>
-            
+
             <div style={styles.welcomeContent}>
               <h1 style={styles.welcomeTitle}>{welcomeInfo.title}</h1>
               <p style={styles.welcomeMessage}>{welcomeInfo.message}</p>
@@ -501,7 +510,7 @@ const Dashboard = () => {
             <div style={styles.statsGrid}>
               {quickStats.map((stat, index) => (
                 <div key={index} className="stat-card" style={styles.statCard}>
-                  <div 
+                  <div
                     className="stat-gradient"
                     style={{
                       ...styles.statGradient,
@@ -531,12 +540,18 @@ const Dashboard = () => {
                 style={styles.eventTypeCard}
               >
                 <div style={styles.eventTypeHeader}>
-                  <div style={styles.eventTypeDot(getEventTypeColor(eventType.key))}></div>
+                  <div
+                    style={styles.eventTypeDot(
+                      getEventTypeColor(eventType.key)
+                    )}
+                  ></div>
                   <h3 style={styles.eventTypeName}>
                     {eventType.icon} {eventType.name}
                   </h3>
                 </div>
-                <p style={styles.eventTypeDescription}>{eventType.description}</p>
+                <p style={styles.eventTypeDescription}>
+                  {eventType.description}
+                </p>
               </div>
             ))}
           </div>
@@ -557,7 +572,8 @@ const Dashboard = () => {
                       Complete Your Profile
                     </h4>
                     <p style={styles.stepDescription}>
-                      Add your company logo, upload required documents, and complete your business profile.
+                      Add your company logo, upload required documents, and
+                      complete your business profile.
                     </p>
                   </div>
                   <div className="step-card" style={styles.stepCard}>
@@ -566,7 +582,8 @@ const Dashboard = () => {
                       Wait for Approval
                     </h4>
                     <p style={styles.stepDescription}>
-                      Our admin team will review your application and verify your business credentials.
+                      Our admin team will review your application and verify
+                      your business credentials.
                     </p>
                   </div>
                   <div className="step-card" style={styles.stepCard}>
@@ -575,7 +592,8 @@ const Dashboard = () => {
                       Start Participating
                     </h4>
                     <p style={styles.stepDescription}>
-                      Once approved, you can view and apply to participate in relevant campus events.
+                      Once approved, you can view and apply to participate in
+                      relevant campus events.
                     </p>
                   </div>
                 </>
@@ -587,7 +605,8 @@ const Dashboard = () => {
                       Explore Events
                     </h4>
                     <p style={styles.stepDescription}>
-                      Browse upcoming events, workshops, and activities that match your interests.
+                      Browse upcoming events, workshops, and activities that
+                      match your interests.
                     </p>
                   </div>
                   <div className="step-card" style={styles.stepCard}>
@@ -596,7 +615,8 @@ const Dashboard = () => {
                       Register for Events
                     </h4>
                     <p style={styles.stepDescription}>
-                      Sign up for events you want to attend and receive confirmation details.
+                      Sign up for events you want to attend and receive
+                      confirmation details.
                     </p>
                   </div>
                   <div className="step-card" style={styles.stepCard}>
@@ -605,7 +625,8 @@ const Dashboard = () => {
                       Stay Connected
                     </h4>
                     <p style={styles.stepDescription}>
-                      Get notifications about new events and updates about your registrations.
+                      Get notifications about new events and updates about your
+                      registrations.
                     </p>
                   </div>
                 </>

@@ -202,7 +202,7 @@ const registerUser = async (req, res, next) => {
     if (user.role === "pending") {
       successMessage = `Registration successful! Your ${user.requestedRole} role request is pending admin approval.`;
     } else {
-      successMessage = "Registration successful! Welcome to Campus Events Hub!";
+      successMessage = "Registration successful! Welcome to SprintX!";
     }
 
     res.status(201).json({
@@ -1068,7 +1068,11 @@ const verifyEmail = async (req, res, next) => {
     );
 
     // Redirect to a dedicated verification complete page (not login directly)
-    res.redirect(`${process.env.FRONTEND_URL}/email-verified?success=true&email=${encodeURIComponent(user.email)}`);
+    res.redirect(
+      `${
+        process.env.FRONTEND_URL
+      }/email-verified?success=true&email=${encodeURIComponent(user.email)}`
+    );
   } catch (error) {
     console.error(`❌ [EMAIL VERIFICATION] Error occurred:`, error);
     next(error);

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import theme from "../theme";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import PreLoginNavbar from "../components/PreLoginNavbar";
 
 const VerificationSuccess = () => {
   const navigate = useNavigate();
@@ -70,77 +71,80 @@ const VerificationSuccess = () => {
   };
 
   return (
-    <div style={containerStyles}>
-      <Card style={cardStyles}>
-        <div style={iconStyles}>✅</div>
+    <>
+      <PreLoginNavbar />
+      <div style={containerStyles}>
+        <Card style={cardStyles}>
+          <div style={iconStyles}>✅</div>
 
-        <h1 style={titleStyles}>Registration Submitted Successfully!</h1>
+          <h1 style={titleStyles}>Registration Submitted Successfully!</h1>
 
-        <p style={messageStyles}>
-          Thank you for submitting your registration. Your account is now in the
-          review process.
-        </p>
+          <p style={messageStyles}>
+            Thank you for submitting your registration. Your account is now in
+            the review process.
+          </p>
 
-        <div style={stepStyles}>
-          <h3 style={stepTitleStyles}>What happens next?</h3>
-          <div style={stepTextStyles}>
-            <strong>Step 1:</strong> Your account will be reviewed by an
-            administrator
-            <br />
-            <strong>Step 2:</strong> Once approved, you'll receive a
-            verification email
-            <br />
-            <strong>Step 3:</strong> Access the verification email to complete
-            your sign-in process
+          <div style={stepStyles}>
+            <h3 style={stepTitleStyles}>What happens next?</h3>
+            <div style={stepTextStyles}>
+              <strong>Step 1:</strong> Your account will be reviewed by an
+              administrator
+              <br />
+              <strong>Step 2:</strong> Once approved, you'll receive a
+              verification email
+              <br />
+              <strong>Step 3:</strong> Access the verification email to complete
+              your sign-in process
+            </div>
           </div>
-        </div>
 
-        <div
-          style={{
-            backgroundColor: theme.colors.background.light,
-            padding: theme.spacing[4],
-            borderRadius: theme.borderRadius.md,
-            marginBottom: theme.spacing[8],
-            border: `1px solid ${theme.colors.border.light}`,
-          }}
-        >
-          <p
+          <div
             style={{
-              fontSize: theme.typography.fontSize.base,
-              color: theme.colors.text.secondary,
-              margin: 0,
-              fontStyle: "italic",
+              backgroundColor: theme.colors.background.light,
+              padding: theme.spacing[4],
+              borderRadius: theme.borderRadius.md,
+              marginBottom: theme.spacing[8],
+              border: `1px solid ${theme.colors.border.light}`,
             }}
           >
-            💡 <strong>Important:</strong> Please check your email regularly
-            after approval. You'll need to access the verification email we send
-            to complete your account setup.
+            <p
+              style={{
+                fontSize: theme.typography.fontSize.base,
+                color: theme.colors.text.secondary,
+                margin: 0,
+                fontStyle: "italic",
+              }}
+            >
+              💡 <strong>Important:</strong> Please check your email regularly
+              after approval. You'll need to access the verification email we
+              send to complete your account setup.
+            </p>
+          </div>
+
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={handleContinue}
+            style={{
+              width: "100%",
+              maxWidth: "300px",
+            }}
+          >
+            Continue to Login
+          </Button>
+
+          <p
+            style={{
+              fontSize: theme.typography.fontSize.sm,
+              color: theme.colors.text.muted,
+              marginTop: theme.spacing[4],
+            }}
+          >
+            Have questions? Contact your system administrator for assistance.
           </p>
-        </div>
-
-        <Button
-          variant="primary"
-          size="lg"
-          onClick={handleContinue}
-          style={{
-            width: "100%",
-            maxWidth: "300px",
-          }}
-        >
-          Continue to Login
-        </Button>
-
-        <p
-          style={{
-            fontSize: theme.typography.fontSize.sm,
-            color: theme.colors.text.muted,
-            marginTop: theme.spacing[4],
-          }}
-        >
-          Have questions? Contact your system administrator for assistance.
-        </p>
-      </Card>
-    </div>
+        </Card>
+      </div>
+    </>
   );
 };
 

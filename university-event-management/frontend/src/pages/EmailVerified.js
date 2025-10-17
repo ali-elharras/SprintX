@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import theme from "../theme";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import PreLoginNavbar from "../components/PreLoginNavbar";
 import { useAuth } from "../context/AuthContext";
 
 const EmailVerified = () => {
@@ -77,56 +78,59 @@ const EmailVerified = () => {
   // Success view
   if (success) {
     return (
-      <div style={containerStyles}>
-        <Card style={cardStyles}>
-          <div style={{ ...iconStyles, color: theme.colors.success.main }}>
-            ✅
-          </div>
-
-          <h1 style={titleStyles}>Email Verified Successfully!</h1>
-
-          <p style={messageStyles}>
-            Your email address has been verified and your account is now active.
-            You can now log in to access all features.
-          </p>
-
-          {email && (
-            <div style={infoBoxStyles}>
-              <p
-                style={{
-                  fontSize: theme.typography.fontSize.base,
-                  color: theme.colors.text.secondary,
-                  margin: 0,
-                }}
-              >
-                <strong>Email:</strong> {decodeURIComponent(email)}
-              </p>
+      <>
+        <PreLoginNavbar />
+        <div style={containerStyles}>
+          <Card style={cardStyles}>
+            <div style={{ ...iconStyles, color: theme.colors.success.main }}>
+              ✅
             </div>
-          )}
 
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={handleContinue}
-            style={{
-              width: "100%",
-              maxWidth: "300px",
-            }}
-          >
-            Continue to Login
-          </Button>
+            <h1 style={titleStyles}>Email Verified Successfully!</h1>
 
-          <p
-            style={{
-              fontSize: theme.typography.fontSize.sm,
-              color: theme.colors.text.muted,
-              marginTop: theme.spacing[4],
-            }}
-          >
-            Ready to explore campus events and activities!
-          </p>
-        </Card>
-      </div>
+            <p style={messageStyles}>
+              Your email address has been verified and your account is now
+              active. You can now log in to access all features.
+            </p>
+
+            {email && (
+              <div style={infoBoxStyles}>
+                <p
+                  style={{
+                    fontSize: theme.typography.fontSize.base,
+                    color: theme.colors.text.secondary,
+                    margin: 0,
+                  }}
+                >
+                  <strong>Email:</strong> {decodeURIComponent(email)}
+                </p>
+              </div>
+            )}
+
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={handleContinue}
+              style={{
+                width: "100%",
+                maxWidth: "300px",
+              }}
+            >
+              Continue to Login
+            </Button>
+
+            <p
+              style={{
+                fontSize: theme.typography.fontSize.sm,
+                color: theme.colors.text.muted,
+                marginTop: theme.spacing[4],
+              }}
+            >
+              Ready to explore campus events and activities!
+            </p>
+          </Card>
+        </div>
+      </>
     );
   }
 
@@ -149,46 +153,51 @@ const EmailVerified = () => {
   }
 
   return (
-    <div style={containerStyles}>
-      <Card style={cardStyles}>
-        <div style={{ ...iconStyles, color: theme.colors.error.main }}>❌</div>
+    <>
+      <PreLoginNavbar />
+      <div style={containerStyles}>
+        <Card style={cardStyles}>
+          <div style={{ ...iconStyles, color: theme.colors.error.main }}>
+            ❌
+          </div>
 
-        <h1 style={titleStyles}>{errorTitle}</h1>
+          <h1 style={titleStyles}>{errorTitle}</h1>
 
-        <p style={messageStyles}>{errorMessage}</p>
+          <p style={messageStyles}>{errorMessage}</p>
 
-        <div
-          style={{
-            ...infoBoxStyles,
-            borderColor: theme.colors.error.light,
-            backgroundColor: theme.colors.error.lighter || "#fef2f2",
-          }}
-        >
-          <p
+          <div
             style={{
-              fontSize: theme.typography.fontSize.base,
-              color: theme.colors.text.secondary,
-              margin: 0,
+              ...infoBoxStyles,
+              borderColor: theme.colors.error.light,
+              backgroundColor: theme.colors.error.lighter || "#fef2f2",
             }}
           >
-            💡 <strong>Need help?</strong> Contact your system administrator for
-            assistance with your account verification.
-          </p>
-        </div>
+            <p
+              style={{
+                fontSize: theme.typography.fontSize.base,
+                color: theme.colors.text.secondary,
+                margin: 0,
+              }}
+            >
+              💡 <strong>Need help?</strong> Contact your system administrator
+              for assistance with your account verification.
+            </p>
+          </div>
 
-        <Button
-          variant="primary"
-          size="lg"
-          onClick={handleContinue}
-          style={{
-            width: "100%",
-            maxWidth: "300px",
-          }}
-        >
-          Back to Login
-        </Button>
-      </Card>
-    </div>
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={handleContinue}
+            style={{
+              width: "100%",
+              maxWidth: "300px",
+            }}
+          >
+            Back to Login
+          </Button>
+        </Card>
+      </div>
+    </>
   );
 };
 

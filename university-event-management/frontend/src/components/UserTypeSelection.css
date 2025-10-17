@@ -1,11 +1,12 @@
 .user-type-selection-container {
-  height: 100vh;
+  min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: min(4vw, 60px);
+  padding-top: calc(100px + min(4vw, 60px)); /* NAVBAR_HEIGHT + padding */
   font-family: "Arial", sans-serif;
   overflow: visible;
 }
