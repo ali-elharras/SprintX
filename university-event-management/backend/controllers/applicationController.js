@@ -20,24 +20,41 @@ const applyToBazaar = async (req, res, next) => {
       });
     }
 
-    // Check for existing application
-    const existingApplication = await BazaarApplication.findOne({ vendor: vendorId, bazaar: bazaarId });
-    if (existingApplication) {
-        return res.status(400).json({ success: false, message: "You have already applied to this bazaar." });
+    let application = await BazaarApplication.findOne({ vendor: vendorId, bazaar: bazaarId });
+
+    if (application) {
+      // Application exists
+      if (application.status === 'rejected') {
+        // If rejected, allow re-application by updating the existing one
+        application.attendees = attendees;
+        application.boothSize = boothSize;
+        application.status = 'pending'; // Reset status to pending
+        await application.save();
+
+        return res.status(200).json({
+          success: true,
+          message: "Successfully re-applied to the bazaar.",
+          data: application,
+        });
+      } else {
+        // If pending or approved, do not allow to apply again
+        return res.status(400).json({ success: false, message: "You have already applied to this bazaar and your application is pending or approved." });
+      }
+    } else {
+      // No application exists, create a new one
+      application = await BazaarApplication.create({
+        vendor: vendorId,
+        bazaar: bazaarId,
+        attendees,
+        boothSize,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: "Successfully applied to the bazaar.",
+        data: application,
+      });
     }
-
-    const application = await BazaarApplication.create({
-      vendor: vendorId,
-      bazaar: bazaarId,
-      attendees,
-      boothSize,
-    });
-
-    res.status(201).json({
-      success: true,
-      message: "Successfully applied to the bazaar.",
-      data: application,
-    });
   } catch (error) {
     next(error);
   }
@@ -155,6 +172,35 @@ const getMyRequests = async (req, res, next) => {
         bazaars: bazaarRequests,
         booths: boothRequests,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get vendor's own application for a specific bazaar
+// @route   GET /api/applications/bazaar/:bazaarId
+// @access  Private (Vendor)
+const getMyBazaarApplication = async (req, res, next) => {
+  try {
+    const { bazaarId } = req.params;
+    const vendorId = req.vendor._id;
+
+    const application = await BazaarApplication.findOne({
+      vendor: vendorId,
+      bazaar: bazaarId,
+    }).populate('bazaar');
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: "No application found for this bazaar",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: application,
     });
   } catch (error) {
     next(error);
@@ -308,16 +354,26 @@ const updateApplicationStatus = async (req, res, next) => {
 
     let application;
     const model = applicationType === 'bazaar' ? BazaarApplication : BoothApplication;
-    
+
     if (!model) {
       return res.status(400).json({ success: false, message: "Invalid application type." });
     }
 
-    application = await model.findByIdAndUpdate(applicationId, { status }, { new: true, runValidators: true });
+    application = await model.findById(applicationId);
 
     if (!application) {
       return res.status(404).json({ success: false, message: "Application not found." });
     }
+
+    // Prevent changing status if it's already been decided (approved or rejected)
+    if (application.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot change status. Application has already been ${application.status}.`
+      });
+    }
+
+    application = await model.findByIdAndUpdate(applicationId, { status }, { new: true, runValidators: true });
 
     res.status(200).json({
       success: true,
@@ -435,6 +491,7 @@ module.exports = {
   applyForBooth,
   getMyParticipations,
   getMyRequests,
+  getMyBazaarApplication,
   getAllApplications,
   getApprovedVendorsForBazaar,
   getBoothConflicts,

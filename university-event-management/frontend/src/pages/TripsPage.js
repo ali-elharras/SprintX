@@ -184,10 +184,22 @@ const TripsPage = () => {
         ) : (
           <div style={styles.listGrid}>
                 {filtered.map((t) => (
-                  <EventCard key={t._id || t.id} event={t} showRegistration={true} onRegistrationSuccess={() => fetchTrips()} onEdit={(evt) => { setEditEvent(evt); setEditOpen(true); }} />
+                  <EventCard 
+                    key={t._id || t.id} 
+                    event={t} 
+                    showRegistration={true} 
+                    onRegistrationSuccess={() => fetchTrips()} 
+                    onEdit={(evt) => { 
+                      console.log('onEdit callback called in TripsPage!', evt); 
+                      setEditEvent(evt); 
+                      setEditOpen(true);
+                      console.log('Modal state set - editOpen should be true now');
+                    }} 
+                  />
                 ))}
           </div>
         )}
+        {console.log('TripsPage render - editOpen:', editOpen, 'editEvent:', editEvent)}
         {editOpen && (
           <EventEditModal open={editOpen} event={editEvent} onClose={() => setEditOpen(false)} onSaved={() => { setEditOpen(false); fetchTrips(); }} />
         )}

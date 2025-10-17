@@ -123,10 +123,20 @@ registrationSchema.pre("save", async function (next) {
 registrationSchema.post("save", async function (doc) {
   if (doc.status === "confirmed") {
     try {
+      // Determine whether the registration points to an Event or a Conference
       const Event = mongoose.model("Event");
-      await Event.findByIdAndUpdate(doc.event, {
-        $inc: { currentParticipants: 1 },
-      });
+      const Conference = mongoose.model("Conference");
+
+      const eventDoc = await Event.findById(doc.event);
+      if (eventDoc) {
+        await Event.findByIdAndUpdate(doc.event, { $inc: { currentParticipants: 1 } });
+      } else {
+        // Not an Event, try conference
+        const confDoc = await Conference.findById(doc.event);
+        if (confDoc) {
+          await Conference.findByIdAndUpdate(doc.event, { $inc: { currentParticipants: 1 } });
+        }
+      }
     } catch (error) {
       console.error("Error updating event participant count:", error);
     }
@@ -138,9 +148,17 @@ registrationSchema.post("findOneAndDelete", async function (doc) {
   if (doc && doc.status === "confirmed") {
     try {
       const Event = mongoose.model("Event");
-      await Event.findByIdAndUpdate(doc.event, {
-        $inc: { currentParticipants: -1 },
-      });
+      const Conference = mongoose.model("Conference");
+
+      const eventDoc = await Event.findById(doc.event);
+      if (eventDoc) {
+        await Event.findByIdAndUpdate(doc.event, { $inc: { currentParticipants: -1 } });
+      } else {
+        const confDoc = await Conference.findById(doc.event);
+        if (confDoc) {
+          await Conference.findByIdAndUpdate(doc.event, { $inc: { currentParticipants: -1 } });
+        }
+      }
     } catch (error) {
       console.error("Error updating event participant count:", error);
     }
@@ -165,9 +183,17 @@ registrationSchema.methods.cancelRegistration = async function () {
   // Update event participant count
   try {
     const Event = mongoose.model("Event");
-    await Event.findByIdAndUpdate(this.event, {
-      $inc: { currentParticipants: -1 },
-    });
+    const Conference = mongoose.model("Conference");
+
+    const eventDoc = await Event.findById(this.event);
+    if (eventDoc) {
+      await Event.findByIdAndUpdate(this.event, { $inc: { currentParticipants: -1 } });
+    } else {
+      const confDoc = await Conference.findById(this.event);
+      if (confDoc) {
+        await Conference.findByIdAndUpdate(this.event, { $inc: { currentParticipants: -1 } });
+      }
+    }
   } catch (error) {
     console.error("Error updating event participant count:", error);
   }

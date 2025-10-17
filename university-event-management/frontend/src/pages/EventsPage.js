@@ -756,7 +756,7 @@ const EventsPage = () => {
   const [filters, setFilters] = useState({
     type: "",
     search: "",
-    upcoming: false,
+    upcoming: true,
   });
 
   const cancelTokenRef = useRef(null);
@@ -978,8 +978,34 @@ const EventsPage = () => {
     }
     
     if (filters.upcoming) {
+      // const now = new Date();
+      // filtered = filtered.filter((e) => new Date(e.startDate) > now);
       const now = new Date();
-      filtered = filtered.filter((e) => new Date(e.startDate) >= now);
+      const startOfToday = new Date(now); startOfToday.setHours(0,0,0,0);
+      const endOfToday = new Date(now); endOfToday.setHours(23,59,59,999);
+
+      filtered = filtered.filter((e) => {
+        const start = e.startDate ? new Date(e.startDate) : null;
+        const end = e.endDate ? new Date(e.endDate) : start;
+        if (!start) return false;
+
+        // If start is in future -> upcoming
+        if (start >= now) return true;
+
+        // If start and end are the same calendar day and that day is today -> include as upcoming
+        const sameDay =
+          start &&
+          end &&
+          start.getFullYear() === end.getFullYear() &&
+          start.getMonth() === end.getMonth() &&
+          start.getDate() === end.getDate();
+
+        const isToday = start >= startOfToday && start <= endOfToday;
+
+        if (sameDay && isToday) return true;
+
+        return false;
+      });
     }
     
     setFilteredEvents(filtered);
@@ -1444,22 +1470,8 @@ const EventsPage = () => {
               <div style={{ maxWidth: '80rem', marginLeft: 'auto', marginRight: 'auto', marginBottom: theme.spacing[6] }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing[4] }}>
                   <h2 style={{ fontSize: '1.875rem', fontWeight: 800, color: themeColors.gray900, margin: 0 }}>
-                    My Workshops Dashboard
+                    My Workshops
                   </h2>
-                  <button
-                    style={{ 
-                      display: 'flex', alignItems: 'center', backgroundColor: themeColors.indigo600, color: 'white', 
-                      padding: '0.65rem 1.25rem', borderRadius: '0.75rem', 
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
-                      transition: 'all 0.3s', fontSize: '1rem', fontWeight: 600, border: 'none', cursor: 'pointer',
-                    }}
-                    onClick={() => navigate('/create-workshop')}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.5rem' }}>
-                      <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    Create New Workshop
-                  </button>
                 </div>
 
                 <div style={{ marginTop: theme.spacing[4], marginBottom: theme.spacing[5] }}>

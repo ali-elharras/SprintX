@@ -184,16 +184,25 @@ const transformBoothToEvent = (booth) => {
       : `${boothObj.durationWeeks} weeks`;
   }
   
+  // Map booth status to event status - 'approved' booths should show as 'published'
+  const eventStatus = boothObj.status === 'approved' ? 'published' : boothObj.status || 'pending';
+  
+  // Get vendor/company name
+  const vendorName = boothObj.vendor?.companyName || 
+                     (boothObj.vendor?.firstName && boothObj.vendor?.lastName 
+                       ? `${boothObj.vendor.firstName} ${boothObj.vendor.lastName}` 
+                       : null);
+  
   return {
     _id: booth._id,
     type: "booth",
-    name: `Booth at ${boothObj.location || "TBD"}`,
-    title: `Booth at ${boothObj.location || "TBD"}`,
-    description: `Booth Size: ${boothObj.boothSize || "N/A"} | Duration: ${duration}`,
+    name: vendorName ? `${vendorName} - Booth at ${boothObj.location || "TBD"}` : `Booth at ${boothObj.location || "TBD"}`,
+    title: vendorName ? `${vendorName} - Booth at ${boothObj.location || "TBD"}` : `Booth at ${boothObj.location || "TBD"}`,
+    description: `Vendor: ${vendorName || "TBD"} | Booth Size: ${boothObj.boothSize || "N/A"} | Duration: ${duration}`,
     location: boothObj.location || "TBD",
     startDate: boothObj.startDate,
     endDate: boothObj.endDate,
-    status: boothObj.status || "pending",
+    status: eventStatus,
     registrationRequired: false,
     currentParticipants: boothObj.attendees ? boothObj.attendees.length : 0,
     maxParticipants: 1,
@@ -203,7 +212,7 @@ const transformBoothToEvent = (booth) => {
     durationWeeks: boothObj.durationWeeks,
     organizer: boothObj.vendor || null,
     vendorId: boothObj.vendor?._id || boothObj.vendor,
-    companyName: boothObj.vendor?.companyName || null,
+    companyName: vendorName,
     attendees: boothObj.attendees || [],
     createdAt: boothObj.createdAt,
     updatedAt: boothObj.updatedAt,

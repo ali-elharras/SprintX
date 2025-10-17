@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import theme from '../theme';
 import { eventAPI } from '../services/api';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 
 const modalStyles = {
   overlay: {
@@ -73,7 +73,7 @@ const CreateTripModal = ({ open, onClose, onCreated, currentUser }) => {
       };
       const resp = await eventAPI.createEvent(payload);
       // show success toast and call callbacks
-      try { toast.success(resp?.data?.message || 'Trip created successfully'); } catch(e) {}
+      try { toast.success('Trip created successfully'); } catch(e) {}
       setServerMessages([]);
       onCreated && onCreated(resp.data?.data || resp.data);
       onClose && onClose();
