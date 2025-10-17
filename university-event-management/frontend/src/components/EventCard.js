@@ -354,6 +354,9 @@ const confirmDeleteWorkshop = async () => {
           overflow: "hidden",
           transition: "all 0.3s ease",
           cursor: "pointer",
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
         }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "translateY(-5px)";
@@ -419,7 +422,7 @@ const confirmDeleteWorkshop = async () => {
       </div>
 
       {/* Event Content */}
-      <div style={{ padding: theme.spacing[5] }}>
+      <div style={{ padding: theme.spacing[5], display: "flex", flexDirection: "column", flexGrow: 1 }}>
         {/* Event Details */}
         <div style={{ marginBottom: theme.spacing[4] }}>
           <div
@@ -698,12 +701,18 @@ const confirmDeleteWorkshop = async () => {
             )}
           </div>
         )}
+        
+        {/* Spacer to push buttons to bottom */}
+        <div style={{ flexGrow: 1 }}></div>
+        
         {/* Action Buttons */}
           <div
             style={{
-              display: "flex",
+              display: "grid",
+              gridTemplateColumns: "repeat(2, 1fr)",
               gap: theme.spacing[3],
               alignItems: "stretch",
+              marginTop: theme.spacing[4],
             }}
           >
             {isAdmin ? (
@@ -711,47 +720,6 @@ const confirmDeleteWorkshop = async () => {
               <>
                 {/* Admin: Edit button for trips/conferences/bazaars */}
                 {!hasStarted && normalizedEvent.type !== 'workshop' && (
-                  <div style={{ flex: 1 }}>
-                    <Button
-                      variant="primary"
-                      onClick={handleEditClick}
-                      style={{
-                        width: "100%",
-                        minHeight: "44px",
-                        padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Edit
-                    </Button>
-                  </div>
-                )}
-                {normalizedEvent.currentParticipants === 0 && (
-                  <div style={{ flex: 1 }}>
-                    <Button
-                      variant="danger"
-                      onClick={handleDeleteEvent}
-                      disabled={isDeleting}
-                      title="Delete event (only if no registrations)"
-                      style={{
-                        width: "100%",
-                        minHeight: "44px",
-                        padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                        whiteSpace: "nowrap",
-                        opacity: isDeleting ? 0.6 : 1,
-                        cursor: isDeleting ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      {isDeleting ? "Deleting..." : "Delete Event"}
-                    </Button>
-                  </div>
-                )}
-              </>
-            ) : isEventsOffice ? (
-              <>
-                {/* Events Office: Edit shown only for events they own and only if event has NOT started */}
-                {isOwner && !hasStarted && normalizedEvent.type !== 'workshop' && (
-                <div style={{ flex: 1 }}>
                   <Button
                     variant="primary"
                     onClick={handleEditClick}
@@ -764,36 +732,34 @@ const confirmDeleteWorkshop = async () => {
                   >
                     Edit
                   </Button>
-                </div>
-              )}
-
-                {/* Events Office: Delete shown only for events they own, only if NOT started AND participants === 0 */}
-                {isOwner && !hasStarted && normalizedEvent.currentParticipants === 0 && (
-                  <div style={{ flex: 1 }}>
-                    <Button
-                      variant="danger"
-                      onClick={handleDeleteEvent}
-                      disabled={isDeleting}
-                      style={{
-                        width: "100%",
-                        minHeight: "44px",
-                        padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                        whiteSpace: "nowrap",
-                        opacity: isDeleting ? 0.6 : 1,
-                      }}
-                    >
-                      {isDeleting ? "Deleting..." : "Delete"}
-                    </Button>
-                  </div>
+                )}
+                {normalizedEvent.currentParticipants === 0 && (
+                  <Button
+                    variant="danger"
+                    onClick={handleDeleteEvent}
+                    disabled={isDeleting}
+                    title="Delete event (only if no registrations)"
+                    style={{
+                      width: "100%",
+                      minHeight: "44px",
+                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      whiteSpace: "nowrap",
+                      opacity: isDeleting ? 0.6 : 1,
+                      cursor: isDeleting ? "not-allowed" : "pointer",
+                      gridColumn: !hasStarted && normalizedEvent.type !== 'workshop' ? "auto" : "1 / -1",
+                    }}
+                  >
+                    {isDeleting ? "Deleting..." : "Delete Event"}
+                  </Button>
                 )}
               </>
-            ) : (
-              // Regular users: keep Register Now as-is
-              !isEventsOffice && !isAdmin && showRegistration && canRegister() && (
-                <div style={{ flex: 1 }}>
+            ) : isEventsOffice ? (
+              <>
+                {/* Events Office: Edit shown only for events they own and only if event has NOT started */}
+                {isOwner && !hasStarted && normalizedEvent.type !== 'workshop' && (
                   <Button
                     variant="primary"
-                    onClick={() => setShowRegistrationForm(true)}
+                    onClick={handleEditClick}
                     style={{
                       width: "100%",
                       minHeight: "44px",
@@ -801,9 +767,45 @@ const confirmDeleteWorkshop = async () => {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    Register Now
+                    Edit
                   </Button>
-                </div>
+                )}
+
+                {/* Events Office: Delete shown only for events they own, only if NOT started AND participants === 0 */}
+                {isOwner && !hasStarted && normalizedEvent.currentParticipants === 0 && (
+                  <Button
+                    variant="danger"
+                    onClick={handleDeleteEvent}
+                    disabled={isDeleting}
+                    style={{
+                      width: "100%",
+                      minHeight: "44px",
+                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      whiteSpace: "nowrap",
+                      opacity: isDeleting ? 0.6 : 1,
+                      gridColumn: isOwner && !hasStarted && normalizedEvent.type !== 'workshop' ? "auto" : "1 / -1",
+                    }}
+                  >
+                    {isDeleting ? "Deleting..." : "Delete"}
+                  </Button>
+                )}
+              </>
+            ) : (
+              // Regular users: keep Register Now as-is
+              !isEventsOffice && !isAdmin && showRegistration && canRegister() && (
+                <Button
+                  variant="primary"
+                  onClick={() => setShowRegistrationForm(true)}
+                  style={{
+                    width: "100%",
+                    minHeight: "44px",
+                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                    whiteSpace: "nowrap",
+                    gridColumn: "1 / -1",
+                  }}
+                >
+                  Register Now
+                </Button>
               )
             )}
           </div>
