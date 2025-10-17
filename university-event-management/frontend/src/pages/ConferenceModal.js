@@ -211,6 +211,13 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
       const startDateTime = new Date(`${formData.startDate}T${formData.startTime}:00`);
       const endDateTime = new Date(`${formData.endDate}T${formData.endTime}:00`);
       
+      // Validate that end date/time is after start date/time
+      if (endDateTime <= startDateTime) {
+        toast.error('End date and time must be after start date and time');
+        setLoading(false);
+        return;
+      }
+      
       const conferenceData = {
         name: formData.name,
         title: formData.name, // For backward compatibility
@@ -379,6 +386,7 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
                     onChange={handleChange}
                     required
                     disabled={loading}
+                    min={formData.startDate}
                   />
                 </div>
                 <div>
