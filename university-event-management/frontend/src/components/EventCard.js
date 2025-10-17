@@ -699,21 +699,21 @@ const confirmDeleteWorkshop = async () => {
               <>
                 {/* Events Office: Edit shown only for events they own and only if event has NOT started */}
                 {isOwner && !hasStarted && normalizedEvent.type !== 'workshop' && (
-                  <div style={{ flex: 1 }}>
-                    <Button
-                      variant="primary"
-                      onClick={handleEditClick}
-                      style={{
-                        width: "100%",
-                        minHeight: "44px",
-                        padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Edit
-                    </Button>
-                  </div>
-                )}
+                <div style={{ flex: 1 }}>
+                  <Button
+                    variant="primary"
+                    onClick={handleEditClick}
+                    style={{
+                      width: "100%",
+                      minHeight: "44px",
+                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Edit
+                  </Button>
+                </div>
+              )}
 
                 {/* Events Office: Delete shown only for events they own, only if NOT started AND participants === 0 */}
                 {isOwner && !hasStarted && normalizedEvent.currentParticipants === 0 && (

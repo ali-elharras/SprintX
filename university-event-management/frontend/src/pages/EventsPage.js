@@ -755,7 +755,7 @@ const EventsPage = () => {
   const [filters, setFilters] = useState({
     type: "",
     search: "",
-    upcoming: false,
+    upcoming: true,
   });
 
   const cancelTokenRef = useRef(null);

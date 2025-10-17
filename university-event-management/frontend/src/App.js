@@ -24,7 +24,6 @@ import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import VendorDashboard from "./pages/VendorDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
-
 import EventsPage from "./pages/EventsPage";
 import CourtsPage from "./pages/CourtsPage";
 import MyRegistrations from "./pages/MyRegistrations";
