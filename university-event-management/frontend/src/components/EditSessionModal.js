@@ -68,51 +68,93 @@ const EditSessionModal = ({ session, isOpen, onClose, onSaved }) => {
       <div>
         <h3 style={styles.header}>Edit Session</h3>
         <div style={styles.grid}>
-          <input style={styles.input} value={form.title} onChange={(e)=>handleChange('title', e.target.value)} placeholder="Title" />
-          <select style={styles.input} value={form.type} onChange={(e)=>handleChange('type', e.target.value)}>
-            <option value="yoga">Yoga</option>
-            <option value="pilates">Pilates</option>
-            <option value="aerobics">Aerobics</option>
-            <option value="zumba">Zumba</option>
-            <option value="cross_circuit">Cross Circuit</option>
-            <option value="kickboxing">Kickboxing</option>
-            <option value="cardio">Cardio</option>
-            <option value="strength_training">Strength Training</option>
-            <option value="dance">Dance</option>
-            <option value="martial_arts">Martial Arts</option>
-            <option value="swimming">Swimming</option>
-            <option value="spinning">Spinning</option>
-          </select>
+          <div>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Title <span style={{ color: theme.colors.error.main }}>*</span></label>
+            <input style={styles.input} value={form.title} onChange={(e)=>handleChange('title', e.target.value)} placeholder="Title" />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Type <span style={{ color: theme.colors.error.main }}>*</span></label>
+            <select style={styles.input} value={form.type} onChange={(e)=>handleChange('type', e.target.value)}>
+              <option value="yoga">Yoga</option>
+              <option value="pilates">Pilates</option>
+              <option value="aerobics">Aerobics</option>
+              <option value="zumba">Zumba</option>
+              <option value="cross_circuit">Cross Circuit</option>
+              <option value="kickboxing">Kickboxing</option>
+              <option value="cardio">Cardio</option>
+              <option value="strength_training">Strength Training</option>
+              <option value="dance">Dance</option>
+              <option value="martial_arts">Martial Arts</option>
+              <option value="swimming">Swimming</option>
+              <option value="spinning">Spinning</option>
+            </select>
+          </div>
 
-          <input type="date" style={styles.input} value={form.startDate} onChange={(e)=>handleChange('startDate', e.target.value)} />
-          <input type="date" style={styles.input} value={form.endDate} onChange={(e)=>handleChange('endDate', e.target.value)} />
+          <div>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Start Date <span style={{ color: theme.colors.error.main }}>*</span></label>
+            <input type="date" style={styles.input} value={form.startDate} onChange={(e)=>handleChange('startDate', e.target.value)} />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>End Date <span style={{ color: theme.colors.error.main }}>*</span></label>
+            <input type="date" style={styles.input} value={form.endDate} onChange={(e)=>handleChange('endDate', e.target.value)} />
+          </div>
 
-          <input type="time" style={styles.input} value={form.startTime} onChange={(e)=>handleChange('startTime', e.target.value)} />
-          <input type="time" style={styles.input} value={form.endTime} onChange={(e)=>handleChange('endTime', e.target.value)} />
+          <div>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Start Time <span style={{ color: theme.colors.error.main }}>*</span></label>
+            <input type="time" style={styles.input} value={form.startTime} onChange={(e)=>handleChange('startTime', e.target.value)} />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>End Time <span style={{ color: theme.colors.error.main }}>*</span></label>
+            <input type="time" style={styles.input} value={form.endTime} onChange={(e)=>handleChange('endTime', e.target.value)} />
+          </div>
 
-          <input type="number" style={styles.input} value={form.duration} onChange={(e)=>handleChange('duration', parseInt(e.target.value || 0))} />
-          <input type="number" style={styles.input} value={form.maxParticipants} onChange={(e)=>handleChange('maxParticipants', parseInt(e.target.value || 0))} />
+          <div>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Duration (min) <span style={{ color: theme.colors.error.main }}>*</span></label>
+            <input type="number" style={styles.input} value={form.duration} onChange={(e)=>handleChange('duration', parseInt(e.target.value || 0))} />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Max Participants <span style={{ color: theme.colors.error.main }}>*</span></label>
+            <input type="number" style={styles.input} value={form.maxParticipants} onChange={(e)=>handleChange('maxParticipants', parseInt(e.target.value || 0))} />
+          </div>
 
-          <select style={styles.input} value={form.skillLevel} onChange={(e)=>handleChange('skillLevel', e.target.value)}>
-            <option value="beginner">Beginner</option>
-            <option value="intermediate">Intermediate</option>
-            <option value="advanced">Advanced</option>
-            <option value="all_levels">All Levels</option>
-          </select>
-          <input type="number" step="0.01" style={styles.input} value={form.cost} onChange={(e)=>handleChange('cost', parseFloat(e.target.value || 0))} />
+          <div>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Skill Level <span style={{ color: theme.colors.error.main }}>*</span></label>
+            <select style={styles.input} value={form.skillLevel} onChange={(e)=>handleChange('skillLevel', e.target.value)}>
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+              <option value="all_levels">All Levels</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Cost</label>
+            <input type="number" step="0.01" style={styles.input} value={form.cost} onChange={(e)=>handleChange('cost', parseFloat(e.target.value || 0))} />
+          </div>
 
-          <input style={{ ...styles.input, gridColumn: '1 / -1' }} value={form.location} onChange={(e)=>handleChange('location', e.target.value)} placeholder="Location" />
-          <input style={{ ...styles.input, gridColumn: '1 / -1' }} value={form.room} onChange={(e)=>handleChange('room', e.target.value)} placeholder="Room (optional)" />
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Location <span style={{ color: theme.colors.error.main }}>*</span></label>
+            <input style={styles.input} value={form.location} onChange={(e)=>handleChange('location', e.target.value)} placeholder="Location" />
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Room</label>
+            <input style={styles.input} value={form.room} onChange={(e)=>handleChange('room', e.target.value)} placeholder="Room (optional)" />
+          </div>
 
-          <select style={styles.input} value={form.status} onChange={(e)=>handleChange('status', e.target.value)}>
-            <option value="active">Active</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="suspended">Suspended</option>
-            <option value="full">Full</option>
-          </select>
+          <div>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Status</label>
+            <select style={styles.input} value={form.status} onChange={(e)=>handleChange('status', e.target.value)}>
+              <option value="active">Active</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="suspended">Suspended</option>
+              <option value="full">Full</option>
+            </select>
+          </div>
           <div />
 
-          <textarea style={{ ...styles.input, height: 120, gridColumn: '1 / -1' }} value={form.description} onChange={(e)=>handleChange('description', e.target.value)} placeholder="Description (optional)" />
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Description</label>
+            <textarea style={{ ...styles.input, height: 120 }} value={form.description} onChange={(e)=>handleChange('description', e.target.value)} placeholder="Description (optional)" />
+          </div>
         </div>
 
         <div style={styles.buttonRow}>

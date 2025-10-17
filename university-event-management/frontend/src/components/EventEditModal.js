@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
+import toast from 'react-hot-toast';
 import theme from '../theme';
 import { eventAPI } from '../services/api';
 
@@ -43,9 +44,56 @@ const EventEditModal = ({ open, event, onClose, onSaved }) => {
 
   const handleChange = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
+  const validate = () => {
+    // Validate all fields (same as CreateTripModal)
+    if (!form.name || form.name.trim().length === 0) {
+      setError('Trip name is required');
+      return false;
+    }
+    if (!form.description || form.description.trim().length === 0) {
+      setError('Short description is required');
+      return false;
+    }
+    if (!form.location || form.location.trim().length === 0) {
+      setError('Location is required');
+      return false;
+    }
+    if (!form.startDate) {
+      setError('Start date and time required');
+      return false;
+    }
+    if (!form.endDate) {
+      setError('End date and time required');
+      return false;
+    }
+    if (form.startDate && form.endDate && new Date(form.endDate) < new Date(form.startDate)) {
+      setError('End must be after start');
+      return false;
+    }
+    if (!form.registrationDeadline) {
+      setError('Registration deadline required');
+      return false;
+    }
+    if (form.registrationDeadline && form.startDate && new Date(form.registrationDeadline) >= new Date(form.startDate)) {
+      setError('Registration deadline must be before the trip start');
+      return false;
+    }
+    if (!form.maxParticipants || Number(form.maxParticipants) < 1) {
+      setError('Capacity must be at least 1');
+      return false;
+    }
+    return true;
+  };
+
   const handleSave = async (e) => {
     e && e.preventDefault();
     if (!event) return;
+
+    // Validate all fields before proceeding
+    if (!validate()) {
+      return;
+    }
+
     // compute changed fields only
     const changed = {};
     Object.keys(form).forEach(k => {
@@ -60,15 +108,24 @@ const EventEditModal = ({ open, event, onClose, onSaved }) => {
       return;
     }
 
+    // If name changed, also update title to keep them in sync
+    if (changed.name) {
+      changed.title = changed.name;
+    }
+
     setSaving(true);
+    setError(null);
     try {
       await eventAPI.updateEvent(event._id || event.id, changed);
+      toast.success('Trip updated successfully!');
       setSaving(false);
       onSaved && onSaved();
       onClose && onClose();
     } catch (err) {
       console.error('Failed to update event', err);
-      setError(err?.response?.data?.message || 'Failed to save changes');
+      const errorMsg = err?.response?.data?.message || err?.message || 'Failed to save changes';
+      setError(errorMsg);
+      toast.error(errorMsg);
       setSaving(false);
     }
   };
@@ -79,32 +136,32 @@ const EventEditModal = ({ open, event, onClose, onSaved }) => {
         <div style={modalStyles.title}>Edit Trip</div>
         {error && <div style={{ color: theme.colors.error.main, marginBottom: theme.spacing[2] }}>{error}</div>}
         <form onSubmit={handleSave}>
-          <label style={modalStyles.label}>Trip name</label>
+          <label style={modalStyles.label}>Trip name <span style={{ color: theme.colors.error.main }}>*</span></label>
           <input style={modalStyles.input} value={form.name} onChange={(e)=>handleChange('name', e.target.value)} />
 
-          <label style={modalStyles.label}>Short description</label>
+          <label style={modalStyles.label}>Short description <span style={{ color: theme.colors.error.main }}>*</span></label>
           <textarea style={modalStyles.textarea} value={form.description} onChange={(e)=>handleChange('description', e.target.value)} />
 
-          <label style={modalStyles.label}>Location</label>
+          <label style={modalStyles.label}>Location <span style={{ color: theme.colors.error.main }}>*</span></label>
           <input style={modalStyles.input} value={form.location} onChange={(e)=>handleChange('location', e.target.value)} />
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing[3] }}>
             <div>
-              <label style={modalStyles.label}>Start (local)</label>
+              <label style={modalStyles.label}>Start (local) <span style={{ color: theme.colors.error.main }}>*</span></label>
               <input type="datetime-local" style={modalStyles.input} value={form.startDate} onChange={(e)=>handleChange('startDate', e.target.value)} />
             </div>
             <div>
-              <label style={modalStyles.label}>End (local)</label>
+              <label style={modalStyles.label}>End (local) <span style={{ color: theme.colors.error.main }}>*</span></label>
               <input type="datetime-local" style={modalStyles.input} value={form.endDate} onChange={(e)=>handleChange('endDate', e.target.value)} />
             </div>
           </div>
 
-          <label style={modalStyles.label}>Registration deadline</label>
+          <label style={modalStyles.label}>Registration deadline <span style={{ color: theme.colors.error.main }}>*</span></label>
           <input type="datetime-local" style={modalStyles.input} value={form.registrationDeadline} onChange={(e)=>handleChange('registrationDeadline', e.target.value)} />
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing[3] }}>
             <div>
-              <label style={modalStyles.label}>Capacity</label>
+              <label style={modalStyles.label}>Capacity <span style={{ color: theme.colors.error.main }}>*</span></label>
               <input type="number" style={modalStyles.input} value={form.maxParticipants} onChange={(e)=>handleChange('maxParticipants', e.target.value)} />
             </div>
             <div>

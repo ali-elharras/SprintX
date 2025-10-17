@@ -152,38 +152,38 @@ const CreateTripModal = ({ open, onClose, onCreated, currentUser }) => {
               </ul>
             </div>
           )}
-          <label style={modalStyles.label}>Trip name</label>
+          <label style={modalStyles.label}>Trip name <span style={{ color: theme.colors.error.main }}>*</span></label>
           <input style={modalStyles.input} value={form.name} onChange={(e)=>setForm(f=>({...f,name:e.target.value}))} />
           {errors.name && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.name}</div>}
 
-          <label style={modalStyles.label}>Short description</label>
+          <label style={modalStyles.label}>Short description <span style={{ color: theme.colors.error.main }}>*</span></label>
           <textarea style={modalStyles.textarea} value={form.description} onChange={(e)=>setForm(f=>({...f,description:e.target.value}))} />
           {errors.description && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.description}</div>}
 
-          <label style={modalStyles.label}>Location</label>
+          <label style={modalStyles.label}>Location <span style={{ color: theme.colors.error.main }}>*</span></label>
           <input style={modalStyles.input} value={form.location} onChange={(e)=>setForm(f=>({...f,location:e.target.value}))} />
           {errors.location && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.location}</div>}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing[3] }}>
             <div>
-              <label style={modalStyles.label}>Start (local)</label>
+              <label style={modalStyles.label}>Start (local) <span style={{ color: theme.colors.error.main }}>*</span></label>
               <input type="datetime-local" style={modalStyles.input} value={form.startDate} onChange={(e)=>setForm(f=>({...f,startDate:e.target.value}))} />
               {errors.startDate && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.startDate}</div>}
             </div>
             <div>
-              <label style={modalStyles.label}>End (local)</label>
+              <label style={modalStyles.label}>End (local) <span style={{ color: theme.colors.error.main }}>*</span></label>
               <input type="datetime-local" style={modalStyles.input} value={form.endDate} onChange={(e)=>setForm(f=>({...f,endDate:e.target.value}))} />
               {errors.endDate && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.endDate}</div>}
             </div>
           </div>
 
-          <label style={modalStyles.label}>Registration deadline</label>
+          <label style={modalStyles.label}>Registration deadline <span style={{ color: theme.colors.error.main }}>*</span></label>
           <input type="datetime-local" style={modalStyles.input} value={form.registrationDeadline} onChange={(e)=>setForm(f=>({...f,registrationDeadline:e.target.value}))} />
           {errors.registrationDeadline && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.registrationDeadline}</div>}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing[3] }}>
             <div>
-              <label style={modalStyles.label}>Capacity</label>
+              <label style={modalStyles.label}>Capacity <span style={{ color: theme.colors.error.main }}>*</span></label>
               <input type="number" style={modalStyles.input} value={form.maxParticipants} onChange={(e)=>setForm(f=>({...f,maxParticipants:e.target.value}))} />
               {errors.maxParticipants && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.maxParticipants}</div>}
             </div>
