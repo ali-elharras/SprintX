@@ -14,6 +14,7 @@ import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 import CreateDropdownButton from '../components/CreateDropdownButton';
 import CreateTripModal from '../components/CreateTripModal';
+import EventEditModal from '../components/EventEditModal';
 
 // Workshop Components and Styles (from Workshops.js)
 const themeColors = {
@@ -803,6 +804,10 @@ const EventsPage = () => {
     registrationDeadline: "",
   });
 
+  // Trip edit states
+  const [editTripOpen, setEditTripOpen] = useState(false);
+  const [editingTrip, setEditingTrip] = useState(null);
+
   const fetchEvents = async () => {
     if (cancelTokenRef.current) {
       cancelTokenRef.current.cancel('Operation cancelled due to new request');
@@ -1163,6 +1168,11 @@ const EventsPage = () => {
       registrationDeadline: formatForInput(bazaar.registrationDeadline),
     });
     setIsEditModalOpen(true);
+  };
+
+  const handleEditTrip = (trip) => {
+    setEditingTrip(trip);
+    setEditTripOpen(true);
   };
 
   const handleCloseEditModal = () => {
@@ -1769,6 +1779,14 @@ const EventsPage = () => {
             currentUser={auth.user}
           />
 
+          {/* Edit Trip modal */}
+          <EventEditModal
+            open={editTripOpen}
+            event={editingTrip}
+            onClose={() => setEditTripOpen(false)}
+            onSaved={async () => { setEditTripOpen(false); await fetchEvents(); }}
+          />
+
           {filteredEvents.length > 0 ? (
             <div
               style={{
@@ -1799,6 +1817,7 @@ const EventsPage = () => {
                       setEditingConference(conference);
                       setShowConferenceModal(true);
                     }}
+                    onEditTrip={handleEditTrip}
                   />
                 );
               })}
