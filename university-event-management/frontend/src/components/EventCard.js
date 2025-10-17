@@ -767,12 +767,12 @@ const confirmDeleteWorkshop = async () => {
                 </div>
               )}
 
-                {/* Events Office: Delete shown only for events they own, only if NOT started AND participants === 0 */}
-                {isOwner && !hasStarted && normalizedEvent.currentParticipants === 0 && (
+                {/* Events Office: Delete shown for all trips they own */}
+                {isOwner && normalizedEvent.type === 'trip' && (
                   <div style={{ flex: 1 }}>
                     <Button
                       variant="danger"
-                      onClick={handleDeleteEvent}
+                      onClick={() => setShowDeleteModal(true)}
                       disabled={isDeleting}
                       style={{
                         width: "100%",
@@ -809,7 +809,7 @@ const confirmDeleteWorkshop = async () => {
           </div>
       </div>
 
-      {/* Delete Workshop Confirmation Modal */}
+      {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div
           role="dialog"
@@ -847,7 +847,7 @@ const confirmDeleteWorkshop = async () => {
                 fontWeight: theme.typography.fontWeight.bold,
               }}
             >
-              🗑️ Delete Workshop?
+              🗑️ Delete {getEventTypeLabel(normalizedEvent.type)}?
             </h3>
             <p
               style={{
@@ -857,7 +857,7 @@ const confirmDeleteWorkshop = async () => {
                 fontSize: theme.typography.fontSize.base,
               }}
             >
-              Are you sure you want to permanently delete this workshop?
+              Are you sure you want to permanently delete this {normalizedEvent.type}?
             </p>
             <p
               style={{
@@ -873,15 +873,51 @@ const confirmDeleteWorkshop = async () => {
             >
               "{normalizedEvent.title}"
             </p>
-            <p
+
+            {/* Show registration info if there are participants */}
+            {normalizedEvent.currentParticipants > 0 && (
+              <div
+                style={{
+                  background: theme.colors.warning.light,
+                  color: theme.colors.warning.dark,
+                  padding: theme.spacing[3],
+                  borderRadius: theme.borderRadius.base,
+                  marginBottom: theme.spacing[3],
+                  fontSize: theme.typography.fontSize.sm,
+                  display: "flex",
+                  gap: theme.spacing[2],
+                  alignItems: "flex-start",
+                  border: `1px solid ${theme.colors.warning.main}`,
+                }}
+              >
+                <span style={{ fontSize: "1.25rem", marginTop: "2px" }}>👥</span>
+                <div>
+                  <strong>{normalizedEvent.currentParticipants} participant{normalizedEvent.currentParticipants !== 1 ? 's' : ''} registered</strong>
+                  <p style={{ margin: `${theme.spacing[1]} 0 0 0`, fontSize: theme.typography.fontSize.xs }}>
+                    Deleting this {normalizedEvent.type} will affect all registered users.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div
               style={{
-                color: theme.colors.text.secondary,
+                background: theme.colors.error.light,
+                color: theme.colors.error.dark,
+                padding: theme.spacing[3],
+                borderRadius: theme.borderRadius.base,
                 marginBottom: theme.spacing[5],
                 fontSize: theme.typography.fontSize.sm,
+                display: "flex",
+                gap: theme.spacing[2],
+                alignItems: "flex-start",
               }}
             >
-              <strong>⚠️ Warning:</strong> This action cannot be undone. The workshop will be completely removed from the system.
-            </p>
+              <span style={{ fontSize: "1.25rem", marginTop: "2px" }}>⚠️</span>
+              <div>
+                <strong>Warning:</strong> This action cannot be undone. The {normalizedEvent.type} will be completely removed from the system.
+              </div>
+            </div>
 
             <div
               style={{
@@ -902,13 +938,16 @@ const confirmDeleteWorkshop = async () => {
               </Button>
               <Button
                 variant="danger"
-                onClick={confirmDeleteWorkshop}
+                onClick={normalizedEvent.type === 'workshop' ? confirmDeleteWorkshop : handleDeleteEvent}
+                disabled={isDeleting}
                 style={{
-                  minWidth: "100px",
+                  minWidth: "120px",
                   padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+                  opacity: isDeleting ? 0.6 : 1,
+                  cursor: isDeleting ? "not-allowed" : "pointer",
                 }}
               >
-                Delete Workshop
+                {isDeleting ? "Deleting..." : `Delete ${getEventTypeLabel(normalizedEvent.type)}`}
               </Button>
             </div>
           </div>
