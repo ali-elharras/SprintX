@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
 import { applicationServices } from "../services/api";
 import theme from "../theme";
 import toast from "react-hot-toast";
@@ -283,6 +284,34 @@ const styles = {
       textAlign: "center",
     };
   },
+  statusIndicator: (status) => {
+    const statusStyles = {
+      approved: {
+        bg: "#D1FAE5",
+        color: "#065F46",
+        border: "#34D399",
+      },
+      rejected: {
+        bg: "#FEE2E2",
+        color: "#991B1B",
+        border: "#FCA5A5",
+      },
+    };
+    const colors = statusStyles[status?.toLowerCase()] || { bg: "#F3F4F6", color: "#374151", border: "#D1D5DB" };
+    
+    return {
+      flex: 1,
+      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+      borderRadius: "12px",
+      border: `2px solid ${colors.border}`,
+      background: colors.bg,
+      color: colors.color,
+      fontSize: theme.typography.fontSize.sm,
+      fontWeight: theme.typography.fontWeight.bold,
+      textAlign: "center",
+      textTransform: "capitalize",
+    };
+  },
   disabledButton: {
     opacity: 0.5,
     cursor: "not-allowed",
@@ -340,17 +369,45 @@ const cssKeyframes = `
   box-shadow: 0 6px 20px rgba(0,0,0,0.15) !important;
 }
 
+.status-indicator:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15) !important;
+}
+
 .filter-button:hover {
   transform: translateY(-2px);
 }
 `;
 
 const AdminDashboard = () => {
+  const { user, isAdmin, isEventsOffice, isAuthenticated, userType } = useAuth();
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
+
+  // Debug logging
+  useEffect(() => {
+    console.log("=== ADMIN DASHBOARD DEBUG ===");
+    console.log("isAuthenticated:", isAuthenticated);
+    console.log("userType:", userType);
+    console.log("user:", user);
+    console.log("isAdmin:", isAdmin);
+    console.log("isEventsOffice:", isEventsOffice);
+
+    // Check if user has admin or events office access
+    if (isAuthenticated && userType === "user" && !isAdmin && !isEventsOffice) {
+      console.error("User does not have admin or events office privileges");
+      setError("Admin or Events Office access required");
+      setLoading(false);
+      return;
+    }
+  }, [isAuthenticated, userType, user, isAdmin, isEventsOffice]);
+
+  useEffect(() => {
+    fetchApplications();
+  }, []);
 
   const fetchApplications = async () => {
     try {
@@ -369,10 +426,6 @@ const AdminDashboard = () => {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchApplications();
-  }, []);
 
   const handleUpdateStatus = async (applicationType, applicationId, status) => {
     try {
@@ -613,28 +666,28 @@ const AdminDashboard = () => {
                   </div>
 
                   <div style={styles.cardActions}>
-                    <button
-                      className="action-button"
-                      style={{
-                        ...styles.actionButton("approve"),
-                        ...(app.status === "approved" ? styles.disabledButton : {})
-                      }}
-                      onClick={() => handleUpdateStatus(app.applicationType, app._id, "approved")}
-                      disabled={app.status === "approved"}
-                    >
-                      ✓ Approve
-                    </button>
-                    <button
-                      className="action-button"
-                      style={{
-                        ...styles.actionButton("reject"),
-                        ...(app.status === "rejected" ? styles.disabledButton : {})
-                      }}
-                      onClick={() => handleUpdateStatus(app.applicationType, app._id, "rejected")}
-                      disabled={app.status === "rejected"}
-                    >
-                      ✕ Reject
-                    </button>
+                    {app.status === "pending" ? (
+                      <>
+                        <button
+                          className="action-button"
+                          style={styles.actionButton("approve")}
+                          onClick={() => handleUpdateStatus(app.applicationType, app._id, "approved")}
+                        >
+                          ✓ Approve
+                        </button>
+                        <button
+                          className="action-button"
+                          style={styles.actionButton("reject")}
+                          onClick={() => handleUpdateStatus(app.applicationType, app._id, "rejected")}
+                        >
+                          ✕ Reject
+                        </button>
+                      </>
+                    ) : (
+                      <div style={styles.statusIndicator(app.status)}>
+                        {app.status === "approved" ? "✓ Approved" : "✕ Rejected"}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

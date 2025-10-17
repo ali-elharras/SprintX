@@ -49,7 +49,7 @@ exports.createBazaar = async (req, res) => {
       maxParticipants,
       tags,
       organizer: req.user.id, // 👈 required in schema
-      status: "draft", // can be later changed to published
+      status: "published",
     });
 
     res.status(201).json({

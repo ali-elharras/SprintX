@@ -131,13 +131,6 @@ const registerForEvent = async (req, res) => {
     // Create registration
     const registration = await Registration.create(registrationData);
 
-    // For regular events, update participant count
-    if (!isConference) {
-      await Event.findByIdAndUpdate(eventId, {
-        $inc: { currentParticipants: 1 }
-      });
-    }
-
     // Populate the registration with appropriate data
     if (isConference) {
       // Manually attach conference data for response

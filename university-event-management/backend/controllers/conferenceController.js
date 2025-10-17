@@ -62,7 +62,8 @@ const createConference = async (req, res) => {
             sourceOfFunding,
             extraRequiredResources,
             location,
-            maxParticipants
+            maxParticipants,
+            currentParticipants
         } = req.body;
 
         // Validate required fields
@@ -127,8 +128,9 @@ const editConference = async (req, res) => {
             requiredBudget,
             sourceOfFunding,
             extraRequiredResources,
+            maxParticipants,
+            currentParticipants,
             location,
-            maxParticipants
         } = req.body;
 
         console.log('Received dates:', { startDate, endDate });
@@ -178,7 +180,8 @@ const editConference = async (req, res) => {
             endDate: endDateTime,
             location: location,
             maxParticipants: parseInt(maxParticipants),
-            registrationDeadline: endDateTime,
+            currentParticipants: parseInt(currentParticipants) || 0,
+            registrationDeadline: startDateTime, // Ensure deadline is before start date
         };
 
         console.log('Update data dates:', {
