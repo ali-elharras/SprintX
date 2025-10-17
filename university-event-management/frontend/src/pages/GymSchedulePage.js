@@ -13,8 +13,6 @@ const GymSchedulePage = () => {
   const [sessions, setSessions] = useState([]);
   const [sessionTypes, setSessionTypes] = useState([]);
   const [filteredSessions, setFilteredSessions] = useState([]);
-  const [myRegistrations, setMyRegistrations] = useState([]);
-  const [registeredSessionIds, setRegisteredSessionIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState("calendar"); // "calendar" or "list"
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
@@ -71,7 +69,9 @@ const GymSchedulePage = () => {
       }
 
       if (response.data.success) {
-        setSessions(response.data.data.sessions || response.data.data);
+        // Handle both response formats
+        const sessionsData = response.data.data.sessions || response.data.data;
+        setSessions(Array.isArray(sessionsData) ? sessionsData : []);
       }
     } catch (error) {
       // Don't show error if request was cancelled
@@ -82,75 +82,23 @@ const GymSchedulePage = () => {
       console.error("Error fetching gym sessions:", error);
       toast.error("Failed to load gym sessions");
     } finally {
-      setTimeout(() => setLoading(false), 2000);
+      setLoading(false);
     }
   }, [viewMode, currentYear, currentMonth]);
 
   const fetchMyRegistrations = useCallback(async () => {
-    try {
-      if (!auth?.user) {
-        setMyRegistrations([]);
-        setRegisteredSessionIds(new Set());
-        return;
-      }
-
-      const response = await gymAPI.getMyRegistrations({ upcoming: true }, cancelTokenRef.current);
-      // API returns { success, data: [...] } or an array in some endpoints; handle both
-      const regs = response.data?.data || response.data || [];
-      setMyRegistrations(regs);
-      const ids = new Set(regs.map(r => {
-        // registration may populate gymSession as object or just an id
-        if (!r) return null;
-        if (r.gymSession && typeof r.gymSession === 'object') return r.gymSession._id;
-        return r.gymSession || null;
-      }).filter(Boolean));
-      setRegisteredSessionIds(ids);
-    } catch (err) {
-      // Don't show error if request was cancelled
-      if (axios.isCancel(err)) {
-        console.log('Request cancelled:', err.message);
-        return;
-      }
-      console.error('Failed to fetch user gym registrations', err);
-      setMyRegistrations([]);
-      setRegisteredSessionIds(new Set());
-    }
-  }, [auth?.user]);
+    // Removed - page is now view-only
+  }, []);
 
   const handleAfterRegister = useCallback(async () => {
-    try {
-      await fetchSessions();
-      await fetchMyRegistrations();
-    } catch (err) {
-      console.error('Refresh after register failed', err);
-    }
-  }, [fetchSessions, fetchMyRegistrations]);
+    // Removed - page is now view-only
+    await fetchSessions();
+  }, [fetchSessions]);
 
   const cancelRegistration = useCallback(async ({ registrationId = null, sessionId = null } = {}) => {
-    try {
-      let regId = registrationId;
-      if (!regId && sessionId) {
-        const found = myRegistrations.find(r => {
-          if (!r) return false;
-          if (r.gymSession && typeof r.gymSession === 'object') return r.gymSession._id === sessionId;
-          return r.gymSession === sessionId;
-        });
-        regId = found?._id;
-      }
-
-      if (!regId) {
-        throw new Error('Registration not found to cancel');
-      }
-
-      await gymAPI.cancelRegistration(regId);
-      toast.success('Registration cancelled');
-      await handleAfterRegister();
-    } catch (err) {
-      console.error('Cancel registration failed', err);
-      toast.error(err.response?.data?.message || err.message || 'Failed to cancel registration');
-      throw err;
-    }
-  }, [myRegistrations, handleAfterRegister]);
+    // Removed - page is now view-only
+    throw new Error('Registration functionality has been removed');
+  }, []);
 
   const applyFilters = useCallback(() => {
     let filtered = [...sessions];
@@ -185,7 +133,6 @@ const GymSchedulePage = () => {
   useEffect(() => {
     fetchSessionTypes();
     fetchSessions();
-    fetchMyRegistrations();
     
     // Cleanup function to cancel requests on unmount
     return () => {
@@ -193,7 +140,7 @@ const GymSchedulePage = () => {
         cancelTokenRef.current.cancel('Component unmounted');
       }
     };
-  }, [currentMonth, currentYear, fetchSessionTypes, fetchSessions, fetchMyRegistrations]);
+  }, [currentMonth, currentYear, fetchSessionTypes, fetchSessions]);
 
   useEffect(() => {
     applyFilters();
@@ -392,8 +339,8 @@ const GymSchedulePage = () => {
         <div style={styles.header}>
           <h1 style={styles.title}>Gym Schedule</h1>
           <p style={styles.subtitle}>
-            Discover and join our comprehensive fitness program. From yoga to kickboxing,
-            find the perfect workout for your lifestyle and fitness goals.
+            Browse our comprehensive fitness program. From yoga to kickboxing,
+            explore the perfect workout for your lifestyle and fitness goals.
           </p>
         </div>
 
@@ -508,14 +455,7 @@ const GymSchedulePage = () => {
             sessions={filteredSessions}
             year={currentYear}
             month={currentMonth}
-            registeredSessionIds={registeredSessionIds}
-            onRegistered={handleAfterRegister}
-            onCancelRegistration={cancelRegistration}
-            getRegistrationForSession={(sessionId) => myRegistrations.find(r => {
-              if (!r) return false;
-              if (r.gymSession && typeof r.gymSession === 'object') return r.gymSession._id === sessionId;
-              return r.gymSession === sessionId;
-            })}
+            onSessionUpdated={fetchSessions}
           />
         ) : (
           <div>
@@ -529,21 +469,8 @@ const GymSchedulePage = () => {
                   <GymSessionCard
                     key={session._id}
                     session={session}
-                    isRegistered={registeredSessionIds.has(session._id)}
-                    registration={myRegistrations.find(r => {
-                      if (!r) return false;
-                      if (r.gymSession && typeof r.gymSession === 'object') return r.gymSession._id === session._id;
-                      return r.gymSession === session._id;
-                    })}
-                    onRegister={async (sessionId) => {
-                      try {
-                        await fetchSessions();
-                        await fetchMyRegistrations();
-                      } catch (err) {
-                        console.error(err);
-                      }
-                    }}
                     onUpdated={() => fetchSessions()}
+                    viewOnly={true}
                   />
                 ))}
               </div>
@@ -565,8 +492,6 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
     type: "yoga",
     instructor_name: "",
     instructor_email: "",
-    instructor_bio: "",
-    instructor_certifications: "",
     dayOfWeek: 1,
     startTime: "09:00",
     endTime: "10:00",
@@ -575,24 +500,18 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
     endDate: new Date().toISOString().slice(0,10),
     location: "Main Gym",
     room: "",
-    equipment: "",
     maxParticipants: 20,
+    skillLevel: "all_levels",
+    isRecurring: false, // Changed to false by default for single sessions
+    status: "active",
     registrationRequired: true,
     waitlistEnabled: false,
     eligibleRoles: ["student","staff","ta","professor"],
-    skillLevel: "all_levels",
     ageMin: 16,
     ageMax: 100,
-    status: "active",
-    isRecurring: true,
-    prerequisites: "",
-    benefits: "",
-    calories: "",
-    tags: "",
     cost: 0,
     dropInAllowed: true,
     dropInCost: 0,
-    
   });
 
   const [formErrors, setFormErrors] = useState({});
@@ -686,6 +605,29 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
     }
   }, [sessionTypes]);
 
+  // Automatically update dayOfWeek when startDate changes
+  useEffect(() => {
+    if (form.startDate) {
+      const date = new Date(form.startDate);
+      if (!isNaN(date.getTime())) {
+        const dayOfWeek = date.getDay();
+        setForm(prev => ({ ...prev, dayOfWeek }));
+        
+        // If not recurring, set end date same as start date
+        if (!form.isRecurring) {
+          setForm(prev => ({ ...prev, endDate: form.startDate }));
+        }
+      }
+    }
+  }, [form.startDate, form.isRecurring]);
+
+  // When isRecurring changes, adjust end date
+  useEffect(() => {
+    if (!form.isRecurring && form.startDate) {
+      setForm(prev => ({ ...prev, endDate: form.startDate }));
+    }
+  }, [form.isRecurring, form.startDate]);
+
   const show = Boolean(isVisible);
 
   const handleChange = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
@@ -708,46 +650,45 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
       // Build payload matching GymSession model
       const payload = {
         title: form.title,
-        description: form.description,
+        description: form.description || '',
         type: form.type,
         instructor: {
           name: form.instructor_name,
-          email: form.instructor_email,
-          bio: form.instructor_bio,
-          certifications: form.instructor_certifications ? form.instructor_certifications.split(",").map(s=>s.trim()).filter(Boolean) : [],
+          email: form.instructor_email || '',
+          bio: '',
+          certifications: [],
         },
         dayOfWeek: parseInt(form.dayOfWeek),
         startTime: form.startTime,
         endTime: form.endTime,
         duration: parseInt(form.duration),
         startDate: form.startDate,
-        endDate: form.endDate,
+        endDate: form.isRecurring ? form.endDate : form.startDate, // Use same date if not recurring
         location: form.location,
-        room: form.room,
-        equipment: form.equipment ? form.equipment.split(",").map(s=>s.trim()).filter(Boolean) : [],
+        room: form.room || '',
+        equipment: [],
         maxParticipants: parseInt(form.maxParticipants),
-        registrationRequired: Boolean(form.registrationRequired),
-        waitlistEnabled: Boolean(form.waitlistEnabled),
-        eligibleRoles: Array.isArray(form.eligibleRoles) ? form.eligibleRoles : form.eligibleRoles.split(",").map(s=>s.trim()).filter(Boolean),
+        registrationRequired: form.registrationRequired,
+        waitlistEnabled: form.waitlistEnabled,
+        eligibleRoles: form.eligibleRoles,
         skillLevel: form.skillLevel,
         ageRestriction: {
           minAge: parseInt(form.ageMin) || 16,
           maxAge: parseInt(form.ageMax) || 100,
         },
         status: form.status,
-        isRecurring: Boolean(form.isRecurring),
-        prerequisites: form.prerequisites,
-        benefits: form.benefits ? form.benefits.split(",").map(s=>s.trim()).filter(Boolean) : [],
-        calories: form.calories ? parseInt(form.calories) : undefined,
-        tags: form.tags ? form.tags.split(",").map(s=>s.trim()).filter(Boolean) : [],
+        isRecurring: form.isRecurring,
+        prerequisites: '',
+        benefits: [],
+        calories: undefined,
+        tags: [],
         cost: form.cost ? parseFloat(form.cost) : 0,
-        dropInAllowed: Boolean(form.dropInAllowed),
+        dropInAllowed: form.dropInAllowed,
         dropInCost: form.dropInCost ? parseFloat(form.dropInCost) : 0,
-        
       };
 
       await gymAPI.createSession(payload);
-      toast.success("Gym session created");
+      toast.success(form.isRecurring ? "Recurring gym session created" : "Gym session created");
       setOpen(false);
       onCreated && onCreated();
     } catch (err) {
@@ -812,102 +753,36 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
       {open && (
         <div style={styles.controls}>
           <h3 style={{ marginTop: 0 }}>Create Gym Session</h3>
+          <p style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.secondary, marginBottom: theme.spacing[4] }}>
+            Fill in the essential details to create a new gym session. By default, the session will occur only on the selected date.
+          </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing[3] }}>
-            <input style={inputStyle} placeholder="Title" value={form.title} onChange={(e)=>{ handleChange('title', e.target.value); clearFieldError('title'); }} />
-            {formErrors.title && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.title}</div>}
-            <select style={selectStyle} value={form.type} onChange={(e)=>handleChange('type', e.target.value)}>
-              {sessionTypes.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-
-            <textarea style={{ ...inputStyle, gridColumn: '1 / -1', minHeight: 80 }} placeholder="Description" value={form.description} onChange={(e)=>handleChange('description', e.target.value)} />
-
-            <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Instructor Name</label>
-              <input style={inputStyle} value={form.instructor_name} onChange={(e)=>{ handleChange('instructor_name', e.target.value); clearFieldError('instructor_name'); }} />
-              {formErrors.instructor_name && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.instructor_name}</div>}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing[4] }}>
+            {/* Title */}
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Session Title *</label>
+              <input 
+                style={inputStyle} 
+                placeholder="e.g., Morning Yoga, HIIT Workout" 
+                value={form.title} 
+                onChange={(e)=>{ handleChange('title', e.target.value); clearFieldError('title'); }} 
+              />
+              {formErrors.title && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.title}</div>}
             </div>
 
+            {/* Type */}
             <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Instructor Email</label>
-              <input style={inputStyle} value={form.instructor_email} onChange={(e)=>{ handleChange('instructor_email', e.target.value); clearFieldError('instructor_email'); }} />
-              {formErrors.instructor_email && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.instructor_email}</div>}
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Instructor Bio</label>
-              <input style={inputStyle} value={form.instructor_bio} onChange={(e)=>handleChange('instructor_bio', e.target.value)} />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Instructor Certifications (comma separated)</label>
-              <input style={inputStyle} value={form.instructor_certifications} onChange={(e)=>handleChange('instructor_certifications', e.target.value)} />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Day of week</label>
-              <select style={selectStyle} value={form.dayOfWeek} onChange={(e)=>{ handleChange('dayOfWeek', e.target.value); clearFieldError('dayOfWeek'); }}>
-                {[0,1,2,3,4,5,6].map(d=> <option key={d} value={d}>{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]}</option>)}
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Session Type *</label>
+              <select style={selectStyle} value={form.type} onChange={(e)=>handleChange('type', e.target.value)}>
+                {sessionTypes.map(t => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
               </select>
-              {formErrors.dayOfWeek && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.dayOfWeek}</div>}
             </div>
 
+            {/* Skill Level */}
             <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Duration (minutes)</label>
-              <input style={inputStyle} type="number" value={form.duration} onChange={(e)=>{ handleChange('duration', e.target.value); clearFieldError('duration'); }} />
-              {formErrors.duration && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.duration}</div>}
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Start time</label>
-              <input style={inputStyle} type="time" value={form.startTime} onChange={(e)=>{ handleChange('startTime', e.target.value); clearFieldError('startTime'); }} />
-              {formErrors.startTime && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.startTime}</div>}
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>End time</label>
-              <input style={inputStyle} type="time" value={form.endTime} onChange={(e)=>{ handleChange('endTime', e.target.value); clearFieldError('endTime'); }} />
-              {formErrors.endTime && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.endTime}</div>}
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Start Date</label>
-              <input style={inputStyle} type="date" value={form.startDate} onChange={(e)=>{ handleChange('startDate', e.target.value); clearFieldError('startDate'); }} />
-              {formErrors.startDate && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.startDate}</div>}
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>End Date</label>
-              <input style={inputStyle} type="date" value={form.endDate} onChange={(e)=>{ handleChange('endDate', e.target.value); clearFieldError('endDate'); }} />
-              {formErrors.endDate && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.endDate}</div>}
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Location</label>
-              <input style={inputStyle} value={form.location} onChange={(e)=>{ handleChange('location', e.target.value); clearFieldError('location'); }} />
-              {formErrors.location && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.location}</div>}
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Room</label>
-              <input style={inputStyle} value={form.room} onChange={(e)=>handleChange('room', e.target.value)} />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Equipment (comma separated)</label>
-              <input style={inputStyle} value={form.equipment} onChange={(e)=>handleChange('equipment', e.target.value)} />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Max Participants</label>
-              <input style={inputStyle} type="number" value={form.maxParticipants} onChange={(e)=>{ handleChange('maxParticipants', e.target.value); clearFieldError('maxParticipants'); }} />
-              {formErrors.maxParticipants && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.maxParticipants}</div>}
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Skill Level</label>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Skill Level *</label>
               <select style={selectStyle} value={form.skillLevel} onChange={(e)=>handleChange('skillLevel', e.target.value)}>
                 <option value="beginner">Beginner</option>
                 <option value="intermediate">Intermediate</option>
@@ -916,42 +791,147 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
               </select>
             </div>
 
+            {/* Instructor Name */}
             <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Eligible Roles (comma separated)</label>
-              <input style={inputStyle} value={form.eligibleRoles} onChange={(e)=>{ handleChange('eligibleRoles', e.target.value); clearFieldError('eligibleRoles'); }} />
-              {formErrors.eligibleRoles && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.eligibleRoles}</div>}
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Instructor Name *</label>
+              <input 
+                style={inputStyle} 
+                placeholder="John Doe"
+                value={form.instructor_name} 
+                onChange={(e)=>{ handleChange('instructor_name', e.target.value); clearFieldError('instructor_name'); }} 
+              />
+              {formErrors.instructor_name && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.instructor_name}</div>}
+            </div>
+
+            {/* Instructor Email (optional) */}
+            <div>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Instructor Email</label>
+              <input 
+                style={inputStyle} 
+                placeholder="john@example.com"
+                value={form.instructor_email} 
+                onChange={(e)=>{ handleChange('instructor_email', e.target.value); clearFieldError('instructor_email'); }} 
+              />
+              {formErrors.instructor_email && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.instructor_email}</div>}
+            </div>
+
+            {/* Date */}
+            <div>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Session Date *</label>
+              <input 
+                style={inputStyle} 
+                type="date" 
+                value={form.startDate} 
+                onChange={(e)=>{ handleChange('startDate', e.target.value); clearFieldError('startDate'); }} 
+              />
+              {formErrors.startDate && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.startDate}</div>}
+              <div style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.text.secondary, marginTop: 4 }}>
+                Day: {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][form.dayOfWeek]}
+              </div>
+            </div>
+
+            {/* Recurring Checkbox */}
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing[2] }}>
+                <input 
+                  type="checkbox" 
+                  id="isRecurring" 
+                  checked={form.isRecurring} 
+                  onChange={(e) => handleChange('isRecurring', e.target.checked)}
+                  style={{ cursor: 'pointer', width: 18, height: 18 }}
+                />
+                <label htmlFor="isRecurring" style={{ fontSize: theme.typography.fontSize.sm, cursor: 'pointer', fontWeight: theme.typography.fontWeight.medium }}>
+                  Repeat weekly
+                </label>
+              </div>
+              <div style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.text.secondary, marginTop: 4, marginLeft: 26 }}>
+                {form.isRecurring 
+                  ? `Will repeat every ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][form.dayOfWeek]}`
+                  : 'Single session only'}
+              </div>
+            </div>
+
+            {/* End Date (only shown if recurring) */}
+            {form.isRecurring && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Repeat Until *</label>
+                <input 
+                  style={inputStyle} 
+                  type="date" 
+                  value={form.endDate} 
+                  onChange={(e)=>{ handleChange('endDate', e.target.value); clearFieldError('endDate'); }} 
+                />
+                {formErrors.endDate && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.endDate}</div>}
+                <div style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.text.secondary, marginTop: 4 }}>
+                  Session will occur every {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][form.dayOfWeek]} from {new Date(form.startDate).toLocaleDateString()} to {new Date(form.endDate).toLocaleDateString()}
+                </div>
+              </div>
+            )}
+
+            {/* Time Range */}
+            <div>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Start Time *</label>
+              <input 
+                style={inputStyle} 
+                type="time" 
+                value={form.startTime} 
+                onChange={(e)=>{ handleChange('startTime', e.target.value); clearFieldError('startTime'); }} 
+              />
+              {formErrors.startTime && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.startTime}</div>}
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Min Age</label>
-              <input style={inputStyle} type="number" value={form.ageMin} onChange={(e)=>{ handleChange('ageMin', e.target.value); clearFieldError('ageMin'); }} />
-              {formErrors.ageMin && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.ageMin}</div>}
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>End Time *</label>
+              <input 
+                style={inputStyle} 
+                type="time" 
+                value={form.endTime} 
+                onChange={(e)=>{ handleChange('endTime', e.target.value); clearFieldError('endTime'); }} 
+              />
+              {formErrors.endTime && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.endTime}</div>}
             </div>
 
+            {/* Location */}
             <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Max Age</label>
-              <input style={inputStyle} type="number" value={form.ageMax} onChange={(e)=>{ handleChange('ageMax', e.target.value); clearFieldError('ageMax'); }} />
-              {formErrors.ageMax && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.ageMax}</div>}
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Location *</label>
+              <input 
+                style={inputStyle} 
+                placeholder="Main Gym, Studio A, etc."
+                value={form.location} 
+                onChange={(e)=>{ handleChange('location', e.target.value); clearFieldError('location'); }} 
+              />
+              {formErrors.location && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.location}</div>}
             </div>
 
+            {/* Max Participants */}
             <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Cost</label>
-              <input style={inputStyle} type="number" step="0.01" value={form.cost} onChange={(e)=>{ handleChange('cost', e.target.value); clearFieldError('cost'); }} />
-              {formErrors.cost && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.cost}</div>}
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Max Participants *</label>
+              <input 
+                style={inputStyle} 
+                type="number" 
+                min="1"
+                max="100"
+                value={form.maxParticipants} 
+                onChange={(e)=>{ handleChange('maxParticipants', e.target.value); clearFieldError('maxParticipants'); }} 
+              />
+              {formErrors.maxParticipants && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.maxParticipants}</div>}
             </div>
 
-            <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Tags (comma separated)</label>
-              <input style={inputStyle} value={form.tags} onChange={(e)=>{ handleChange('tags', e.target.value); clearFieldError('tags'); }} />
-              {formErrors.tags && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.tags}</div>}
+            {/* Description */}
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: theme.typography.fontWeight.medium }}>Description</label>
+              <textarea 
+                style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} 
+                placeholder="Brief description of the session..."
+                value={form.description} 
+                onChange={(e)=>handleChange('description', e.target.value)} 
+              />
             </div>
-
-            
           </div>
 
-          <div style={{ marginTop: theme.spacing[4], display: 'flex', justifyContent: 'flex-end' }}>
-            <button onClick={create} style={buttonPrimary}>Create</button>
+          <div style={{ marginTop: theme.spacing[4], display: 'flex', justifyContent: 'flex-end', gap: theme.spacing[2] }}>
             <button onClick={()=>setOpen(false)} style={buttonSecondary}>Cancel</button>
+            <button onClick={create} style={buttonPrimary}>Create Session</button>
           </div>
         </div>
       )}

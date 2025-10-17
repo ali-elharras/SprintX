@@ -1,20 +1,15 @@
 import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
-import { gymAPI } from "../services/api";
 import theme from "../theme";
-import Modal from "./Modal";
 import EditSessionModal from "./EditSessionModal";
 import GymSessionDetailsModal from "./GymSessionDetailsModal";
 
-const GymSessionCard = ({ session, onUpdated, isRegistered = false, registration = null, onRegister }) => {
+const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
   const { user, isAdmin, isEventsOffice } = useAuth();
   const auth = { isAdmin, isEventsOffice };
-  const [isRegistering, setIsRegistering] = useState(false);
-  // details are handled via modal now
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
 
   const getSessionTypeColor = (type) => {
     const colors = {
@@ -58,35 +53,12 @@ const GymSessionCard = ({ session, onUpdated, isRegistered = false, registration
   };
 
   const handleRegister = async () => {
-    if (!user) {
-      toast.error("Please log in to register for sessions");
-      return;
-    }
-
-    try {
-      setIsRegistering(true);
-      await gymAPI.register(session._id, { registrationType: 'regular' });
-      toast.success('Successfully registered for gym session!');
-      if (typeof onRegister === 'function') {
-        await onRegister(session._id);
-      }
-      if (typeof onUpdated === 'function') {
-        await onUpdated(session._id);
-      }
-    } catch (error) {
-      console.error("Registration error:", error);
-      toast.error(error.response?.data?.message || "Failed to register for session");
-    } finally {
-      setIsRegistering(false);
-    }
+    // Registration functionality removed - view only page
+    toast.error("Registration functionality is not available on this page");
   };
 
   const canUserRegister = () => {
-    if (!user) return false;
-    if (session.status !== "active") return false;
-    if (session.isFull && !session.waitlistEnabled) return false;
-    if (!session.eligibleRoles.includes(user.role)) return false;
-    return true;
+    return false; // Always false for view-only mode
   };
 
   const styles = {
@@ -295,25 +267,13 @@ const GymSessionCard = ({ session, onUpdated, isRegistered = false, registration
   };
 
   const getRegisterButtonText = () => {
-    if (!user) return "Login to Register";
-    if (!canUserRegister()) return "Not Eligible";
-    if (session.isFull && session.waitlistEnabled) return "Join Waitlist";
-    if (session.isFull) return "Session Full";
-    return isRegistering ? "Registering..." : "Register";
+    return "View Only";
   };
-
-  // registered state comes from server
-  const effectiveRegistered = Boolean(isRegistered);
 
   return (
     <div style={styles.card}>
       <div style={styles.header}>
         <div style={styles.typeTag}>{session.type.replace("_", " ")}</div>
-        {effectiveRegistered && (
-          <div style={{ position: 'absolute', top: theme.spacing[3], left: theme.spacing[3], backgroundColor: theme.colors.success.dark, color: theme.colors.text.white, padding: '4px 8px', borderRadius: theme.borderRadius.md, fontSize: theme.typography.fontSize.xs }}>
-            Registered
-          </div>
-        )}
         <h3 style={styles.title}>{session.title}</h3>
         <p style={styles.instructor}>with {session.instructor?.name}</p>
       </div>
@@ -349,50 +309,47 @@ const GymSessionCard = ({ session, onUpdated, isRegistered = false, registration
         </div>
 
         <div style={styles.buttons}>
-          <button
-            style={getRegisterButtonStyle()}
-            onClick={() => {
-              if (effectiveRegistered) return;
-              setIsRegisterOpen(true);
-            }}
-            disabled={isRegistering || effectiveRegistered || !canUserRegister()}
-          >
-            {effectiveRegistered ? "Registered" : getRegisterButtonText()}
-          </button>
+          {!viewOnly ? (
+            <button
+              style={getRegisterButtonStyle()}
+              onClick={() => handleRegister()}
+              disabled={true}
+            >
+              {getRegisterButtonText()}
+            </button>
+          ) : (
+            <button
+              style={{
+                ...styles.registerButton,
+                backgroundColor: theme.colors.neutral.gray300,
+                color: theme.colors.text.secondary,
+                cursor: 'default',
+              }}
+              disabled={true}
+            >
+              View Only
+            </button>
+          )}
 
           {(auth.isAdmin || auth.isEventsOffice) && (
             <button style={{ ...styles.detailsButton, backgroundColor: theme.colors.background.paper }} onClick={() => setIsEditOpen(true)}>Edit</button>
           )}
 
-          {!(auth.isAdmin || auth.isEventsOffice) && (
-            <button style={styles.detailsButton} onClick={() => setIsDetailsOpen(true)}>Details</button>
-          )}
+          <button style={styles.detailsButton} onClick={() => setIsDetailsOpen(true)}>Details</button>
         </div>
 
         {/* Edit modal */}
         <EditSessionModal session={session} isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} onSaved={(id) => { if (typeof onUpdated === 'function') onUpdated(id); }} />
 
         {/* Details modal */}
-        <GymSessionDetailsModal session={session} isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} isAdminOrEventsOffice={auth.isAdmin || auth.isEventsOffice} onSaved={(id) => { if (typeof onUpdated === 'function') onUpdated(id); }} />
-
-        {/* Register confirmation modal */}
-        <Modal isOpen={isRegisterOpen} onClose={() => setIsRegisterOpen(false)} ariaLabel={`Register for ${session.title}`}>
-          <div>
-            <h3 style={{ ...theme.typography.h4 }}>Register for {session.title}</h3>
-            <p>Do you want to register for this session on {getDayName(session.dayOfWeek)} at {formatTime(session.startTime)}?</p>
-            <div style={{ marginTop: theme.spacing[3], display: 'flex', gap: theme.spacing[2], justifyContent: 'flex-end' }}>
-              <button onClick={() => setIsRegisterOpen(false)} style={{ ...theme.components.button.secondary }}>Cancel</button>
-              <button onClick={async () => {
-                try {
-                  await handleRegister();
-                  setIsRegisterOpen(false);
-                } catch (err) {
-                  console.error(err);
-                }
-              }} style={{ ...theme.components.button.primary }}>{getRegisterButtonText()}</button>
-            </div>
-          </div>
-        </Modal>
+        <GymSessionDetailsModal 
+          session={session} 
+          isOpen={isDetailsOpen} 
+          onClose={() => setIsDetailsOpen(false)} 
+          isAdminOrEventsOffice={auth.isAdmin || auth.isEventsOffice} 
+          onSaved={(id) => { if (typeof onUpdated === 'function') onUpdated(id); }} 
+          viewOnly={viewOnly}
+        />
       </div>
     </div>
   );

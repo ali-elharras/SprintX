@@ -7,7 +7,6 @@ const workshopSchema = new mongoose.Schema(
       type: String,
       required: [true, "Workshop name is required"],
       trim: true,
-      unique: true,
     },
     shortDescription: {
       type: String,
@@ -90,9 +89,32 @@ const workshopSchema = new mongoose.Schema(
   }
 );
 
-// an index for better search performance by date and location
+// Indexes for better search performance
 workshopSchema.index({ startDate: 1, location: 1 });
 workshopSchema.index({ registrationDeadline: 1 });
+// Note: workshopName uniqueness is handled at application level in the controller,
+// NOT at schema level, to avoid validation issues during updates
+
+// Cleanup: Drop any existing unique index on workshopName on schema initialization
+workshopSchema.post('syncIndexes', async function() {
+  try {
+    const collection = this.collection;
+    const indexes = await collection.getIndexes();
+    
+    for (const [indexName, indexSpec] of Object.entries(indexes)) {
+      // Find and remove any unique index on workshopName
+      if (indexSpec.unique === true && indexSpec.key && indexSpec.key.workshopName === 1) {
+        await collection.dropIndex(indexName);
+        console.log(`✅ Dropped problematic workshopName unique index: ${indexName}`);
+      }
+    }
+  } catch (error) {
+    // Silently ignore errors in index cleanup
+    if (error.message && !error.message.includes('no index found')) {
+      console.warn('⚠️ Note: Database index cleanup may be needed, but not critical');
+    }
+  }
+});
 
 // Status to indicate whether professor-submitted workshop is pending approval
 workshopSchema.add({

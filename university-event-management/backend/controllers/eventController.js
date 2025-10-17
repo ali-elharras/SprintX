@@ -85,7 +85,7 @@ const seedBazaar = async (req, res, next) => {
 // @access  Public
 const getEvents = async (req, res) => {
   try {
-    const { type, status = "published", upcoming = false } = req.query;
+    const { type, status = ["approved", "accepted", "published"], upcoming = false } = req.query;
 
     let eventQuery = { status };
     let boothQuery = { status };
@@ -123,6 +123,10 @@ const getEvents = async (req, res) => {
       eventQuery.type = type;
       workshopQuery = { ...workshopQuery, ...(type === 'workshop' ? {} : { _id: null }) };
     }
+
+    // Exclude published workshops from Workshop collection since they appear as Event documents
+    // Published workshops should only be returned from the Event collection, not Workshop collection
+    workshopQuery.publishedEventId = { $exists: false };
 
     // Fetch all event types in parallel
     const [events, booths, conferences, workshops] = await Promise.all([
@@ -525,6 +529,21 @@ const deleteEvent = async (req, res) => {
       });
     }
 
+    // Check if there are any registrations for this event
+    const Registration = require("../models/Registration");
+    const registrationCount = await Registration.countDocuments({
+      event: req.params.id,
+      status: { $in: ["confirmed", "pending", "attended"] }, // Only count active registrations
+    });
+
+    if (registrationCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete event. There are ${registrationCount} active registration(s). Please cancel all registrations before deleting the event.`,
+        registrationCount,
+      });
+    }
+
     await Event.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
@@ -580,7 +599,8 @@ const getEventsByType = async (req, res) => {
     if (type === "workshop") {
       const workshops = await Workshop.find({
         status: { $in: [...acceptedStatuses, "pending", "needs_revision"] },
-        startDate: { $gte: now }
+        startDate: { $gte: now },
+        publishedEventId: { $exists: false } // Exclude published workshops - they appear as Event documents
       })
         .populate("createdBy", "firstName lastName email")
         .sort({ startDate: 1 });

@@ -56,6 +56,17 @@ exports.createWorkshop = async (req, res) => {
             workshopData.createdBy = req.user._id;
         }
         
+        // Check for duplicate workshop name on creation
+        const existingWorkshop = await Workshop.findOne({ 
+            workshopName: workshopData.workshopName 
+        });
+        if (existingWorkshop) {
+            return res.status(400).json({ 
+                message: 'A workshop with this name already exists', 
+                error: 'Duplicate workshop name' 
+            });
+        }
+        
         const newWorkshop = new Workshop(workshopData);
         const savedWorkshop = await newWorkshop.save();
         
@@ -91,10 +102,48 @@ exports.createWorkshop = async (req, res) => {
 exports.updateWorkshop = async (req, res) => {
     try {
         const workshopId = req.params.id;
-        const workshop = await Workshop.findById(workshopId).populate('createdBy', 'firstName lastName email');
+        console.log(`[UPDATE WORKSHOP] Request from user ${req.user._id} (${req.user.role}) to update workshop ${workshopId}`);
+        console.log('[UPDATE WORKSHOP] Update payload:', JSON.stringify(req.body, null, 2));
+        
+        const workshop = await Workshop.findById(workshopId);
         
         if (!workshop) {
+            console.log(`[UPDATE WORKSHOP] Workshop ${workshopId} not found`);
             return res.status(404).json({ message: 'Workshop not found' });
+        }
+        
+        // Authorization check: Only the creator or admin/events_office can update
+        // Handle both populated and non-populated createdBy field
+        const creatorId = workshop.createdBy?._id || workshop.createdBy;
+        const isCreator = creatorId && creatorId.toString() === req.user._id.toString();
+        const isAdminOrEventsOffice = req.user.role === 'admin' || req.user.role === 'events_office';
+        
+        if (!isCreator && !isAdminOrEventsOffice) {
+            console.log(`Authorization failed: User ${req.user._id} (${req.user.role}) tried to edit workshop ${workshopId} created by ${creatorId}`);
+            return res.status(403).json({ 
+                message: 'Access denied. You can only edit workshops you created.' 
+            });
+        }
+        
+        // Professors can only edit workshops that are NOT published
+        if (workshop.status === 'published' && !isAdminOrEventsOffice) {
+            console.log(`Cannot edit published workshop: User ${req.user._id} tried to edit published workshop ${workshopId}`);
+            return res.status(403).json({ 
+                message: 'Cannot edit a published workshop. Please contact Events Office.' 
+            });
+        }
+        
+        // If the workshop name is being changed, check for duplicates
+        if (req.body.workshopName && req.body.workshopName !== workshop.workshopName) {
+            const existingWorkshop = await Workshop.findOne({ 
+                workshopName: req.body.workshopName 
+            });
+            if (existingWorkshop) {
+                return res.status(400).json({ 
+                    message: 'A workshop with this name already exists', 
+                    error: 'Duplicate workshop name' 
+                });
+            }
         }
         
         // Check if status is being changed to rejected
@@ -104,11 +153,26 @@ exports.updateWorkshop = async (req, res) => {
         const isBeingResubmitted = workshop.status === 'needs_revision' && 
                                      (req.body.status === 'pending' || !req.body.status);
         
+        // For partial updates, don't run full schema validators to allow partial updates
+        // Only check critical validations manually
+        if (req.body.endDate && req.body.startDate) {
+            const startDate = new Date(req.body.startDate || workshop.startDate);
+            const endDate = new Date(req.body.endDate);
+            if (endDate <= startDate) {
+                return res.status(400).json({
+                    message: 'Validation failed',
+                    errors: ['End date and time must be after the start date and time']
+                });
+            }
+        }
+        
         const updatedWorkshop = await Workshop.findByIdAndUpdate(
             workshopId, 
             req.body, 
-            { new: true, runValidators: true } // Return new doc, run validation
+            { new: true, runValidators: false } // Don't run validators for partial updates
         ).populate('createdBy', 'firstName lastName email');
+        
+        console.log(`[UPDATE WORKSHOP] Successfully updated workshop ${workshopId}`);
         
         // Create rejection notification
         if (isBeingRejected && workshop.createdBy && workshop.createdBy._id) {
@@ -144,6 +208,27 @@ exports.updateWorkshop = async (req, res) => {
 
         res.status(200).json(updatedWorkshop);
     } catch (error) {
+        console.error('[UPDATE WORKSHOP] Error:', error);
+        
+        // Handle validation errors specifically
+        if (error.name === 'ValidationError') {
+            const validationErrors = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({ 
+                message: 'Validation failed', 
+                errors: validationErrors,
+                error: error.message 
+            });
+        }
+        
+        // Handle duplicate key errors (e.g., unique constraint on workshopName)
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern)[0];
+            return res.status(400).json({ 
+                message: `A workshop with this ${field} already exists`, 
+                error: error.message 
+            });
+        }
+        
         res.status(400).json({ message: 'Error updating workshop', error: error.message });
     }
 };
@@ -192,6 +277,56 @@ exports.deleteWorkshop = async (req, res) => {
             deletedEventId: workshop.publishedEventId || null
         });
     } catch (error) {
+        res.status(500).json({ message: 'Error deleting workshop', error: error.message });
+    }
+};
+
+// DELETE /api/workshops/by-event/:eventId - Delete a published workshop by its Event ID
+exports.deleteWorkshopByEventId = async (req, res) => {
+    try {
+        const eventId = req.params.eventId;
+        
+        // Find the workshop that has this eventId as its publishedEventId
+        const workshop = await Workshop.findOne({ publishedEventId: eventId });
+
+        if (!workshop) {
+            return res.status(404).json({ message: 'Workshop not found for this event' });
+        }
+
+        // Check if there are any registrations for this event
+        const Registration = require('../models/Registration');
+        const registrationCount = await Registration.countDocuments({ 
+            event: eventId,
+            status: { $in: ['confirmed', 'pending', 'attended'] }
+        });
+
+        if (registrationCount > 0) {
+            return res.status(400).json({ 
+                message: 'Cannot delete workshop - students have already registered',
+                registrationCount: registrationCount
+            });
+        }
+
+        // No registrations, safe to delete both the Event and Workshop
+        try {
+            await Event.findByIdAndDelete(eventId);
+            console.log(`✅ Deleted Event with ID: ${eventId}`);
+        } catch (eventError) {
+            console.error('Error deleting event:', eventError);
+            // Continue with workshop deletion even if event deletion fails
+        }
+
+        // Delete the workshop
+        await Workshop.findByIdAndDelete(workshop._id);
+        console.log(`✅ Deleted Workshop with ID: ${workshop._id}`);
+
+        res.status(200).json({ 
+            message: 'Workshop successfully deleted',
+            deletedWorkshopId: workshop._id,
+            deletedEventId: eventId
+        });
+    } catch (error) {
+        console.error('Error deleting workshop by event ID:', error);
         res.status(500).json({ message: 'Error deleting workshop', error: error.message });
     }
 };
@@ -323,7 +458,28 @@ exports.publishWorkshop = async (req, res) => {
         const workshop = await Workshop.findById(workshopId).populate('createdBy', 'firstName lastName email');
         if (!workshop) return res.status(404).json({ success: false, message: 'Workshop not found' });
 
-        if (workshop.status === 'published') return res.status(400).json({ message: 'Workshop already published' });
+        // Check if workshop is already published and has an event
+        if (workshop.status === 'published' && workshop.publishedEventId) {
+            // Return the existing event instead of creating a duplicate
+            try {
+                const existingEvent = await Event.findById(workshop.publishedEventId).populate("organizer", "firstName lastName email");
+                if (existingEvent) {
+                    console.log('Workshop already published with existing Event ID:', workshop.publishedEventId);
+                    return res.status(200).json({ 
+                        success: true,
+                        message: `Workshop "${workshop.workshopName}" is already published!`, 
+                        event: existingEvent.toObject({ virtuals: true }) 
+                    });
+                }
+                // If event was deleted but workshop still marked as published, continue to create new event
+                console.log('Published event not found, creating new event for already-published workshop');
+            } catch (err) {
+                console.error('Error checking existing event:', err);
+            }
+        } else if (workshop.status === 'published') {
+            // Workshop is marked as published but has no event ID - should not normally happen
+            console.warn('Workshop marked as published but missing publishedEventId');
+        }
 
         // Create a new Event using the same fields/mapping expected by Event model
         // Map workshop fields to event fields

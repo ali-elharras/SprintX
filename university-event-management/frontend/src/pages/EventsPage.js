@@ -129,7 +129,7 @@ const DetailSectionHeader = ({ title, icon }) => (
   </h4>
 );
 
-const WorkshopCard = ({ workshop, onEdit, onDelete }) => {
+const WorkshopCard = ({ workshop, onEdit, onDelete, isEventsOffice = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isToggleHovered, setIsToggleHovered] = useState(false);
@@ -139,6 +139,10 @@ const WorkshopCard = ({ workshop, onEdit, onDelete }) => {
   // Check if editing is allowed
   const isPublished = workshop.status === 'published';
   const canEdit = !isPublished; // Can only edit if NOT published (pending or needs_revision)
+  
+  // Check if deletion is allowed (Events Office only, published workshops, no attendees)
+  const hasAttendees = workshop.attendees && workshop.attendees > 0;
+  const canDelete = isEventsOffice && isPublished && !hasAttendees;
 
   const getBorderClassKey = (faculty) => {
     switch (faculty) {
@@ -316,23 +320,30 @@ const WorkshopCard = ({ workshop, onEdit, onDelete }) => {
             </button>
           </div>
           
-          <button 
-            style={{ 
-              ...workshopStyleSheet['card-btn-delete-default'],
-              padding: '0.35rem 1rem', fontSize: '0.875rem', fontWeight: 500, 
-              borderRadius: '0.5rem', transition: 'all 0.15s', cursor: 'pointer',
-              border: `1px solid ${themeColors.red600}`, 
-              backgroundColor: isDeleteHovered ? themeColors.red600 : 'transparent',
-              color: isDeleteHovered ? 'white' : themeColors.red600,
-              display: 'flex', alignItems: 'center', gap: '0.25rem'
-            }}
-            onMouseEnter={() => setIsDeleteHovered(true)}
-            onMouseLeave={() => setIsDeleteHovered(false)}
-            onClick={() => onDelete(uniqueId, workshop.workshopName)} 
-          >
-            {WorkshopIconMap.Trash}
-            Delete
-          </button>
+          {/* Delete button - Only visible to Events Office for published workshops with no attendees */}
+          {isEventsOffice && isPublished && (
+            <button 
+              disabled={!canDelete}
+              title={hasAttendees ? "Cannot delete - students are registered" : "Delete workshop"}
+              style={{ 
+                ...workshopStyleSheet['card-btn-delete-default'],
+                padding: '0.35rem 1rem', fontSize: '0.875rem', fontWeight: 500, 
+                borderRadius: '0.5rem', transition: 'all 0.15s', 
+                cursor: canDelete ? 'pointer' : 'not-allowed',
+                border: `1px solid ${canDelete ? themeColors.red600 : '#d1d5db'}`, 
+                backgroundColor: !canDelete ? '#f3f4f6' : (isDeleteHovered ? themeColors.red600 : 'transparent'),
+                color: !canDelete ? '#9ca3af' : (isDeleteHovered ? 'white' : themeColors.red600),
+                display: 'flex', alignItems: 'center', gap: '0.25rem',
+                opacity: !canDelete ? 0.6 : 1,
+              }}
+              onMouseEnter={() => canDelete && setIsDeleteHovered(true)}
+              onMouseLeave={() => setIsDeleteHovered(false)}
+              onClick={() => canDelete && onDelete(uniqueId, workshop.workshopName)} 
+            >
+              {WorkshopIconMap.Trash}
+              Delete
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -347,7 +358,7 @@ const workshopModalStyles = {
     overflow: 'auto',
   },
   container: {
-    background: 'white', borderRadius: '1rem', padding: '2rem', minWidth: '350px', maxWidth: '90vw',
+    background: 'white', borderRadius: '1rem', padding: '2rem', width: '1000px', maxWidth: '98vw',
     maxHeight: '90vh', overflowY: 'auto',
     boxShadow: '0 10px 30px rgba(0,0,0,0.15)', fontFamily: 'Inter, sans-serif',
     display: 'flex', flexDirection: 'column',
@@ -378,11 +389,44 @@ const workshopModalStyles = {
 };
 
 const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
-  const [formData, setFormData] = useState(workshop || {});
+  const [formData, setFormData] = useState(() => {
+    if (!workshop) return {};
+    // Normalize date/time fields to datetime-local format (YYYY-MM-DDTHH:mm)
+    const normalize = (dt) => {
+      if (!dt) return '';
+      const d = new Date(dt);
+      if (isNaN(d.getTime())) return '';
+      return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0,16);
+    };
+    return {
+      ...workshop,
+      startDate: normalize(workshop.startDate),
+      endDate: normalize(workshop.endDate),
+      registrationDeadline: normalize(workshop.registrationDeadline),
+      professors: Array.isArray(workshop.professorsParticipating) ? workshop.professorsParticipating.join(', ') : (workshop.professors || ''),
+    };
+  });
   const [errorMsg, setErrorMsg] = useState('');
   
   useEffect(() => {
-    setFormData(workshop || {});
+    if (!workshop) {
+      setFormData({});
+      setErrorMsg('');
+      return;
+    }
+    const normalize = (dt) => {
+      if (!dt) return '';
+      const d = new Date(dt);
+      if (isNaN(d.getTime())) return '';
+      return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0,16);
+    };
+    setFormData({
+      ...workshop,
+      startDate: normalize(workshop.startDate),
+      endDate: normalize(workshop.endDate),
+      registrationDeadline: normalize(workshop.registrationDeadline),
+      professors: Array.isArray(workshop.professorsParticipating) ? workshop.professorsParticipating.join(', ') : (workshop.professors || ''),
+    });
     setErrorMsg('');
   }, [workshop]);
 
@@ -420,16 +464,30 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
     return true;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
     const changedFields = {};
     Object.keys(formData).forEach((key) => {
-      if (formData[key] !== workshop[key]) {
+      const orig = workshop ? (workshop[key] === undefined ? '' : workshop[key]) : '';
+      if (formData[key] !== orig) {
         changedFields[key] = formData[key];
       }
     });
-    onSubmit(changedFields);
+
+    try {
+      const result = await onSubmit(changedFields);
+      // Expect parent to return { success: true } or { success: false, message }
+      if (result && result.success === false) {
+        setErrorMsg(result.message || 'Failed to update workshop');
+        return;
+      }
+      // Success: parent handles closing and refresh
+    } catch (err) {
+      // If parent throws, show message inside modal
+      const message = err?.message || (err?.data?.message) || 'Failed to update workshop';
+      setErrorMsg(message);
+    }
   };
 
   return (
@@ -481,17 +539,17 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
           <label style={workshopModalStyles.label}>Start Date</label>
           <input
             style={workshopModalStyles.input}
-            type="date"
+            type="datetime-local"
             name="startDate"
-            value={formData.startDate ? formData.startDate.slice(0,10) : ''}
+            value={formData.startDate || ''}
             onChange={handleChange}
           />
           <label style={workshopModalStyles.label}>End Date</label>
           <input
             style={workshopModalStyles.input}
-            type="date"
+            type="datetime-local"
             name="endDate"
-            value={formData.endDate ? formData.endDate.slice(0,10) : ''}
+            value={formData.endDate || ''}
             onChange={handleChange}
           />
           <label style={workshopModalStyles.label}>Faculty Responsible</label>
@@ -939,20 +997,50 @@ const EventsPage = () => {
         updatedFields.status = 'pending';
       }
       
-      await api.patch(`/workshops/${editingWorkshop._id}`, updatedFields);
-      
-      if (editingWorkshop.status === 'needs_revision') {
-        toast.success('✅ Workshop resubmitted successfully! It is now pending approval from the Events Office.');
-      } else {
-        toast.success('Workshop updated successfully!');
+      const resp = await api.patch(`/workshops/${editingWorkshop._id}`, updatedFields);
+
+      if (resp && (resp.status === 200 || resp.data?.success)) {
+        if (editingWorkshop.status === 'needs_revision') {
+          toast.success('✅ Workshop resubmitted successfully! It is now pending approval from the Events Office.');
+        } else {
+          toast.success('Workshop updated successfully!');
+        }
+
+        setEditWorkshopModalOpen(false);
+        setEditingWorkshop(null);
+        fetchEvents();
+        return { success: true };
       }
-      
-      setEditWorkshopModalOpen(false);
-      setEditingWorkshop(null);
-      fetchEvents();
+      // unexpected response
+      return { success: false, message: resp?.data?.message || 'Failed to update workshop' };
     } catch (e) {
-      setWorkshopsError(e.message || 'Failed to update workshop');
-      toast.error(e.message || 'Failed to update workshop');
+      // Map server-side validation or duplicate key to a friendly message
+      const serverData = e.response?.data || e.data || e;
+      let message = e.message || 'Failed to update workshop';
+
+      if (serverData) {
+        if (serverData.code === 11000 || serverData.keyValue) {
+          const key = serverData.keyValue ? Object.keys(serverData.keyValue)[0] : 'workshopName';
+          message = key === 'workshopName' ? 'A workshop with this name already exists.' : serverData.message || message;
+        } else if (serverData.errors) {
+          const firstKey = Object.keys(serverData.errors)[0];
+          message = serverData.errors[firstKey]?.message || serverData.message || message;
+        } else if (typeof serverData === 'string' && serverData.includes('E11000')) {
+          message = 'A workshop with this name already exists.';
+        } else if (serverData.message) {
+          message = serverData.message;
+        }
+      }
+
+      // If the edit modal is open, prefer showing the error inside the modal
+      // (the modal's caller will set its own error from the returned message).
+      // Only set the global page-level error and show a toast when the modal
+      // is not open, to avoid duplicate/out-of-context error displays.
+      if (!editWorkshopModalOpen) {
+        setWorkshopsError(message);
+        toast.error(message);
+      }
+      return { success: false, message };
     } finally {
       setWorkshopsLoading(false);
     }
@@ -1410,6 +1498,7 @@ const EventsPage = () => {
                         workshop={workshop} 
                         onEdit={handleEditWorkshop}
                         onDelete={handleDeleteWorkshop}
+                        isEventsOffice={auth.isEventsOffice}
                       />
                     ))}
                   </div>
@@ -1444,7 +1533,7 @@ const EventsPage = () => {
               <div style={{ display: "grid", gap: theme.spacing[4] }}>
                 {pendingWorkshops.map((w) => (
                   <div
-                    key={w.id}
+                    key={w._id || w.id}
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
@@ -1918,20 +2007,18 @@ const EventsPage = () => {
                     onClick={async () => {
                       const w = publishCandidate;
 
-                      setPendingWorkshops((prev) => prev.filter((p) => p.id !== w.id));
+                      setPendingWorkshops((prev) => prev.filter((p) => p._id !== w._id));
                       
                       try {
                         // Call the backend API to publish the workshop
                         const response = await workshopAPI.publishWorkshop(w._id);
                         
                         if (response.data.success && response.data.event) {
-                          const publishedEvent = response.data.event;
-                          
                           // Remove from pending workshops
                           setPendingWorkshops((prev) => prev.filter((p) => p._id !== w._id));
                           
-                          // Add to events list
-                          setEvents((prev) => [publishedEvent, ...prev]);
+                          // Refresh events list to include the newly published workshop
+                          await fetchEvents();
                           
                           // Show success message with workshop name
                           toast.success(`Workshop "${w.workshopName || w.name || 'successfully'}" published!`);
@@ -2003,7 +2090,7 @@ const EventsPage = () => {
                     onClick={async () => {
                       const w = rejectCandidate;
 
-                      setPendingWorkshops((prev) => prev.filter((p) => p.id !== w.id));
+                      setPendingWorkshops((prev) => prev.filter((p) => p._id !== w._id));
 
                       if (w._id) {
                         try {

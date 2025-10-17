@@ -30,8 +30,8 @@ const optionalProtect = async (req, res, next) => {
 
       // Check if user or vendor based on userType in token
       if (decoded.userType === "vendor") {
-        req.user = await Vendor.findById(decoded.id);
-        if (req.user) {
+        req.vendor = await Vendor.findById(decoded.id);
+        if (req.vendor) {
           req.userType = "vendor";
         }
       } else {
@@ -78,8 +78,8 @@ const protect = async (req, res, next) => {
 
       // Check if user or vendor based on userType in token
       if (decoded.userType === "vendor") {
-        req.user = await Vendor.findById(decoded.id);
-        if (!req.user) {
+        req.vendor = await Vendor.findById(decoded.id);
+        if (!req.vendor) {
           return res.status(401).json({
             success: false,
             message: "Vendor not found",
@@ -158,7 +158,7 @@ const requireApprovedVendor = (req, res, next) => {
     });
   }
 
-  if (req.user.verificationStatus !== "approved") {
+  if (req.vendor.verificationStatus !== "approved") {
     return res.status(403).json({
       success: false,
       message: "Vendor must be approved to access this resource",
@@ -169,7 +169,7 @@ const requireApprovedVendor = (req, res, next) => {
 
 // Check if account is active
 const requireActiveAccount = (req, res, next) => {
-  const account = req.user;
+  const account = req.user || req.vendor;
 
   if (!account.isActive) {
     return res.status(403).json({

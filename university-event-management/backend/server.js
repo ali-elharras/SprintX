@@ -67,8 +67,17 @@ mongoose
   });
 
 // Connection event handlers for better monitoring
-mongoose.connection.on('connected', () => {
+mongoose.connection.on('connected', async () => {
   console.log('📦 Mongoose connected to MongoDB');
+  
+  // Fix Workshop model indexes on connection
+  try {
+    const Workshop = require('./models/Workshop');
+    await Workshop.syncIndexes();
+    console.log('✅ Workshop indexes synced successfully');
+  } catch (indexError) {
+    console.warn('⚠️ Warning syncing Workshop indexes:', indexError.message);
+  }
 });
 
 mongoose.connection.on('error', (err) => {

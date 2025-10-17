@@ -524,10 +524,34 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
         // Only send changed fields
         const changedFields = {};
         Object.keys(formData).forEach((key) => {
-            if (formData[key] !== workshop[key]) {
+            // Handle array comparison (e.g., professorsParticipating)
+            if (Array.isArray(formData[key]) && Array.isArray(workshop[key])) {
+                const formArray = formData[key].filter(Boolean); // Remove empty strings
+                const workshopArray = workshop[key].filter(Boolean);
+                if (JSON.stringify(formArray.sort()) !== JSON.stringify(workshopArray.sort())) {
+                    changedFields[key] = formArray;
+                }
+            }
+            // Handle date comparison (convert both to date strings)
+            else if (key.includes('Date') || key.includes('Deadline')) {
+                const formDate = formData[key] ? new Date(formData[key]).toISOString().slice(0, 10) : '';
+                const workshopDate = workshop[key] ? new Date(workshop[key]).toISOString().slice(0, 10) : '';
+                if (formDate !== workshopDate) {
+                    changedFields[key] = formData[key];
+                }
+            }
+            // Handle regular field comparison
+            else if (formData[key] !== workshop[key]) {
                 changedFields[key] = formData[key];
             }
         });
+        
+        // Always send at least one field to trigger update
+        if (Object.keys(changedFields).length === 0) {
+            setErrorMsg('No changes detected.');
+            return;
+        }
+        
         onSubmit(changedFields);
     };
 
@@ -736,6 +760,9 @@ const Workshops = () => {
     // Modal submit handler
     const handleModalSubmit = async (changedFields) => {
         if (!editingWorkshop || !editingWorkshop._id) return;
+        
+        console.log('Submitting workshop update:', changedFields);
+        
         setIsLoading(true);
         setError(null);
         try {
@@ -758,18 +785,32 @@ const Workshops = () => {
                 headers,
                 body: JSON.stringify(updatedFields),
             });
-            if (!response.ok) throw new Error('Failed to update workshop');
             
-            // Show success message for resubmission
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                const errorMsg = errorData.message || errorData.error || `Server error: ${response.status} ${response.statusText}`;
+                console.error('Update failed with error:', errorData);
+                throw new Error(errorMsg);
+            }
+            
+            const updatedWorkshop = await response.json();
+            console.log('Workshop updated successfully:', updatedWorkshop);
+            
+            // Show success message
             if (editingWorkshop.status === 'needs_revision') {
                 alert('✅ Workshop resubmitted successfully! It is now pending approval from the Events Office.');
+            } else {
+                alert('✅ Workshop updated successfully!');
             }
             
             setEditModalOpen(false);
             setEditingWorkshop(null);
-            fetchWorkshops();
+            await fetchWorkshops();
         } catch (e) {
-            setError(e.message || 'Failed to update workshop');
+            console.error('Failed to update workshop:', e);
+            const errorMessage = e.message || 'Failed to update workshop';
+            setError(errorMessage);
+            alert(`❌ Error: ${errorMessage}`);
         } finally {
             setIsLoading(false);
         }

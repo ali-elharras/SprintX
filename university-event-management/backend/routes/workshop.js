@@ -13,6 +13,9 @@ router.route('/:id')
     .patch(protect, workshopController.updateWorkshop) // Use PATCH for partial updates
     .delete(protect, workshopController.deleteWorkshop);
 
+// Delete a published workshop by its Event ID (for when viewing as event card)
+router.delete('/by-event/:eventId', protect, requireAdminOrEventsOffice, workshopController.deleteWorkshopByEventId);
+
 // Publish a pending workshop into the events collection
 router.post('/:id/publish', protect, requireAdminOrEventsOffice, workshopController.publishWorkshop);
 
