@@ -9,7 +9,7 @@ import { eventAPI } from "../services/api";
 import { applicationServices } from "../services/api";
 import toast from "react-hot-toast";
 
-const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit }) => {
+const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit, onEditTrip }) => {
   // Normalize event/conference object for consistent display
   const normalizedEvent = {
     ...event,
@@ -128,8 +128,27 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   };
 
   const handleEditClick = () => {
+    console.log('Edit button clicked!', { 
+      event: normalizedEvent, 
+      onEdit, 
+      onEditConference,
+      onEditTrip,
+      hasOnEdit: !!onEdit,
+      hasOnEditConference: !!onEditConference,
+      hasOnEditTrip: !!onEditTrip,
+      willCallOnEdit: !onEditConference || normalizedEvent.type !== "conference"
+    });
     if (onEditConference && normalizedEvent.type === "conference") {
+      console.log('Calling onEditConference');
       onEditConference(normalizedEvent);
+    } else if (onEditTrip && normalizedEvent.type === "trip") {
+      console.log('Calling onEditTrip with event:', normalizedEvent);
+      onEditTrip(normalizedEvent);
+    } else if (onEdit) {
+      console.log('Calling onEdit with event:', normalizedEvent);
+      onEdit(normalizedEvent);
+    } else {
+      console.log('ERROR: No edit callback available!');
     }
   };
 
@@ -290,6 +309,20 @@ const confirmDeleteWorkshop = async () => {
   })();
 
   const hasStarted = eventHasStarted(normalizedEvent);
+
+  // Debug logging for trip edit button
+  if (normalizedEvent.type === 'trip') {
+    console.log('Trip Edit Debug:', {
+      type: normalizedEvent.type,
+      isEventsOffice,
+      isOwner,
+      hasStarted,
+      userId: user?.id || user?._id,
+      organizer: normalizedEvent.organizer,
+      createdBy: normalizedEvent.createdBy,
+      showEditButton: isEventsOffice && isOwner && !hasStarted
+    });
+  }
 
   return (
     <>
@@ -675,26 +708,45 @@ const confirmDeleteWorkshop = async () => {
           >
             {isAdmin ? (
               // Admin: show Delete button only when no participants
-              normalizedEvent.currentParticipants === 0 ? (
-                <div style={{ flex: 1 }}>
-                  <Button
-                    variant="danger"
-                    onClick={handleDeleteEvent}
-                    disabled={isDeleting}
-                    title="Delete event (only if no registrations)"
-                    style={{
-                      width: "100%",
-                      minHeight: "44px",
-                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                      whiteSpace: "nowrap",
-                      opacity: isDeleting ? 0.6 : 1,
-                      cursor: isDeleting ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    {isDeleting ? "Deleting..." : "Delete Event"}
-                  </Button>
-                </div>
-              ) : null
+              <>
+                {/* Admin: Edit button for trips/conferences/bazaars */}
+                {!hasStarted && normalizedEvent.type !== 'workshop' && (
+                  <div style={{ flex: 1 }}>
+                    <Button
+                      variant="primary"
+                      onClick={handleEditClick}
+                      style={{
+                        width: "100%",
+                        minHeight: "44px",
+                        padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                )}
+                {normalizedEvent.currentParticipants === 0 && (
+                  <div style={{ flex: 1 }}>
+                    <Button
+                      variant="danger"
+                      onClick={handleDeleteEvent}
+                      disabled={isDeleting}
+                      title="Delete event (only if no registrations)"
+                      style={{
+                        width: "100%",
+                        minHeight: "44px",
+                        padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                        whiteSpace: "nowrap",
+                        opacity: isDeleting ? 0.6 : 1,
+                        cursor: isDeleting ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {isDeleting ? "Deleting..." : "Delete Event"}
+                    </Button>
+                  </div>
+                )}
+              </>
             ) : isEventsOffice ? (
               <>
                 {/* Events Office: Edit shown only for events they own and only if event has NOT started */}
