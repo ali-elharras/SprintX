@@ -728,13 +728,9 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
                 Delete
               </Button>
             </>
-          ) : hasEnded ? (
-            <Button variant="secondary" disabled style={{ width: "100%" }}>
-              Event Ended
-            </Button>
           ) : (
             <Button variant="secondary" disabled style={{ width: "100%" }}>
-              Event Started
+              {hasEnded ? "Event Ended" : "Event Started"}
             </Button>
           )}
         </div>
@@ -2268,6 +2264,7 @@ const EventsPage = () => {
                   <Input
                     label="Start Date *"
                     type="datetime-local"
+                    min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
                     value={bazaarData.startDate}
                     onChange={(e) => {
                       const newStartDate = e.target.value;
