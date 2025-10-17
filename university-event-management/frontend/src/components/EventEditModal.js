@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import toast from 'react-hot-toast';
 import theme from '../theme';
 import { eventAPI } from '../services/api';
 import toast from 'react-hot-toast';
