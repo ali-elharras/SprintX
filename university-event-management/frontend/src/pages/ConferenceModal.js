@@ -267,6 +267,10 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
     }
   };
 
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowString = tomorrow.toISOString().split('T')[0];
+
   if (!isOpen) return null;
 
   return (
@@ -341,6 +345,7 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
                     onChange={handleChange}
                     required
                     disabled={loading}
+                    min={tomorrowString}
                   />
                 </div>
                 <div>
