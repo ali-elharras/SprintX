@@ -9,7 +9,7 @@ import { eventAPI } from "../services/api";
 import { applicationServices } from "../services/api";
 import toast from "react-hot-toast";
 
-const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit, onEditTrip }) => {
+const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit, onEditTrip, onDelete }) => {
   // Normalize event/conference object for consistent display
   const normalizedEvent = {
     ...event,
@@ -28,10 +28,8 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   };
 
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [participatingVendors, setParticipatingVendors] = useState([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const navigate = useNavigate();
   const { isEventsOffice, user, isAdmin } = useAuth();
 
@@ -153,96 +151,35 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   };
 
 const handleDeleteConference = async () => {
-  if (!window.confirm("Are you sure you want to delete this conference? This action cannot be undone.")) {
-    return;
-  }
-
-  try {
-    setIsDeleting(true);
-    await conferenceAPI.deleteConference(normalizedEvent._id);
-    toast.success("Conference deleted successfully!");
-    if (onEventUpdate) {
-      onEventUpdate(); // Refresh the events list
-    }
-  } catch (error) {
-    console.error("Error deleting conference:", error);
-    const errorMessage = error.response?.data?.message || error.message || "Failed to delete conference";
-    toast.error(errorMessage);
-  } finally {
-    setIsDeleting(false);
+  // Call parent delete handler
+  if (onDelete) {
+    onDelete(normalizedEvent);
   }
 };
 
 const handleDeleteWorkshop = async () => {
-  // Check if there are registrations before showing modal
+  // Check if there are registrations before triggering delete
   if (normalizedEvent.currentParticipants > 0) {
     toast.error("This workshop cannot be deleted because there are registered users.");
     return;
   }
 
-  // Show modal instead of browser confirm
-  setShowDeleteModal(true);
-};
-
-const confirmDeleteWorkshop = async () => {
-  setShowDeleteModal(false);
-  
-  try {
-    setIsDeleting(true);
-    // Import workshopAPI at the top and use it here
-    const { workshopAPI } = await import("../services/api");
-    
-    // Published workshops are displayed as Event documents, so we need to delete by Event ID
-    await workshopAPI.deleteWorkshopByEventId(normalizedEvent._id);
-    
-    // Signal other tabs that a workshop was deleted
-    localStorage.setItem('workshop_deleted', Date.now().toString());
-    
-    toast.success("Workshop deleted successfully!");
-    if (onEventUpdate) {
-      onEventUpdate(); // Refresh the events list
-    }
-  } catch (error) {
-    console.error("Error deleting workshop:", error);
-    const errorMessage = error.response?.data?.message || error.message || "Failed to delete workshop";
-    
-    // Show specific error for registered users
-    if (errorMessage.includes('students have already registered')) {
-      toast.error("This workshop cannot be deleted because there are registered users.");
-    } else {
-      toast.error(errorMessage);
-    }
-  } finally {
-    setIsDeleting(false);
+  // Call parent delete handler
+  if (onDelete) {
+    onDelete(normalizedEvent);
   }
 };
 
   const handleDeleteEvent = async () => {
-    if (!window.confirm(`Are you sure you want to delete this ${normalizedEvent.type}? This action cannot be undone.`)) {
+    // Check if there are registrations before triggering delete
+    if (normalizedEvent.currentParticipants > 0) {
+      toast.error("This event cannot be deleted because there are registered participants.");
       return;
     }
 
-    setIsDeleting(true);
-    try {
-      await eventAPI.deleteEvent(normalizedEvent._id);
-      toast.success(`${getEventTypeLabel(normalizedEvent.type)} deleted successfully!`);
-      
-      // Trigger refresh on parent component
-      if (onEventUpdate) {
-        onEventUpdate();
-      }
-    } catch (error) {
-      console.error("Error deleting event:", error);
-      const errorMessage = error.response?.data?.message || error.message || "Failed to delete event";
-      
-      // Check if error is due to registrations
-      if (errorMessage.includes('registration')) {
-        toast.error(errorMessage, { duration: 6000 });
-      } else {
-        toast.error(errorMessage);
-      }
-    } finally {
-      setIsDeleting(false);
+    // Call parent delete handler
+    if (onDelete) {
+      onDelete(normalizedEvent);
     }
   };
 
@@ -716,40 +653,21 @@ const confirmDeleteWorkshop = async () => {
             }}
           >
             {isAdmin ? (
-              // Admin: show Delete button only when no participants
+              // Admin: show Delete button only when no participants (NO EDIT)
               <>
-                {/* Admin: Edit button for trips/conferences/bazaars */}
-                {!hasStarted && normalizedEvent.type !== 'workshop' && (
-                  <Button
-                    variant="primary"
-                    onClick={handleEditClick}
-                    style={{
-                      width: "100%",
-                      minHeight: "44px",
-                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Edit
-                  </Button>
-                )}
                 {normalizedEvent.currentParticipants === 0 && (
                   <Button
                     variant="danger"
                     onClick={handleDeleteEvent}
-                    disabled={isDeleting}
                     title="Delete event (only if no registrations)"
                     style={{
                       width: "100%",
                       minHeight: "44px",
                       padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
                       whiteSpace: "nowrap",
-                      opacity: isDeleting ? 0.6 : 1,
-                      cursor: isDeleting ? "not-allowed" : "pointer",
-                      gridColumn: !hasStarted && normalizedEvent.type !== 'workshop' ? "auto" : "1 / -1",
                     }}
                   >
-                    {isDeleting ? "Deleting..." : "Delete Event"}
+                    Delete Event
                   </Button>
                 )}
               </>
@@ -776,17 +694,15 @@ const confirmDeleteWorkshop = async () => {
                   <Button
                     variant="danger"
                     onClick={handleDeleteEvent}
-                    disabled={isDeleting}
                     style={{
                       width: "100%",
                       minHeight: "44px",
                       padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
                       whiteSpace: "nowrap",
-                      opacity: isDeleting ? 0.6 : 1,
                       gridColumn: isOwner && !hasStarted && normalizedEvent.type !== 'workshop' ? "auto" : "1 / -1",
                     }}
                   >
-                    {isDeleting ? "Deleting..." : "Delete"}
+                    Delete
                   </Button>
                 )}
               </>
@@ -811,111 +727,6 @@ const confirmDeleteWorkshop = async () => {
           </div>
       </div>
 
-      {/* Delete Workshop Confirmation Modal */}
-      {showDeleteModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(0,0,0,0.5)",
-            zIndex: 10000,
-            animation: "fadeIn 0.2s ease-out",
-          }}
-          onClick={() => setShowDeleteModal(false)}
-        >
-          <div
-            style={{
-              width: "480px",
-              maxWidth: "95%",
-              background: theme.colors.background.paper,
-              borderRadius: theme.borderRadius.lg,
-              padding: theme.spacing[6],
-              boxShadow: theme.shadows.xl,
-              animation: "slideUp 0.3s ease-out",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3
-              style={{
-                marginTop: 0,
-                marginBottom: theme.spacing[3],
-                color: theme.colors.error.main,
-                fontSize: theme.typography.fontSize.xl,
-                fontWeight: theme.typography.fontWeight.bold,
-              }}
-            >
-              🗑️ Delete Workshop?
-            </h3>
-            <p
-              style={{
-                color: theme.colors.text.secondary,
-                marginBottom: theme.spacing[2],
-                lineHeight: 1.6,
-                fontSize: theme.typography.fontSize.base,
-              }}
-            >
-              Are you sure you want to permanently delete this workshop?
-            </p>
-            <p
-              style={{
-                color: theme.colors.text.primary,
-                marginBottom: theme.spacing[4],
-                fontWeight: theme.typography.fontWeight.semibold,
-                fontSize: theme.typography.fontSize.lg,
-                padding: theme.spacing[3],
-                background: theme.colors.neutral.gray50,
-                borderRadius: theme.borderRadius.base,
-                borderLeft: `4px solid ${theme.colors.error.main}`,
-              }}
-            >
-              "{normalizedEvent.title}"
-            </p>
-            <p
-              style={{
-                color: theme.colors.text.secondary,
-                marginBottom: theme.spacing[5],
-                fontSize: theme.typography.fontSize.sm,
-              }}
-            >
-              <strong>⚠️ Warning:</strong> This action cannot be undone. The workshop will be completely removed from the system.
-            </p>
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: theme.spacing[3],
-              }}
-            >
-              <Button
-                variant="outline"
-                onClick={() => setShowDeleteModal(false)}
-                style={{
-                  minWidth: "100px",
-                  padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                onClick={confirmDeleteWorkshop}
-                style={{
-                  minWidth: "100px",
-                  padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
-                }}
-              >
-                Delete Workshop
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
     </>
   );

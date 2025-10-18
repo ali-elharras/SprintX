@@ -804,6 +804,13 @@ const EventsPage = () => {
   const [editTripOpen, setEditTripOpen] = useState(false);
   const [editingTrip, setEditingTrip] = useState(null);
 
+  // Bazaar delete state
+  const [deleteBazaarCandidate, setDeleteBazaarCandidate] = useState(null);
+
+  // General event delete state
+  const [deleteEventCandidate, setDeleteEventCandidate] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const fetchEvents = async () => {
     if (cancelTokenRef.current) {
       cancelTokenRef.current.cancel('Operation cancelled due to new request');
@@ -1131,16 +1138,58 @@ const EventsPage = () => {
   };
 
   const handleDeleteBazaar = async (bazaarId) => {
-    if (!window.confirm("Are you sure you want to permanently delete this bazaar?")) {
-      return;
-    }
+    setDeleteBazaarCandidate(bazaarId);
+  };
+
+  const confirmDeleteBazaar = async () => {
+    if (!deleteBazaarCandidate) return;
+    
     try {
-      await api.delete(`/bazaars/${bazaarId}`);
+      await api.delete(`/bazaars/${deleteBazaarCandidate}`);
       toast.success("Bazaar deleted successfully");
+      setDeleteBazaarCandidate(null);
       fetchEvents();
     } catch (error) {
       console.error("Failed to delete bazaar:", error);
       toast.error(error.response?.data?.message || "Failed to delete bazaar.");
+      setDeleteBazaarCandidate(null);
+    }
+  };
+
+  const handleDeleteEvent = (event) => {
+    setDeleteEventCandidate(event);
+  };
+
+  const confirmDeleteEvent = async () => {
+    if (!deleteEventCandidate) return;
+    
+    setIsDeleting(true);
+    try {
+      // Handle different event types
+      if (deleteEventCandidate.type === 'workshop') {
+        const { workshopAPI } = await import("../services/api");
+        await workshopAPI.deleteWorkshopByEventId(deleteEventCandidate._id);
+        localStorage.setItem('workshop_deleted', Date.now().toString());
+      } else {
+        await eventAPI.deleteEvent(deleteEventCandidate._id);
+      }
+      
+      const eventTypeLabel = deleteEventCandidate.type.charAt(0).toUpperCase() + deleteEventCandidate.type.slice(1);
+      toast.success(`${eventTypeLabel} deleted successfully!`);
+      setDeleteEventCandidate(null);
+      fetchEvents();
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Failed to delete event";
+      
+      if (errorMessage.includes('registration') || errorMessage.includes('students have already registered')) {
+        toast.error(errorMessage, { duration: 6000 });
+      } else {
+        toast.error(errorMessage);
+      }
+      setDeleteEventCandidate(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1816,6 +1865,7 @@ const EventsPage = () => {
                       setShowConferenceModal(true);
                     }}
                     onEditTrip={handleEditTrip}
+                    onDelete={handleDeleteEvent}
                   />
                 );
               })}
@@ -2193,6 +2243,206 @@ const EventsPage = () => {
                     onClick={confirmDeleteWorkshop}
                   >
                     Delete Workshop
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Bazaar Confirmation Modal */}
+          {deleteBazaarCandidate && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              style={{
+                position: "fixed",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(0,0,0,0.5)",
+                zIndex: 10000,
+                animation: "fadeIn 0.2s ease-out",
+              }}
+              onClick={() => setDeleteBazaarCandidate(null)}
+            >
+              <div
+                style={{
+                  width: "480px",
+                  maxWidth: "95%",
+                  background: theme.colors.background.paper,
+                  borderRadius: theme.borderRadius.lg,
+                  padding: theme.spacing[6],
+                  boxShadow: theme.shadows.xl,
+                  animation: "slideUp 0.3s ease-out",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3
+                  style={{
+                    marginTop: 0,
+                    marginBottom: theme.spacing[3],
+                    color: theme.colors.error.main,
+                    fontSize: theme.typography.fontSize.xl,
+                    fontWeight: theme.typography.fontWeight.bold,
+                  }}
+                >
+                  🗑️ Delete Bazaar?
+                </h3>
+                <p
+                  style={{
+                    color: theme.colors.text.secondary,
+                    marginBottom: theme.spacing[4],
+                    lineHeight: 1.6,
+                    fontSize: theme.typography.fontSize.base,
+                  }}
+                >
+                  Are you sure you want to permanently delete this bazaar?
+                </p>
+                <p
+                  style={{
+                    color: theme.colors.text.secondary,
+                    marginBottom: theme.spacing[5],
+                    fontSize: theme.typography.fontSize.sm,
+                  }}
+                >
+                  <strong>⚠️ Warning:</strong> This action cannot be undone. The bazaar will be completely removed from the system.
+                </p>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    gap: theme.spacing[3],
+                  }}
+                >
+                  <Button
+                    variant="outline"
+                    onClick={() => setDeleteBazaarCandidate(null)}
+                    style={{
+                      minWidth: "100px",
+                      padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="danger"
+                    onClick={confirmDeleteBazaar}
+                    style={{
+                      minWidth: "100px",
+                      padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+                    }}
+                  >
+                    Delete Bazaar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Event Confirmation Modal (General) */}
+          {deleteEventCandidate && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              style={{
+                position: "fixed",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(0,0,0,0.5)",
+                zIndex: 10000,
+                animation: "fadeIn 0.2s ease-out",
+              }}
+              onClick={() => !isDeleting && setDeleteEventCandidate(null)}
+            >
+              <div
+                style={{
+                  width: "480px",
+                  maxWidth: "95%",
+                  background: theme.colors.background.paper,
+                  borderRadius: theme.borderRadius.lg,
+                  padding: theme.spacing[6],
+                  boxShadow: theme.shadows.xl,
+                  animation: "slideUp 0.3s ease-out",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3
+                  style={{
+                    marginTop: 0,
+                    marginBottom: theme.spacing[3],
+                    color: theme.colors.error.main,
+                    fontSize: theme.typography.fontSize.xl,
+                    fontWeight: theme.typography.fontWeight.bold,
+                  }}
+                >
+                  🗑️ Delete {deleteEventCandidate.type?.charAt(0).toUpperCase() + deleteEventCandidate.type?.slice(1)}?
+                </h3>
+                <p
+                  style={{
+                    color: theme.colors.text.secondary,
+                    marginBottom: theme.spacing[2],
+                    lineHeight: 1.6,
+                    fontSize: theme.typography.fontSize.base,
+                  }}
+                >
+                  Are you sure you want to permanently delete this {deleteEventCandidate.type}?
+                </p>
+                <p
+                  style={{
+                    color: theme.colors.text.primary,
+                    marginBottom: theme.spacing[4],
+                    fontWeight: theme.typography.fontWeight.semibold,
+                    fontSize: theme.typography.fontSize.lg,
+                    padding: theme.spacing[3],
+                    background: theme.colors.neutral.gray50,
+                    borderRadius: theme.borderRadius.base,
+                    borderLeft: `4px solid ${theme.colors.error.main}`,
+                  }}
+                >
+                  "{deleteEventCandidate.title || deleteEventCandidate.name}"
+                </p>
+                <p
+                  style={{
+                    color: theme.colors.text.secondary,
+                    marginBottom: theme.spacing[5],
+                    fontSize: theme.typography.fontSize.sm,
+                  }}
+                >
+                  <strong>⚠️ Warning:</strong> This action cannot be undone. The {deleteEventCandidate.type} will be completely removed from the system.
+                </p>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    gap: theme.spacing[3],
+                  }}
+                >
+                  <Button
+                    variant="outline"
+                    onClick={() => setDeleteEventCandidate(null)}
+                    disabled={isDeleting}
+                    style={{
+                      minWidth: "100px",
+                      padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="danger"
+                    onClick={confirmDeleteEvent}
+                    disabled={isDeleting}
+                    style={{
+                      minWidth: "100px",
+                      padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+                    }}
+                  >
+                    {isDeleting ? "Deleting..." : `Delete ${deleteEventCandidate.type?.charAt(0).toUpperCase() + deleteEventCandidate.type?.slice(1)}`}
                   </Button>
                 </div>
               </div>
