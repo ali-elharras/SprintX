@@ -9,7 +9,7 @@ import Select from "../components/Select";
 import Navbar from "../components/Navbar";
 import ConferenceModal from "./ConferenceModal";
 import LoadingScreen from "../components/LoadingScreen";
-import api, { eventAPI, workshopAPI, createCancelTokenSource } from "../services/api";
+import api, { eventAPI, workshopAPI, createCancelTokenSource, applicationServices } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 import CreateDropdownButton from '../components/CreateDropdownButton';
@@ -637,6 +637,28 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
 };
 
 const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
+  const [participatingVendors, setParticipatingVendors] = useState([]);
+  const [vendorsLoading, setVendorsLoading] = useState(false);
+
+  // Fetch participating vendors
+  useEffect(() => {
+    const fetchVendors = async () => {
+      if (bazaar._id) {
+        setVendorsLoading(true);
+        try {
+          const response = await applicationServices.getApprovedVendorsForBazaar(bazaar._id);
+          setParticipatingVendors(response.data || []);
+        } catch (error) {
+          console.error('Error fetching vendors for bazaar management card:', error);
+          setParticipatingVendors([]);
+        } finally {
+          setVendorsLoading(false);
+        }
+      }
+    };
+    fetchVendors();
+  }, [bazaar._id]);
+
   const cardStyle = {
     background: theme.colors.background.paper,
     borderRadius: theme.borderRadius.card,
@@ -699,6 +721,99 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
           <p style={{ color: theme.colors.text.primary, marginTop: theme.spacing[4], fontSize: theme.typography.fontSize.base, maxHeight: "100px", overflow: "hidden", textOverflow: "ellipsis" }}>
             {bazaar.description}
           </p>
+
+          {/* Participating Vendors Section */}
+          <div
+            style={{
+              background: theme.colors.neutral.gray50,
+              padding: theme.spacing[3],
+              borderRadius: theme.borderRadius.base,
+              marginTop: theme.spacing[4],
+              border: `1px solid ${theme.colors.border}`,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: theme.spacing[2],
+                marginBottom: theme.spacing[2],
+              }}
+            >
+              <span style={{ fontSize: theme.typography.fontSize.base }}>🏪</span>
+              <h4
+                style={{
+                  margin: 0,
+                  fontSize: theme.typography.fontSize.sm,
+                  fontWeight: theme.typography.fontWeight.semibold,
+                  color: theme.colors.text.primary,
+                }}
+              >
+                Participating Vendors ({participatingVendors.length})
+              </h4>
+            </div>
+            {vendorsLoading ? (
+              <p style={{ 
+                fontSize: theme.typography.fontSize.xs, 
+                color: theme.colors.text.secondary,
+                margin: 0 
+              }}>
+                Loading vendors...
+              </p>
+            ) : participatingVendors.length > 0 ? (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: theme.spacing[2],
+                }}
+              >
+                {participatingVendors.slice(0, 5).map((vendor) => (
+                  <div
+                    key={vendor._id}
+                    style={{
+                      background: theme.colors.background.paper,
+                      border: `1px solid ${theme.colors.border}`,
+                      borderRadius: theme.borderRadius.sm,
+                      padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+                      fontSize: theme.typography.fontSize.xs,
+                      fontWeight: theme.typography.fontWeight.medium,
+                      color: theme.colors.text.primary,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: theme.spacing[1],
+                    }}
+                  >
+                    <span style={{ fontSize: "0.8em" }}>🏢</span>
+                    {vendor.companyName}
+                  </div>
+                ))}
+                {participatingVendors.length > 5 && (
+                  <div
+                    style={{
+                      background: theme.colors.primary.main,
+                      color: theme.colors.text.white,
+                      borderRadius: theme.borderRadius.sm,
+                      padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+                      fontSize: theme.typography.fontSize.xs,
+                      fontWeight: theme.typography.fontWeight.semibold,
+                    }}
+                  >
+                    +{participatingVendors.length - 5} more
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p style={{ 
+                fontSize: theme.typography.fontSize.xs, 
+                color: theme.colors.text.secondary,
+                margin: 0,
+                fontStyle: 'italic'
+              }}>
+                No vendors have been approved yet
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -713,7 +828,7 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
           borderTop: `1px solid ${theme.colors.border}`,
           paddingTop: theme.spacing[4] 
         }}>
-          <span>Participants</span>
+          <span>Vendors</span>
           <span style={{ fontWeight: "bold" }}>
             {bazaar.currentParticipants} / {bazaar.maxParticipants}
           </span>

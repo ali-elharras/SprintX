@@ -27,6 +27,18 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
     endDate: event.endDate || event.startDate || event.date || new Date().toISOString(),
   };
 
+  // Debug logging for bazaars
+  if (normalizedEvent.type === 'bazaar') {
+    console.log('Bazaar EventCard Data:', {
+      title: normalizedEvent.title,
+      type: normalizedEvent.type,
+      registrationRequired: normalizedEvent.registrationRequired,
+      currentParticipants: normalizedEvent.currentParticipants,
+      maxParticipants: normalizedEvent.maxParticipants,
+      showParticipants: normalizedEvent.registrationRequired || normalizedEvent.type === 'bazaar'
+    });
+  }
+
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [participatingVendors, setParticipatingVendors] = useState([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
@@ -193,23 +205,30 @@ const handleDeleteWorkshop = async () => {
   // Fetch participating vendors for bazaar events
   useEffect(() => {
     const fetchParticipatingVendors = async () => {
-      if (event.type === 'bazaar' && event._id) {
+      if (normalizedEvent.type === 'bazaar' && normalizedEvent._id) {
         setVendorsLoading(true);
         try {
-          const response = await applicationServices.getApprovedVendorsForBazaar(event._id);
+          console.log('Fetching vendors for bazaar:', normalizedEvent._id, 'Type:', normalizedEvent.type);
+          const response = await applicationServices.getApprovedVendorsForBazaar(normalizedEvent._id);
+          console.log('Vendors response:', response);
+          console.log('Vendors data:', response.data);
+          console.log('Setting vendors:', response.data || []);
           setParticipatingVendors(response.data || []);
         } catch (error) {
           console.error('Error fetching participating vendors:', error);
+          console.error('Error details:', error.response?.data);
           // Don't show error toast for this - it's not critical for event display
           setParticipatingVendors([]);
         } finally {
           setVendorsLoading(false);
         }
+      } else {
+        console.log('Not fetching vendors - Type:', normalizedEvent.type, 'ID:', normalizedEvent._id);
       }
     };
 
     fetchParticipatingVendors();
-  }, [event.type, event._id]);
+  }, [normalizedEvent.type, normalizedEvent._id]);
 
   if (showRegistrationForm) {
     return (
@@ -424,7 +443,7 @@ const handleDeleteWorkshop = async () => {
         </p>
 
         {/* Participating Vendors Section - Only for Bazaars */}
-        {event.type === 'bazaar' && participatingVendors.length > 0 && (
+        {normalizedEvent.type === 'bazaar' && (
           <div
             style={{
               background: theme.colors.neutral.gray50,
@@ -454,51 +473,70 @@ const handleDeleteWorkshop = async () => {
                 Participating Vendors ({participatingVendors.length})
               </h4>
             </div>
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: theme.spacing[2],
-              }}
-            >
-              {participatingVendors.slice(0, 5).map((vendor) => (
-                <div
-                  key={vendor._id}
-                  style={{
-                    background: theme.colors.background.paper,
-                    border: `1px solid ${theme.colors.border}`,
-                    borderRadius: theme.borderRadius.sm,
-                    padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
-                    fontSize: theme.typography.fontSize.sm,
-                    fontWeight: theme.typography.fontWeight.medium,
-                    color: theme.colors.text.primary,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: theme.spacing[1],
-                  }}
-                >
-                  <span style={{ fontSize: "0.9em" }}>🏢</span>
-                  {vendor.companyName}
-                </div>
-              ))}
-              {participatingVendors.length > 5 && (
-                <div
-                  style={{
-                    background: theme.colors.primary.main,
-                    color: theme.colors.text.white,
-                    border: `1px solid ${theme.colors.primary.dark}`,
-                    borderRadius: theme.borderRadius.sm,
-                    padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
-                    fontSize: theme.typography.fontSize.sm,
-                    fontWeight: theme.typography.fontWeight.semibold,
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                >
-                  +{participatingVendors.length - 5} more
-                </div>
-              )}
-            </div>
+            {vendorsLoading ? (
+              <p style={{ 
+                fontSize: theme.typography.fontSize.sm, 
+                color: theme.colors.text.secondary,
+                margin: 0 
+              }}>
+                Loading vendors...
+              </p>
+            ) : participatingVendors.length > 0 ? (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: theme.spacing[2],
+                }}
+              >
+                {participatingVendors.slice(0, 5).map((vendor) => (
+                  <div
+                    key={vendor._id}
+                    style={{
+                      background: theme.colors.background.paper,
+                      border: `1px solid ${theme.colors.border}`,
+                      borderRadius: theme.borderRadius.sm,
+                      padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
+                      fontSize: theme.typography.fontSize.sm,
+                      fontWeight: theme.typography.fontWeight.medium,
+                      color: theme.colors.text.primary,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: theme.spacing[1],
+                    }}
+                  >
+                    <span style={{ fontSize: "0.9em" }}>🏢</span>
+                    {vendor.companyName}
+                  </div>
+                ))}
+                {participatingVendors.length > 5 && (
+                  <div
+                    style={{
+                      background: theme.colors.primary.main,
+                      color: theme.colors.text.white,
+                      border: `1px solid ${theme.colors.primary.dark}`,
+                      borderRadius: theme.borderRadius.sm,
+                      padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
+                      fontSize: theme.typography.fontSize.sm,
+                      fontWeight: theme.typography.fontWeight.semibold,
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    +{participatingVendors.length - 5} more
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p style={{ 
+                fontSize: theme.typography.fontSize.sm, 
+                color: theme.colors.text.secondary,
+                margin: 0,
+                fontStyle: 'italic'
+              }}>
+                No vendors have been approved yet
+              </p>
+            )}
           </div>
         )}
 
@@ -521,7 +559,7 @@ const handleDeleteWorkshop = async () => {
         )}
 
         {/* Registration Info */}
-        {normalizedEvent.registrationRequired && (
+        {(normalizedEvent.registrationRequired || normalizedEvent.type === 'bazaar') && (
           <div
             style={{
               background: theme.colors.neutral.gray50,
@@ -544,7 +582,7 @@ const handleDeleteWorkshop = async () => {
                   color: theme.colors.text.secondary,
                 }}
               >
-                Participants
+                {normalizedEvent.type === 'bazaar' ? 'Vendors' : 'Participants'}
               </span>
               <span
                 style={{
