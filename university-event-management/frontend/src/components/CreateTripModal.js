@@ -29,6 +29,10 @@ const CreateTripModal = ({ open, onClose, onCreated, currentUser }) => {
   const [serverMessages, setServerMessages] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowString = tomorrow.toISOString().slice(0, 16);
+
   useEffect(()=>{
     if (!open) setForm({ name: '', description: '', location: '', cost: 0, startDate: '', endDate: '', maxParticipants: 1, registrationDeadline: '' });
     // clear server messages/errors when modal opens/closes
@@ -167,7 +171,7 @@ const CreateTripModal = ({ open, onClose, onCreated, currentUser }) => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing[3] }}>
             <div>
               <label style={modalStyles.label}>Start (local)</label>
-              <input type="datetime-local" style={modalStyles.input} value={form.startDate} onChange={(e)=>setForm(f=>({...f,startDate:e.target.value}))} />
+              <input type="datetime-local" style={modalStyles.input} value={form.startDate} min={tomorrowString} onChange={(e)=>setForm(f=>({...f,startDate:e.target.value}))} />
               {errors.startDate && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.startDate}</div>}
             </div>
             <div>
