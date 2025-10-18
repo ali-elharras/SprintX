@@ -839,9 +839,11 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
               <Button variant="primary" onClick={() => onEdit(bazaar)} style={{ flex: 1 }}>
                 Edit
               </Button>
-              <Button variant="danger" onClick={() => onDelete(bazaar._id)} style={{ flex: 1 }}>
-                Delete
-              </Button>
+              {!vendorsLoading && participatingVendors.length === 0 && (
+                <Button variant="danger" onClick={() => onDelete(bazaar._id)} style={{ flex: 1 }}>
+                  Delete
+                </Button>
+              )}
             </>
           ) : (
             <Button variant="secondary" disabled style={{ width: "100%" }}>
