@@ -4,6 +4,16 @@ import Navbar from '../components/Navbar';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+// Helper functions to get tomorrow's date in local time
+const getTomorrowDateString = () => {
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const year = tomorrow.getFullYear();
+    const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const day = String(tomorrow.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 // --- STYLES as a JavaScript Object (Centralized Styles) ---
 const themeColors = {
     indigo600: '#4f46e5',
@@ -607,6 +617,7 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
                         type="date"
                         name="startDate"
                         value={formData.startDate ? formData.startDate.slice(0,10) : ''}
+                        min={getTomorrowDateString()}
                         onChange={handleChange}
                     />
                     <label style={modalStyles.label}>End Date</label>
@@ -615,6 +626,7 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
                         type="date"
                         name="endDate"
                         value={formData.endDate ? formData.endDate.slice(0,10) : ''}
+                        min={formData.startDate ? formData.startDate.slice(0,10) : getTomorrowDateString()}
                         onChange={handleChange}
                     />
                     <label style={modalStyles.label}>Faculty Responsible</label>

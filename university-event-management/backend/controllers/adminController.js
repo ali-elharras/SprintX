@@ -103,18 +103,18 @@ const deleteAdminOrEventOffice = async (req, res) => {
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Check if user is admin or event office
-    if (user.role !== "admin" && user.role !== "event_office") {
+    // Check if user is admin or events office (note: it's "events_office" in the DB)
+    if (user.role !== "admin" && user.role !== "events_office") {
       return res
         .status(400)
-        .json({ message: "User is not an admin or event office" });
+        .json({ message: "User is not an admin or events office" });
     }
 
     // Delete the account
     await User.findByIdAndDelete(id);
     res
       .status(200)
-      .json({ message: "Admin/Event Office account deleted successfully" });
+      .json({ message: "Admin/Events Office account deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }

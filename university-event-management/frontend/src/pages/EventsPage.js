@@ -16,6 +16,27 @@ import CreateDropdownButton from '../components/CreateDropdownButton';
 import CreateTripModal from '../components/CreateTripModal';
 import EventEditModal from '../components/EventEditModal';
 
+// Helper function to get tomorrow's date string in local time (not UTC)
+const getTomorrowDateTimeString = () => {
+  const now = new Date();
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const year = tomorrow.getFullYear();
+  const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+  const day = String(tomorrow.getDate()).padStart(2, '0');
+  const hours = String(tomorrow.getHours()).padStart(2, '0');
+  const minutes = String(tomorrow.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const getTomorrowDateString = () => {
+  const now = new Date();
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const year = tomorrow.getFullYear();
+  const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+  const day = String(tomorrow.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // Workshop Components and Styles (from Workshops.js)
 const themeColors = {
   indigo600: '#4f46e5',
@@ -543,6 +564,7 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
             type="datetime-local"
             name="startDate"
             value={formData.startDate || ''}
+            min={getTomorrowDateTimeString()}
             onChange={handleChange}
           />
           <label style={workshopModalStyles.label}>End Date</label>
@@ -551,6 +573,7 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
             type="datetime-local"
             name="endDate"
             value={formData.endDate || ''}
+            min={formData.startDate || getTomorrowDateTimeString()}
             onChange={handleChange}
           />
           <label style={workshopModalStyles.label}>Faculty Responsible</label>
@@ -595,6 +618,8 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
             type="date"
             name="registrationDeadline"
             value={formData.registrationDeadline ? formData.registrationDeadline.slice(0,10) : ''}
+            min={getTomorrowDateString()}
+            max={formData.startDate ? formData.startDate.slice(0,10) : undefined}
             onChange={handleChange}
           />
           <label style={workshopModalStyles.label}>Extra Required Resources</label>
@@ -1076,6 +1101,10 @@ const EventsPage = () => {
   const applyFilters = () => {
     let filtered = [...events];
     
+    console.log("Applying filters to events:", events.length, "events");
+    console.log("Filters:", filters);
+    console.log("Event types:", events.map(e => ({ type: e.type, title: e.title || e.name, startDate: e.startDate })));
+    
     if (filters.type) {
       filtered = filtered.filter((e) => e.type === filters.type);
     }
@@ -1127,6 +1156,9 @@ const EventsPage = () => {
         return false;
       });
     }
+    
+    console.log("After all filters applied:", filtered.length, "events");
+    console.log("Filtered events:", filtered.map(e => ({ type: e.type, title: e.title || e.name, startDate: e.startDate })));
     
     setFilteredEvents(filtered);
   };
@@ -1486,6 +1518,7 @@ const EventsPage = () => {
                 label="Start Date *"
                 type="datetime-local"
                 value={editBazaarData.startDate}
+                min={getTomorrowDateTimeString()}
                 onChange={(e) => {
                   const newStartDate = e.target.value;
                   const updatedData = {
@@ -1506,7 +1539,7 @@ const EventsPage = () => {
                 label="End Date *"
                 type="datetime-local"
                 value={editBazaarData.endDate}
-                min={editBazaarData.startDate}
+                min={editBazaarData.startDate || getTomorrowDateTimeString()}
                 onChange={(e) =>
                   setEditBazaarData({ ...editBazaarData, endDate: e.target.value })
                 }
@@ -1542,6 +1575,7 @@ const EventsPage = () => {
                 label="Registration Deadline *"
                 type="datetime-local"
                 value={editBazaarData.registrationDeadline}
+                min={getTomorrowDateTimeString()}
                 max={editBazaarData.startDate}
                 onChange={(e) =>
                   setEditBazaarData({
@@ -2633,7 +2667,7 @@ const EventsPage = () => {
                   <Input
                     label="Start Date *"
                     type="datetime-local"
-                    min={new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().slice(0, 10) + "T00:00"}
+                    min={getTomorrowDateTimeString()}
                     value={bazaarData.startDate}
                     onChange={(e) => {
                       const newStartDate = e.target.value;
@@ -2657,7 +2691,7 @@ const EventsPage = () => {
                     label="End Date *"
                     type="datetime-local"
                     value={bazaarData.endDate}
-                    min={bazaarData.startDate}
+                    min={bazaarData.startDate || getTomorrowDateTimeString()}
                     onChange={(e) => setBazaarData({ ...bazaarData, endDate: e.target.value })}
                   />
                 </div>
@@ -2679,6 +2713,7 @@ const EventsPage = () => {
                     label="Registration Deadline *"
                     type="datetime-local"
                     value={bazaarData.registrationDeadline}
+                    min={getTomorrowDateTimeString()}
                     max={bazaarData.startDate}
                     onChange={(e) => setBazaarData({ ...bazaarData, registrationDeadline: e.target.value })}
                   />
@@ -2750,8 +2785,8 @@ const EventsPage = () => {
             setEditingConference(null);
           }}
           conference={editingConference}
-          onSuccess={() => {
-            fetchEvents();
+          onSuccess={async () => {
+            await fetchEvents();
             setEditingConference(null);
           }}
         />

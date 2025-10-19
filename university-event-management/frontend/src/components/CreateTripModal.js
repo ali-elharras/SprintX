@@ -29,9 +29,28 @@ const CreateTripModal = ({ open, onClose, onCreated, currentUser }) => {
   const [serverMessages, setServerMessages] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowString = tomorrow.toISOString().slice(0, 16);
+  // Calculate tomorrow's date (minimum allowed date)
+  // Using local time to avoid timezone issues
+  const getTomorrow = () => {
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    return tomorrow;
+  };
+  
+  const formatDateTimeLocal = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+  
+  const tomorrow = getTomorrow();
+  const tomorrowString = formatDateTimeLocal(tomorrow);
+  
+  console.log('CreateTripModal - Today:', formatDateTimeLocal(new Date()));
+  console.log('CreateTripModal - Tomorrow (min):', tomorrowString);
 
   useEffect(()=>{
     if (!open) setForm({ name: '', description: '', location: '', cost: 0, startDate: '', endDate: '', maxParticipants: 1, registrationDeadline: '' });
@@ -42,15 +61,25 @@ const CreateTripModal = ({ open, onClose, onCreated, currentUser }) => {
 
   if (!open) return null;
 
+  // Compute the minimum end date: it should be the start date if set, otherwise tomorrow
+  const minEndDate = form.startDate || tomorrowString;
+  // Compute the maximum registration deadline: it should be before the start date
+  const maxRegistrationDate = form.startDate || undefined;
+
   const validate = () => {
     const e = {};
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
     if (!form.name || form.name.trim().length === 0) e.name = 'Trip name is required';
     if (!form.description || form.description.trim().length === 0) e.description = 'Short description is required';
     if (!form.location || form.location.trim().length === 0) e.location = 'Location is required';
     if (!form.startDate) e.startDate = 'Start date and time required';
+    else if (new Date(form.startDate) < tomorrow) e.startDate = 'Start date must be at least tomorrow';
     if (!form.endDate) e.endDate = 'End date and time required';
     if (form.startDate && form.endDate && new Date(form.endDate) < new Date(form.startDate)) e.endDate = 'End must be after start';
     if (!form.registrationDeadline) e.registrationDeadline = 'Registration deadline required';
+    else if (new Date(form.registrationDeadline) < tomorrow) e.registrationDeadline = 'Registration deadline must be at least tomorrow';
     if (form.registrationDeadline && form.startDate && new Date(form.registrationDeadline) >= new Date(form.startDate)) e.registrationDeadline = 'Registration deadline must be before the trip start';
     if (!form.maxParticipants || Number(form.maxParticipants) < 1) e.maxParticipants = 'Capacity must be at least 1';
     setErrors(e);
@@ -176,13 +205,13 @@ const CreateTripModal = ({ open, onClose, onCreated, currentUser }) => {
             </div>
             <div>
               <label style={modalStyles.label}>End (local)</label>
-              <input type="datetime-local" style={modalStyles.input} value={form.endDate} onChange={(e)=>setForm(f=>({...f,endDate:e.target.value}))} />
+              <input type="datetime-local" style={modalStyles.input} value={form.endDate} min={minEndDate} onChange={(e)=>setForm(f=>({...f,endDate:e.target.value}))} />
               {errors.endDate && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.endDate}</div>}
             </div>
           </div>
 
           <label style={modalStyles.label}>Registration deadline</label>
-          <input type="datetime-local" style={modalStyles.input} value={form.registrationDeadline} onChange={(e)=>setForm(f=>({...f,registrationDeadline:e.target.value}))} />
+          <input type="datetime-local" style={modalStyles.input} value={form.registrationDeadline} min={tomorrowString} max={maxRegistrationDate} onChange={(e)=>setForm(f=>({...f,registrationDeadline:e.target.value}))} />
           {errors.registrationDeadline && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.registrationDeadline}</div>}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing[3] }}>
