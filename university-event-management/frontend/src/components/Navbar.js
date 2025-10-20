@@ -530,7 +530,7 @@ const Navbar = () => {
               Events
             </button>
 
-            {user.role !== "events_office" && (
+            {user.role == "student" && (
               <button
                 onClick={() => navigate("/courts")}
                 style={{
