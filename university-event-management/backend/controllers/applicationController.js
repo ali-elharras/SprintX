@@ -1,6 +1,7 @@
 const BazaarApplication = require("../models/BazaarApplication");
 const BoothApplication = require("../models/BoothApplication");
 const Event = require("../models/Event");
+const { uploadImage } = require("../utils/imageKitUploader"); // Import ImageKit uploader
 
 // @desc    Apply to a bazaar
 // @route   POST /api/applications/bazaar/:bazaarId
@@ -8,8 +9,22 @@ const Event = require("../models/Event");
 const applyToBazaar = async (req, res, next) => {
   try {
     const { bazaarId } = req.params;
-    const { attendees, boothSize } = req.body;
+    let { attendees, boothSize } = req.body; // Use let to allow modification
     const vendorId = req.vendor._id;
+
+    // Process attendees for ID proof uploads
+    const processedAttendees = [];
+    for (const attendee of attendees) {
+      if (attendee.idProofBase64) {
+        const fileName = `id_proof_${vendorId}_${attendee.name.replace(/\s/g, '_')}_${Date.now()}`;
+        const folderName = `applications/bazaar/${bazaarId}/id_proofs`;
+        const imageUrl = await uploadImage(attendee.idProofBase64, fileName, folderName);
+        processedAttendees.push({ ...attendee, idProofImageUrl: imageUrl });
+      } else {
+        processedAttendees.push(attendee);
+      }
+    }
+    attendees = processedAttendees.map(({ idProofBase64, ...rest }) => rest); // Remove base64 from object
 
     // Check if the bazaar exists and is upcoming
     const bazaar = await Event.findById(bazaarId);
@@ -65,8 +80,22 @@ const applyToBazaar = async (req, res, next) => {
 // @access  Private (Vendor)
 const applyForBooth = async (req, res, next) => {
   try {
-    const { attendees, startDate, endDate, durationWeeks, location, boothSize } = req.body;
+    let { attendees, startDate, endDate, durationWeeks, location, boothSize } = req.body; // Use let to allow modification
     const vendorId = req.vendor._id;
+
+    // Process attendees for ID proof uploads
+    const processedAttendees = [];
+    for (const attendee of attendees) {
+      if (attendee.idProofBase64) {
+        const fileName = `id_proof_${vendorId}_${attendee.name.replace(/\s/g, '_')}_${Date.now()}`;
+        const folderName = `applications/booth/id_proofs`;
+        const imageUrl = await uploadImage(attendee.idProofBase64, fileName, folderName);
+        processedAttendees.push({ ...attendee, idProofImageUrl: imageUrl });
+      } else {
+        processedAttendees.push(attendee);
+      }
+    }
+    attendees = processedAttendees.map(({ idProofBase64, ...rest }) => rest); // Remove base64 from object
 
     // Check for existing pending booth application for this vendor
     const existingPendingApplication = await BoothApplication.findOne({
@@ -392,8 +421,24 @@ const updateApplicationStatus = async (req, res, next) => {
 const updateBoothApplication = async (req, res, next) => {
   try {
     const { applicationId } = req.params;
-    const { startDate, endDate, location, boothSize, attendees } = req.body;
+    let { startDate, endDate, location, boothSize, attendees } = req.body; // Use let to allow modification
     const vendorId = req.vendor._id;
+
+    // Process attendees for ID proof uploads
+    const processedAttendees = [];
+    if (attendees) { // Only process if attendees are provided in the update
+      for (const attendee of attendees) {
+        if (attendee.idProofBase64) {
+          const fileName = `id_proof_${vendorId}_${attendee.name.replace(/\s/g, '_')}_${Date.now()}`;
+          const folderName = `applications/booth/id_proofs`;
+          const imageUrl = await uploadImage(attendee.idProofBase64, fileName, folderName);
+          processedAttendees.push({ ...attendee, idProofImageUrl: imageUrl });
+        } else {
+          processedAttendees.push(attendee);
+        }
+      }
+      attendees = processedAttendees.map(({ idProofBase64, ...rest }) => rest); // Remove base64 from object
+    }
 
     // Find the application and ensure it belongs to the vendor
     const application = await BoothApplication.findById(applicationId);

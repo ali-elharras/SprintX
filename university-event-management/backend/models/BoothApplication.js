@@ -12,6 +12,10 @@ const attendeeSchema = new mongoose.Schema({
     trim: true,
     lowercase: true,
   },
+  idProofImageUrl: { // New field for ImageKit URL
+    type: String,
+    default: null,
+  },
 });
 
 const boothApplicationSchema = new mongoose.Schema(

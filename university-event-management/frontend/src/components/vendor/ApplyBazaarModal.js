@@ -50,8 +50,24 @@ const styles = {
   },
   attendeeRow: {
     display: "flex",
+    flexDirection: "column", // Changed to column for better layout with file input
     gap: theme.spacing[2],
-    marginBottom: theme.spacing[2],
+    marginBottom: theme.spacing[4], // Increased margin for better spacing
+    padding: theme.spacing[3],
+    border: `1px solid ${theme.colors.border.light}`,
+    borderRadius: theme.borderRadius.md,
+  },
+  attendeeInputGroup: {
+    display: "flex",
+    gap: theme.spacing[2],
+    width: "100%",
+  },
+  fileInput: {
+    ...theme.components.input.base,
+    width: "100%",
+    padding: theme.spacing[2],
+    border: `1px solid ${theme.colors.border.light}`,
+    borderRadius: theme.borderRadius.md,
   },
   button: {
     ...theme.components.button.primary,
@@ -68,11 +84,17 @@ const styles = {
     padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
     fontSize: theme.typography.fontSize.sm,
   },
+  removeButton: {
+    ...theme.components.button.danger,
+    padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+    fontSize: theme.typography.fontSize.sm,
+    alignSelf: "flex-end", // Align remove button to the right
+  },
 };
 
 const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
   const [boothSize, setBoothSize] = useState("2x2");
-  const [attendees, setAttendees] = useState([{ name: "", email: "" }]);
+  const [attendees, setAttendees] = useState([{ name: "", email: "", idProofBase64: null, idProofFileName: "" }]);
 
   if (!isOpen) return null;
 
@@ -82,8 +104,27 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
     setAttendees(newAttendees);
   };
 
+  const handleFileChange = (index, e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const newAttendees = [...attendees];
+        newAttendees[index].idProofBase64 = reader.result; // Base64 string
+        newAttendees[index].idProofFileName = file.name;
+        setAttendees(newAttendees);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      const newAttendees = [...attendees];
+      newAttendees[index].idProofBase64 = null;
+      newAttendees[index].idProofFileName = "";
+      setAttendees(newAttendees);
+    }
+  };
+
   const addAttendeeRow = () => {
-    setAttendees([...attendees, { name: "", email: "" }]);
+    setAttendees([...attendees, { name: "", email: "", idProofBase64: null, idProofFileName: "" }]);
   };
 
   const removeAttendeeRow = (index) => {
@@ -98,6 +139,13 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
     if (finalAttendees.length === 0) {
         toast.error("Please add at least one attendee.");
         return;
+    }
+    // Validate that all attendees have an ID proof if they have a name/email
+    for (const attendee of finalAttendees) {
+      if (attendee.name && attendee.email && !attendee.idProofBase64) {
+        toast.error(`Please upload an ID proof for ${attendee.name}.`);
+        return;
+      }
     }
     onSubmit({ boothSize, attendees: finalAttendees });
   };
@@ -123,35 +171,49 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Attendees</label>
+            <label style={styles.label}>Attendees (Max 5)</label>
             {attendees.map((attendee, index) => (
               <div key={index} style={styles.attendeeRow}>
+                <div style={styles.attendeeInputGroup}>
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    style={styles.input}
+                    value={attendee.name}
+                    onChange={(e) => handleAttendeeChange(index, "name", e.target.value)}
+                    required
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    style={styles.input}
+                    value={attendee.email}
+                    onChange={(e) => handleAttendeeChange(index, "email", e.target.value)}
+                    required
+                  />
+                </div>
                 <input
-                  type="text"
-                  placeholder="Name"
-                  style={styles.input}
-                  value={attendee.name}
-                  onChange={(e) => handleAttendeeChange(index, "name", e.target.value)}
-                  required
+                  type="file"
+                  accept="image/*"
+                  style={styles.fileInput}
+                  onChange={(e) => handleFileChange(index, e)}
+                  required // Make ID proof required
                 />
-                <input
-                  type="email"
-                  placeholder="Email"
-                  style={styles.input}
-                  value={attendee.email}
-                  onChange={(e) => handleAttendeeChange(index, "email", e.target.value)}
-                  required
-                />
+                {attendee.idProofFileName && (
+                  <p style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.secondary, marginTop: theme.spacing[1] }}>
+                    File: {attendee.idProofFileName}
+                  </p>
+                )}
                 {attendees.length > 1 && (
-                  <button type="button" style={styles.addButton} onClick={() => removeAttendeeRow(index)}>
-                    Remove
+                  <button type="button" style={styles.removeButton} onClick={() => removeAttendeeRow(index)}>
+                    Remove Attendee
                   </button>
                 )}
               </div>
             ))}
             {attendees.length < 5 && (
               <button type="button" style={styles.addButton} onClick={addAttendeeRow}>
-                Add Attendee
+                Add Another Attendee
               </button>
             )}
           </div>
