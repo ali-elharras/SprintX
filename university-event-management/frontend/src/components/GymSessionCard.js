@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
+import { gymAPI } from "../services/api";
 import theme from "../theme";
 import EditSessionModal from "./EditSessionModal";
 import GymSessionDetailsModal from "./GymSessionDetailsModal";
@@ -10,6 +11,7 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
   const auth = { isAdmin, isEventsOffice };
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [registering, setRegistering] = useState(false);
 
   const getSessionTypeColor = (type) => {
     const colors = {
@@ -53,13 +55,52 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
   };
 
   const handleRegister = async () => {
-    // Registration functionality removed - view only page
-    toast.error("Registration functionality is not available on this page");
+    if (!user || !session) return;
+    
+    try {
+      setRegistering(true);
+      const registrationData = {
+        registrationType: "regular",
+        notifications: {
+          email: true,
+          reminder24h: true
+        }
+      };
+      
+      await gymAPI.register(session._id, registrationData);
+      toast.success("Successfully registered for this session!");
+      
+      // Refresh the session data
+      if (onUpdated) {
+        onUpdated(session._id);
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast.error(error.response?.data?.message || "Failed to register for session");
+    } finally {
+      setRegistering(false);
+    }
   };
 
   const canUserRegister = () => {
-    return false; // Always false for view-only mode
+    if (viewOnly) return false;
+    if (!user) return false;
+    if (isAdmin || isEventsOffice) return false; // Admins/Events Office don't register
+    return session.status === 'active';
   };
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('GymSessionCard Debug:', {
+      viewOnly,
+      user: user ? 'Logged in' : 'Not logged in',
+      isAdmin,
+      isEventsOffice,
+      canRegister: canUserRegister(),
+      sessionTitle: session?.title,
+      sessionStatus: session?.status
+    });
+  }, [viewOnly, user, isAdmin, isEventsOffice, session]);
 
   const styles = {
     card: {
@@ -267,7 +308,14 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
   };
 
   const getRegisterButtonText = () => {
-    return "View Only";
+    if (viewOnly) return "View Only";
+    if (!user) return "Login to Register";
+    if (isAdmin || isEventsOffice) return "Admin View";
+    if (registering) return "Registering...";
+    if (session.isFull && !session.waitlistEnabled) return "Full";
+    if (session.isFull && session.waitlistEnabled) return "Join Waitlist";
+    if (session.status !== 'active') return "Inactive";
+    return "Register";
   };
 
   return (
@@ -309,27 +357,13 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
         </div>
 
         <div style={styles.buttons}>
-          {!viewOnly ? (
-            <button
-              style={getRegisterButtonStyle()}
-              onClick={() => handleRegister()}
-              disabled={true}
-            >
-              {getRegisterButtonText()}
-            </button>
-          ) : (
-            <button
-              style={{
-                ...styles.registerButton,
-                backgroundColor: theme.colors.neutral.gray300,
-                color: theme.colors.text.secondary,
-                cursor: 'default',
-              }}
-              disabled={true}
-            >
-              View Only
-            </button>
-          )}
+          <button
+            style={getRegisterButtonStyle()}
+            onClick={() => handleRegister()}
+            disabled={!canUserRegister() || registering}
+          >
+            {getRegisterButtonText()}
+          </button>
 
           {(auth.isAdmin || auth.isEventsOffice) && (
             <button style={{ ...styles.detailsButton, backgroundColor: theme.colors.background.paper }} onClick={() => setIsEditOpen(true)}>Edit</button>
