@@ -593,7 +593,76 @@ const updateBoothApplication = async (req, res, next) => {
       message: "Booth application updated successfully.",
       data: updatedApplication,
     });
+
   } catch (error) {
+    console.error('Error updating booth application:', error);
+    next(error);
+  }
+};
+
+// @desc    Cancel an application (only if not paid)
+// @route   DELETE /api/applications/:applicationType/:applicationId
+// @access  Private (Vendor)
+const cancelApplication = async (req, res, next) => {
+  try {
+    const { applicationType, applicationId } = req.params;
+    const vendorId = req.vendor._id;
+
+    // Validate application type
+    if (!['bazaar', 'booth'].includes(applicationType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid application type. Must be "bazaar" or "booth".',
+      });
+    }
+
+    // Determine which model to use
+    const Model = applicationType === 'bazaar' ? BazaarApplication : BoothApplication;
+
+    // Find the application
+    const application = await Model.findById(applicationId);
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Application not found',
+      });
+    }
+
+    // Verify ownership
+    if (application.vendor.toString() !== vendorId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to cancel this application',
+      });
+    }
+
+    // Check if payment has been completed
+    if (application.paymentStatus === 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot cancel application after payment has been completed. Please contact support for refunds.',
+      });
+    }
+
+    // Check if application is already rejected
+    if (application.status === 'rejected') {
+      return res.status(400).json({
+        success: false,
+        message: 'Application is already rejected',
+      });
+    }
+
+    // Delete the application
+    await Model.findByIdAndDelete(applicationId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Application cancelled successfully',
+    });
+
+  } catch (error) {
+    console.error('Error cancelling application:', error);
     next(error);
   }
 };
@@ -609,4 +678,5 @@ module.exports = {
   getBoothConflicts,
   updateApplicationStatus,
   updateBoothApplication,
+  cancelApplication,
 };

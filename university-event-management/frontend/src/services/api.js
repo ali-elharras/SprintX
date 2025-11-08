@@ -150,10 +150,7 @@ export const eventServices = {
 export const applicationServices = {
   applyToBazaar: async (bazaarId, applicationData) => {
     try {
-      const response = await api.post(
-        `/applications/bazaar/${bazaarId}`,
-        applicationData
-      );
+      const response = await api.post(`/applications/bazaar/${bazaarId}`, applicationData);
       return response.data;
     } catch (error) {
       throw error;
@@ -220,6 +217,15 @@ export const applicationServices = {
   getBoothConflicts: async (conflictData) => {
     try {
       const response = await api.post("/applications/booth-conflicts", conflictData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  cancelApplication: async (applicationType, applicationId) => {
+    try {
+      const response = await api.delete(`/applications/${applicationType}/${applicationId}`);
       return response.data;
     } catch (error) {
       throw error;
