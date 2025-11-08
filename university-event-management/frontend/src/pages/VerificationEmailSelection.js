@@ -11,6 +11,7 @@ import theme from "../theme";
 import Card from "../components/Card";
 import Input from "../components/Input";
 import Button from "../components/Button";
+import PreLoginNavbar from "../components/PreLoginNavbar";
 
 // Validation schema for verification email
 const verificationEmailSchema = yup.object({
@@ -174,112 +175,115 @@ const VerificationEmailSelection = () => {
   };
 
   return (
-    <div style={containerStyles}>
-      <Card style={cardStyles}>
-        <div style={headerStyles}>
-          <h1 style={titleStyles}>Choose Verification Email</h1>
-          <p style={subtitleStyles}>
-            Select an email address to receive your verification link
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} style={formStyles}>
-          {/* Original Email Option */}
-          <div style={emailOptionStyles} onClick={handleSelectOriginalEmail}>
-            <h3
-              style={{
-                margin: "0 0 8px 0",
-                color: theme.colors.text.primary,
-                fontSize: theme.typography.fontSize.lg,
-                fontWeight: theme.typography.fontWeight.medium,
-              }}
-            >
-              Use your registered email:
-            </h3>
-            <p
-              style={{
-                margin: 0,
-                color: theme.colors.primary.main,
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-              }}
-            >
-              {originalEmail}
+    <>
+      <PreLoginNavbar />
+      <div style={containerStyles}>
+        <Card style={cardStyles}>
+          <div style={headerStyles}>
+            <h1 style={titleStyles}>Choose Verification Email</h1>
+            <p style={subtitleStyles}>
+              Select an email address to receive your verification link
             </p>
           </div>
 
-          {/* OR Divider */}
-          <div style={orDividerStyles}>
-            <div style={dividerLineStyles}></div>
-            <span style={{ margin: `0 ${theme.spacing[4]}` }}>OR</span>
-            <div style={dividerLineStyles}></div>
-          </div>
+          <form onSubmit={handleSubmit(onSubmit)} style={formStyles}>
+            {/* Original Email Option */}
+            <div style={emailOptionStyles} onClick={handleSelectOriginalEmail}>
+              <h3
+                style={{
+                  margin: "0 0 8px 0",
+                  color: theme.colors.text.primary,
+                  fontSize: theme.typography.fontSize.lg,
+                  fontWeight: theme.typography.fontWeight.medium,
+                }}
+              >
+                Use your registered email:
+              </h3>
+              <p
+                style={{
+                  margin: 0,
+                  color: theme.colors.primary.main,
+                  fontSize: theme.typography.fontSize.base,
+                  fontWeight: theme.typography.fontWeight.medium,
+                }}
+              >
+                {originalEmail}
+              </p>
+            </div>
 
-          {/* Custom Email Input */}
-          <div>
-            <Input
-              label="Enter a different email address"
-              type="email"
-              placeholder="Enter alternative email for verification"
-              error={errors.verificationEmail?.message}
-              {...register("verificationEmail")}
+            {/* OR Divider */}
+            <div style={orDividerStyles}>
+              <div style={dividerLineStyles}></div>
+              <span style={{ margin: `0 ${theme.spacing[4]}` }}>OR</span>
+              <div style={dividerLineStyles}></div>
+            </div>
+
+            {/* Custom Email Input */}
+            <div>
+              <Input
+                label="Enter a different email address"
+                type="email"
+                placeholder="Enter alternative email for verification"
+                error={errors.verificationEmail?.message}
+                {...register("verificationEmail")}
+                style={{
+                  borderColor:
+                    selectedEmail !== originalEmail && watchedEmail
+                      ? theme.colors.primary.main
+                      : undefined,
+                }}
+                onChange={(e) => {
+                  setSelectedEmail(e.target.value);
+                  setValue("verificationEmail", e.target.value);
+                }}
+              />
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              loading={isSubmitting}
+              disabled={isSubmitting || !watchedEmail}
               style={{
-                borderColor:
-                  selectedEmail !== originalEmail && watchedEmail
-                    ? theme.colors.primary.main
-                    : undefined,
+                marginTop: theme.spacing[4],
               }}
-              onChange={(e) => {
-                setSelectedEmail(e.target.value);
-                setValue("verificationEmail", e.target.value);
+            >
+              {isSubmitting
+                ? "Completing Registration..."
+                : "Complete Registration"}
+            </Button>
+          </form>
+
+          {/* Back Link */}
+          <div
+            style={{
+              textAlign: "center",
+              marginTop: theme.spacing[6],
+              fontSize: theme.typography.fontSize.sm,
+              color: theme.colors.text.secondary,
+            }}
+          >
+            Need to go back?{" "}
+            <button
+              type="button"
+              onClick={() => navigate("/signup/user")}
+              style={{
+                background: "none",
+                border: "none",
+                color: theme.colors.primary.main,
+                textDecoration: "underline",
+                cursor: "pointer",
+                fontSize: "inherit",
               }}
-            />
+            >
+              Return to registration
+            </button>
           </div>
-
-          {/* Submit Button */}
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            loading={isSubmitting}
-            disabled={isSubmitting || !watchedEmail}
-            style={{
-              marginTop: theme.spacing[4],
-            }}
-          >
-            {isSubmitting
-              ? "Completing Registration..."
-              : "Complete Registration"}
-          </Button>
-        </form>
-
-        {/* Back Link */}
-        <div
-          style={{
-            textAlign: "center",
-            marginTop: theme.spacing[6],
-            fontSize: theme.typography.fontSize.sm,
-            color: theme.colors.text.secondary,
-          }}
-        >
-          Need to go back?{" "}
-          <button
-            type="button"
-            onClick={() => navigate("/signup/user")}
-            style={{
-              background: "none",
-              border: "none",
-              color: theme.colors.primary.main,
-              textDecoration: "underline",
-              cursor: "pointer",
-              fontSize: "inherit",
-            }}
-          >
-            Return to registration
-          </button>
-        </div>
-      </Card>
-    </div>
+        </Card>
+      </div>
+    </>
   );
 };
 

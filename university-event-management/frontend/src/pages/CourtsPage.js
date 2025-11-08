@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import toast from "react-hot-toast";
 import theme from "../theme";
 import CourtCard from "../components/CourtCard";
@@ -27,25 +27,7 @@ const CourtsPage = () => {
   // Ref for request cancellation
   const cancelTokenRef = useRef(null);
 
-  // Fetch courts and stats
-  useEffect(() => {
-    fetchCourts();
-    fetchStats();
-    
-    // Cleanup function to cancel requests on unmount
-    return () => {
-      if (cancelTokenRef.current) {
-        cancelTokenRef.current.cancel('Component unmounted');
-      }
-    };
-  }, []);
-
-  // Apply filters when courts or filters change
-  useEffect(() => {
-    applyFilters();
-  }, [courts, filters]);
-
-  const fetchCourts = async () => {
+  const fetchCourts = useCallback(async () => {
     // Cancel any existing request
     if (cancelTokenRef.current) {
       cancelTokenRef.current.cancel('Operation cancelled due to new request');
@@ -56,9 +38,7 @@ const CourtsPage = () => {
     
     try {
       setLoading(true);
-      const response = await courtAPI.getCourts({
-        status: filters.status,
-      }, cancelTokenRef.current);
+      const response = await courtAPI.getCourts({}, cancelTokenRef.current);
       setCourts(response.data.data || []);
     } catch (error) {
       // Don't show error if request was cancelled
@@ -71,9 +51,9 @@ const CourtsPage = () => {
     } finally {
       setTimeout(() => setLoading(false), 2000);
     }
-  };
+  }, []);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const response = await courtAPI.getCourtStats(cancelTokenRef.current);
       setStats(response.data.data);
@@ -85,10 +65,33 @@ const CourtsPage = () => {
       }
       console.error("Error fetching court stats:", error);
     }
-  };
+  }, []);
+
+  // Fetch courts and stats
+  useEffect(() => {
+    fetchCourts();
+    fetchStats();
+    
+    // Cleanup function to cancel requests on unmount
+    return () => {
+      if (cancelTokenRef.current) {
+        cancelTokenRef.current.cancel('Component unmounted');
+      }
+    };
+  }, [fetchCourts, fetchStats]);
+
+  // Apply filters when courts or filters change
+  useEffect(() => {
+    applyFilters();
+  }, [courts, filters]);
 
   const applyFilters = () => {
     let filtered = [...courts];
+
+    // Filter by status
+    if (filters.status) {
+      filtered = filtered.filter((court) => court.status === filters.status);
+    }
 
     // Filter by type
     if (filters.type) {

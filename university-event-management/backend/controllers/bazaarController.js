@@ -134,13 +134,29 @@ exports.updateBazaar = async (req, res) => {
 // ================================
 exports.getAllBazaars = async (req, res) => {
   try {
+    const BazaarApplication = require("../models/BazaarApplication");
+    
     const bazaars = await Event.find({ type: "bazaar" })
       .populate("organizer", "firstName lastName email role");
 
+    // Calculate current participants (approved vendors) for each bazaar
+    const bazaarsWithCounts = await Promise.all(
+      bazaars.map(async (bazaar) => {
+        const approvedVendorsCount = await BazaarApplication.countDocuments({
+          bazaar: bazaar._id,
+          status: "approved"
+        });
+        
+        const bazaarObj = bazaar.toObject();
+        bazaarObj.currentParticipants = approvedVendorsCount;
+        return bazaarObj;
+      })
+    );
+
     res.status(200).json({
       success: true,
-      count: bazaars.length,
-      data: bazaars,
+      count: bazaarsWithCounts.length,
+      data: bazaarsWithCounts,
     });
   } catch (error) {
     console.error("❌ Error fetching bazaars:", error);
@@ -159,6 +175,8 @@ exports.getAllBazaars = async (req, res) => {
 // ================================
 exports.getBazaarById = async (req, res) => {
   try {
+    const BazaarApplication = require("../models/BazaarApplication");
+    
     const bazaar = await Event.findOne({ _id: req.params.id, type: "bazaar" })
       .populate("organizer", "firstName lastName email role");
 
@@ -166,9 +184,18 @@ exports.getBazaarById = async (req, res) => {
       return res.status(404).json({ success: false, message: "Bazaar not found" });
     }
 
+    // Calculate current participants (approved vendors)
+    const approvedVendorsCount = await BazaarApplication.countDocuments({
+      bazaar: bazaar._id,
+      status: "approved"
+    });
+    
+    const bazaarObj = bazaar.toObject();
+    bazaarObj.currentParticipants = approvedVendorsCount;
+
     res.status(200).json({
       success: true,
-      data: bazaar,
+      data: bazaarObj,
     });
   } catch (error) {
     console.error("❌ Error fetching bazaar by ID:", error);

@@ -1,4 +1,4 @@
-// theme.js - Campus Events Hub Design System
+// theme.js - SprintX Design System
 // For MERN Stack Application
 
 const theme = {
@@ -624,6 +624,8 @@ export const getEventTypeColor = (eventType) => {
     workshop: theme.colors.eventTypes.workshop.main,
     competition: theme.colors.eventTypes.competition.main,
     conference: theme.colors.eventTypes.conference.main,
+    gym: "#10b981", // Green color for gym sessions
+    court: "#f59e0b", // Amber color for court reservations
   };
   return types[eventType.toLowerCase()] || theme.colors.primary.main;
 };

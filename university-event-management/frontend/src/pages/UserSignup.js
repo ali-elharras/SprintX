@@ -11,6 +11,7 @@ import Card from "../components/Card";
 import Input from "../components/Input";
 import Select from "../components/Select";
 import Button from "../components/Button";
+import PreLoginNavbar from "../components/PreLoginNavbar";
 
 // Email domain to role mapping
 const emailDomainRoleMap = {
@@ -209,7 +210,7 @@ const UserSignup = () => {
         }
 
         // For students and complete registrations
-        toast.success("Registration successful! Welcome to Campus Events Hub!");
+        toast.success("Registration successful! Welcome to SprintX!");
         navigate("/dashboard");
       } else {
         // Handle case where backend returns requiresVerificationEmail in error response
@@ -295,160 +296,163 @@ const UserSignup = () => {
   };
 
   return (
-    <div style={containerStyles}>
-      <Card style={cardStyles}>
-        <div style={headerStyles}>
-          <h1 style={titleStyles}>Join Campus Events Hub</h1>
-          <p style={subtitleStyles}>
-            Sign up as a {watchedRequestedRole || "university member"} to
-            discover and participate in campus events
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} style={formStyles}>
-          {/* Name Fields */}
-          <div style={rowStyles}>
-            <Input
-              label="First Name"
-              type="text"
-              placeholder="Enter your first name"
-              required
-              error={errors.firstName?.message}
-              {...register("firstName")}
-            />
-            <Input
-              label="Last Name"
-              type="text"
-              placeholder="Enter your last name"
-              required
-              error={errors.lastName?.message}
-              {...register("lastName")}
-            />
+    <>
+      <PreLoginNavbar />
+      <div style={containerStyles}>
+        <Card style={cardStyles}>
+          <div style={headerStyles}>
+            <h1 style={titleStyles}>Join SprintX</h1>
+            <p style={subtitleStyles}>
+              Sign up as a {watchedRequestedRole || "university member"} to
+              discover and participate in campus events
+            </p>
           </div>
 
-          {/* Email */}
-          <Input
-            label="University Email Address"
-            type="email"
-            placeholder="e.g., john.doe@guc.edu.eg"
-            required
-            error={errors.email?.message}
-            {...register("email")}
-          />
-
-          {/* Show GUC email detection */}
-          {isGUCEmailDetected && (
-            <div
-              style={{
-                fontSize: theme.typography.fontSize.sm,
-                color: theme.colors.primary.main,
-                marginTop: `-${theme.spacing[3]}`,
-                marginBottom: theme.spacing[2],
-                fontWeight: theme.typography.fontWeight.medium,
-              }}
-            >
-              ✓ GUC Email Detected
+          <form onSubmit={handleSubmit(onSubmit)} style={formStyles}>
+            {/* Name Fields */}
+            <div style={rowStyles}>
+              <Input
+                label="First Name"
+                type="text"
+                placeholder="Enter your first name"
+                required
+                error={errors.firstName?.message}
+                {...register("firstName")}
+              />
+              <Input
+                label="Last Name"
+                type="text"
+                placeholder="Enter your last name"
+                required
+                error={errors.lastName?.message}
+                {...register("lastName")}
+              />
             </div>
-          )}
 
-          {/* Requested Role Selection */}
-          <Select
-            label="Requested Role"
-            placeholder="Select your role"
-            options={[
-              { value: "student", label: "Student" },
-              { value: "staff", label: "Staff" },
-              { value: "ta", label: "Teaching Assistant" },
-              { value: "professor", label: "Professor" },
-            ]}
-            required
-            error={errors.requestedRole?.message}
-            {...register("requestedRole")}
-          />
-
-          {/* Password Fields */}
-          <div style={rowStyles}>
+            {/* Email */}
             <Input
-              label="Password"
-              type="password"
-              placeholder="Create a strong password"
+              label="University Email Address"
+              type="email"
+              placeholder="e.g., john.doe@guc.edu.eg"
               required
-              error={errors.password?.message}
-              {...register("password")}
+              error={errors.email?.message}
+              {...register("email")}
             />
-            <Input
-              label="Confirm Password"
-              type="password"
-              placeholder="Confirm your password"
-              required
-              error={errors.confirmPassword?.message}
-              {...register("confirmPassword")}
-            />
-          </div>
 
-          {/* University ID */}
-          <Input
-            label="University ID"
-            type="text"
-            placeholder="Enter your university ID"
-            required
-            error={errors.universityId?.message}
-            {...register("universityId")}
-          />
+            {/* Show GUC email detection */}
+            {isGUCEmailDetected && (
+              <div
+                style={{
+                  fontSize: theme.typography.fontSize.sm,
+                  color: theme.colors.primary.main,
+                  marginTop: `-${theme.spacing[3]}`,
+                  marginBottom: theme.spacing[2],
+                  fontWeight: theme.typography.fontWeight.medium,
+                }}
+              >
+                ✓ GUC Email Detected
+              </div>
+            )}
 
-          {/* Department and Phone Number */}
-          <div style={rowStyles}>
-            <Input
-              label="Department"
-              type="text"
-              placeholder="Enter your department"
-              error={errors.department?.message}
-              {...register("department")}
-            />
-            <Input
-              label="Phone Number"
-              type="tel"
-              placeholder="Enter your phone number"
-              error={errors.phoneNumber?.message}
-              {...register("phoneNumber")}
-            />
-          </div>
-
-          {/* Year of Study (for students only) */}
-          {watchedRequestedRole === "student" && (
+            {/* Requested Role Selection */}
             <Select
-              label="Year of Study"
-              placeholder="Select your year"
-              options={yearOptions}
-              error={errors.yearOfStudy?.message}
-              {...register("yearOfStudy")}
+              label="Requested Role"
+              placeholder="Select your role"
+              options={[
+                { value: "student", label: "Student" },
+                { value: "staff", label: "Staff" },
+                { value: "ta", label: "Teaching Assistant" },
+                { value: "professor", label: "Professor" },
+              ]}
+              required
+              error={errors.requestedRole?.message}
+              {...register("requestedRole")}
             />
-          )}
 
-          {/* Submit Button */}
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            loading={isSubmitting || isLoading}
-            disabled={isSubmitting || isLoading}
-            style={{ marginTop: theme.spacing[4] }}
-          >
-            {isSubmitting || isLoading
-              ? "Creating Account..."
-              : "Create Account"}
-          </Button>
+            {/* Password Fields */}
+            <div style={rowStyles}>
+              <Input
+                label="Password"
+                type="password"
+                placeholder="Create a strong password"
+                required
+                error={errors.password?.message}
+                {...register("password")}
+              />
+              <Input
+                label="Confirm Password"
+                type="password"
+                placeholder="Confirm your password"
+                required
+                error={errors.confirmPassword?.message}
+                {...register("confirmPassword")}
+              />
+            </div>
 
-          {/* Login Link */}
-          <div style={linkStyles}>
-            Already have an account?{" "}
-            <Link to="/" style={linkAnchorStyles}>
-              Sign in here
-            </Link>
-          </div>
-        </form>
-      </Card>
-    </div>
+            {/* University ID */}
+            <Input
+              label="University ID"
+              type="text"
+              placeholder="Enter your university ID"
+              required
+              error={errors.universityId?.message}
+              {...register("universityId")}
+            />
+
+            {/* Department and Phone Number */}
+            <div style={rowStyles}>
+              <Input
+                label="Department"
+                type="text"
+                placeholder="Enter your department"
+                error={errors.department?.message}
+                {...register("department")}
+              />
+              <Input
+                label="Phone Number"
+                type="tel"
+                placeholder="Enter your phone number"
+                error={errors.phoneNumber?.message}
+                {...register("phoneNumber")}
+              />
+            </div>
+
+            {/* Year of Study (for students only) */}
+            {watchedRequestedRole === "student" && (
+              <Select
+                label="Year of Study"
+                placeholder="Select your year"
+                options={yearOptions}
+                error={errors.yearOfStudy?.message}
+                {...register("yearOfStudy")}
+              />
+            )}
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              loading={isSubmitting || isLoading}
+              disabled={isSubmitting || isLoading}
+              style={{ marginTop: theme.spacing[4] }}
+            >
+              {isSubmitting || isLoading
+                ? "Creating Account..."
+                : "Create Account"}
+            </Button>
+
+            {/* Login Link */}
+            <div style={linkStyles}>
+              Already have an account?{" "}
+              <Link to="/" style={linkAnchorStyles}>
+                Sign in here
+              </Link>
+            </div>
+          </form>
+        </Card>
+      </div>
+    </>
   );
 };
 

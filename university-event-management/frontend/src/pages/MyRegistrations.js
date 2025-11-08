@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import api, { registrationAPI, eventAPI } from "../services/api";
+import api, { registrationAPI, eventAPI, gymAPI, courtAPI } from "../services/api";
 import theme from "../theme";
 import Card from "../components/Card";
 import Navbar from "../components/Navbar";
@@ -42,6 +42,8 @@ const MyRegistrations = () => {
     { value: "bazaar", label: "Bazaars" },
     { value: "competition", label: "Competitions" },
     { value: "conference", label: "Conferences" },
+    { value: "gym", label: "Gym Sessions" },
+    { value: "court", label: "Court Reservations" },
   ];
 
   const sortOptions = [
@@ -66,13 +68,89 @@ const MyRegistrations = () => {
       setLoading(true);
       setError(null);
 
-      // 1. Fetch registrations with cancellation token
+      // 1. Fetch event registrations with cancellation token
       const regResponse = await registrationAPI.getMyRegistrations({}, cancelTokenRef.current);
       const fetchedRegistrations = (
         regResponse.data?.data?.upcoming || []
       ).concat(regResponse.data?.data?.past || []);
 
-      setAllItems(fetchedRegistrations);
+      // 2. Fetch gym registrations
+      const gymRegResponse = await gymAPI.getMyRegistrations({}, cancelTokenRef.current);
+      const gymRegistrations = gymRegResponse.data?.data || [];
+      
+      console.log('Gym registrations response:', gymRegResponse.data);
+      console.log('Gym registrations array:', gymRegistrations);
+      
+      // Transform gym registrations to match event registration format
+      const transformedGymRegs = gymRegistrations
+        .filter(gymReg => gymReg.gymSession) // Only process if gymSession is populated
+        .map(gymReg => ({
+          _id: gymReg._id,
+          event: {
+            _id: gymReg.gymSession._id,
+            title: gymReg.gymSession.title,
+            description: gymReg.gymSession.description || '',
+            type: 'gym',
+            startDate: gymReg.gymSession.startDate,
+            endDate: gymReg.gymSession.endDate,
+            location: gymReg.gymSession.location,
+            room: gymReg.gymSession.room,
+            // Additional fields for gym sessions
+            instructor: gymReg.gymSession.instructor,
+            startTime: gymReg.gymSession.startTime,
+            endTime: gymReg.gymSession.endTime,
+            dayOfWeek: gymReg.gymSession.dayOfWeek,
+            skillLevel: gymReg.gymSession.skillLevel,
+            cost: gymReg.gymSession.cost,
+          },
+          registrationDate: gymReg.registrationDate,
+          status: gymReg.status,
+          isGymSession: true, // Flag to identify gym sessions
+        }));
+      
+      console.log('Transformed gym registrations:', transformedGymRegs);
+
+      // 3. Fetch court reservations
+      const courtResponse = await courtAPI.getMyReservations(cancelTokenRef.current);
+      const courtReservations = courtResponse.data?.data || [];
+      
+      console.log('Court reservations response:', courtResponse.data);
+      console.log('Court reservations array:', courtReservations);
+      
+      // Transform court reservations to match event registration format
+      const transformedCourtReservations = courtReservations
+        .filter(reservation => reservation.court) // Only process if court is populated
+        .map(reservation => ({
+          _id: reservation._id,
+          event: {
+            _id: reservation.court._id,
+            title: `${reservation.court.name} - ${reservation.court.type.charAt(0).toUpperCase() + reservation.court.type.slice(1)}`,
+            description: `${reservation.startTime} - ${reservation.endTime}`,
+            type: 'court',
+            startDate: reservation.date,
+            endDate: reservation.date,
+            location: reservation.court.location,
+            // Additional fields for court reservations
+            courtType: reservation.court.type,
+            startTime: reservation.startTime,
+            endTime: reservation.endTime,
+            duration: reservation.duration,
+            purpose: reservation.purpose,
+            amountPaid: reservation.finalAmount,
+            paymentStatus: reservation.paymentStatus,
+          },
+          registrationDate: reservation.createdAt,
+          status: reservation.status,
+          isCourtReservation: true, // Flag to identify court reservations
+          reservationData: reservation, // Keep full reservation data for cancellation
+        }));
+      
+      console.log('Transformed court reservations:', transformedCourtReservations);
+
+      // Combine all types of registrations
+      const allRegistrations = [...fetchedRegistrations, ...transformedGymRegs, ...transformedCourtReservations];
+      console.log('All registrations:', allRegistrations);
+      setAllItems(allRegistrations);
     } catch (err) {
       // Don't show error if request was cancelled
       if (axios.isCancel(err)) {
@@ -143,11 +221,17 @@ const MyRegistrations = () => {
     });
   }, [allItems, search, filter, sortBy, sortOrder]);
 
-  const handleCancelRegistration = async (registrationId) => {
+  const handleCancelRegistration = async (registrationId, isGymSession = false, isCourtReservation = false) => {
     if (!window.confirm("Are you sure you want to cancel this registration?"))
       return;
     try {
-      await registrationAPI.cancelRegistration(registrationId);
+      if (isCourtReservation) {
+        await courtAPI.cancelReservation(registrationId, "Cancelled by user");
+      } else if (isGymSession) {
+        await gymAPI.cancelRegistration(registrationId);
+      } else {
+        await registrationAPI.cancelRegistration(registrationId);
+      }
       toast.success("Registration cancelled successfully");
       setRefreshTrigger((p) => p + 1);
     } catch (error) {
@@ -428,7 +512,7 @@ const MyRegistrations = () => {
                 <RegistrationCard
                   key={item._id}
                   registration={item}
-                  onCancel={handleCancelRegistration}
+                  onCancel={(regId) => handleCancelRegistration(regId, item.isGymSession, item.isCourtReservation)}
                   isPastEvent={activeTab === "past"}
                 />
             )}

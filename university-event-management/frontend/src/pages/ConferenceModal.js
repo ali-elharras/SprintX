@@ -211,6 +211,13 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
       const startDateTime = new Date(`${formData.startDate}T${formData.startTime}:00`);
       const endDateTime = new Date(`${formData.endDate}T${formData.endTime}:00`);
       
+      // Validate that end date/time is after start date/time
+      if (endDateTime <= startDateTime) {
+        toast.error('End date and time must be after start date and time');
+        setLoading(false);
+        return;
+      }
+      
       const conferenceData = {
         name: formData.name,
         title: formData.name, // For backward compatibility
@@ -236,7 +243,9 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
         toast.success('Conference created successfully!');
       }
       
-      onSuccess?.();
+      if (onSuccess) {
+        await onSuccess();
+      }
       onClose();
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || `Failed to ${isEdit ? 'update' : 'create'} conference`;
@@ -259,6 +268,27 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
       onClose();
     }
   };
+
+  // Calculate tomorrow's date (minimum allowed date)
+  // Using local time to avoid timezone issues
+  const getTomorrow = () => {
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    return tomorrow;
+  };
+  
+  const formatDateLocal = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
+  const tomorrow = getTomorrow();
+  const tomorrowString = formatDateLocal(tomorrow);
+  
+  console.log('ConferenceModal - Today:', formatDateLocal(new Date()));
+  console.log('ConferenceModal - Tomorrow (min):', tomorrowString);
 
   if (!isOpen) return null;
 
@@ -325,15 +355,16 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
                       marginBottom: theme.spacing[2],
                     }}
                   >
-                    Start Date
                   </label>
                   <Input
+                    label= "Start Date"
                     type="date"
                     name="startDate"
                     value={formData.startDate}
                     onChange={handleChange}
                     required
                     disabled={loading}
+                    min={tomorrowString}
                   />
                 </div>
                 <div>
@@ -346,9 +377,9 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
                       marginBottom: theme.spacing[2],
                     }}
                   >
-                    Start Time
                   </label>
                   <Input
+                    label= "Start Time"
                     type="time"
                     name="startTime"
                     value={formData.startTime}
@@ -370,15 +401,16 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
                       marginBottom: theme.spacing[2],
                     }}
                   >
-                    End Date
                   </label>
                   <Input
+                    label= "End Date"
                     type="date"
                     name="endDate"
                     value={formData.endDate}
                     onChange={handleChange}
                     required
                     disabled={loading}
+                    min={formData.startDate}
                   />
                 </div>
                 <div>
@@ -391,9 +423,9 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
                       marginBottom: theme.spacing[2],
                     }}
                   >
-                    End Time
                   </label>
                   <Input
+                    label= "End Time"
                     type="time"
                     name="endTime"
                     value={formData.endTime}
@@ -415,9 +447,9 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
                     marginBottom: theme.spacing[2],
                   }}
                 >
-                  Short Description
                 </label>
-                <textarea
+                <Input
+                  label= "Short Description"
                   id="shortDescription"
                   name="shortDescription"
                   value={formData.shortDescription}
@@ -440,13 +472,14 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
                     marginBottom: theme.spacing[2],
                   }}
                 >
-                  Full Agenda
                 </label>
-                <textarea
+                <Input
+                  label= "Full Agenda"
                   id="fullAgenda"
                   name="fullAgenda"
                   value={formData.fullAgenda}
                   onChange={handleChange}
+                  required
                   disabled={loading}
                   style={styles.textarea}
                   placeholder="Enter full agenda..."
@@ -459,6 +492,7 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
                 name="websiteLink"
                 value={formData.websiteLink}
                 onChange={handleChange}
+                required
                 disabled={loading}
               />
 
@@ -468,6 +502,7 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
                 name="requiredBudget"
                 value={formData.requiredBudget}
                 onChange={handleChange}
+                required
                 min="0"
                 step="0.01"
                 disabled={loading}
@@ -484,9 +519,9 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
                     marginBottom: theme.spacing[2],
                   }}
                 >
-                  Source of Funding
                 </label>
                 <select
+                  label= "Source of Funding"
                   id="sourceOfFunding"
                   name="sourceOfFunding"
                   value={formData.sourceOfFunding}
@@ -511,13 +546,14 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
                     marginBottom: theme.spacing[2],
                   }}
                 >
-                  Extra Required Resources
                 </label>
                 <textarea
+                  label= "Extra Required Resources"
                   id="extraRequiredResources"
                   name="extraRequiredResources"
                   value={formData.extraRequiredResources}
                   onChange={handleChange}
+                  required
                   disabled={loading}
                   style={styles.textarea}
                   placeholder="Enter extra required resources..."

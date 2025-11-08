@@ -26,6 +26,26 @@ const EventEditModal = ({ open, event, onClose, onSaved }) => {
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
+  // Calculate tomorrow's date (minimum allowed date)
+  // Using local time to avoid timezone issues
+  const getTomorrow = () => {
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    return tomorrow;
+  };
+  
+  const formatDateTimeLocal = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+  
+  const tomorrow = getTomorrow();
+  const tomorrowString = formatDateTimeLocal(tomorrow);
+
   useEffect(() => {
     setForm(event ? {
       name: event.name || event.title || '',
@@ -44,13 +64,24 @@ const EventEditModal = ({ open, event, onClose, onSaved }) => {
 
   const handleChange = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
+  // Compute the minimum end date: it should be the start date if set, otherwise tomorrow
+  const minEndDate = form.startDate || tomorrowString;
+  // Compute the maximum registration deadline: it should be before the start date
+  const maxRegistrationDate = form.startDate || undefined;
+
   const handleSave = async (e) => {
     e && e.preventDefault();
     if (!event) return;
     // compute changed fields only
     const changed = {};
     Object.keys(form).forEach(k => {
-      const original = (event.name && k === 'name') ? (event.name) : event[k];
+      // For the 'name' field, check both event.name and event.title as the original value
+      let original;
+      if (k === 'name') {
+        original = event.name || event.title || '';
+      } else {
+        original = event[k];
+      }
       // normalized compare for dates
       const origVal = original ? (typeof original === 'string' && original.length > 10 ? original.slice(0,16) : original) : original;
       if ((form[k] || '') !== (origVal || '')) changed[k] = form[k];
@@ -59,6 +90,11 @@ const EventEditModal = ({ open, event, onClose, onSaved }) => {
     if (Object.keys(changed).length === 0) {
       setError('No changes to save');
       return;
+    }
+
+    // If name is being changed, update both 'name' and 'title' fields in the backend
+    if (changed.name) {
+      changed.title = changed.name;
     }
 
     setSaving(true);
@@ -93,16 +129,16 @@ const EventEditModal = ({ open, event, onClose, onSaved }) => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing[3] }}>
             <div>
               <label style={modalStyles.label}>Start (local)</label>
-              <input type="datetime-local" style={modalStyles.input} value={form.startDate} onChange={(e)=>handleChange('startDate', e.target.value)} />
+              <input type="datetime-local" style={modalStyles.input} value={form.startDate} min={tomorrowString} onChange={(e)=>handleChange('startDate', e.target.value)} />
             </div>
             <div>
               <label style={modalStyles.label}>End (local)</label>
-              <input type="datetime-local" style={modalStyles.input} value={form.endDate} onChange={(e)=>handleChange('endDate', e.target.value)} />
+              <input type="datetime-local" style={modalStyles.input} value={form.endDate} min={minEndDate} onChange={(e)=>handleChange('endDate', e.target.value)} />
             </div>
           </div>
 
           <label style={modalStyles.label}>Registration deadline</label>
-          <input type="datetime-local" style={modalStyles.input} value={form.registrationDeadline} onChange={(e)=>handleChange('registrationDeadline', e.target.value)} />
+          <input type="datetime-local" style={modalStyles.input} value={form.registrationDeadline} min={tomorrowString} max={maxRegistrationDate} onChange={(e)=>handleChange('registrationDeadline', e.target.value)} />
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing[3] }}>
             <div>

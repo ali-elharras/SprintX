@@ -142,14 +142,33 @@ const getEvents = async (req, res) => {
         .sort({ startDate: 1 })
     ]);
 
+    // Calculate current participants for bazaars
+    const BazaarApplication = require("../models/BazaarApplication");
+    const eventsWithCounts = await Promise.all(
+      events.map(async (event) => {
+        const eventObj = event.toObject();
+        
+        // If it's a bazaar, calculate approved vendors count
+        if (eventObj.type === 'bazaar') {
+          const approvedVendorsCount = await BazaarApplication.countDocuments({
+            bazaar: eventObj._id,
+            status: "approved"
+          });
+          eventObj.currentParticipants = approvedVendorsCount;
+        }
+        
+        return {
+          ...eventObj,
+          name: eventObj.title || eventObj.name,
+          _id: eventObj._id,
+          type: eventObj.type,
+        };
+      })
+    );
+
     // Combine and transform the data
     const allEvents = [
-      ...events.map(event => ({
-        ...event.toObject(),
-        name: event.title || event.name,
-        _id: event._id,
-        type: event.type,
-      })),
+      ...eventsWithCounts,
       ...booths.map(booth => transformBoothToEvent(booth)),
       ...conferences.map(conference => transformConferenceToEvent(conference)),
       ...workshops.map(workshop => transformWorkshopToEvent(workshop))

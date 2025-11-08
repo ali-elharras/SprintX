@@ -10,6 +10,7 @@ import theme from "../theme";
 import Card from "../components/Card";
 import Input from "../components/Input";
 import Button from "../components/Button";
+import PreLoginNavbar from "../components/PreLoginNavbar";
 
 // Function to detect if email is GUC email format
 const isGUCEmail = (email) => {
@@ -231,83 +232,86 @@ const Login = () => {
     fontWeight: theme.typography.fontWeight.medium,
   };
 
-  const title = "GUC Events Login";
+  const title = "SprintX Login";
   const subtitle =
     "Access your account to discover and participate in campus events";
 
   return (
-    <div style={containerStyles}>
-      <Card style={cardStyles}>
-        <div style={headerStyles}>
-          <h1 style={titleStyles}>{title}</h1>
-          <p style={subtitleStyles}>{subtitle}</p>
-        </div>
+    <>
+      <PreLoginNavbar />
+      <div style={containerStyles}>
+        <Card style={cardStyles}>
+          <div style={headerStyles}>
+            <h1 style={titleStyles}>{title}</h1>
+            <p style={subtitleStyles}>{subtitle}</p>
+          </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} style={formStyles}>
-          {/* Email */}
-          <Input
-            label="Email Address"
-            type="email"
-            placeholder="Enter your email address"
-            required
-            error={errors.email?.message}
-            {...register("email")}
-          />
+          <form onSubmit={handleSubmit(onSubmit)} style={formStyles}>
+            {/* Email */}
+            <Input
+              label="Email Address"
+              type="email"
+              placeholder="Enter your email address"
+              required
+              error={errors.email?.message}
+              {...register("email")}
+            />
 
-          {/* Show if GUC email is detected */}
-          {isUniversityEmail && (
-            <div
-              style={{
-                fontSize: theme.typography.fontSize.sm,
-                color: theme.colors.primary.main,
-                marginTop: `-${theme.spacing[3]}`,
-                marginBottom: theme.spacing[2],
-                fontWeight: theme.typography.fontWeight.medium,
-              }}
+            {/* Show if GUC email is detected */}
+            {isUniversityEmail && (
+              <div
+                style={{
+                  fontSize: theme.typography.fontSize.sm,
+                  color: theme.colors.primary.main,
+                  marginTop: `-${theme.spacing[3]}`,
+                  marginBottom: theme.spacing[2],
+                  fontWeight: theme.typography.fontWeight.medium,
+                }}
+              >
+                ✓ GUC Email Detected
+              </div>
+            )}
+
+            {/* Password */}
+            <Input
+              label="Password"
+              type="password"
+              placeholder="Enter your password"
+              required
+              error={errors.password?.message}
+              {...register("password")}
+            />
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              loading={isSubmitting || isLoading}
+              disabled={isSubmitting || isLoading}
+              style={{ marginTop: theme.spacing[4] }}
             >
-              ✓ GUC Email Detected
+              {isSubmitting || isLoading ? "Signing In..." : "Sign In"}
+            </Button>
+
+            {/* Signup Link */}
+            <div style={linkStyles}>
+              <span>Don't have an account? </span>
+              <Link to="/signup" style={linkAnchorStyles}>
+                Sign up here
+              </Link>
             </div>
-          )}
 
-          {/* Password */}
-          <Input
-            label="Password"
-            type="password"
-            placeholder="Enter your password"
-            required
-            error={errors.password?.message}
-            {...register("password")}
-          />
-
-          {/* Submit Button */}
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            loading={isSubmitting || isLoading}
-            disabled={isSubmitting || isLoading}
-            style={{ marginTop: theme.spacing[4] }}
-          >
-            {isSubmitting || isLoading ? "Signing In..." : "Sign In"}
-          </Button>
-
-          {/* Signup Link */}
-          <div style={linkStyles}>
-            <span>Don't have an account? </span>
-            <Link to="/signup" style={linkAnchorStyles}>
-              Sign up here
-            </Link>
-          </div>
-
-          {/* Help Links */}
-          <div style={linkStyles}>
-            <Link to="/forgot-password" style={linkAnchorStyles}>
-              Forgot your password?
-            </Link>
-          </div>
-        </form>
-      </Card>
-    </div>
+            {/* Help Links */}
+            <div style={linkStyles}>
+              <Link to="/forgot-password" style={linkAnchorStyles}>
+                Forgot your password?
+              </Link>
+            </div>
+          </form>
+        </Card>
+      </div>
+    </>
   );
 };
 

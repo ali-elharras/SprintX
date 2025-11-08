@@ -9,11 +9,32 @@ import Select from "../components/Select";
 import Navbar from "../components/Navbar";
 import ConferenceModal from "./ConferenceModal";
 import LoadingScreen from "../components/LoadingScreen";
-import api, { eventAPI, workshopAPI, createCancelTokenSource } from "../services/api";
+import api, { eventAPI, workshopAPI, createCancelTokenSource, applicationServices } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 import CreateDropdownButton from '../components/CreateDropdownButton';
 import CreateTripModal from '../components/CreateTripModal';
+
+// Helper function to get tomorrow's date string in local time (not UTC)
+const getTomorrowDateTimeString = () => {
+  const now = new Date();
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const year = tomorrow.getFullYear();
+  const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+  const day = String(tomorrow.getDate()).padStart(2, '0');
+  const hours = String(tomorrow.getHours()).padStart(2, '0');
+  const minutes = String(tomorrow.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const getTomorrowDateString = () => {
+  const now = new Date();
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const year = tomorrow.getFullYear();
+  const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+  const day = String(tomorrow.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 // Workshop Components and Styles (from Workshops.js)
 const themeColors = {
@@ -542,6 +563,7 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
             type="datetime-local"
             name="startDate"
             value={formData.startDate || ''}
+            min={getTomorrowDateTimeString()}
             onChange={handleChange}
           />
           <label style={workshopModalStyles.label}>End Date</label>
@@ -550,6 +572,7 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
             type="datetime-local"
             name="endDate"
             value={formData.endDate || ''}
+            min={formData.startDate || getTomorrowDateTimeString()}
             onChange={handleChange}
           />
           <label style={workshopModalStyles.label}>Faculty Responsible</label>
@@ -594,6 +617,8 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
             type="date"
             name="registrationDeadline"
             value={formData.registrationDeadline ? formData.registrationDeadline.slice(0,10) : ''}
+            min={getTomorrowDateString()}
+            max={formData.startDate ? formData.startDate.slice(0,10) : undefined}
             onChange={handleChange}
           />
           <label style={workshopModalStyles.label}>Extra Required Resources</label>
@@ -636,6 +661,28 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
 };
 
 const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
+  const [participatingVendors, setParticipatingVendors] = useState([]);
+  const [vendorsLoading, setVendorsLoading] = useState(false);
+
+  // Fetch participating vendors
+  useEffect(() => {
+    const fetchVendors = async () => {
+      if (bazaar._id) {
+        setVendorsLoading(true);
+        try {
+          const response = await applicationServices.getApprovedVendorsForBazaar(bazaar._id);
+          setParticipatingVendors(response.data || []);
+        } catch (error) {
+          console.error('Error fetching vendors for bazaar management card:', error);
+          setParticipatingVendors([]);
+        } finally {
+          setVendorsLoading(false);
+        }
+      }
+    };
+    fetchVendors();
+  }, [bazaar._id]);
+
   const cardStyle = {
     background: theme.colors.background.paper,
     borderRadius: theme.borderRadius.card,
@@ -698,6 +745,99 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
           <p style={{ color: theme.colors.text.primary, marginTop: theme.spacing[4], fontSize: theme.typography.fontSize.base, maxHeight: "100px", overflow: "hidden", textOverflow: "ellipsis" }}>
             {bazaar.description}
           </p>
+
+          {/* Participating Vendors Section */}
+          <div
+            style={{
+              background: theme.colors.neutral.gray50,
+              padding: theme.spacing[3],
+              borderRadius: theme.borderRadius.base,
+              marginTop: theme.spacing[4],
+              border: `1px solid ${theme.colors.border}`,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: theme.spacing[2],
+                marginBottom: theme.spacing[2],
+              }}
+            >
+              <span style={{ fontSize: theme.typography.fontSize.base }}>🏪</span>
+              <h4
+                style={{
+                  margin: 0,
+                  fontSize: theme.typography.fontSize.sm,
+                  fontWeight: theme.typography.fontWeight.semibold,
+                  color: theme.colors.text.primary,
+                }}
+              >
+                Participating Vendors ({participatingVendors.length})
+              </h4>
+            </div>
+            {vendorsLoading ? (
+              <p style={{ 
+                fontSize: theme.typography.fontSize.xs, 
+                color: theme.colors.text.secondary,
+                margin: 0 
+              }}>
+                Loading vendors...
+              </p>
+            ) : participatingVendors.length > 0 ? (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: theme.spacing[2],
+                }}
+              >
+                {participatingVendors.slice(0, 5).map((vendor) => (
+                  <div
+                    key={vendor._id}
+                    style={{
+                      background: theme.colors.background.paper,
+                      border: `1px solid ${theme.colors.border}`,
+                      borderRadius: theme.borderRadius.sm,
+                      padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+                      fontSize: theme.typography.fontSize.xs,
+                      fontWeight: theme.typography.fontWeight.medium,
+                      color: theme.colors.text.primary,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: theme.spacing[1],
+                    }}
+                  >
+                    <span style={{ fontSize: "0.8em" }}>🏢</span>
+                    {vendor.companyName}
+                  </div>
+                ))}
+                {participatingVendors.length > 5 && (
+                  <div
+                    style={{
+                      background: theme.colors.primary.main,
+                      color: theme.colors.text.white,
+                      borderRadius: theme.borderRadius.sm,
+                      padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+                      fontSize: theme.typography.fontSize.xs,
+                      fontWeight: theme.typography.fontWeight.semibold,
+                    }}
+                  >
+                    +{participatingVendors.length - 5} more
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p style={{ 
+                fontSize: theme.typography.fontSize.xs, 
+                color: theme.colors.text.secondary,
+                margin: 0,
+                fontStyle: 'italic'
+              }}>
+                No vendors have been approved yet
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -712,7 +852,7 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
           borderTop: `1px solid ${theme.colors.border}`,
           paddingTop: theme.spacing[4] 
         }}>
-          <span>Participants</span>
+          <span>Vendors</span>
           <span style={{ fontWeight: "bold" }}>
             {bazaar.currentParticipants} / {bazaar.maxParticipants}
           </span>
@@ -723,17 +863,15 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
               <Button variant="primary" onClick={() => onEdit(bazaar)} style={{ flex: 1 }}>
                 Edit
               </Button>
-              <Button variant="danger" onClick={() => onDelete(bazaar._id)} style={{ flex: 1 }}>
-                Delete
-              </Button>
+              {!vendorsLoading && participatingVendors.length === 0 && (
+                <Button variant="danger" onClick={() => onDelete(bazaar._id)} style={{ flex: 1 }}>
+                  Delete
+                </Button>
+              )}
             </>
-          ) : hasEnded ? (
-            <Button variant="secondary" disabled style={{ width: "100%" }}>
-              Event Ended
-            </Button>
           ) : (
             <Button variant="secondary" disabled style={{ width: "100%" }}>
-              Event Started
+              {hasEnded ? "Event Ended" : "Event Started"}
             </Button>
           )}
         </div>
@@ -802,6 +940,17 @@ const EventsPage = () => {
     maxParticipants: "50",
     registrationDeadline: "",
   });
+
+  // Trip edit states
+  const [editTripOpen, setEditTripOpen] = useState(false);
+  const [editingTrip, setEditingTrip] = useState(null);
+
+  // Bazaar delete state
+  const [deleteBazaarCandidate, setDeleteBazaarCandidate] = useState(null);
+
+  // General event delete state
+  const [deleteEventCandidate, setDeleteEventCandidate] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchEvents = async () => {
     if (cancelTokenRef.current) {
@@ -951,6 +1100,10 @@ const EventsPage = () => {
   const applyFilters = () => {
     let filtered = [...events];
     
+    console.log("Applying filters to events:", events.length, "events");
+    console.log("Filters:", filters);
+    console.log("Event types:", events.map(e => ({ type: e.type, title: e.title || e.name, startDate: e.startDate })));
+    
     if (filters.type) {
       filtered = filtered.filter((e) => e.type === filters.type);
     }
@@ -1002,6 +1155,9 @@ const EventsPage = () => {
         return false;
       });
     }
+    
+    console.log("After all filters applied:", filtered.length, "events");
+    console.log("Filtered events:", filtered.map(e => ({ type: e.type, title: e.title || e.name, startDate: e.startDate })));
     
     setFilteredEvents(filtered);
   };
@@ -1130,16 +1286,58 @@ const EventsPage = () => {
   };
 
   const handleDeleteBazaar = async (bazaarId) => {
-    if (!window.confirm("Are you sure you want to permanently delete this bazaar?")) {
-      return;
-    }
+    setDeleteBazaarCandidate(bazaarId);
+  };
+
+  const confirmDeleteBazaar = async () => {
+    if (!deleteBazaarCandidate) return;
+    
     try {
-      await api.delete(`/bazaars/${bazaarId}`);
+      await api.delete(`/bazaars/${deleteBazaarCandidate}`);
       toast.success("Bazaar deleted successfully");
+      setDeleteBazaarCandidate(null);
       fetchEvents();
     } catch (error) {
       console.error("Failed to delete bazaar:", error);
       toast.error(error.response?.data?.message || "Failed to delete bazaar.");
+      setDeleteBazaarCandidate(null);
+    }
+  };
+
+  const handleDeleteEvent = (event) => {
+    setDeleteEventCandidate(event);
+  };
+
+  const confirmDeleteEvent = async () => {
+    if (!deleteEventCandidate) return;
+    
+    setIsDeleting(true);
+    try {
+      // Handle different event types
+      if (deleteEventCandidate.type === 'workshop') {
+        const { workshopAPI } = await import("../services/api");
+        await workshopAPI.deleteWorkshopByEventId(deleteEventCandidate._id);
+        localStorage.setItem('workshop_deleted', Date.now().toString());
+      } else {
+        await eventAPI.deleteEvent(deleteEventCandidate._id);
+      }
+      
+      const eventTypeLabel = deleteEventCandidate.type.charAt(0).toUpperCase() + deleteEventCandidate.type.slice(1);
+      toast.success(`${eventTypeLabel} deleted successfully!`);
+      setDeleteEventCandidate(null);
+      fetchEvents();
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Failed to delete event";
+      
+      if (errorMessage.includes('registration') || errorMessage.includes('students have already registered')) {
+        toast.error(errorMessage, { duration: 6000 });
+      } else {
+        toast.error(errorMessage);
+      }
+      setDeleteEventCandidate(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1314,6 +1512,7 @@ const EventsPage = () => {
                 label="Start Date *"
                 type="datetime-local"
                 value={editBazaarData.startDate}
+                min={getTomorrowDateTimeString()}
                 onChange={(e) => {
                   const newStartDate = e.target.value;
                   const updatedData = {
@@ -1334,7 +1533,7 @@ const EventsPage = () => {
                 label="End Date *"
                 type="datetime-local"
                 value={editBazaarData.endDate}
-                min={editBazaarData.startDate}
+                min={editBazaarData.startDate || getTomorrowDateTimeString()}
                 onChange={(e) =>
                   setEditBazaarData({ ...editBazaarData, endDate: e.target.value })
                 }
@@ -1370,6 +1569,7 @@ const EventsPage = () => {
                 label="Registration Deadline *"
                 type="datetime-local"
                 value={editBazaarData.registrationDeadline}
+                min={getTomorrowDateTimeString()}
                 max={editBazaarData.startDate}
                 onChange={(e) =>
                   setEditBazaarData({
@@ -1753,11 +1953,13 @@ const EventsPage = () => {
               <Button variant="outline" onClick={fetchEvents}>
                 Refresh
               </Button>
-              <CreateDropdownButton 
-                onConferenceModalOpen={() => setShowConferenceModal(true)} 
-                onBazaarModalOpen={() => setCreateBazaarOpen(true)} 
-                onTripCreate={() => setCreateTripOpen(true)}
-              />
+              {!auth.isAdmin && (
+                <CreateDropdownButton 
+                  onConferenceModalOpen={() => setShowConferenceModal(true)} 
+                  onBazaarModalOpen={() => setCreateBazaarOpen(true)} 
+                  onTripCreate={() => setCreateTripOpen(true)}
+                />
+              )}
             </div>
           </div>
 
@@ -1799,6 +2001,8 @@ const EventsPage = () => {
                       setEditingConference(conference);
                       setShowConferenceModal(true);
                     }}
+                    onEditTrip={handleEditTrip}
+                    onDelete={handleDeleteEvent}
                   />
                 );
               })}
@@ -2181,6 +2385,206 @@ const EventsPage = () => {
               </div>
             </div>
           )}
+
+          {/* Delete Bazaar Confirmation Modal */}
+          {deleteBazaarCandidate && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              style={{
+                position: "fixed",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(0,0,0,0.5)",
+                zIndex: 10000,
+                animation: "fadeIn 0.2s ease-out",
+              }}
+              onClick={() => setDeleteBazaarCandidate(null)}
+            >
+              <div
+                style={{
+                  width: "480px",
+                  maxWidth: "95%",
+                  background: theme.colors.background.paper,
+                  borderRadius: theme.borderRadius.lg,
+                  padding: theme.spacing[6],
+                  boxShadow: theme.shadows.xl,
+                  animation: "slideUp 0.3s ease-out",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3
+                  style={{
+                    marginTop: 0,
+                    marginBottom: theme.spacing[3],
+                    color: theme.colors.error.main,
+                    fontSize: theme.typography.fontSize.xl,
+                    fontWeight: theme.typography.fontWeight.bold,
+                  }}
+                >
+                  🗑️ Delete Bazaar?
+                </h3>
+                <p
+                  style={{
+                    color: theme.colors.text.secondary,
+                    marginBottom: theme.spacing[4],
+                    lineHeight: 1.6,
+                    fontSize: theme.typography.fontSize.base,
+                  }}
+                >
+                  Are you sure you want to permanently delete this bazaar?
+                </p>
+                <p
+                  style={{
+                    color: theme.colors.text.secondary,
+                    marginBottom: theme.spacing[5],
+                    fontSize: theme.typography.fontSize.sm,
+                  }}
+                >
+                  <strong>⚠️ Warning:</strong> This action cannot be undone. The bazaar will be completely removed from the system.
+                </p>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    gap: theme.spacing[3],
+                  }}
+                >
+                  <Button
+                    variant="outline"
+                    onClick={() => setDeleteBazaarCandidate(null)}
+                    style={{
+                      minWidth: "100px",
+                      padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="danger"
+                    onClick={confirmDeleteBazaar}
+                    style={{
+                      minWidth: "100px",
+                      padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+                    }}
+                  >
+                    Delete Bazaar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Event Confirmation Modal (General) */}
+          {deleteEventCandidate && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              style={{
+                position: "fixed",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(0,0,0,0.5)",
+                zIndex: 10000,
+                animation: "fadeIn 0.2s ease-out",
+              }}
+              onClick={() => !isDeleting && setDeleteEventCandidate(null)}
+            >
+              <div
+                style={{
+                  width: "480px",
+                  maxWidth: "95%",
+                  background: theme.colors.background.paper,
+                  borderRadius: theme.borderRadius.lg,
+                  padding: theme.spacing[6],
+                  boxShadow: theme.shadows.xl,
+                  animation: "slideUp 0.3s ease-out",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3
+                  style={{
+                    marginTop: 0,
+                    marginBottom: theme.spacing[3],
+                    color: theme.colors.error.main,
+                    fontSize: theme.typography.fontSize.xl,
+                    fontWeight: theme.typography.fontWeight.bold,
+                  }}
+                >
+                  🗑️ Delete {deleteEventCandidate.type?.charAt(0).toUpperCase() + deleteEventCandidate.type?.slice(1)}?
+                </h3>
+                <p
+                  style={{
+                    color: theme.colors.text.secondary,
+                    marginBottom: theme.spacing[2],
+                    lineHeight: 1.6,
+                    fontSize: theme.typography.fontSize.base,
+                  }}
+                >
+                  Are you sure you want to permanently delete this {deleteEventCandidate.type}?
+                </p>
+                <p
+                  style={{
+                    color: theme.colors.text.primary,
+                    marginBottom: theme.spacing[4],
+                    fontWeight: theme.typography.fontWeight.semibold,
+                    fontSize: theme.typography.fontSize.lg,
+                    padding: theme.spacing[3],
+                    background: theme.colors.neutral.gray50,
+                    borderRadius: theme.borderRadius.base,
+                    borderLeft: `4px solid ${theme.colors.error.main}`,
+                  }}
+                >
+                  "{deleteEventCandidate.title || deleteEventCandidate.name}"
+                </p>
+                <p
+                  style={{
+                    color: theme.colors.text.secondary,
+                    marginBottom: theme.spacing[5],
+                    fontSize: theme.typography.fontSize.sm,
+                  }}
+                >
+                  <strong>⚠️ Warning:</strong> This action cannot be undone. The {deleteEventCandidate.type} will be completely removed from the system.
+                </p>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    gap: theme.spacing[3],
+                  }}
+                >
+                  <Button
+                    variant="outline"
+                    onClick={() => setDeleteEventCandidate(null)}
+                    disabled={isDeleting}
+                    style={{
+                      minWidth: "100px",
+                      padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="danger"
+                    onClick={confirmDeleteEvent}
+                    disabled={isDeleting}
+                    style={{
+                      minWidth: "100px",
+                      padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+                    }}
+                  >
+                    {isDeleting ? "Deleting..." : `Delete ${deleteEventCandidate.type?.charAt(0).toUpperCase() + deleteEventCandidate.type?.slice(1)}`}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         {createBazaarOpen && (
           <div
@@ -2249,6 +2653,7 @@ const EventsPage = () => {
                   <Input
                     label="Start Date *"
                     type="datetime-local"
+                    min={getTomorrowDateTimeString()}
                     value={bazaarData.startDate}
                     onChange={(e) => {
                       const newStartDate = e.target.value;
@@ -2272,7 +2677,7 @@ const EventsPage = () => {
                     label="End Date *"
                     type="datetime-local"
                     value={bazaarData.endDate}
-                    min={bazaarData.startDate}
+                    min={bazaarData.startDate || getTomorrowDateTimeString()}
                     onChange={(e) => setBazaarData({ ...bazaarData, endDate: e.target.value })}
                   />
                 </div>
@@ -2294,6 +2699,7 @@ const EventsPage = () => {
                     label="Registration Deadline *"
                     type="datetime-local"
                     value={bazaarData.registrationDeadline}
+                    min={getTomorrowDateTimeString()}
                     max={bazaarData.startDate}
                     onChange={(e) => setBazaarData({ ...bazaarData, registrationDeadline: e.target.value })}
                   />
@@ -2365,8 +2771,8 @@ const EventsPage = () => {
             setEditingConference(null);
           }}
           conference={editingConference}
-          onSuccess={() => {
-            fetchEvents();
+          onSuccess={async () => {
+            await fetchEvents();
             setEditingConference(null);
           }}
         />

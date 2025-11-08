@@ -9,6 +9,7 @@ import theme from "../theme";
 import Card from "../components/Card";
 import Input from "../components/Input";
 import Button from "../components/Button";
+import PreLoginNavbar from "../components/PreLoginNavbar";
 import { authAPI } from "../services/auth";
 
 // Validation schema
@@ -136,94 +137,100 @@ const ForgotPassword = () => {
 
   if (emailSent) {
     return (
-      <div style={containerStyles}>
-        <Card style={cardStyles}>
-          <div style={headerStyles}>
-            <h1 style={titleStyles}>Check Your Email</h1>
-          </div>
+      <>
+        <PreLoginNavbar />
+        <div style={containerStyles}>
+          <Card style={cardStyles}>
+            <div style={headerStyles}>
+              <h1 style={titleStyles}>Check Your Email</h1>
+            </div>
 
-          <div style={successMessageStyles}>
-            <h2 style={successTitleStyles}>Email Sent Successfully!</h2>
-            <p style={successTextStyles}>
-              We've sent a password reset link to{" "}
-              <strong>{watchedEmail}</strong>
-            </p>
-            <p style={successTextStyles}>
-              Please check your inbox and click the link to reset your password.
-              The link will expire in 1 hour for security purposes.
-            </p>
-          </div>
+            <div style={successMessageStyles}>
+              <h2 style={successTitleStyles}>Email Sent Successfully!</h2>
+              <p style={successTextStyles}>
+                We've sent a password reset link to{" "}
+                <strong>{watchedEmail}</strong>
+              </p>
+              <p style={successTextStyles}>
+                Please check your inbox and click the link to reset your
+                password. The link will expire in 1 hour for security purposes.
+              </p>
+            </div>
 
-          <div style={linkStyles}>
-            Didn't receive the email?{" "}
-            <button
-              onClick={() => {
-                setEmailSent(false);
-                setIsSubmitting(false);
-              }}
-              style={{
-                ...linkAnchorStyles,
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: 0,
-              }}
-            >
-              Try again
-            </button>
-          </div>
+            <div style={linkStyles}>
+              Didn't receive the email?{" "}
+              <button
+                onClick={() => {
+                  setEmailSent(false);
+                  setIsSubmitting(false);
+                }}
+                style={{
+                  ...linkAnchorStyles,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                Try again
+              </button>
+            </div>
 
-          <div style={linkStyles}>
-            Remember your password?{" "}
-            <Link to="/" style={linkAnchorStyles}>
-              Back to Login
-            </Link>
-          </div>
-        </Card>
-      </div>
+            <div style={linkStyles}>
+              Remember your password?{" "}
+              <Link to="/" style={linkAnchorStyles}>
+                Back to Login
+              </Link>
+            </div>
+          </Card>
+        </div>
+      </>
     );
   }
 
   return (
-    <div style={containerStyles}>
-      <Card style={cardStyles}>
-        <div style={headerStyles}>
-          <h1 style={titleStyles}>Forgot Password?</h1>
-          <p style={subtitleStyles}>
-            Enter your email address and we'll send you a link to reset your
-            password
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} style={formStyles}>
-          <Input
-            label="Email Address"
-            type="email"
-            placeholder="Enter your email address"
-            required
-            error={errors.email?.message}
-            {...register("email")}
-          />
-
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            loading={isSubmitting}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Sending..." : "Send Reset Link"}
-          </Button>
-
-          <div style={linkStyles}>
-            Remember your password?{" "}
-            <Link to="/" style={linkAnchorStyles}>
-              Back to Login
-            </Link>
+    <>
+      <PreLoginNavbar />
+      <div style={containerStyles}>
+        <Card style={cardStyles}>
+          <div style={headerStyles}>
+            <h1 style={titleStyles}>Forgot Password?</h1>
+            <p style={subtitleStyles}>
+              Enter your email address and we'll send you a link to reset your
+              password
+            </p>
           </div>
-        </form>
-      </Card>
-    </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} style={formStyles}>
+            <Input
+              label="Email Address"
+              type="email"
+              placeholder="Enter your email address"
+              required
+              error={errors.email?.message}
+              {...register("email")}
+            />
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              loading={isSubmitting}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Sending..." : "Send Reset Link"}
+            </Button>
+
+            <div style={linkStyles}>
+              Remember your password?{" "}
+              <Link to="/" style={linkAnchorStyles}>
+                Back to Login
+              </Link>
+            </div>
+          </form>
+        </Card>
+      </div>
+    </>
   );
 };
 

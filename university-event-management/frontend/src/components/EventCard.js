@@ -9,7 +9,7 @@ import { eventAPI } from "../services/api";
 import { applicationServices } from "../services/api";
 import toast from "react-hot-toast";
 
-const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit }) => {
+const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit, onEditTrip, onDelete }) => {
   // Normalize event/conference object for consistent display
   const normalizedEvent = {
     ...event,
@@ -27,11 +27,21 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
     endDate: event.endDate || event.startDate || event.date || new Date().toISOString(),
   };
 
+  // Debug logging for bazaars
+  if (normalizedEvent.type === 'bazaar') {
+    console.log('Bazaar EventCard Data:', {
+      title: normalizedEvent.title,
+      type: normalizedEvent.type,
+      registrationRequired: normalizedEvent.registrationRequired,
+      currentParticipants: normalizedEvent.currentParticipants,
+      maxParticipants: normalizedEvent.maxParticipants,
+      showParticipants: normalizedEvent.registrationRequired || normalizedEvent.type === 'bazaar'
+    });
+  }
+
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [participatingVendors, setParticipatingVendors] = useState([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const navigate = useNavigate();
   const { isEventsOffice, user, isAdmin } = useAuth();
 
@@ -128,102 +138,60 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   };
 
   const handleEditClick = () => {
+    console.log('Edit button clicked!', { 
+      event: normalizedEvent, 
+      onEdit, 
+      onEditConference,
+      onEditTrip,
+      hasOnEdit: !!onEdit,
+      hasOnEditConference: !!onEditConference,
+      hasOnEditTrip: !!onEditTrip,
+      willCallOnEdit: !onEditConference || normalizedEvent.type !== "conference"
+    });
     if (onEditConference && normalizedEvent.type === "conference") {
+      console.log('Calling onEditConference');
       onEditConference(normalizedEvent);
+    } else if (onEditTrip && normalizedEvent.type === "trip") {
+      console.log('Calling onEditTrip with event:', normalizedEvent);
+      onEditTrip(normalizedEvent);
+    } else if (onEdit) {
+      console.log('Calling onEdit with event:', normalizedEvent);
+      onEdit(normalizedEvent);
+    } else {
+      console.log('ERROR: No edit callback available!');
     }
   };
 
 const handleDeleteConference = async () => {
-  if (!window.confirm("Are you sure you want to delete this conference? This action cannot be undone.")) {
-    return;
-  }
-
-  try {
-    setIsDeleting(true);
-    await conferenceAPI.deleteConference(normalizedEvent._id);
-    toast.success("Conference deleted successfully!");
-    if (onEventUpdate) {
-      onEventUpdate(); // Refresh the events list
-    }
-  } catch (error) {
-    console.error("Error deleting conference:", error);
-    const errorMessage = error.response?.data?.message || error.message || "Failed to delete conference";
-    toast.error(errorMessage);
-  } finally {
-    setIsDeleting(false);
+  // Call parent delete handler
+  if (onDelete) {
+    onDelete(normalizedEvent);
   }
 };
 
 const handleDeleteWorkshop = async () => {
-  // Check if there are registrations before showing modal
+  // Check if there are registrations before triggering delete
   if (normalizedEvent.currentParticipants > 0) {
     toast.error("This workshop cannot be deleted because there are registered users.");
     return;
   }
 
-  // Show modal instead of browser confirm
-  setShowDeleteModal(true);
-};
-
-const confirmDeleteWorkshop = async () => {
-  setShowDeleteModal(false);
-  
-  try {
-    setIsDeleting(true);
-    // Import workshopAPI at the top and use it here
-    const { workshopAPI } = await import("../services/api");
-    
-    // Published workshops are displayed as Event documents, so we need to delete by Event ID
-    await workshopAPI.deleteWorkshopByEventId(normalizedEvent._id);
-    
-    // Signal other tabs that a workshop was deleted
-    localStorage.setItem('workshop_deleted', Date.now().toString());
-    
-    toast.success("Workshop deleted successfully!");
-    if (onEventUpdate) {
-      onEventUpdate(); // Refresh the events list
-    }
-  } catch (error) {
-    console.error("Error deleting workshop:", error);
-    const errorMessage = error.response?.data?.message || error.message || "Failed to delete workshop";
-    
-    // Show specific error for registered users
-    if (errorMessage.includes('students have already registered')) {
-      toast.error("This workshop cannot be deleted because there are registered users.");
-    } else {
-      toast.error(errorMessage);
-    }
-  } finally {
-    setIsDeleting(false);
+  // Call parent delete handler
+  if (onDelete) {
+    onDelete(normalizedEvent);
   }
 };
 
   const handleDeleteEvent = async () => {
-    if (!window.confirm(`Are you sure you want to delete this ${normalizedEvent.type}? This action cannot be undone.`)) {
+    // Check if there are registrations before triggering delete
+    if (normalizedEvent.currentParticipants > 0) {
+      toast.error("This event cannot be deleted because there are registered participants.");
       return;
     }
 
-    setIsDeleting(true);
-    try {
-      await eventAPI.deleteEvent(normalizedEvent._id);
-      toast.success(`${getEventTypeLabel(normalizedEvent.type)} deleted successfully!`);
-      
-      // Trigger refresh on parent component
-      if (onEventUpdate) {
-        onEventUpdate();
-      }
-    } catch (error) {
-      console.error("Error deleting event:", error);
-      const errorMessage = error.response?.data?.message || error.message || "Failed to delete event";
-      
-      // Check if error is due to registrations
-      if (errorMessage.includes('registration')) {
-        toast.error(errorMessage, { duration: 6000 });
-      } else {
-        toast.error(errorMessage);
-      }
-    } finally {
-      setIsDeleting(false);
+    // Call parent delete handler
+    if (onDelete) {
+      onDelete(normalizedEvent);
     }
   };
 
@@ -237,23 +205,30 @@ const confirmDeleteWorkshop = async () => {
   // Fetch participating vendors for bazaar events
   useEffect(() => {
     const fetchParticipatingVendors = async () => {
-      if (event.type === 'bazaar' && event._id) {
+      if (normalizedEvent.type === 'bazaar' && normalizedEvent._id) {
         setVendorsLoading(true);
         try {
-          const response = await applicationServices.getApprovedVendorsForBazaar(event._id);
+          console.log('Fetching vendors for bazaar:', normalizedEvent._id, 'Type:', normalizedEvent.type);
+          const response = await applicationServices.getApprovedVendorsForBazaar(normalizedEvent._id);
+          console.log('Vendors response:', response);
+          console.log('Vendors data:', response.data);
+          console.log('Setting vendors:', response.data || []);
           setParticipatingVendors(response.data || []);
         } catch (error) {
           console.error('Error fetching participating vendors:', error);
+          console.error('Error details:', error.response?.data);
           // Don't show error toast for this - it's not critical for event display
           setParticipatingVendors([]);
         } finally {
           setVendorsLoading(false);
         }
+      } else {
+        console.log('Not fetching vendors - Type:', normalizedEvent.type, 'ID:', normalizedEvent._id);
       }
     };
 
     fetchParticipatingVendors();
-  }, [event.type, event._id]);
+  }, [normalizedEvent.type, normalizedEvent._id]);
 
   if (showRegistrationForm) {
     return (
@@ -291,6 +266,20 @@ const confirmDeleteWorkshop = async () => {
 
   const hasStarted = eventHasStarted(normalizedEvent);
 
+  // Debug logging for trip edit button
+  if (normalizedEvent.type === 'trip') {
+    console.log('Trip Edit Debug:', {
+      type: normalizedEvent.type,
+      isEventsOffice,
+      isOwner,
+      hasStarted,
+      userId: user?.id || user?._id,
+      organizer: normalizedEvent.organizer,
+      createdBy: normalizedEvent.createdBy,
+      showEditButton: isEventsOffice && isOwner && !hasStarted
+    });
+  }
+
   return (
     <>
       <style>{`
@@ -321,6 +310,9 @@ const confirmDeleteWorkshop = async () => {
           overflow: "hidden",
           transition: "all 0.3s ease",
           cursor: "pointer",
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
         }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "translateY(-5px)";
@@ -386,7 +378,7 @@ const confirmDeleteWorkshop = async () => {
       </div>
 
       {/* Event Content */}
-      <div style={{ padding: theme.spacing[5] }}>
+      <div style={{ padding: theme.spacing[5], display: "flex", flexDirection: "column", flexGrow: 1 }}>
         {/* Event Details */}
         <div style={{ marginBottom: theme.spacing[4] }}>
           <div
@@ -451,7 +443,7 @@ const confirmDeleteWorkshop = async () => {
         </p>
 
         {/* Participating Vendors Section - Only for Bazaars */}
-        {event.type === 'bazaar' && participatingVendors.length > 0 && (
+        {normalizedEvent.type === 'bazaar' && (
           <div
             style={{
               background: theme.colors.neutral.gray50,
@@ -481,51 +473,70 @@ const confirmDeleteWorkshop = async () => {
                 Participating Vendors ({participatingVendors.length})
               </h4>
             </div>
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: theme.spacing[2],
-              }}
-            >
-              {participatingVendors.slice(0, 5).map((vendor) => (
-                <div
-                  key={vendor._id}
-                  style={{
-                    background: theme.colors.background.paper,
-                    border: `1px solid ${theme.colors.border}`,
-                    borderRadius: theme.borderRadius.sm,
-                    padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
-                    fontSize: theme.typography.fontSize.sm,
-                    fontWeight: theme.typography.fontWeight.medium,
-                    color: theme.colors.text.primary,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: theme.spacing[1],
-                  }}
-                >
-                  <span style={{ fontSize: "0.9em" }}>🏢</span>
-                  {vendor.companyName}
-                </div>
-              ))}
-              {participatingVendors.length > 5 && (
-                <div
-                  style={{
-                    background: theme.colors.primary.main,
-                    color: theme.colors.text.white,
-                    border: `1px solid ${theme.colors.primary.dark}`,
-                    borderRadius: theme.borderRadius.sm,
-                    padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
-                    fontSize: theme.typography.fontSize.sm,
-                    fontWeight: theme.typography.fontWeight.semibold,
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                >
-                  +{participatingVendors.length - 5} more
-                </div>
-              )}
-            </div>
+            {vendorsLoading ? (
+              <p style={{ 
+                fontSize: theme.typography.fontSize.sm, 
+                color: theme.colors.text.secondary,
+                margin: 0 
+              }}>
+                Loading vendors...
+              </p>
+            ) : participatingVendors.length > 0 ? (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: theme.spacing[2],
+                }}
+              >
+                {participatingVendors.slice(0, 5).map((vendor) => (
+                  <div
+                    key={vendor._id}
+                    style={{
+                      background: theme.colors.background.paper,
+                      border: `1px solid ${theme.colors.border}`,
+                      borderRadius: theme.borderRadius.sm,
+                      padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
+                      fontSize: theme.typography.fontSize.sm,
+                      fontWeight: theme.typography.fontWeight.medium,
+                      color: theme.colors.text.primary,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: theme.spacing[1],
+                    }}
+                  >
+                    <span style={{ fontSize: "0.9em" }}>🏢</span>
+                    {vendor.companyName}
+                  </div>
+                ))}
+                {participatingVendors.length > 5 && (
+                  <div
+                    style={{
+                      background: theme.colors.primary.main,
+                      color: theme.colors.text.white,
+                      border: `1px solid ${theme.colors.primary.dark}`,
+                      borderRadius: theme.borderRadius.sm,
+                      padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
+                      fontSize: theme.typography.fontSize.sm,
+                      fontWeight: theme.typography.fontWeight.semibold,
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    +{participatingVendors.length - 5} more
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p style={{ 
+                fontSize: theme.typography.fontSize.sm, 
+                color: theme.colors.text.secondary,
+                margin: 0,
+                fontStyle: 'italic'
+              }}>
+                No vendors have been approved yet
+              </p>
+            )}
           </div>
         )}
 
@@ -548,7 +559,7 @@ const confirmDeleteWorkshop = async () => {
         )}
 
         {/* Registration Info */}
-        {normalizedEvent.registrationRequired && (
+        {(normalizedEvent.registrationRequired || normalizedEvent.type === 'bazaar') && (
           <div
             style={{
               background: theme.colors.neutral.gray50,
@@ -571,7 +582,7 @@ const confirmDeleteWorkshop = async () => {
                   color: theme.colors.text.secondary,
                 }}
               >
-                Participants
+                {normalizedEvent.type === 'bazaar' ? 'Vendors' : 'Participants'}
               </span>
               <span
                 style={{
@@ -665,41 +676,43 @@ const confirmDeleteWorkshop = async () => {
             )}
           </div>
         )}
+        
+        {/* Spacer to push buttons to bottom */}
+        <div style={{ flexGrow: 1 }}></div>
+        
         {/* Action Buttons */}
           <div
             style={{
               display: "flex",
               gap: theme.spacing[3],
               alignItems: "stretch",
+              marginTop: "auto",
+              paddingTop: theme.spacing[4]
             }}
           >
             {isAdmin ? (
-              // Admin: show Delete button only when no participants
-              normalizedEvent.currentParticipants === 0 ? (
-                <div style={{ flex: 1 }}>
+              // Admin: show Delete button only when no participants (NO EDIT)
+              <>
+                {normalizedEvent.currentParticipants === 0 && (
                   <Button
                     variant="danger"
                     onClick={handleDeleteEvent}
-                    disabled={isDeleting}
                     title="Delete event (only if no registrations)"
                     style={{
                       width: "100%",
                       minHeight: "44px",
                       padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
                       whiteSpace: "nowrap",
-                      opacity: isDeleting ? 0.6 : 1,
-                      cursor: isDeleting ? "not-allowed" : "pointer",
                     }}
                   >
-                    {isDeleting ? "Deleting..." : "Delete Event"}
+                    Delete Event
                   </Button>
-                </div>
-              ) : null
+                )}
+              </>
             ) : isEventsOffice ? (
               <>
                 {/* Events Office: Edit shown only for events they own and only if event has NOT started */}
                 {isOwner && !hasStarted && normalizedEvent.type !== 'workshop' && (
-                <div style={{ flex: 1 }}>
                   <Button
                     variant="primary"
                     onClick={handleEditClick}
@@ -712,156 +725,46 @@ const confirmDeleteWorkshop = async () => {
                   >
                     Edit
                   </Button>
-                </div>
-              )}
+                )}
 
                 {/* Events Office: Delete shown only for events they own, only if NOT started AND participants === 0 */}
                 {isOwner && !hasStarted && normalizedEvent.currentParticipants === 0 && (
-                  <div style={{ flex: 1 }}>
-                    <Button
-                      variant="danger"
-                      onClick={handleDeleteEvent}
-                      disabled={isDeleting}
-                      style={{
-                        width: "100%",
-                        minHeight: "44px",
-                        padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                        whiteSpace: "nowrap",
-                        opacity: isDeleting ? 0.6 : 1,
-                      }}
-                    >
-                      {isDeleting ? "Deleting..." : "Delete"}
-                    </Button>
-                  </div>
-                )}
-              </>
-            ) : (
-              // Regular users: keep Register Now as-is
-              !isEventsOffice && !isAdmin && showRegistration && canRegister() && (
-                <div style={{ flex: 1 }}>
                   <Button
-                    variant="primary"
-                    onClick={() => setShowRegistrationForm(true)}
+                    variant="danger"
+                    onClick={handleDeleteEvent}
                     style={{
                       width: "100%",
                       minHeight: "44px",
                       padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
                       whiteSpace: "nowrap",
+                      gridColumn: isOwner && !hasStarted && normalizedEvent.type !== 'workshop' ? "auto" : "1 / -1",
                     }}
                   >
-                    Register Now
+                    Delete
                   </Button>
-                </div>
+                )}
+              </>
+            ) : (
+              // Regular users: keep Register Now as-is
+              !isEventsOffice && !isAdmin && showRegistration && canRegister() && (
+                <Button
+                  variant="primary"
+                  onClick={() => setShowRegistrationForm(true)}
+                  style={{
+                    width: "100%",
+                    minHeight: "44px",
+                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                    whiteSpace: "nowrap",
+                    gridColumn: "1 / -1",
+                  }}
+                >
+                  Register Now
+                </Button>
               )
             )}
           </div>
       </div>
 
-      {/* Delete Workshop Confirmation Modal */}
-      {showDeleteModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(0,0,0,0.5)",
-            zIndex: 10000,
-            animation: "fadeIn 0.2s ease-out",
-          }}
-          onClick={() => setShowDeleteModal(false)}
-        >
-          <div
-            style={{
-              width: "480px",
-              maxWidth: "95%",
-              background: theme.colors.background.paper,
-              borderRadius: theme.borderRadius.lg,
-              padding: theme.spacing[6],
-              boxShadow: theme.shadows.xl,
-              animation: "slideUp 0.3s ease-out",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3
-              style={{
-                marginTop: 0,
-                marginBottom: theme.spacing[3],
-                color: theme.colors.error.main,
-                fontSize: theme.typography.fontSize.xl,
-                fontWeight: theme.typography.fontWeight.bold,
-              }}
-            >
-              🗑️ Delete Workshop?
-            </h3>
-            <p
-              style={{
-                color: theme.colors.text.secondary,
-                marginBottom: theme.spacing[2],
-                lineHeight: 1.6,
-                fontSize: theme.typography.fontSize.base,
-              }}
-            >
-              Are you sure you want to permanently delete this workshop?
-            </p>
-            <p
-              style={{
-                color: theme.colors.text.primary,
-                marginBottom: theme.spacing[4],
-                fontWeight: theme.typography.fontWeight.semibold,
-                fontSize: theme.typography.fontSize.lg,
-                padding: theme.spacing[3],
-                background: theme.colors.neutral.gray50,
-                borderRadius: theme.borderRadius.base,
-                borderLeft: `4px solid ${theme.colors.error.main}`,
-              }}
-            >
-              "{normalizedEvent.title}"
-            </p>
-            <p
-              style={{
-                color: theme.colors.text.secondary,
-                marginBottom: theme.spacing[5],
-                fontSize: theme.typography.fontSize.sm,
-              }}
-            >
-              <strong>⚠️ Warning:</strong> This action cannot be undone. The workshop will be completely removed from the system.
-            </p>
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: theme.spacing[3],
-              }}
-            >
-              <Button
-                variant="outline"
-                onClick={() => setShowDeleteModal(false)}
-                style={{
-                  minWidth: "100px",
-                  padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                onClick={confirmDeleteWorkshop}
-                style={{
-                  minWidth: "100px",
-                  padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
-                }}
-              >
-                Delete Workshop
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
     </>
   );

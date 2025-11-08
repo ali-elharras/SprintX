@@ -4,6 +4,27 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import toast from 'react-hot-toast';
 
+// Helper functions to get tomorrow's date in local time (not UTC)
+const getTomorrowDateTimeString = () => {
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const year = tomorrow.getFullYear();
+    const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const day = String(tomorrow.getDate()).padStart(2, '0');
+    const hours = String(tomorrow.getHours()).padStart(2, '0');
+    const minutes = String(tomorrow.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const getTomorrowDateString = () => {
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const year = tomorrow.getFullYear();
+    const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const day = String(tomorrow.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 // --- Configuration ---
 const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:8080/api'}/workshops`;
 
@@ -515,6 +536,7 @@ const CreateWorkshop = () => {
                                         value={workshopData.startDate}
                                         onChange={handleChange}
                                         isInvalid={isInvalid('startDate')}
+                                        min={getTomorrowDateTimeString()}
                                         required
                                     />
                                     {isInvalid('startDate') && <span style={errorTextStyles}>{fieldErrors.startDate}</span>}
@@ -530,6 +552,7 @@ const CreateWorkshop = () => {
                                         value={workshopData.endDate}
                                         onChange={handleChange}
                                         isInvalid={isInvalid('endDate')}
+                                        min={workshopData.startDate || getTomorrowDateTimeString()}
                                         required
                                     />
                                     {isInvalid('endDate') && <span style={errorTextStyles}>{fieldErrors.endDate}</span>}
@@ -715,6 +738,8 @@ const CreateWorkshop = () => {
                                         value={workshopData.registrationDeadline}
                                         onChange={handleChange}
                                         isInvalid={isInvalid('registrationDeadline')}
+                                        min={getTomorrowDateString()}
+                                        max={workshopData.startDate ? workshopData.startDate.slice(0, 10) : undefined}
                                         required
                                     />
                                     {isInvalid('registrationDeadline') && <span style={errorTextStyles}>{fieldErrors.registrationDeadline}</span>}

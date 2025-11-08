@@ -30,6 +30,24 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false }) => {
     });
   };
 
+  // Format gym session time (HH:MM format)
+  const formatGymTime = (timeString) => {
+    if (!timeString) return "";
+    const [hours, minutes] = timeString.split(":");
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  const getDayName = (dayNum) => {
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    return days[dayNum];
+  };
+
+  const isGymSession = registration.isGymSession || event.type === 'gym';
+  const isCourtReservation = registration.isCourtReservation || event.type === 'court';
+
   // Check if cancellation is allowed (24 hours before event)
   const canCancel = () => {
     if (isPastEvent || registration.status === "cancelled") return false;
@@ -192,10 +210,17 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false }) => {
         <div style={detailRowStyles}>
           <span style={detailLabelStyles}>📅 Date:</span>
           <span style={detailValueStyles}>
-            {formatDate(event.startDate)}
-            {event.endDate && 
-              new Date(event.startDate).toDateString() !== new Date(event.endDate).toDateString() && 
-              ` - ${formatDate(event.endDate)}`
+            {isGymSession && event.dayOfWeek !== undefined 
+              ? `${getDayName(event.dayOfWeek)}s (${formatDate(event.startDate)} - ${formatDate(event.endDate)})`
+              : (
+                <>
+                  {formatDate(event.startDate)}
+                  {event.endDate && 
+                    new Date(event.startDate).toDateString() !== new Date(event.endDate).toDateString() && 
+                    ` - ${formatDate(event.endDate)}`
+                  }
+                </>
+              )
             }
           </span>
         </div>
@@ -203,30 +228,88 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false }) => {
         <div style={detailRowStyles}>
           <span style={detailLabelStyles}>🕒 Time:</span>
           <span style={detailValueStyles}>
-            {formatTime(event.startDate)}
-            {event.endDate && ` - ${formatTime(event.endDate)}`}
+            {isGymSession && event.startTime 
+              ? `${formatGymTime(event.startTime)} - ${formatGymTime(event.endTime)}`
+              : isCourtReservation && event.startTime
+              ? `${formatGymTime(event.startTime)} - ${formatGymTime(event.endTime)}`
+              : (
+                <>
+                  {formatTime(event.startDate)}
+                  {event.endDate && ` - ${formatTime(event.endDate)}`}
+                </>
+              )
+            }
           </span>
         </div>
 
         <div style={detailRowStyles}>
           <span style={detailLabelStyles}>📍 Location:</span>
-          <span style={detailValueStyles}>{event.location}</span>
+          <span style={detailValueStyles}>
+            {event.location}
+            {event.room && ` (${event.room})`}
+          </span>
         </div>
 
-        {event.cost > 0 && (
+        {isGymSession && event.instructor && (
+          <div style={detailRowStyles}>
+            <span style={detailLabelStyles}>👤 Instructor:</span>
+            <span style={detailValueStyles}>{event.instructor.name}</span>
+          </div>
+        )}
+
+        {isGymSession && event.skillLevel && (
+          <div style={detailRowStyles}>
+            <span style={detailLabelStyles}>📊 Level:</span>
+            <span style={{ ...detailValueStyles, textTransform: 'capitalize' }}>
+              {event.skillLevel.replace('_', ' ')}
+            </span>
+          </div>
+        )}
+
+        {isCourtReservation && event.courtType && (
+          <div style={detailRowStyles}>
+            <span style={detailLabelStyles}>🏟️ Court Type:</span>
+            <span style={{ ...detailValueStyles, textTransform: 'capitalize' }}>
+              {event.courtType}
+            </span>
+          </div>
+        )}
+
+        {isCourtReservation && event.duration && (
+          <div style={detailRowStyles}>
+            <span style={detailLabelStyles}>⏱️ Duration:</span>
+            <span style={detailValueStyles}>
+              {Math.round(event.duration / 60)} hour{event.duration > 60 ? 's' : ''}
+            </span>
+          </div>
+        )}
+
+        {isCourtReservation && event.purpose && (
+          <div style={detailRowStyles}>
+            <span style={detailLabelStyles}>🎯 Purpose:</span>
+            <span style={{ ...detailValueStyles, textTransform: 'capitalize' }}>
+              {event.purpose}
+            </span>
+          </div>
+        )}
+
+        {(event.cost > 0 || (isCourtReservation && event.amountPaid !== undefined)) && (
           <div style={detailRowStyles}>
             <span style={detailLabelStyles}>💰 Cost:</span>
             <span style={detailValueStyles}>
-              ${event.cost}
-              {registration.paymentStatus && (
+              ${isCourtReservation ? event.amountPaid : event.cost}
+              {(registration.paymentStatus || event.paymentStatus) && (
                 <span style={{ 
                   marginLeft: theme.spacing[2],
-                  color: registration.paymentStatus === 'paid' 
+                  color: (registration.paymentStatus || event.paymentStatus) === 'paid' 
                     ? theme.colors.success.main 
+                    : (registration.paymentStatus || event.paymentStatus) === 'waived'
+                    ? theme.colors.info.main
                     : theme.colors.warning.main,
-                  fontWeight: theme.typography.fontWeight.medium
+                  fontWeight: theme.typography.fontWeight.medium,
+                  textTransform: 'capitalize'
                 }}>
-                  ({registration.paymentStatus})
+                  ({registration.paymentStatus || event.paymentStatus})
                 </span>
               )}
             </span>
@@ -259,8 +342,7 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false }) => {
         </div>
         
         <div style={buttonGroupStyles}>
-          {/* <Link to="/events"> */}
-          <Link to={`/events/${event._id}`}>
+          <Link to="/events">
             <Button variant="outline" size="sm">
               Browse Events
             </Button>

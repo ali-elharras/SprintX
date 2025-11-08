@@ -2,6 +2,9 @@ import React from "react";
 import Modal from "./Modal";
 import theme from "../theme";
 import EditSessionModal from "./EditSessionModal";
+import { gymAPI } from "../services/api";
+import { toast } from "react-hot-toast";
+import { useAuth } from "../context/AuthContext";
 
 const styles = {
   header: { ...theme.typography.h4, marginBottom: theme.spacing[3] },
@@ -12,9 +15,57 @@ const styles = {
 
 const GymSessionDetailsModal = ({ session, isOpen, onClose, onSaved, isAdminOrEventsOffice = false, viewOnly = false }) => {
   const [isEditOpen, setIsEditOpen] = React.useState(false);
+  const [registering, setRegistering] = React.useState(false);
+  const { user } = useAuth();
+
+  // Check if user can register (not admin/events office viewing mode)
+  const canRegister = !isAdminOrEventsOffice && !viewOnly && user;
+  
+  // Debug logging
+  React.useEffect(() => {
+    if (isOpen) {
+      console.log('GymSessionDetailsModal Debug:', {
+        isAdminOrEventsOffice,
+        viewOnly,
+        user: user ? 'Logged in' : 'Not logged in',
+        canRegister,
+        sessionTitle: session?.title
+      });
+    }
+  }, [isOpen, isAdminOrEventsOffice, viewOnly, user, canRegister, session]);
+
+  const handleRegister = async () => {
+    if (!session || !user) return;
+    
+    try {
+      setRegistering(true);
+      const registrationData = {
+        registrationType: "regular",
+        notifications: {
+          email: true,
+          reminder24h: true
+        }
+      };
+      
+      await gymAPI.register(session._id, registrationData);
+      toast.success("Successfully registered for this session!");
+      
+      // Refresh the session data
+      if (onSaved) {
+        onSaved(session._id);
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast.error(error.message || "Failed to register for session");
+    } finally {
+      setRegistering(false);
+    }
+  };
 
   if (!isOpen || !session) return null;
-
+  
   return (
     <Modal isOpen={isOpen} onClose={onClose} ariaLabel={`Details for ${session.title}`}>
       <div>
@@ -50,6 +101,19 @@ const GymSessionDetailsModal = ({ session, isOpen, onClose, onSaved, isAdminOrEv
         </div>
 
         <div style={styles.actions}>
+          {canRegister && (
+            <button 
+              onClick={handleRegister} 
+              disabled={registering || session.isFull}
+              style={{ 
+                ...theme.components.button.primary,
+                opacity: (registering || session.isFull) ? 0.6 : 1,
+                cursor: (registering || session.isFull) ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {registering ? "Registering..." : session.isFull ? "Session Full" : "Register for Session"}
+            </button>
+          )}
           {isAdminOrEventsOffice && !viewOnly && (
             <button onClick={() => setIsEditOpen(true)} style={{ ...theme.components.button.primary }}>Edit</button>
           )}

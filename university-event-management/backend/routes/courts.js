@@ -10,6 +10,11 @@ const {
   updateCourt,
   deleteCourt,
   getCourtStats,
+  reserveCourt,
+  getUserReservations,
+  getCourtReservations,
+  getAvailableSlots,
+  cancelReservation,
 } = require("../controllers/courtController");
 const { protect, authorize } = require("../middleware/auth");
 
@@ -87,15 +92,50 @@ const updateCourtValidation = [
 ];
 
 // Public routes - accessible to all users (including non-authenticated)
-router.get("/", getCourts);
 router.get("/stats", getCourtStats);
 router.get("/type/:type", getCourtsByType);
-router.get("/:id", getCourt);
-router.get("/:id/availability/:date", getCourtAvailability);
-router.get("/:id/weekly-availability", getWeeklyAvailability);
 
 // Protected routes (require authentication)
 router.use(protect);
+
+// User's own reservations (all authenticated users) - MUST come before /:id routes
+router.get("/my-reservations", getUserReservations);
+router.delete("/my-reservations/:id", cancelReservation);
+
+// Public court routes with :id parameter (must come after specific routes like /my-reservations)
+router.get("/:id/availability/:date", getCourtAvailability);
+router.get("/:id/weekly-availability", getWeeklyAvailability);
+router.get("/:id/available-slots/:date", getAvailableSlots);
+router.get("/:id/reservations", authorize("admin", "events_office"), getCourtReservations);
+router.get("/:id", getCourt);
+router.get("/", getCourts);
+
+// Court reservation routes (students, staff, TA, professors)
+router.post("/:id/reserve", 
+  authorize("student", "staff", "ta", "professor"),
+  [
+    body("date")
+      .notEmpty()
+      .withMessage("Date is required")
+      .isISO8601()
+      .withMessage("Invalid date format"),
+    body("startTime")
+      .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+      .withMessage("Start time must be in HH:MM format"),
+    body("endTime")
+      .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+      .withMessage("End time must be in HH:MM format"),
+    body("purpose")
+      .optional()
+      .isIn(["practice", "match", "training", "event", "other"])
+      .withMessage("Invalid purpose"),
+    body("numberOfParticipants")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Number of participants must be at least 1"),
+  ],
+  reserveCourt
+);
 
 // Admin only routes for court management
 router.post("/", authorize("admin"), createCourtValidation, createCourt);

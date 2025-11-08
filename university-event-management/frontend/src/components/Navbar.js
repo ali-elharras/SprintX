@@ -167,7 +167,13 @@ const Navbar = () => {
   return (
     <nav style={navbarStyles}>
       {/* Logo */}
-      <div style={logoStyles}>🎓 Campus Events Hub</div>
+      <div style={logoStyles}>
+        <img
+          src={require("../assets/images/SprintXLogo.png")}
+          alt="SprintX"
+          style={{ height: "40px", width: "auto" }}
+        />
+      </div>
 
       {/* Navigation Links */}
       <div style={{ display: "flex", gap: theme.spacing[6] }}>
@@ -241,7 +247,7 @@ const Navbar = () => {
             >
               Events
             </button>
-            
+
             <button
               onClick={() => navigate("/gym-schedule")}
               style={{
@@ -388,15 +394,17 @@ const Navbar = () => {
                 border: "none",
                 fontSize: theme.typography.fontSize.base,
                 fontWeight: theme.typography.fontWeight.medium,
-                color: location.pathname === "/admin-users"
-                  ? theme.colors.primary.main
-                  : theme.colors.text.secondary,
+                color:
+                  location.pathname === "/admin-users"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
                 cursor: "pointer",
                 padding: theme.spacing[2],
                 textDecoration: "none",
-                borderBottom: location.pathname === "/admin-users"
-                  ? `2px solid ${theme.colors.primary.main}`
-                  : "2px solid transparent",
+                borderBottom:
+                  location.pathname === "/admin-users"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
                 transition: "all 0.2s ease",
                 fontFamily: theme.typography.fontFamily.primary,
               }}
@@ -487,40 +495,6 @@ const Navbar = () => {
           </>
         ) : (
           <>
-            {isUser && user && user.role === 'staff' && (
-              <button
-                onClick={() => navigate("/workshops")}
-                style={{
-                  background: "none",
-                  border: "none",
-                  fontSize: theme.typography.fontSize.base,
-                  fontWeight: theme.typography.fontWeight.medium,
-                  color: location.pathname === "/workshops"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                  cursor: "pointer",
-                  padding: theme.spacing[2],
-                  textDecoration: "none",
-                  borderBottom: location.pathname === "/workshops"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                  transition: "all 0.2s ease",
-                  fontFamily: theme.typography.fontFamily.primary,
-                }}
-                onMouseEnter={(e) => {
-                  if (location.pathname !== "/workshops") {
-                    e.target.style.color = theme.colors.primary.main;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (location.pathname !== "/workshops") {
-                    e.target.style.color = theme.colors.text.secondary;
-                  }
-                }}
-              >
-                Workshops
-              </button>
-            )}
             <button
               onClick={() => navigate("/events")}
               style={{
@@ -556,9 +530,7 @@ const Navbar = () => {
               Events
             </button>
 
-            
-
-            {user.role !== "events_office" && (
+            {user.role == "student" && (
               <button
                 onClick={() => navigate("/courts")}
                 style={{
@@ -708,12 +680,12 @@ const Navbar = () => {
       {/* Account Section */}
       <div style={accountSectionStyles}>
         {/* Notification Center for Professors/Staff */}
-        {(user?.role === 'professor' || user?.role === 'staff') && (
+        {(user?.role === "professor" || user?.role === "staff") && (
           <div style={{ marginRight: theme.spacing[4] }}>
             <NotificationCenter />
           </div>
         )}
-        
+
         <div style={userInfoStyles}>
           {/* Avatar */}
           <div style={avatarStyles}>
@@ -721,7 +693,12 @@ const Navbar = () => {
               <img
                 src={accountInfo.avatar}
                 alt={accountInfo.name}
-                style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                }}
               />
             ) : (
               getInitials(accountInfo.name)

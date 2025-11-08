@@ -72,10 +72,10 @@ class EmailService {
       ""
     )}/api/auth/verify-email/${verifyToken}`;
 
-    const subject = "Verify your account - Campus Events Hub";
+    const subject = "Verify your account - SprintX";
 
     const mailOptions = {
-      from: `"Campus Events Hub" <${
+      from: `"SprintX" <${
         process.env.EMAIL_USER || "no-reply@campusevents.test"
       }>`,
       to,
@@ -87,7 +87,7 @@ class EmailService {
       }),
       text:
         `Hello${fullName ? ` ${fullName}` : ""},\n\n` +
-        `Please verify your Campus Events Hub account by visiting the link below:\n${verifyUrl}\n\n` +
+        `Please verify your SprintX account by visiting the link below:\n${verifyUrl}\n\n` +
         `If you did not create this account, you can safely ignore this email.`,
     };
 
@@ -135,7 +135,7 @@ class EmailService {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Verify your account - Campus Events Hub</title>
+        <title>Verify your account - SprintX</title>
         <style>
           body { font-family: Arial, sans-serif; color: #333; max-width: 640px; margin: 0 auto; background: #f6f8fa; padding: 24px; }
           .card { background: #fff; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); overflow: hidden; }
@@ -149,10 +149,10 @@ class EmailService {
       </head>
       <body>
         <div class="card">
-          <div class="header"><h2>Campus Events Hub</h2></div>
+          <div class="header"><h2>SprintX</h2></div>
           <div class="content">
             <p>Hello ${safeName},</p>
-            <p>Please verify your account to complete the approval process and start using Campus Events Hub.</p>
+            <p>Please verify your account to complete the approval process and start using SprintX.</p>
             ${roleLine}
             <p style="margin:20px 0; text-align:center;">
               <a class="btn" href="${verifyUrl}">Verify My Account</a>
@@ -161,7 +161,7 @@ class EmailService {
             <p class="link">${verifyUrl}</p>
             <p class="note">If you did not request this, you can safely ignore this email.</p>
           </div>
-          <div class="footer">© ${new Date().getFullYear()} Campus Events Hub</div>
+          <div class="footer">© ${new Date().getFullYear()} SprintX</div>
         </div>
       </body>
       </html>
@@ -194,12 +194,12 @@ class EmailService {
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
     const mailOptions = {
-      from: `"Campus Events Hub" <${process.env.EMAIL_USER}>`, // Use the authenticated Gmail account as sender
+      from: `"SprintX" <${process.env.EMAIL_USER}>`, // Use the authenticated Gmail account as sender
       to: to,
-      subject: "Password Reset Request - Campus Events Hub",
+      subject: "Password Reset Request - SprintX",
       html: this.getPasswordResetEmailTemplate(resetUrl, userType),
       text: `
-        You requested a password reset for your Campus Events Hub account.
+        You requested a password reset for your SprintX account.
         
         Click the following link to reset your password:
         ${resetUrl}
@@ -209,7 +209,7 @@ class EmailService {
         If you didn't request this reset, please ignore this email.
         
         Best regards,
-        Campus Events Hub Team
+        SprintX Team
       `,
     };
 
@@ -263,7 +263,7 @@ class EmailService {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Password Reset - Campus Events Hub</title>
+        <title>Password Reset - SprintX</title>
         <style>
           body {
             font-family: 'Arial', sans-serif;
@@ -339,7 +339,7 @@ class EmailService {
       <body>
         <div class="email-container">
           <div class="header">
-            <h1>🎓 Campus Events Hub</h1>
+            <h1>SprintX</h1>
           </div>
           
           <div class="content">
@@ -347,7 +347,7 @@ class EmailService {
             
             <p>Hello,</p>
             
-            <p>We received a request to reset the password for your Campus Events Hub ${userType} account. If you made this request, click the link below to reset your password:</p>
+            <p>We received a request to reset the password for your SprintX ${userType} account. If you made this request, click the link below to reset your password:</p>
             
             <p style="text-align: center; margin: 30px 0;">
               <a href="${resetUrl}" style="color: #667eea; font-size: 18px; font-weight: bold; text-decoration: underline;">Reset My Password</a>
@@ -362,11 +362,11 @@ class EmailService {
             <p>If you're having trouble clicking the button, you can copy and paste this link into your browser:</p>
             <p style="word-break: break-all; color: #667eea; font-size: 14px;">${resetUrl}</p>
             
-            <p>Best regards,<br>The Campus Events Hub Team</p>
+            <p>Best regards,<br>The SprintX Team</p>
           </div>
           
           <div class="footer">
-            <p>This email was sent from Campus Events Hub<br>
+            <p>This email was sent from SprintX<br>
             If you have questions, contact us at <a href="mailto:support@campusevents.edu">support@campusevents.edu</a></p>
           </div>
         </div>
@@ -388,9 +388,9 @@ class EmailService {
     }/api/auth/verify-email/${verificationToken}`;
 
     const mailOptions = {
-      from: `"Campus Events Hub" <${process.env.EMAIL_USER}>`,
+      from: `"SprintX" <${process.env.EMAIL_USER}>`,
       to: to,
-      subject: "Account Verification - Campus Events Hub",
+      subject: "Account Verification - SprintX",
       html: this.getVerificationEmailTemplate(verifyUrl, fullName, role),
       text: `
         Dear ${fullName},
@@ -402,10 +402,10 @@ class EmailService {
         
         This link will expire in 24 hours for security purposes.
         
-        Once verified, you'll be able to access all features of Campus Events Hub.
+        Once verified, you'll be able to access all features of SprintX.
         
         Best regards,
-        Campus Events Hub Team
+        SprintX Team
       `,
     };
 
@@ -447,7 +447,7 @@ class EmailService {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Account Verification - Campus Events Hub</title>
+        <title>Account Verification - SprintX</title>
         <style>
           body {
             font-family: 'Arial', sans-serif;
@@ -535,7 +535,7 @@ class EmailService {
       <body>
         <div class="email-container">
           <div class="header">
-            <h1>🎓 Campus Events Hub</h1>
+            <h1>SprintX</h1>
           </div>
           
           <div class="content">
@@ -547,7 +547,7 @@ class EmailService {
               <strong>🎊 Great news!</strong> Your ${role} account has been approved by our administrator team.
             </div>
             
-            <p>To complete your account activation and gain access to all Campus Events Hub features, please verify your email address by clicking the button below:</p>
+            <p>To complete your account activation and gain access to all SprintX features, please verify your email address by clicking the button below:</p>
             
             <p style="text-align: center; margin: 30px 0;">
               <a href="${verifyUrl}" class="verify-button">Verify My Account</a>
@@ -568,13 +568,13 @@ class EmailService {
             <p>If you're having trouble clicking the button, you can copy and paste this link into your browser:</p>
             <p style="word-break: break-all; color: #667eea; font-size: 14px;">${verifyUrl}</p>
             
-            <p>Welcome to Campus Events Hub!</p>
+            <p>Welcome to SprintX!</p>
             
-            <p>Best regards,<br>The Campus Events Hub Team</p>
+            <p>Best regards,<br>The SprintX Team</p>
           </div>
           
           <div class="footer">
-            <p>This email was sent from Campus Events Hub<br>
+            <p>This email was sent from SprintX<br>
             If you have questions, contact us at <a href="mailto:support@campusevents.edu">support@campusevents.edu</a></p>
           </div>
         </div>

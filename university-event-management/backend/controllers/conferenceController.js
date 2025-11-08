@@ -143,6 +143,15 @@ const editConference = async (req, res) => {
             });
         }
 
+        const existingConference = await Event.findOne({ _id: id, type: "conference" });
+        
+        if (!existingConference) {
+            return res.status(404).json({
+                success: false,
+                message: 'Conference not found'
+            });
+        }
+        
         // Create Date objects for validation - ensure they're treated as local time
         const startDateTime = new Date(startDate);
         const endDateTime = new Date(endDate);
@@ -180,7 +189,8 @@ const editConference = async (req, res) => {
             endDate: endDateTime,
             location: location,
             maxParticipants: parseInt(maxParticipants),
-            currentParticipants: parseInt(currentParticipants) || 0,
+            // currentParticipants: parseInt(currentParticipants) || 0,
+            currentParticipants: currentParticipants !== undefined ? parseInt(currentParticipants) : existingConference.currentParticipants,
             registrationDeadline: startDateTime, // Ensure deadline is before start date
         };
 
