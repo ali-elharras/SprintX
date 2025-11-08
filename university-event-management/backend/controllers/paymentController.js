@@ -3,6 +3,7 @@ const BazaarApplication = require('../models/BazaarApplication');
 const BoothApplication = require('../models/BoothApplication');
 const Event = require('../models/Event');
 const emailService = require('../services/emailService');
+const qrCodeService = require('../services/qrCodeService');
 
 // Pricing configuration
 const PRICING = {
@@ -319,6 +320,68 @@ exports.verifyPayment = async (req, res, next) => {
       } catch (emailError) {
         console.error('❌ Failed to send receipt email:', emailError);
         // Don't fail the payment verification if email fails
+      }
+
+      // Generate and send QR codes to all registered visitors
+      try {
+        if (application.attendees && application.attendees.length > 0) {
+          const eventName = applicationType === 'bazaar' 
+            ? application.bazaar?.title 
+            : 'Booth Request';
+          
+          const vendorName = application.vendor.companyName || application.vendor.businessName;
+          
+          // Extract email addresses from attendees array
+          const visitorEmails = application.attendees.map(attendee => attendee.email);
+          
+          console.log(`📧 Found ${visitorEmails.length} visitors:`, visitorEmails);
+          
+          // Generate QR codes for all visitors
+          const visitorQRCodes = await qrCodeService.generateVisitorQRCodes(
+            visitorEmails,
+            {
+              vendorId: application.vendor._id,
+              eventId: applicationType === 'bazaar' ? application.bazaar?._id : null,
+              eventName,
+              applicationType,
+              applicationId: application._id,
+            }
+          );
+
+          console.log(`📧 Sending QR codes to ${visitorQRCodes.length} visitors...`);
+
+          // Send QR code emails to all visitors
+          const emailPromises = visitorQRCodes.map((visitor) =>
+            emailService.sendVisitorQRCodeEmail(
+              visitor.email,
+              vendorName,
+              eventName,
+              applicationType,
+              visitor.qrCodeDataURL,
+              visitor.visitorNumber,
+              visitorQRCodes.length
+            )
+          );
+
+          const results = await Promise.allSettled(emailPromises);
+          
+          // Log results
+          results.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+              console.log(`✅ QR code email sent to visitor ${index + 1}`);
+            } else {
+              console.error(`❌ Failed to send QR code to visitor ${index + 1}:`, result.reason);
+            }
+          });
+          
+          console.log('✅ QR code email process completed');
+        } else {
+          console.log('⚠️ No attendees found in application');
+        }
+      } catch (qrError) {
+        console.error('❌ Failed to send QR codes:', qrError);
+        console.error('Error stack:', qrError.stack);
+        // Don't fail the payment verification if QR code sending fails
       }
 
       return res.status(200).json({

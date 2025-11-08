@@ -1128,6 +1128,297 @@ class EmailService {
       </html>
     `;
   }
+
+  // Send QR code email to visitor
+  async sendVisitorQRCodeEmail(visitorEmail, vendorName, eventName, applicationType, qrCodeDataURL, visitorNumber, totalVisitors) {
+    const mailOptions = {
+      from: `"SprintX" <${process.env.EMAIL_USER || "no-reply@campusevents.test"}>`,
+      to: visitorEmail,
+      subject: `Your Event Access QR Code - ${eventName} - SprintX`,
+      html: this.getVisitorQRCodeEmailTemplate({
+        visitorEmail,
+        vendorName,
+        eventName,
+        applicationType,
+        qrCodeDataURL,
+        visitorNumber,
+        totalVisitors,
+      }),
+      text: `
+        Your Event Access QR Code
+
+        Dear Visitor,
+
+        You have been registered for ${eventName} by ${vendorName}.
+
+        Your visitor number: ${visitorNumber} of ${totalVisitors}
+
+        Please present the QR code attached to this email at the event entrance for check-in.
+
+        Event Details:
+        - Event: ${eventName}
+        - Type: ${applicationType.charAt(0).toUpperCase() + applicationType.slice(1)}
+        - Vendor: ${vendorName}
+
+        Important:
+        - Keep this email safe
+        - Present QR code at entrance
+        - One QR code per person
+
+        See you at the event!
+
+        Best regards,
+        SprintX Team
+      `,
+    };
+
+    try {
+      if (!this.transporter) {
+        console.log("⚠️ No transporter available - falling back to console mode");
+        console.log("📧 Visitor QR Code Email (Console Mode):");
+        console.log("   To:", visitorEmail);
+        console.log("   Event:", eventName);
+        console.log("   Visitor:", visitorNumber, "of", totalVisitors);
+        return { success: true, messageId: "console-log" };
+      }
+
+      const info = await this.transporter.sendMail(mailOptions);
+      
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+        console.log(`✅ QR code email sent to visitor ${visitorNumber}:`, visitorEmail);
+      } else {
+        console.log(`📧 Test QR code email sent to visitor ${visitorNumber}:`);
+        console.log("   Preview URL:", nodemailer.getTestMessageUrl(info));
+      }
+
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error(`❌ Failed to send QR code email to ${visitorEmail}:`, error.message);
+      throw new Error(`Failed to send QR code email: ${error.message}`);
+    }
+  }
+
+  getVisitorQRCodeEmailTemplate({ visitorEmail, vendorName, eventName, applicationType, qrCodeDataURL, visitorNumber, totalVisitors }) {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Your Event QR Code - SprintX</title>
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+          }
+          .email-container {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            text-align: center;
+            color: white;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+          }
+          .qr-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 14px;
+          }
+          .content {
+            padding: 40px 30px;
+          }
+          .content h2 {
+            color: #667eea;
+            margin-top: 0;
+            font-size: 24px;
+            text-align: center;
+          }
+          .qr-container {
+            background: #f9fafb;
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+            text-align: center;
+          }
+          .qr-code {
+            max-width: 300px;
+            width: 100%;
+            height: auto;
+            margin: 20px auto;
+            display: block;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          }
+          .visitor-info {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+          .visitor-info h3 {
+            color: #1e40af;
+            margin: 0 0 15px 0;
+            font-size: 18px;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #dbeafe;
+          }
+          .info-row:last-child {
+            border-bottom: none;
+          }
+          .info-label {
+            font-weight: 600;
+            color: #6b7280;
+          }
+          .info-value {
+            color: #111827;
+            text-align: right;
+          }
+          .instructions {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+          .instructions h3 {
+            color: #92400e;
+            margin: 0 0 10px 0;
+            font-size: 18px;
+          }
+          .instructions ul {
+            margin: 10px 0;
+            padding-left: 20px;
+          }
+          .instructions li {
+            margin: 8px 0;
+            color: #78350f;
+          }
+          .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+          }
+          .footer a {
+            color: #667eea;
+            text-decoration: none;
+          }
+          .ticket-icon {
+            font-size: 64px;
+            text-align: center;
+            margin: 20px 0;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <h1>🎉 SprintX</h1>
+            <div class="qr-badge">Event Access QR Code</div>
+          </div>
+          
+          <div class="content">
+            <div class="ticket-icon">🎫</div>
+            <h2>Your Event Access Pass</h2>
+            
+            <p style="text-align: center; font-size: 16px;">
+              You're all set for <strong>${eventName}</strong>!
+            </p>
+            
+            <div class="visitor-info">
+              <h3>📋 Event Details</h3>
+              <div class="info-row">
+                <span class="info-label">Event:</span>
+                <span class="info-value">${eventName}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Type:</span>
+                <span class="info-value">${applicationType.charAt(0).toUpperCase() + applicationType.slice(1)}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Vendor:</span>
+                <span class="info-value">${vendorName}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Your Email:</span>
+                <span class="info-value">${visitorEmail}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Visitor Number:</span>
+                <span class="info-value">${visitorNumber} of ${totalVisitors}</span>
+              </div>
+            </div>
+            
+            <div class="qr-container">
+              <h3 style="color: #667eea; margin-top: 0;">Your QR Code</h3>
+              <p style="color: #6b7280; margin: 10px 0;">Present this at the entrance</p>
+              <img src="${qrCodeDataURL}" alt="Event QR Code" class="qr-code" />
+              <p style="color: #9ca3af; font-size: 12px; margin-top: 15px;">
+                Scan this code at the event entrance for quick check-in
+              </p>
+            </div>
+            
+            <div class="instructions">
+              <h3>⚠️ Important Instructions</h3>
+              <ul>
+                <li><strong>Save this email</strong> - You'll need it at the event</li>
+                <li><strong>Print or show on phone</strong> - Either works for check-in</li>
+                <li><strong>One code per person</strong> - This QR code is unique to you</li>
+                <li><strong>Arrive early</strong> - Allow time for check-in</li>
+                <li><strong>Keep it safe</strong> - Don't share your QR code</li>
+              </ul>
+            </div>
+            
+            <p style="text-align: center; margin-top: 30px; font-size: 18px; color: #667eea;">
+              <strong>See you at the event! 🎉</strong>
+            </p>
+            
+            <p style="margin-top: 20px;">
+              If you have any questions or issues with your QR code, please contact the vendor or our support team.
+            </p>
+            
+            <p>Best regards,<br>The SprintX Team</p>
+          </div>
+          
+          <div class="footer">
+            <p><strong>SprintX - University Event Management</strong></p>
+            <p>This QR code is unique to you. Please do not share it.</p>
+            <p>Questions? Contact us at <a href="mailto:support@campusevents.edu">support@campusevents.edu</a></p>
+            <p style="margin-top: 15px; font-size: 12px; color: #9ca3af;">
+              © ${new Date().getFullYear()} SprintX. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
 }
 
 module.exports = new EmailService();
