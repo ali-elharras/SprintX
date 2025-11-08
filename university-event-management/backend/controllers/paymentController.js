@@ -2,6 +2,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const BazaarApplication = require('../models/BazaarApplication');
 const BoothApplication = require('../models/BoothApplication');
 const Event = require('../models/Event');
+const emailService = require('../services/emailService');
 
 // Pricing configuration
 const PRICING = {
@@ -287,10 +288,38 @@ exports.verifyPayment = async (req, res, next) => {
 
     if (session.payment_status === 'paid') {
       // Update application payment status
+      const paidAt = new Date();
       application.paymentStatus = 'completed';
-      application.paidAt = new Date();
+      application.paidAt = paidAt;
       application.paymentIntentId = session.payment_intent;
       await application.save();
+
+      // Populate vendor and bazaar (if applicable) for email
+      await application.populate('vendor');
+      if (applicationType === 'bazaar') {
+        await application.populate('bazaar');
+      }
+
+      // Send payment receipt email
+      try {
+        const eventName = applicationType === 'bazaar' 
+          ? application.bazaar?.title 
+          : 'Booth Request';
+        
+        await emailService.sendPaymentReceiptEmail(
+          application.vendor.email,
+          application.vendor.companyName || application.vendor.businessName,
+          applicationType,
+          eventName,
+          application.paymentAmount,
+          session.payment_intent,
+          paidAt
+        );
+        console.log('✅ Payment receipt email sent to vendor');
+      } catch (emailError) {
+        console.error('❌ Failed to send receipt email:', emailError);
+        // Don't fail the payment verification if email fails
+      }
 
       return res.status(200).json({
         success: true,
