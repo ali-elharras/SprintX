@@ -582,6 +582,258 @@ class EmailService {
       </html>
     `;
   }
+
+  // Send application approval email with payment information
+  async sendApplicationApprovalEmail(to, vendorName, applicationType, eventName, paymentAmount, paymentDeadline) {
+    const formattedDeadline = new Date(paymentDeadline).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    const mailOptions = {
+      from: `"SprintX" <${process.env.EMAIL_USER || "no-reply@campusevents.test"}>`,
+      to: to,
+      subject: `Application Approved - Payment Required - SprintX`,
+      html: this.getApplicationApprovalEmailTemplate({
+        vendorName,
+        applicationType,
+        eventName,
+        paymentAmount,
+        formattedDeadline,
+      }),
+      text: `
+        Dear ${vendorName},
+
+        Congratulations! Your ${applicationType} application has been approved.
+
+        Event: ${eventName}
+        Payment Amount: $${paymentAmount.toFixed(2)}
+        Payment Deadline: ${formattedDeadline}
+
+        Please complete your payment within 3 days to confirm your participation.
+        You can make the payment through your vendor dashboard.
+
+        If you have any questions, please contact our support team.
+
+        Best regards,
+        SprintX Team
+      `,
+    };
+
+    try {
+      if (!this.transporter) {
+        console.log("⚠️ No transporter available - falling back to console mode");
+        console.log("📧 Application Approval Email (Console Mode):");
+        console.log("   To:", to);
+        console.log("   Subject:", mailOptions.subject);
+        console.log("   Payment Amount:", paymentAmount);
+        console.log("   Payment Deadline:", formattedDeadline);
+        return { success: true, messageId: "console-log" };
+      }
+
+      const info = await this.transporter.sendMail(mailOptions);
+      
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+        console.log("✅ Application approval email sent successfully!");
+        console.log(`   To: ${to}`);
+        console.log(`   Message ID: ${info.messageId}`);
+      } else {
+        console.log("📧 Test application approval email sent:");
+        console.log("   Preview URL:", nodemailer.getTestMessageUrl(info));
+      }
+
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error("❌ Failed to send application approval email:", error.message);
+      throw new Error(`Failed to send application approval email: ${error.message}`);
+    }
+  }
+
+  getApplicationApprovalEmailTemplate({ vendorName, applicationType, eventName, paymentAmount, formattedDeadline }) {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Application Approved - SprintX</title>
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+          }
+          .email-container {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            text-align: center;
+            color: white;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+          }
+          .content {
+            background: white;
+            padding: 40px 30px;
+          }
+          .content h2 {
+            color: #10b981;
+            margin-top: 0;
+            font-size: 24px;
+          }
+          .success-badge {
+            background: #d1fae5;
+            border: 2px solid #10b981;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+          }
+          .success-badge h3 {
+            color: #059669;
+            margin: 0 0 10px 0;
+            font-size: 20px;
+          }
+          .payment-info {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin: 20px 0;
+          }
+          .payment-info h4 {
+            color: #d97706;
+            margin-top: 0;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          .info-row:last-child {
+            border-bottom: none;
+          }
+          .info-label {
+            font-weight: bold;
+            color: #6b7280;
+          }
+          .info-value {
+            color: #111827;
+            font-weight: 600;
+          }
+          .amount {
+            font-size: 24px;
+            color: #10b981;
+            font-weight: bold;
+          }
+          .deadline {
+            font-size: 18px;
+            color: #dc2626;
+            font-weight: bold;
+          }
+          .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+            margin: 20px 0;
+            text-align: center;
+          }
+          .warning {
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #991b1b;
+          }
+          .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <h1>🎉 SprintX</h1>
+          </div>
+          
+          <div class="content">
+            <h2>Application Approved!</h2>
+            
+            <p>Dear ${vendorName},</p>
+            
+            <div class="success-badge">
+              <h3>✅ Congratulations!</h3>
+              <p style="margin: 0;">Your ${applicationType} application has been approved.</p>
+            </div>
+            
+            <div class="info-row">
+              <span class="info-label">Event:</span>
+              <span class="info-value">${eventName || 'Booth Request'}</span>
+            </div>
+            
+            <div class="payment-info">
+              <h4>💳 Payment Required</h4>
+              <p>To confirm your participation, please complete the payment within the deadline:</p>
+              
+              <div class="info-row">
+                <span class="info-label">Amount:</span>
+                <span class="amount">$${paymentAmount.toFixed(2)}</span>
+              </div>
+              
+              <div class="info-row">
+                <span class="info-label">Deadline:</span>
+                <span class="deadline">${formattedDeadline}</span>
+              </div>
+            </div>
+            
+            <div class="warning">
+              <strong>⚠️ Important:</strong> You have <strong>3 days</strong> from receiving this email to complete your payment. Failure to pay by the deadline will result in automatic cancellation of your participation.
+            </div>
+            
+            <p style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.FRONTEND_URL}/vendor/dashboard" class="cta-button">Go to Dashboard & Pay</a>
+            </p>
+            
+            <p>You can make the payment through your vendor dashboard. Simply log in and navigate to your approved applications.</p>
+            
+            <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
+            
+            <p>Best regards,<br>The SprintX Team</p>
+          </div>
+          
+          <div class="footer">
+            <p>This email was sent from SprintX<br>
+            If you have questions, contact us at <a href="mailto:support@campusevents.edu">support@campusevents.edu</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
 }
 
 module.exports = new EmailService();

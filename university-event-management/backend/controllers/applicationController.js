@@ -2,6 +2,7 @@ const BazaarApplication = require("../models/BazaarApplication");
 const BoothApplication = require("../models/BoothApplication");
 const Event = require("../models/Event");
 const { uploadImage } = require("../utils/imageKitUploader"); // Import ImageKit uploader
+const emailService = require("../services/emailService");
 
 // @desc    Apply to a bazaar
 // @route   POST /api/applications/bazaar/:bazaarId
@@ -143,16 +144,18 @@ const applyForBooth = async (req, res, next) => {
   }
 };
 
-// @desc    Get all upcoming participations (approved requests)
+// @desc    Get all upcoming participations (approved requests with completed payment)
 // @route   GET /api/applications/my-participations
 // @access  Private (Vendor)
 const getMyParticipations = async (req, res, next) => {
   try {
     const vendorId = req.vendor._id;
 
+    // Only show participations where payment is completed
     const bazaarParticipations = await BazaarApplication.find({
       vendor: vendorId,
       status: "approved",
+      paymentStatus: "completed",
     }).populate({
       path: "bazaar",
       match: { startDate: { $gte: new Date() } }, // Only upcoming events
@@ -161,6 +164,7 @@ const getMyParticipations = async (req, res, next) => {
     const boothParticipations = await BoothApplication.find({
       vendor: vendorId,
       status: "approved",
+      paymentStatus: "completed",
     });
 
     // Filter out bazaar participations where the event is not upcoming
@@ -178,21 +182,28 @@ const getMyParticipations = async (req, res, next) => {
   }
 };
 
-// @desc    Get all pending/rejected requests
+// @desc    Get all pending/rejected/approved (with pending payment) requests
 // @route   GET /api/applications/my-requests
 // @access  Private (Vendor)
 const getMyRequests = async (req, res, next) => {
   try {
     const vendorId = req.vendor._id;
 
+    // Get pending, rejected, and approved applications with pending payment
     const bazaarRequests = await BazaarApplication.find({
       vendor: vendorId,
-      status: { $in: ["pending", "rejected"] },
+      $or: [
+        { status: { $in: ["pending", "rejected"] } },
+        { status: "approved", paymentStatus: { $in: ["pending", "expired"] } }
+      ]
     }).populate("bazaar");
 
     const boothRequests = await BoothApplication.find({
       vendor: vendorId,
-      status: { $in: ["pending", "rejected"] },
+      $or: [
+        { status: { $in: ["pending", "rejected"] } },
+        { status: "approved", paymentStatus: { $in: ["pending", "expired"] } }
+      ]
     });
 
     res.status(200).json({
@@ -402,7 +413,63 @@ const updateApplicationStatus = async (req, res, next) => {
       });
     }
 
-    application = await model.findByIdAndUpdate(applicationId, { status }, { new: true, runValidators: true });
+    // If approving, set payment details and send email
+    if (status === 'approved') {
+      const paymentDeadline = new Date();
+      paymentDeadline.setDate(paymentDeadline.getDate() + 3); // 3 days from now
+      
+      // Calculate payment amount based on application type
+      let paymentAmount = 0;
+      const PRICING = {
+        bazaar: {
+          basePrice: { '2x2': 100, '4x4': 200 },
+          locationMultiplier: { 'Main Hall': 1.5, 'Entrance': 1.3, 'Courtyard': 1.0, 'default': 1.0 },
+        },
+        booth: {
+          basePrice: { '2x2': 150, '4x4': 300 },
+          locationMultiplier: { 'Building A': 1.5, 'Building B': 1.3, 'Building C': 1.2, 'Building D': 1.0, 'default': 1.0 },
+        },
+      };
+
+      if (applicationType === 'bazaar') {
+        // Populate bazaar to get location
+        await application.populate('bazaar');
+        const basePrice = PRICING.bazaar.basePrice[application.boothSize] || PRICING.bazaar.basePrice['2x2'];
+        const locationMultiplier = PRICING.bazaar.locationMultiplier[application.bazaar?.location] || PRICING.bazaar.locationMultiplier.default;
+        paymentAmount = basePrice * locationMultiplier;
+      } else {
+        // Booth application
+        const basePrice = PRICING.booth.basePrice[application.boothSize] || PRICING.booth.basePrice['2x2'];
+        const locationMultiplier = PRICING.booth.locationMultiplier[application.location] || PRICING.booth.locationMultiplier.default;
+        paymentAmount = basePrice * locationMultiplier * (application.durationWeeks || 1);
+      }
+      
+      application.status = status;
+      application.paymentStatus = 'pending';
+      application.paymentDeadline = paymentDeadline;
+      application.paymentAmount = paymentAmount;
+      
+      await application.save();
+
+      // Send approval email with payment information
+      try {
+        await application.populate('vendor');
+        const eventName = applicationType === 'bazaar' ? application.bazaar?.title : 'Booth Request';
+        await emailService.sendApplicationApprovalEmail(
+          application.vendor.email,
+          application.vendor.companyName || application.vendor.businessName,
+          applicationType,
+          eventName,
+          paymentAmount,
+          paymentDeadline
+        );
+      } catch (emailError) {
+        console.error('Failed to send approval email:', emailError);
+        // Don't fail the approval if email fails
+      }
+    } else {
+      application = await model.findByIdAndUpdate(applicationId, { status }, { new: true, runValidators: true });
+    }
 
     res.status(200).json({
       success: true,

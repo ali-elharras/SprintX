@@ -21,6 +21,7 @@ const conferenceRoutes = require("./routes/conference.js");
 const bazaarRoutes = require("./routes/bazaar");
 const workshopRoutes = require("./routes/workshop");
 const notificationRoutes = require("./routes/notifications");
+const paymentRoutes = require("./routes/payments");
 
 
 const app = express();
@@ -121,6 +122,9 @@ app.use("/api/workshops", workshopRoutes);
 
 // Notification routes (for professors to receive workshop updates)
 app.use("/api/notifications", notificationRoutes);
+
+// Payment routes (for vendor payments)
+app.use("/api/payments", paymentRoutes);
 
 // Workshop routes removed as feature deprecated
 

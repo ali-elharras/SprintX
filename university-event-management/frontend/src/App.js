@@ -31,6 +31,7 @@ import GymSchedulePage from "./pages/GymSchedulePage";
 import CreateWorkshop from "./pages/CreateWorkshop";
 import Workshops from "./pages/Workshops";
 import AdminUserManagement from "./pages/AdminUserManagement";
+import PaymentSuccess from "./pages/PaymentSuccess";
 // ---------------------------
 // Protected Route Components
 // ---------------------------
@@ -321,6 +322,36 @@ const router = createBrowserRouter([
   {
     path: "/workshops",
     element: <Navigate to="/events" replace />,
+  },
+  {
+    path: "/vendor/payment-success",
+    element: (
+      <ProtectedRoute>
+        <VendorRoute>
+          <PaymentSuccess />
+        </VendorRoute>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/vendor/dashboard",
+    element: (
+      <ProtectedRoute>
+        <VendorRoute>
+          <VendorDashboard />
+        </VendorRoute>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/vendor/my-participations",
+    element: (
+      <ProtectedRoute>
+        <VendorRoute>
+          <VendorDashboard />
+        </VendorRoute>
+      </ProtectedRoute>
+    ),
   },
 
   // 404 Fallback

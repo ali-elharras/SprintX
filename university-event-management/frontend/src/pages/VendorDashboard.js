@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import theme from "../theme";
 import ApplyBazaarModal from "../components/vendor/ApplyBazaarModal";
 import ApplyBoothModal from "../components/vendor/ApplyBoothModal";
+import PaymentButton from "../components/vendor/PaymentButton";
 import Navbar from "../components/Navbar";
 
 const styles = {
@@ -365,21 +366,28 @@ const BazaarCard = ({ bazaar, onApply, application }) => {
   );
 };
 
-const ApplicationItem = ({ application }) => (
-  <div className="application-card" style={styles.applicationCard}>
-    <div style={styles.applicationInfo}>
-      <p style={styles.applicationTitle}>
-        {application.bazaar?.name || application.bazaar?.title || "Booth Request"}
-      </p>
-      <p style={styles.applicationDate}>
-        Applied on: {new Date(application.createdAt).toLocaleDateString()}
-      </p>
+const ApplicationItem = ({ application }) => {
+  const applicationType = application.bazaar ? 'bazaar' : 'booth';
+  
+  return (
+    <div className="application-card" style={styles.applicationCard}>
+      <div style={styles.applicationInfo}>
+        <p style={styles.applicationTitle}>
+          {application.bazaar?.name || application.bazaar?.title || "Booth Request"}
+        </p>
+        <p style={styles.applicationDate}>
+          Applied on: {new Date(application.createdAt).toLocaleDateString()}
+        </p>
+      </div>
+      <span style={styles.statusBadge(application.status)}>
+        {application.status}
+      </span>
+      {application.status === 'approved' && (
+        <PaymentButton application={application} applicationType={applicationType} />
+      )}
     </div>
-    <span style={styles.statusBadge(application.status)}>
-      {application.status}
-    </span>
-  </div>
-);
+  );
+};
 
 const ParticipationItem = ({ participation }) => (
   <div className="application-card" style={styles.applicationCard}>
