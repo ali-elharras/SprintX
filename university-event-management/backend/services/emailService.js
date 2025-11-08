@@ -1131,6 +1131,10 @@ class EmailService {
 
   // Send QR code email to visitor
   async sendVisitorQRCodeEmail(visitorEmail, vendorName, eventName, applicationType, qrCodeDataURL, visitorNumber, totalVisitors) {
+    // Extract base64 content from data URL
+    const qrCodeBase64 = qrCodeDataURL.split(',')[1];
+    const qrCodeCid = `qrcode_${Date.now()}@sprintx.com`; // Unique Content-ID
+
     const mailOptions = {
       from: `"SprintX" <${process.env.EMAIL_USER || "no-reply@campusevents.test"}>`,
       to: visitorEmail,
@@ -1140,7 +1144,7 @@ class EmailService {
         vendorName,
         eventName,
         applicationType,
-        qrCodeDataURL,
+        qrCodeCid, // Pass CID to template
         visitorNumber,
         totalVisitors,
       }),
@@ -1170,6 +1174,14 @@ class EmailService {
         Best regards,
         SprintX Team
       `,
+      attachments: [
+        {
+          filename: 'qrcode.png',
+          content: qrCodeBase64,
+          encoding: 'base64',
+          cid: qrCodeCid, // Content-ID for embedding
+        },
+      ],
     };
 
     try {
@@ -1198,7 +1210,7 @@ class EmailService {
     }
   }
 
-  getVisitorQRCodeEmailTemplate({ visitorEmail, vendorName, eventName, applicationType, qrCodeDataURL, visitorNumber, totalVisitors }) {
+  getVisitorQRCodeEmailTemplate({ visitorEmail, vendorName, eventName, applicationType, qrCodeCid, visitorNumber, totalVisitors }) {
     return `
       <!DOCTYPE html>
       <html lang="en">
@@ -1378,7 +1390,7 @@ class EmailService {
             <div class="qr-container">
               <h3 style="color: #667eea; margin-top: 0;">Your QR Code</h3>
               <p style="color: #6b7280; margin: 10px 0;">Present this at the entrance</p>
-              <img src="${qrCodeDataURL}" alt="Event QR Code" class="qr-code" />
+              <img src="cid:${qrCodeCid}" alt="Event QR Code" class="qr-code" />
               <p style="color: #9ca3af; font-size: 12px; margin-top: 15px;">
                 Scan this code at the event entrance for quick check-in
               </p>
