@@ -481,6 +481,11 @@ export const conferenceAPI = {
     getConference: (id) => api.get(`/conferences/${id}`),
 };
 
+// ============================================
+// Admin API ENDPOINTS
+// ============================================
+
+
 export const adminAPI = {
   // ✅ Fetch all users
   getAllUsers: async (cancelToken = null) => {
