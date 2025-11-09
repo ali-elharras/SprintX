@@ -660,7 +660,7 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
   );
 };
 
-const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
+const BazaarManagementCard = ({ bazaar, onEdit, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive }) => {
   const [participatingVendors, setParticipatingVendors] = useState([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
 
@@ -727,8 +727,22 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
     <div style={cardStyle}>
       <div>
         <div style={headerStyle}>
-          <div style={labelStyle}>
-            Bazaar
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+            <div style={labelStyle}>
+              Bazaar
+            </div>
+            {hasEnded && (
+              <div style={{
+                background: 'rgba(0,0,0,0.2)',
+                color: theme.colors.text.white,
+                padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+                borderRadius: theme.borderRadius.sm,
+                fontSize: theme.typography.fontSize.xs,
+                fontWeight: theme.typography.fontWeight.medium,
+              }}>
+                Event Ended
+              </div>
+            )}
           </div>
           <h3 style={titleStyle}>
             {bazaar.title || bazaar.name}
@@ -858,7 +872,7 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
           </span>
         </div>
         <div style={{ display: "flex", gap: theme.spacing[2], width: "100%" }}>
-          {!hasStarted ? (
+          {!hasStarted && (
             <>
               <Button variant="primary" onClick={() => onEdit(bazaar)} style={{ flex: 1 }}>
                 Edit
@@ -869,9 +883,15 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
                 </Button>
               )}
             </>
-          ) : (
-            <Button variant="secondary" disabled style={{ width: "100%" }}>
-              {hasEnded ? "Event Ended" : "Event Started"}
+          )}
+          {showArchiveButton && (
+            <Button variant="outline" onClick={onArchive} style={{ flex: 1 }}>
+              Archive
+            </Button>
+          )}
+          {showUnarchiveButton && (
+            <Button variant="outline" onClick={onUnarchive} style={{ flex: 1 }}>
+              Unarchive
             </Button>
           )}
         </div>
@@ -893,7 +913,7 @@ const EventsPage = () => {
   const [filters, setFilters] = useState({
     type: "",
     search: "",
-    upcoming: true,
+    view: "all", // all, upcoming, past, archived
   });
 
   const cancelTokenRef = useRef(null);
@@ -964,14 +984,14 @@ const EventsPage = () => {
       setLoading(true);
       setError(null);
       
-      console.log("Fetching events...");
+      const params = { upcoming: "false" };
+      if (filters.view === 'archived') {
+        params.includeArchived = true;
+      }
       const response = await eventAPI.getEvents(
-        { upcoming: "false" },
+        params,
         currentCancelToken
       );
-      
-      console.log("API Response:", response);
-      console.log("Events data:", response.data?.data);
       
       let allEvents = response.data?.data || [];
       
@@ -987,8 +1007,6 @@ const EventsPage = () => {
         if (auth?.isEventsOffice) return event.status === 'published'; // Events Office sees published workshops in main grid
         return event.status === 'published'; // All other users (students, staff, TAs, professors) see published workshops
       });
-      
-      console.log("Filtered events:", allEvents);
 
       // Fetch workshops for Events Office (pending approvals)
       if (auth?.isEventsOffice) {
@@ -1100,10 +1118,6 @@ const EventsPage = () => {
   const applyFilters = () => {
     let filtered = [...events];
     
-    console.log("Applying filters to events:", events.length, "events");
-    console.log("Filters:", filters);
-    console.log("Event types:", events.map(e => ({ type: e.type, title: e.title || e.name, startDate: e.startDate })));
-    
     if (filters.type) {
       filtered = filtered.filter((e) => e.type === filters.type);
     }
@@ -1125,39 +1139,39 @@ const EventsPage = () => {
       });
     }
     
-    if (filters.upcoming) {
-      // const now = new Date();
-      // filtered = filtered.filter((e) => new Date(e.startDate) > now);
+    if (filters.view === 'archived') {
+      filtered = filtered.filter(e => e.isArchived);
+    } else {
+      filtered = filtered.filter(e => !e.isArchived);
       const now = new Date();
-      const startOfToday = new Date(now); startOfToday.setHours(0,0,0,0);
-      const endOfToday = new Date(now); endOfToday.setHours(23,59,59,999);
+      if (filters.view === 'upcoming') {
+        const startOfToday = new Date(now); startOfToday.setHours(0,0,0,0);
+        const endOfToday = new Date(now); endOfToday.setHours(23,59,59,999);
 
-      filtered = filtered.filter((e) => {
-        const start = e.startDate ? new Date(e.startDate) : null;
-        const end = e.endDate ? new Date(e.endDate) : start;
-        if (!start) return false;
+        filtered = filtered.filter((e) => {
+          const start = e.startDate ? new Date(e.startDate) : null;
+          const end = e.endDate ? new Date(e.endDate) : start;
+          if (!start) return false;
 
-        // If start is in future -> upcoming
-        if (start >= now) return true;
+          if (start >= now) return true;
 
-        // If start and end are the same calendar day and that day is today -> include as upcoming
-        const sameDay =
-          start &&
-          end &&
-          start.getFullYear() === end.getFullYear() &&
-          start.getMonth() === end.getMonth() &&
-          start.getDate() === end.getDate();
+          const sameDay =
+            start &&
+            end &&
+            start.getFullYear() === end.getFullYear() &&
+            start.getMonth() === end.getMonth() &&
+            start.getDate() === end.getDate();
 
-        const isToday = start >= startOfToday && start <= endOfToday;
+          const isToday = start >= startOfToday && start <= endOfToday;
 
-        if (sameDay && isToday) return true;
+          if (sameDay && isToday) return true;
 
-        return false;
-      });
+          return false;
+        });
+      } else if (filters.view === 'past') {
+        filtered = filtered.filter((e) => new Date(e.endDate) < now);
+      }
     }
-    
-    console.log("After all filters applied:", filtered.length, "events");
-    console.log("Filtered events:", filtered.map(e => ({ type: e.type, title: e.title || e.name, startDate: e.startDate })));
     
     setFilteredEvents(filtered);
   };
@@ -1407,6 +1421,16 @@ const EventsPage = () => {
       fetchEvents();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to update bazaar.");
+    }
+  };
+
+  const handleArchive = async (eventId, isArchived) => {
+    try {
+      await eventAPI.toggleArchiveStatus(eventId, isArchived);
+      toast.success(`Event ${isArchived ? 'archived' : 'unarchived'} successfully!`);
+      fetchEvents(); // Refresh the list
+    } catch (error) {
+      toast.error(error.message || `Failed to ${isArchived ? 'archive' : 'unarchive'} event.`);
     }
   };
 
@@ -1944,12 +1968,17 @@ const EventsPage = () => {
                 value={filters.type}
                 onChange={(e) => handleFilterChange("type", e.target.value)}
               />
-              <Button
-                variant={filters.upcoming ? "primary" : "secondary"}
-                onClick={() => handleFilterChange("upcoming", !filters.upcoming)}
-              >
-                {filters.upcoming ? "Upcoming Only" : "All Events"}
-              </Button>
+              <Select
+                label="View"
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "upcoming", label: "Upcoming" },
+                  { value: "past", label: "Past" },
+                  ...(isEventsOffice ? [{ value: "archived", label: "Archived" }] : []),
+                ]}
+                value={filters.view}
+                onChange={(e) => handleFilterChange("view", e.target.value)}
+              />
               <Button variant="outline" onClick={fetchEvents}>
                 Refresh
               </Button>
@@ -1982,15 +2011,21 @@ const EventsPage = () => {
               {filteredEvents.map((event) => {
                 const isOwner = (typeof event.organizer === "object" && event.organizer?._id === auth.user?.id) || (typeof event.organizer === "string" && event.organizer === auth.user?.id);
                 if (event.type === 'bazaar' && auth.isEventsOffice && isOwner) {
+                  const isPast = new Date(event.endDate) < new Date();
                   return (
                     <BazaarManagementCard
                       key={event._id}
                       bazaar={event}
                       onEdit={handleOpenEditModal}
                       onDelete={handleDeleteBazaar}
+                      showArchiveButton={isEventsOffice && isPast && (filters.view === 'past' || filters.view === 'all')}
+                      showUnarchiveButton={isEventsOffice && filters.view === 'archived'}
+                      onArchive={() => handleArchive(event._id, true)}
+                      onUnarchive={() => handleArchive(event._id, false)}
                     />
                   );
                 }
+                const isPast = new Date(event.endDate) < new Date();
                 return (
                   <EventCard
                     key={event._id}
@@ -2001,10 +2036,18 @@ const EventsPage = () => {
                       setEditingConference(conference);
                       setShowConferenceModal(true);
                     }}
-                    // onEditTrip={handleEditTrip}
-                    // onDelete={handleDeleteEvent}
+                    onDeleteEvent={handleDeleteEvent}
+                    onEditTrip={(trip) => {
+                      setEditingTrip(trip);
+                      setEditTripOpen(true);
+                    }}
+                    showArchiveButton={isEventsOffice && isPast && (filters.view === 'past' || filters.view === 'all')}
+                    showUnarchiveButton={isEventsOffice && filters.view === 'archived'}
+                    onArchive={() => handleArchive(event._id, true)}
+                    onUnarchive={() => handleArchive(event._id, false)}
                   />
                 );
+
               })}
             </div>
           ) : (

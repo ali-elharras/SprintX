@@ -85,12 +85,19 @@ const seedBazaar = async (req, res, next) => {
 // @access  Public
 const getEvents = async (req, res) => {
   try {
-    const { type, status = ["approved", "accepted", "published"], upcoming = false } = req.query;
+    const { type, status = ["approved", "accepted", "published"], upcoming = false, includeArchived = false } = req.query;
 
     let eventQuery = { status };
     let boothQuery = { status };
     let conferenceQuery = {};
     let workshopQuery = {};
+
+    if (includeArchived !== 'true') {
+        eventQuery.isArchived = { $ne: true };
+        boothQuery.isArchived = { $ne: true };
+        conferenceQuery.isArchived = { $ne: true };
+        workshopQuery.isArchived = { $ne: true };
+    }
 
     if (type) {
       eventQuery.type = type;
@@ -235,6 +242,7 @@ const transformBoothToEvent = (booth) => {
     attendees: boothObj.attendees || [],
     createdAt: boothObj.createdAt,
     updatedAt: boothObj.updatedAt,
+    isArchived: booth.isArchived,
   };
 };
 
@@ -264,6 +272,7 @@ const transformConferenceToEvent = (conference) => {
     extraRequiredResources: conferenceObj.extraRequiredResources,
     createdAt: conferenceObj.createdAt,
     updatedAt: conferenceObj.updatedAt,
+    isArchived: conference.isArchived,
   };
 };
 
@@ -297,6 +306,7 @@ const transformWorkshopToEvent = (workshop) => {
     extraRequiredResources: workshopObj.extraRequiredResources,
     createdAt: workshopObj.createdAt,
     updatedAt: workshopObj.updatedAt,
+    isArchived: workshop.isArchived,
   };
 };
 
@@ -666,6 +676,48 @@ const getEventsByType = async (req, res) => {
 /* --------------------------------------------------------
    EXPORTS
 -------------------------------------------------------- */
+
+// @desc    Archive or unarchive an event
+// @route   PATCH /api/events/:id/archive
+// @access  Private (Admin/Events Office)
+const toggleArchiveStatus = async (req, res) => {
+  try {
+    const { isArchived } = req.body;
+
+    if (typeof isArchived !== 'boolean') {
+      return res.status(400).json({ success: false, message: "isArchived is required and must be a boolean." });
+    }
+
+    let doc = await Event.findById(req.params.id) || 
+              await BoothApplication.findById(req.params.id) ||
+              await Conference.findById(req.params.id) ||
+              await Workshop.findById(req.params.id);
+
+    if (!doc) {
+      return res.status(404).json({ success: false, message: "Event not found" });
+    }
+
+    // Only Events Office or admin can archive
+    if (!["admin", "events_office"].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: "Not authorized to archive this event" });
+    }
+
+    // An event must have ended to be archived
+    if (isArchived && doc.endDate > new Date()) {
+        return res.status(400).json({ success: false, message: "Cannot archive an event that has not ended yet." });
+    }
+
+    doc.isArchived = isArchived;
+    await doc.save();
+
+    res.status(200).json({ success: true, message: `Event ${isArchived ? 'archived' : 'unarchived'} successfully.`, data: doc });
+
+  } catch (error) {
+    console.error("Error updating event archive status:", error);
+    res.status(500).json({ success: false, message: "Error updating event archive status", error: error.message });
+  }
+};
+
 module.exports = {
   getUpcomingBazaars,
   seedBazaar,
@@ -675,4 +727,5 @@ module.exports = {
   updateEvent,
   deleteEvent,
   getEventsByType,
+  toggleArchiveStatus,
 };

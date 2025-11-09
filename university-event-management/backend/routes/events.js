@@ -9,6 +9,7 @@ const {
   getEventsByType,
   getUpcomingBazaars,
   seedBazaar,
+  toggleArchiveStatus,
 } = require("../controllers/eventController");
 const { protect, authorize } = require("../middleware/auth");
 
@@ -116,6 +117,11 @@ router.delete(
   "/:id",
   authorize("admin", "events_office"),
   deleteEvent
+);
+router.patch(
+  "/:id/archive",
+  authorize("admin", "events_office"),
+  toggleArchiveStatus
 );
 
 

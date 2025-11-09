@@ -279,6 +279,8 @@ export const eventAPI = {
   updateEventStatus: (id, status, message = null) =>
     api.put(`/events/${id}/status`, message ? { status, message } : { status }),
   deleteEvent: (id) => api.delete(`/events/${id}`),
+
+  toggleArchiveStatus: (id, isArchived) => api.patch(`/events/${id}/archive`, { isArchived }),
 };
 
 // ============================================
