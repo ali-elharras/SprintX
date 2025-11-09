@@ -7,6 +7,7 @@ import ApplyBazaarModal from "../components/vendor/ApplyBazaarModal";
 import ApplyBoothModal from "../components/vendor/ApplyBoothModal";
 import PaymentButton from "../components/vendor/PaymentButton";
 import Navbar from "../components/Navbar";
+import LoyaltyProgram from '../components/vendor/LoyaltyProgram';
 
 const styles = {
   pageContainer: {
@@ -681,6 +682,14 @@ const VendorDashboard = () => {
                 <p style={styles.emptyStateText}>You have not submitted any applications yet</p>
               </div>
             )}
+          </section>
+
+          <section style={styles.section}>
+            <div style={styles.sectionHeader}>
+              <div style={styles.sectionIcon}>⭐</div>
+              <h2 style={styles.sectionTitle}>Loyalty Program</h2>
+            </div>
+            <LoyaltyProgram />
           </section>
         </div>
 
