@@ -284,6 +284,15 @@ exports.verifyPayment = async (req, res, next) => {
       });
     }
 
+    if (application.paymentStatus === 'completed') {
+      console.log(`Payment for application ${applicationId} already completed. Skipping duplicate processing.`);
+      return res.status(200).json({
+        success: true,
+        message: 'Payment already verified and completed.',
+        data: application,
+      });
+    }
+
     // Retrieve the session from Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 

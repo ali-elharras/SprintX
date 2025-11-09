@@ -232,8 +232,9 @@ const getMyBazaarApplication = async (req, res, next) => {
     }).populate('bazaar');
 
     if (!application) {
-      return res.status(404).json({
-        success: false,
+      return res.status(200).json({
+        success: true,
+        data: null,
         message: "No application found for this bazaar",
       });
     }
