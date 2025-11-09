@@ -14,7 +14,6 @@ import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 import CreateDropdownButton from '../components/CreateDropdownButton';
 import CreateTripModal from '../components/CreateTripModal';
-import EventEditModal from '../components/EventEditModal';
 
 // Helper function to get tomorrow's date string in local time (not UTC)
 const getTomorrowDateTimeString = () => {
@@ -1364,11 +1363,6 @@ const EventsPage = () => {
     setIsEditModalOpen(true);
   };
 
-  const handleEditTrip = (trip) => {
-    setEditingTrip(trip);
-    setEditTripOpen(true);
-  };
-
   const handleCloseEditModal = () => {
     setIsEditModalOpen(false);
     setEditingBazaar(null);
@@ -1977,14 +1971,6 @@ const EventsPage = () => {
             currentUser={auth.user}
           />
 
-          {/* Edit Trip modal */}
-          <EventEditModal
-            open={editTripOpen}
-            event={editingTrip}
-            onClose={() => setEditTripOpen(false)}
-            onSaved={async () => { setEditTripOpen(false); await fetchEvents(); }}
-          />
-
           {filteredEvents.length > 0 ? (
             <div
               style={{
@@ -2015,8 +2001,8 @@ const EventsPage = () => {
                       setEditingConference(conference);
                       setShowConferenceModal(true);
                     }}
-                    onEditTrip={handleEditTrip}
-                    onDelete={handleDeleteEvent}
+                    // onEditTrip={handleEditTrip}
+                    // onDelete={handleDeleteEvent}
                   />
                 );
               })}

@@ -381,6 +381,23 @@ export const courtAPI = {
   createCourt: (courtData) => api.post("/courts", courtData),
   updateCourt: (id, courtData) => api.put(`/courts/${id}`, courtData),
   deleteCourt: (id) => api.delete(`/courts/${id}`),
+  
+  // Court Reservations
+  reserveCourt: (courtId, reservationData) => 
+    api.post(`/courts/${courtId}/reserve`, reservationData),
+    
+  getMyReservations: (cancelToken = null) => 
+    api.get("/courts/my-reservations", {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    }),
+    
+  cancelReservation: (reservationId, reason) =>
+    api.delete(`/courts/my-reservations/${reservationId}`, { data: { reason } }),
+    
+  getAvailableSlots: (courtId, date, cancelToken = null) =>
+    api.get(`/courts/${courtId}/available-slots/${date}`, {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    }),
 };
 
 // ============================================
@@ -427,9 +444,13 @@ export const gymAPI = {
   // Admin / Events Office: create a new gym session
   createSession: (sessionData) => api.post(`/gym/sessions`, sessionData),
 
-  // Admin / Events Office: update existing gym session
+  // Admin / Events Office: update existing gym session (only date, time, duration)
   updateSession: (id, sessionData) =>
     api.put(`/gym/sessions/${id}`, sessionData),
+
+  // Admin / Events Office: cancel gym session
+  cancelSession: (id, data) =>
+    api.delete(`/gym/sessions/${id}`, { data }),
 
   getMyRegistrations: (params = {}, cancelToken = null) => {
     const queryString = new URLSearchParams(params).toString();
@@ -465,6 +486,11 @@ export const conferenceAPI = {
 
     getConference: (id) => api.get(`/conferences/${id}`),
 };
+
+// ============================================
+// Admin API ENDPOINTS
+// ============================================
+
 
 export const adminAPI = {
   // ✅ Fetch all users

@@ -575,7 +575,7 @@ const createGymSession = async (req, res) => {
   }
 };
 
-// @desc    Update an existing gym session
+// @desc    Update an existing gym session (only date, time, duration)
 // @route   PUT /api/gym/sessions/:id
 // @access  Private (admin or events_office)
 const updateGymSession = async (req, res) => {
@@ -588,35 +588,76 @@ const updateGymSession = async (req, res) => {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const updateData = req.body;
-
-    // Load existing session and apply only the changed fields (shallow-merge objects)
     const session = await GymSession.findById(sessionId);
     if (!session) {
       return res.status(404).json({ success: false, message: 'Gym session not found' });
     }
 
-    // Apply updates: for plain objects do a shallow merge, for arrays/scalars replace entirely
-    Object.keys(updateData).forEach((key) => {
-      const val = updateData[key];
+    // Check if session is already cancelled
+    if (session.status === 'cancelled') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Cannot update a cancelled gym session' 
+      });
+    }
 
-      // If both current value and incoming value are plain objects, shallow merge
-      const current = session[key];
-      const isPlainObject = (v) => v && typeof v === 'object' && !Array.isArray(v) && !(v instanceof Date);
-
-      if (isPlainObject(current) && isPlainObject(val)) {
-        // merge shallowly so unspecified nested fields are preserved
-        session[key] = { ...(typeof current.toObject === 'function' ? current.toObject() : current), ...val };
-      } else {
-        // otherwise, replace (covers arrays, scalars, nulls)
-        session[key] = val;
+    // Only allow editing date, time, and duration fields
+    const allowedFields = ['startDate', 'endDate', 'startTime', 'endTime', 'duration', 'dayOfWeek'];
+    const updateData = {};
+    
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
       }
     });
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No valid fields to update. Only date, time, and duration can be edited.' 
+      });
+    }
+
+    // Apply updates
+    Object.keys(updateData).forEach(key => {
+      session[key] = updateData[key];
+    });
+
+    // Update lastModifiedBy
+    session.lastModifiedBy = req.user._id || req.user.id;
 
     // Save with validators
     const saved = await session.save();
 
-    res.status(200).json({ success: true, message: 'Gym session updated', data: saved });
+    // Notify registered users about the session update
+    const activeRegistrations = await GymRegistration.find({
+      gymSession: sessionId,
+      status: { $in: ['active', 'waitlisted'] }
+    }).populate('user', 'firstName lastName email');
+
+    // Create notifications for all registered users
+    const Notification = require('../models/Notification');
+    const notificationPromises = activeRegistrations.map(registration => {
+      return Notification.create({
+        user: registration.user._id,
+        type: 'gym_session_updated',
+        title: 'Gym Session Updated',
+        message: `The gym session "${session.title}" has been rescheduled. Please check the updated details.`,
+        relatedEntity: {
+          entityType: 'GymSession',
+          entityId: session._id
+        },
+        priority: 'high'
+      });
+    });
+
+    await Promise.all(notificationPromises);
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Gym session updated successfully. Notifications sent to all registered participants.', 
+      data: saved 
+    });
   } catch (error) {
     console.error('Error updating gym session:', error);
     if (error.name === 'ValidationError') {
@@ -624,6 +665,89 @@ const updateGymSession = async (req, res) => {
       return res.status(400).json({ success: false, errors });
     }
     res.status(500).json({ success: false, message: 'Error updating gym session', error: error.message });
+  }
+};
+
+// @desc    Cancel a gym session
+// @route   DELETE /api/gym/sessions/:id
+// @access  Private (admin or events_office)
+const cancelGymSession = async (req, res) => {
+  try {
+    const sessionId = req.params.id;
+    const { reason, notifyParticipants = true } = req.body;
+
+    const session = await GymSession.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Gym session not found' 
+      });
+    }
+
+    // Check if session is already cancelled
+    if (session.status === 'cancelled') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Gym session is already cancelled' 
+      });
+    }
+
+    // Update session status to cancelled
+    session.status = 'cancelled';
+    session.lastModifiedBy = req.user._id || req.user.id;
+    await session.save();
+
+    // Get all active and waitlisted registrations
+    const activeRegistrations = await GymRegistration.find({
+      gymSession: sessionId,
+      status: { $in: ['active', 'waitlisted'] }
+    }).populate('user', 'firstName lastName email');
+
+    // Cancel all active registrations
+    const cancellationPromises = activeRegistrations.map(registration => {
+      return registration.cancelRegistration(
+        reason || 'Session cancelled by Events Office',
+        0 // No cancellation fee when session is cancelled by office
+      );
+    });
+
+    await Promise.all(cancellationPromises);
+
+    // Notify all registered users if requested
+    if (notifyParticipants && activeRegistrations.length > 0) {
+      const Notification = require('../models/Notification');
+      const notificationPromises = activeRegistrations.map(registration => {
+        return Notification.create({
+          user: registration.user._id,
+          type: 'gym_session_cancelled',
+          title: 'Gym Session Cancelled',
+          message: `The gym session "${session.title}" scheduled for ${session.dayName} at ${session.startTime} has been cancelled. ${reason ? 'Reason: ' + reason : ''}`,
+          relatedEntity: {
+            entityType: 'GymSession',
+            entityId: session._id
+          },
+          priority: 'high'
+        });
+      });
+
+      await Promise.all(notificationPromises);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Gym session cancelled successfully. ${activeRegistrations.length} participant(s) have been notified and their registrations cancelled.`,
+      data: {
+        session,
+        cancelledRegistrations: activeRegistrations.length
+      }
+    });
+  } catch (error) {
+    console.error('Error cancelling gym session:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error cancelling gym session',
+      error: error.message
+    });
   }
 };
 
@@ -639,5 +763,6 @@ module.exports = {
   getGymScheduleOverview,
   createGymSession,
   updateGymSession,
+  cancelGymSession,
 };
 

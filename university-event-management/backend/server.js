@@ -21,6 +21,7 @@ const conferenceRoutes = require("./routes/conference.js");
 const bazaarRoutes = require("./routes/bazaar");
 const workshopRoutes = require("./routes/workshop");
 const notificationRoutes = require("./routes/notifications");
+const reportRoutes = require("./routes/report");
 const paymentRoutes = require("./routes/payments");
 const LoyaltyRoutes = require("./routes/LoyaltyRoutes");
 
@@ -124,7 +125,8 @@ app.use("/api/workshops", workshopRoutes);
 
 // Notification routes (for professors to receive workshop updates)
 app.use("/api/notifications", notificationRoutes);
-
+// Report routes (for admin and events office to view reports)
+app.use("/api/reports", reportRoutes);
 // Payment routes (for vendor payments)
 app.use("/api/payments", paymentRoutes);
 
@@ -139,6 +141,13 @@ app.get("/api/health", (req, res) => {
     uptime: process.uptime(),
     memory: process.memoryUsage(),
     connections: mongoose.connection.readyState, // 1 = connected, 0 = disconnected
+  });
+});
+
+// ===== Feature Flags =====
+app.get("/api/feature-flags", (req, res) => {
+  res.json({
+    gpt5Enabled: process.env.FEATURE_GPT5_ENABLED === 'true',
   });
 });
 

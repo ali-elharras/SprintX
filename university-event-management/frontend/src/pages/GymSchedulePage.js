@@ -474,7 +474,7 @@ const GymSchedulePage = () => {
                     key={session._id}
                     session={session}
                     onUpdated={() => fetchSessions()}
-                    viewOnly={true}
+                    viewOnly={false}
                   />
                 ))}
               </div>

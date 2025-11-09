@@ -31,6 +31,7 @@ import GymSchedulePage from "./pages/GymSchedulePage";
 import CreateWorkshop from "./pages/CreateWorkshop";
 import Workshops from "./pages/Workshops";
 import AdminUserManagement from "./pages/AdminUserManagement";
+import ReportsPage from "./pages/ReportsPage";
 import PaymentSuccess from "./pages/PaymentSuccess";
 // ---------------------------
 // Protected Route Components
@@ -273,6 +274,16 @@ const router = createBrowserRouter([
       <ProtectedRoute>
         <AdminRoute>
           <AdminUserManagement />
+        </AdminRoute>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/reports",
+    element: (
+      <ProtectedRoute>
+        <AdminRoute>
+          <ReportsPage />
         </AdminRoute>
       </ProtectedRoute>
     ),

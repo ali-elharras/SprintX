@@ -437,7 +437,7 @@ const GymScheduleCalendar = ({ sessions, year, month, onSessionUpdated }) => {
           if (onSessionUpdated) onSessionUpdated();
         }}
         isAdminOrEventsOffice={auth.isAdmin || auth.isEventsOffice}
-        viewOnly={true}
+        viewOnly={false}
       />
     </div>
   );

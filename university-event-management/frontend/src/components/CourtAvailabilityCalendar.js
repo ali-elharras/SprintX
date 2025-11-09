@@ -18,13 +18,15 @@ if (typeof document !== 'undefined') {
   document.head.appendChild(style);
 }
 
-const CourtAvailabilityCalendar = ({ court, onClose }) => {
+const CourtAvailabilityCalendar = ({ court, onClose, onReservationMade }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [availability, setAvailability] = useState([]);
   const [loading, setLoading] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isClosing, setIsClosing] = useState(false);
   const [unavailabilityReason, setUnavailabilityReason] = useState(null);
+  const [reserving, setReserving] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState(null);
   
   // Ref to track the last error shown to prevent duplicates
   const lastErrorRef = useRef(null);
@@ -52,7 +54,9 @@ const CourtAvailabilityCalendar = ({ court, onClose }) => {
     try {
       setLoading(true);
       console.log('Fetching availability for court:', courtId, 'date:', dateStr);
-      const response = await courtAPI.getCourtAvailability(courtId, dateStr);
+      
+      // Use getAvailableSlots instead of getCourtAvailability to get reservation status
+      const response = await courtAPI.getAvailableSlots(courtId, dateStr);
       
       // Check if this is still the current request
       if (currentRequestRef.current !== requestId) {
@@ -60,8 +64,8 @@ const CourtAvailabilityCalendar = ({ court, onClose }) => {
       }
       
       console.log('Availability response:', response.data);
-      setAvailability(response.data.data?.availableSlots || []);
-      setUnavailabilityReason(response.data.data?.unavailabilityReason || null);
+      setAvailability(response.data.data?.slots || []);
+      setUnavailabilityReason(null);
       
       // Clear any previous errors on successful fetch
       lastErrorRef.current = null;
@@ -173,6 +177,53 @@ const CourtAvailabilityCalendar = ({ court, onClose }) => {
       onClose();
       setIsClosing(false);
     }, 200);
+  };
+
+  const handleReserveSlot = async (slot) => {
+    if (!slot.available || reserving) return;
+    
+    try {
+      setReserving(true);
+      setSelectedSlot(slot);
+      
+      const reservationData = {
+        date: selectedDate.toISOString().split('T')[0],
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        purpose: "training", // Default purpose
+        numberOfParticipants: 1
+      };
+      
+      console.log('Attempting to reserve court:', {
+        courtId: court._id || court.id,
+        reservationData
+      });
+      
+      const response = await courtAPI.reserveCourt(court._id || court.id, reservationData);
+      
+      console.log('Reservation response:', response);
+      
+      if (response.data.success) {
+        toast.success("Court reserved successfully!");
+        
+        // Refresh availability
+        await fetchAvailability();
+        
+        // Notify parent component
+        if (onReservationMade) {
+          onReservationMade();
+        }
+      }
+    } catch (error) {
+      console.error("Reservation error:", error);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+      const errorMessage = error.response?.data?.message || error.message || "Failed to reserve court";
+      toast.error(errorMessage);
+    } finally {
+      setReserving(false);
+      setSelectedSlot(null);
+    }
   };
 
   return (
@@ -929,22 +980,9 @@ const CourtAvailabilityCalendar = ({ court, onClose }) => {
                                           justifyContent: "space-between",
                                           alignItems: "center",
                                           transition: "all 0.3s ease",
-                                          cursor: slot.available ? "pointer" : "default",
                                           boxShadow: slot.available 
                                             ? "0 4px 12px rgba(16, 185, 129, 0.2)" 
                                             : "0 4px 12px rgba(239, 68, 68, 0.2)",
-                                        }}
-                                        onMouseEnter={(e) => {
-                                          if (slot.available) {
-                                            e.target.style.transform = "translateY(-2px)";
-                                            e.target.style.boxShadow = "0 8px 20px rgba(16, 185, 129, 0.3)";
-                                          }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                          if (slot.available) {
-                                            e.target.style.transform = "translateY(0)";
-                                            e.target.style.boxShadow = "0 4px 12px rgba(16, 185, 129, 0.2)";
-                                          }
                                         }}
                                       >
                                         <div>
@@ -969,24 +1007,62 @@ const CourtAvailabilityCalendar = ({ court, onClose }) => {
                                           style={{
                                             display: "flex",
                                             alignItems: "center",
-                                            gap: theme.spacing[2],
+                                            gap: theme.spacing[3],
                                           }}
                                         >
-                                          <span
-                                            style={{
-                                              fontSize: theme.typography.fontSize.sm,
-                                              color: slot.available ? "#059669" : "#dc2626",
-                                              fontWeight: theme.typography.fontWeight.bold,
-                                              textTransform: "uppercase",
-                                              backgroundColor: slot.available ? "#d1fae5" : "#fee2e2",
-                                              padding: `${theme.spacing[1]} ${theme.spacing[3]}`,
-                                              borderRadius: "20px",
-                                              letterSpacing: "0.05em",
-                                              border: `1px solid ${slot.available ? "#059669" : "#dc2626"}`,
-                                            }}
-                                          >
-                                            {slot.available ? "✅ Available" : "❌ Booked"}
-                                          </span>
+                                          {slot.available ? (
+                                            <button
+                                              onClick={() => handleReserveSlot(slot)}
+                                              disabled={reserving}
+                                              style={{
+                                                background: reserving && selectedSlot === slot
+                                                  ? "linear-gradient(135deg, #94a3b8 0%, #64748b 100%)"
+                                                  : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                                                color: "white",
+                                                border: "none",
+                                                borderRadius: "8px",
+                                                padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+                                                fontWeight: theme.typography.fontWeight.bold,
+                                                fontSize: theme.typography.fontSize.sm,
+                                                cursor: reserving ? "not-allowed" : "pointer",
+                                                transition: "all 0.3s ease",
+                                                boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.05em",
+                                                opacity: reserving ? 0.7 : 1,
+                                              }}
+                                              onMouseEnter={(e) => {
+                                                if (!reserving) {
+                                                  e.target.style.transform = "translateY(-2px)";
+                                                  e.target.style.boxShadow = "0 8px 20px rgba(16, 185, 129, 0.4)";
+                                                }
+                                              }}
+                                              onMouseLeave={(e) => {
+                                                if (!reserving) {
+                                                  e.target.style.transform = "translateY(0)";
+                                                  e.target.style.boxShadow = "0 4px 12px rgba(16, 185, 129, 0.3)";
+                                                }
+                                              }}
+                                            >
+                                              {reserving && selectedSlot === slot ? "Reserving..." : "🎯 Reserve"}
+                                            </button>
+                                          ) : (
+                                            <span
+                                              style={{
+                                                fontSize: theme.typography.fontSize.sm,
+                                                color: "#dc2626",
+                                                fontWeight: theme.typography.fontWeight.bold,
+                                                textTransform: "uppercase",
+                                                backgroundColor: "#fee2e2",
+                                                padding: `${theme.spacing[1]} ${theme.spacing[3]}`,
+                                                borderRadius: "20px",
+                                                letterSpacing: "0.05em",
+                                                border: "1px solid #dc2626",
+                                              }}
+                                            >
+                                              ❌ Booked
+                                            </span>
+                                          )}
                                         </div>
                                       </div>
                                     ))}
