@@ -582,6 +582,855 @@ class EmailService {
       </html>
     `;
   }
+
+  // Send application approval email with payment information
+  async sendApplicationApprovalEmail(to, vendorName, applicationType, eventName, paymentAmount, paymentDeadline) {
+    const formattedDeadline = new Date(paymentDeadline).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    const mailOptions = {
+      from: `"SprintX" <${process.env.EMAIL_USER || "no-reply@campusevents.test"}>`,
+      to: to,
+      subject: `Application Approved - Payment Required - SprintX`,
+      html: this.getApplicationApprovalEmailTemplate({
+        vendorName,
+        applicationType,
+        eventName,
+        paymentAmount,
+        formattedDeadline,
+      }),
+      text: `
+        Dear ${vendorName},
+
+        Congratulations! Your ${applicationType} application has been approved.
+
+        Event: ${eventName}
+        Payment Amount: $${paymentAmount.toFixed(2)}
+        Payment Deadline: ${formattedDeadline}
+
+        Please complete your payment within 3 days to confirm your participation.
+        You can make the payment through your vendor dashboard.
+
+        If you have any questions, please contact our support team.
+
+        Best regards,
+        SprintX Team
+      `,
+    };
+
+    try {
+      if (!this.transporter) {
+        console.log("⚠️ No transporter available - falling back to console mode");
+        console.log("📧 Application Approval Email (Console Mode):");
+        console.log("   To:", to);
+        console.log("   Subject:", mailOptions.subject);
+        console.log("   Payment Amount:", paymentAmount);
+        console.log("   Payment Deadline:", formattedDeadline);
+        return { success: true, messageId: "console-log" };
+      }
+
+      const info = await this.transporter.sendMail(mailOptions);
+      
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+        console.log("✅ Application approval email sent successfully!");
+        console.log(`   To: ${to}`);
+        console.log(`   Message ID: ${info.messageId}`);
+      } else {
+        console.log("📧 Test application approval email sent:");
+        console.log("   Preview URL:", nodemailer.getTestMessageUrl(info));
+      }
+
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error("❌ Failed to send application approval email:", error.message);
+      throw new Error(`Failed to send application approval email: ${error.message}`);
+    }
+  }
+
+  getApplicationApprovalEmailTemplate({ vendorName, applicationType, eventName, paymentAmount, formattedDeadline }) {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Application Approved - SprintX</title>
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+          }
+          .email-container {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            text-align: center;
+            color: white;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+          }
+          .content {
+            background: white;
+            padding: 40px 30px;
+          }
+          .content h2 {
+            color: #10b981;
+            margin-top: 0;
+            font-size: 24px;
+          }
+          .success-badge {
+            background: #d1fae5;
+            border: 2px solid #10b981;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+          }
+          .success-badge h3 {
+            color: #059669;
+            margin: 0 0 10px 0;
+            font-size: 20px;
+          }
+          .payment-info {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin: 20px 0;
+          }
+          .payment-info h4 {
+            color: #d97706;
+            margin-top: 0;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          .info-row:last-child {
+            border-bottom: none;
+          }
+          .info-label {
+            font-weight: bold;
+            color: #6b7280;
+          }
+          .info-value {
+            color: #111827;
+            font-weight: 600;
+          }
+          .amount {
+            font-size: 24px;
+            color: #10b981;
+            font-weight: bold;
+          }
+          .deadline {
+            font-size: 18px;
+            color: #dc2626;
+            font-weight: bold;
+          }
+          .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+            margin: 20px 0;
+            text-align: center;
+          }
+          .warning {
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #991b1b;
+          }
+          .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <h1>🎉 SprintX</h1>
+          </div>
+          
+          <div class="content">
+            <h2>Application Approved!</h2>
+            
+            <p>Dear ${vendorName},</p>
+            
+            <div class="success-badge">
+              <h3>✅ Congratulations!</h3>
+              <p style="margin: 0;">Your ${applicationType} application has been approved.</p>
+            </div>
+            
+            <div class="info-row">
+              <span class="info-label">Event:</span>
+              <span class="info-value">${eventName || 'Booth Request'}</span>
+            </div>
+            
+            <div class="payment-info">
+              <h4>💳 Payment Required</h4>
+              <p>To confirm your participation, please complete the payment within the deadline:</p>
+              
+              <div class="info-row">
+                <span class="info-label">Amount:</span>
+                <span class="amount">$${paymentAmount.toFixed(2)}</span>
+              </div>
+              
+              <div class="info-row">
+                <span class="info-label">Deadline:</span>
+                <span class="deadline">${formattedDeadline}</span>
+              </div>
+            </div>
+            
+            <div class="warning">
+              <strong>⚠️ Important:</strong> You have <strong>3 days</strong> from receiving this email to complete your payment. Failure to pay by the deadline will result in automatic cancellation of your participation.
+            </div>
+            
+            <p style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.FRONTEND_URL}/vendor/dashboard" class="cta-button">Go to Dashboard & Pay</a>
+            </p>
+            
+            <p>You can make the payment through your vendor dashboard. Simply log in and navigate to your approved applications.</p>
+            
+            <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
+            
+            <p>Best regards,<br>The SprintX Team</p>
+          </div>
+          
+          <div class="footer">
+            <p>This email was sent from SprintX<br>
+            If you have questions, contact us at <a href="mailto:support@campusevents.edu">support@campusevents.edu</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  // Send payment receipt email
+  async sendPaymentReceiptEmail(to, vendorName, applicationType, eventName, paymentAmount, transactionId, paidAt) {
+    const formattedDate = new Date(paidAt).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const receiptNumber = `RCPT-${Date.now()}-${transactionId.slice(-8)}`;
+
+    const mailOptions = {
+      from: `"SprintX" <${process.env.EMAIL_USER || "no-reply@campusevents.test"}>`,
+      to: to,
+      subject: `Payment Receipt - ${receiptNumber} - SprintX`,
+      html: this.getPaymentReceiptEmailTemplate({
+        vendorName,
+        applicationType,
+        eventName,
+        paymentAmount,
+        transactionId,
+        formattedDate,
+        receiptNumber,
+      }),
+      text: `
+        Payment Receipt
+        
+        Dear ${vendorName},
+
+        Thank you for your payment! This email confirms your successful payment for ${applicationType} participation.
+
+        Receipt Number: ${receiptNumber}
+        Event: ${eventName}
+        Amount Paid: $${paymentAmount.toFixed(2)}
+        Payment Date: ${formattedDate}
+        Transaction ID: ${transactionId}
+
+        Your participation is now confirmed. You will receive further details about the event closer to the date.
+
+        If you have any questions, please contact our support team.
+
+        Best regards,
+        SprintX Team
+      `,
+    };
+
+    try {
+      if (!this.transporter) {
+        console.log("⚠️ No transporter available - falling back to console mode");
+        console.log("📧 Payment Receipt Email (Console Mode):");
+        console.log("   To:", to);
+        console.log("   Receipt Number:", receiptNumber);
+        console.log("   Amount:", paymentAmount);
+        console.log("   Transaction ID:", transactionId);
+        return { success: true, messageId: "console-log" };
+      }
+
+      const info = await this.transporter.sendMail(mailOptions);
+      
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+        console.log("✅ Payment receipt email sent successfully!");
+        console.log(`   To: ${to}`);
+        console.log(`   Receipt: ${receiptNumber}`);
+        console.log(`   Message ID: ${info.messageId}`);
+      } else {
+        console.log("📧 Test payment receipt email sent:");
+        console.log("   Preview URL:", nodemailer.getTestMessageUrl(info));
+      }
+
+      return { success: true, messageId: info.messageId, receiptNumber };
+    } catch (error) {
+      console.error("❌ Failed to send payment receipt email:", error.message);
+      throw new Error(`Failed to send payment receipt email: ${error.message}`);
+    }
+  }
+
+  getPaymentReceiptEmailTemplate({ vendorName, applicationType, eventName, paymentAmount, transactionId, formattedDate, receiptNumber }) {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Receipt - SprintX</title>
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+          }
+          .email-container {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            text-align: center;
+            color: white;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+          }
+          .receipt-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 14px;
+          }
+          .content {
+            padding: 40px 30px;
+          }
+          .content h2 {
+            color: #667eea;
+            margin-top: 0;
+            font-size: 24px;
+          }
+          .success-message {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+          .success-message h3 {
+            color: #059669;
+            margin: 0 0 5px 0;
+            font-size: 18px;
+          }
+          .receipt-details {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+          }
+          .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          .detail-row:last-child {
+            border-bottom: none;
+          }
+          .detail-label {
+            font-weight: 600;
+            color: #6b7280;
+          }
+          .detail-value {
+            color: #111827;
+            text-align: right;
+          }
+          .amount-row {
+            background: #f3f4f6;
+            margin: -20px -20px 0 -20px;
+            padding: 20px;
+            border-radius: 0 0 8px 8px;
+          }
+          .amount-row .detail-label {
+            font-size: 18px;
+            color: #111827;
+          }
+          .amount-row .detail-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #10b981;
+          }
+          .transaction-id {
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            word-break: break-all;
+            color: #92400e;
+          }
+          .info-box {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+          .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+          }
+          .footer a {
+            color: #667eea;
+            text-decoration: none;
+          }
+          .checkmark {
+            font-size: 48px;
+            color: #10b981;
+            text-align: center;
+            margin: 20px 0;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <h1>🎉 SprintX</h1>
+            <div class="receipt-badge">Payment Receipt</div>
+          </div>
+          
+          <div class="content">
+            <div class="checkmark">✓</div>
+            <h2 style="text-align: center;">Payment Successful!</h2>
+            
+            <p>Dear ${vendorName},</p>
+            
+            <div class="success-message">
+              <h3>Thank you for your payment!</h3>
+              <p style="margin: 5px 0 0 0;">Your payment has been processed successfully and your participation is now confirmed.</p>
+            </div>
+            
+            <div class="receipt-details">
+              <div class="detail-row">
+                <span class="detail-label">Receipt Number:</span>
+                <span class="detail-value"><strong>${receiptNumber}</strong></span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Event:</span>
+                <span class="detail-value">${eventName || 'Booth Request'}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Type:</span>
+                <span class="detail-value">${applicationType.charAt(0).toUpperCase() + applicationType.slice(1)}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Payment Date:</span>
+                <span class="detail-value">${formattedDate}</span>
+              </div>
+              <div class="amount-row">
+                <div class="detail-row" style="border: none;">
+                  <span class="detail-label">Amount Paid:</span>
+                  <span class="detail-value">$${paymentAmount.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="transaction-id">
+              <strong>Transaction ID:</strong><br>
+              ${transactionId}
+            </div>
+            
+            <div class="info-box">
+              <strong>📅 What's Next?</strong>
+              <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                <li>Your participation is confirmed</li>
+                <li>You'll receive event details closer to the date</li>
+                <li>Keep this receipt for your records</li>
+                <li>Contact support if you have any questions</li>
+              </ul>
+            </div>
+            
+            <p style="margin-top: 30px;">If you have any questions about this payment or your participation, please don't hesitate to contact our support team.</p>
+            
+            <p>Best regards,<br>The SprintX Team</p>
+          </div>
+          
+          <div class="footer">
+            <p><strong>SprintX - University Event Management</strong></p>
+            <p>This is an automated receipt. Please keep it for your records.</p>
+            <p>Questions? Contact us at <a href="mailto:support@campusevents.edu">support@campusevents.edu</a></p>
+            <p style="margin-top: 15px; font-size: 12px; color: #9ca3af;">
+              © ${new Date().getFullYear()} SprintX. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  // Send QR code email to visitor
+  async sendVisitorQRCodeEmail(visitorEmail, vendorName, eventName, applicationType, qrCodeDataURL, visitorNumber, totalVisitors) {
+    // Extract base64 content from data URL
+    const qrCodeBase64 = qrCodeDataURL.split(',')[1];
+    const qrCodeCid = `qrcode_${Date.now()}@sprintx.com`; // Unique Content-ID
+
+    const mailOptions = {
+      from: `"SprintX" <${process.env.EMAIL_USER || "no-reply@campusevents.test"}>`,
+      to: visitorEmail,
+      subject: `Your Event Access QR Code - ${eventName} - SprintX`,
+      html: this.getVisitorQRCodeEmailTemplate({
+        visitorEmail,
+        vendorName,
+        eventName,
+        applicationType,
+        qrCodeCid, // Pass CID to template
+        visitorNumber,
+        totalVisitors,
+      }),
+      text: `
+        Your Event Access QR Code
+
+        Dear Visitor,
+
+        You have been registered for ${eventName} by ${vendorName}.
+
+        Your visitor number: ${visitorNumber} of ${totalVisitors}
+
+        Please present the QR code attached to this email at the event entrance for check-in.
+
+        Event Details:
+        - Event: ${eventName}
+        - Type: ${applicationType.charAt(0).toUpperCase() + applicationType.slice(1)}
+        - Vendor: ${vendorName}
+
+        Important:
+        - Keep this email safe
+        - Present QR code at entrance
+        - One QR code per person
+
+        See you at the event!
+
+        Best regards,
+        SprintX Team
+      `,
+      attachments: [
+        {
+          filename: 'qrcode.png',
+          content: qrCodeBase64,
+          encoding: 'base64',
+          cid: qrCodeCid, // Content-ID for embedding
+        },
+      ],
+    };
+
+    try {
+      if (!this.transporter) {
+        console.log("⚠️ No transporter available - falling back to console mode");
+        console.log("📧 Visitor QR Code Email (Console Mode):");
+        console.log("   To:", visitorEmail);
+        console.log("   Event:", eventName);
+        console.log("   Visitor:", visitorNumber, "of", totalVisitors);
+        return { success: true, messageId: "console-log" };
+      }
+
+      const info = await this.transporter.sendMail(mailOptions);
+      
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+        console.log(`✅ QR code email sent to visitor ${visitorNumber}:`, visitorEmail);
+      } else {
+        console.log(`📧 Test QR code email sent to visitor ${visitorNumber}:`);
+        console.log("   Preview URL:", nodemailer.getTestMessageUrl(info));
+      }
+
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error(`❌ Failed to send QR code email to ${visitorEmail}:`, error.message);
+      throw new Error(`Failed to send QR code email: ${error.message}`);
+    }
+  }
+
+  getVisitorQRCodeEmailTemplate({ visitorEmail, vendorName, eventName, applicationType, qrCodeCid, visitorNumber, totalVisitors }) {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Your Event QR Code - SprintX</title>
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+          }
+          .email-container {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            text-align: center;
+            color: white;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+          }
+          .qr-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 14px;
+          }
+          .content {
+            padding: 40px 30px;
+          }
+          .content h2 {
+            color: #667eea;
+            margin-top: 0;
+            font-size: 24px;
+            text-align: center;
+          }
+          .qr-container {
+            background: #f9fafb;
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+            text-align: center;
+          }
+          .qr-code {
+            max-width: 300px;
+            width: 100%;
+            height: auto;
+            margin: 20px auto;
+            display: block;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          }
+          .visitor-info {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+          .visitor-info h3 {
+            color: #1e40af;
+            margin: 0 0 15px 0;
+            font-size: 18px;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #dbeafe;
+          }
+          .info-row:last-child {
+            border-bottom: none;
+          }
+          .info-label {
+            font-weight: 600;
+            color: #6b7280;
+          }
+          .info-value {
+            color: #111827;
+            text-align: right;
+          }
+          .instructions {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+          .instructions h3 {
+            color: #92400e;
+            margin: 0 0 10px 0;
+            font-size: 18px;
+          }
+          .instructions ul {
+            margin: 10px 0;
+            padding-left: 20px;
+          }
+          .instructions li {
+            margin: 8px 0;
+            color: #78350f;
+          }
+          .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+          }
+          .footer a {
+            color: #667eea;
+            text-decoration: none;
+          }
+          .ticket-icon {
+            font-size: 64px;
+            text-align: center;
+            margin: 20px 0;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <h1>🎉 SprintX</h1>
+            <div class="qr-badge">Event Access QR Code</div>
+          </div>
+          
+          <div class="content">
+            <div class="ticket-icon">🎫</div>
+            <h2>Your Event Access Pass</h2>
+            
+            <p style="text-align: center; font-size: 16px;">
+              You're all set for <strong>${eventName}</strong>!
+            </p>
+            
+            <div class="visitor-info">
+              <h3>📋 Event Details</h3>
+              <div class="info-row">
+                <span class="info-label">Event:</span>
+                <span class="info-value">${eventName}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Type:</span>
+                <span class="info-value">${applicationType.charAt(0).toUpperCase() + applicationType.slice(1)}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Vendor:</span>
+                <span class="info-value">${vendorName}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Your Email:</span>
+                <span class="info-value">${visitorEmail}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Visitor Number:</span>
+                <span class="info-value">${visitorNumber} of ${totalVisitors}</span>
+              </div>
+            </div>
+            
+            <div class="qr-container">
+              <h3 style="color: #667eea; margin-top: 0;">Your QR Code</h3>
+              <p style="color: #6b7280; margin: 10px 0;">Present this at the entrance</p>
+              <img src="cid:${qrCodeCid}" alt="Event QR Code" class="qr-code" />
+              <p style="color: #9ca3af; font-size: 12px; margin-top: 15px;">
+                Scan this code at the event entrance for quick check-in
+              </p>
+            </div>
+            
+            <div class="instructions">
+              <h3>⚠️ Important Instructions</h3>
+              <ul>
+                <li><strong>Save this email</strong> - You'll need it at the event</li>
+                <li><strong>Print or show on phone</strong> - Either works for check-in</li>
+                <li><strong>One code per person</strong> - This QR code is unique to you</li>
+                <li><strong>Arrive early</strong> - Allow time for check-in</li>
+                <li><strong>Keep it safe</strong> - Don't share your QR code</li>
+              </ul>
+            </div>
+            
+            <p style="text-align: center; margin-top: 30px; font-size: 18px; color: #667eea;">
+              <strong>See you at the event! 🎉</strong>
+            </p>
+            
+            <p style="margin-top: 20px;">
+              If you have any questions or issues with your QR code, please contact the vendor or our support team.
+            </p>
+            
+            <p>Best regards,<br>The SprintX Team</p>
+          </div>
+          
+          <div class="footer">
+            <p><strong>SprintX - University Event Management</strong></p>
+            <p>This QR code is unique to you. Please do not share it.</p>
+            <p>Questions? Contact us at <a href="mailto:support@campusevents.edu">support@campusevents.edu</a></p>
+            <p style="margin-top: 15px; font-size: 12px; color: #9ca3af;">
+              © ${new Date().getFullYear()} SprintX. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
 }
 
 module.exports = new EmailService();

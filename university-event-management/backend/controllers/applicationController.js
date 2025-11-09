@@ -1,6 +1,8 @@
 const BazaarApplication = require("../models/BazaarApplication");
 const BoothApplication = require("../models/BoothApplication");
 const Event = require("../models/Event");
+const { uploadImage } = require("../utils/imageKitUploader"); // Import ImageKit uploader
+const emailService = require("../services/emailService");
 
 // @desc    Apply to a bazaar
 // @route   POST /api/applications/bazaar/:bazaarId
@@ -8,8 +10,22 @@ const Event = require("../models/Event");
 const applyToBazaar = async (req, res, next) => {
   try {
     const { bazaarId } = req.params;
-    const { attendees, boothSize } = req.body;
+    let { attendees, boothSize } = req.body; // Use let to allow modification
     const vendorId = req.vendor._id;
+
+    // Process attendees for ID proof uploads
+    const processedAttendees = [];
+    for (const attendee of attendees) {
+      if (attendee.idProofBase64) {
+        const fileName = `id_proof_${vendorId}_${attendee.name.replace(/\s/g, '_')}_${Date.now()}`;
+        const folderName = `applications/bazaar/${bazaarId}/id_proofs`;
+        const imageUrl = await uploadImage(attendee.idProofBase64, fileName, folderName);
+        processedAttendees.push({ ...attendee, idProofImageUrl: imageUrl });
+      } else {
+        processedAttendees.push(attendee);
+      }
+    }
+    attendees = processedAttendees.map(({ idProofBase64, ...rest }) => rest); // Remove base64 from object
 
     // Check if the bazaar exists and is upcoming
     const bazaar = await Event.findById(bazaarId);
@@ -65,8 +81,22 @@ const applyToBazaar = async (req, res, next) => {
 // @access  Private (Vendor)
 const applyForBooth = async (req, res, next) => {
   try {
-    const { attendees, startDate, endDate, durationWeeks, location, boothSize } = req.body;
+    let { attendees, startDate, endDate, durationWeeks, location, boothSize } = req.body; // Use let to allow modification
     const vendorId = req.vendor._id;
+
+    // Process attendees for ID proof uploads
+    const processedAttendees = [];
+    for (const attendee of attendees) {
+      if (attendee.idProofBase64) {
+        const fileName = `id_proof_${vendorId}_${attendee.name.replace(/\s/g, '_')}_${Date.now()}`;
+        const folderName = `applications/booth/id_proofs`;
+        const imageUrl = await uploadImage(attendee.idProofBase64, fileName, folderName);
+        processedAttendees.push({ ...attendee, idProofImageUrl: imageUrl });
+      } else {
+        processedAttendees.push(attendee);
+      }
+    }
+    attendees = processedAttendees.map(({ idProofBase64, ...rest }) => rest); // Remove base64 from object
 
     // Check for existing pending booth application for this vendor
     const existingPendingApplication = await BoothApplication.findOne({
@@ -114,16 +144,18 @@ const applyForBooth = async (req, res, next) => {
   }
 };
 
-// @desc    Get all upcoming participations (approved requests)
+// @desc    Get all upcoming participations (approved requests with completed payment)
 // @route   GET /api/applications/my-participations
 // @access  Private (Vendor)
 const getMyParticipations = async (req, res, next) => {
   try {
     const vendorId = req.vendor._id;
 
+    // Only show participations where payment is completed
     const bazaarParticipations = await BazaarApplication.find({
       vendor: vendorId,
       status: "approved",
+      paymentStatus: "completed",
     }).populate({
       path: "bazaar",
       match: { startDate: { $gte: new Date() } }, // Only upcoming events
@@ -132,6 +164,7 @@ const getMyParticipations = async (req, res, next) => {
     const boothParticipations = await BoothApplication.find({
       vendor: vendorId,
       status: "approved",
+      paymentStatus: "completed",
     });
 
     // Filter out bazaar participations where the event is not upcoming
@@ -149,21 +182,28 @@ const getMyParticipations = async (req, res, next) => {
   }
 };
 
-// @desc    Get all pending/rejected requests
+// @desc    Get all pending/rejected/approved (with pending payment) requests
 // @route   GET /api/applications/my-requests
 // @access  Private (Vendor)
 const getMyRequests = async (req, res, next) => {
   try {
     const vendorId = req.vendor._id;
 
+    // Get pending, rejected, and approved applications with pending payment
     const bazaarRequests = await BazaarApplication.find({
       vendor: vendorId,
-      status: { $in: ["pending", "rejected"] },
+      $or: [
+        { status: { $in: ["pending", "rejected"] } },
+        { status: "approved", paymentStatus: { $in: ["pending", "expired"] } }
+      ]
     }).populate("bazaar");
 
     const boothRequests = await BoothApplication.find({
       vendor: vendorId,
-      status: { $in: ["pending", "rejected"] },
+      $or: [
+        { status: { $in: ["pending", "rejected"] } },
+        { status: "approved", paymentStatus: { $in: ["pending", "expired"] } }
+      ]
     });
 
     res.status(200).json({
@@ -192,8 +232,9 @@ const getMyBazaarApplication = async (req, res, next) => {
     }).populate('bazaar');
 
     if (!application) {
-      return res.status(404).json({
-        success: false,
+      return res.status(200).json({
+        success: true,
+        data: null,
         message: "No application found for this bazaar",
       });
     }
@@ -373,7 +414,63 @@ const updateApplicationStatus = async (req, res, next) => {
       });
     }
 
-    application = await model.findByIdAndUpdate(applicationId, { status }, { new: true, runValidators: true });
+    // If approving, set payment details and send email
+    if (status === 'approved') {
+      const paymentDeadline = new Date();
+      paymentDeadline.setDate(paymentDeadline.getDate() + 3); // 3 days from now
+      
+      // Calculate payment amount based on application type
+      let paymentAmount = 0;
+      const PRICING = {
+        bazaar: {
+          basePrice: { '2x2': 100, '4x4': 200 },
+          locationMultiplier: { 'Main Hall': 1.5, 'Entrance': 1.3, 'Courtyard': 1.0, 'default': 1.0 },
+        },
+        booth: {
+          basePrice: { '2x2': 150, '4x4': 300 },
+          locationMultiplier: { 'Building A': 1.5, 'Building B': 1.3, 'Building C': 1.2, 'Building D': 1.0, 'default': 1.0 },
+        },
+      };
+
+      if (applicationType === 'bazaar') {
+        // Populate bazaar to get location
+        await application.populate('bazaar');
+        const basePrice = PRICING.bazaar.basePrice[application.boothSize] || PRICING.bazaar.basePrice['2x2'];
+        const locationMultiplier = PRICING.bazaar.locationMultiplier[application.bazaar?.location] || PRICING.bazaar.locationMultiplier.default;
+        paymentAmount = basePrice * locationMultiplier;
+      } else {
+        // Booth application
+        const basePrice = PRICING.booth.basePrice[application.boothSize] || PRICING.booth.basePrice['2x2'];
+        const locationMultiplier = PRICING.booth.locationMultiplier[application.location] || PRICING.booth.locationMultiplier.default;
+        paymentAmount = basePrice * locationMultiplier * (application.durationWeeks || 1);
+      }
+      
+      application.status = status;
+      application.paymentStatus = 'pending';
+      application.paymentDeadline = paymentDeadline;
+      application.paymentAmount = paymentAmount;
+      
+      await application.save();
+
+      // Send approval email with payment information
+      try {
+        await application.populate('vendor');
+        const eventName = applicationType === 'bazaar' ? application.bazaar?.title : 'Booth Request';
+        await emailService.sendApplicationApprovalEmail(
+          application.vendor.email,
+          application.vendor.companyName || application.vendor.businessName,
+          applicationType,
+          eventName,
+          paymentAmount,
+          paymentDeadline
+        );
+      } catch (emailError) {
+        console.error('Failed to send approval email:', emailError);
+        // Don't fail the approval if email fails
+      }
+    } else {
+      application = await model.findByIdAndUpdate(applicationId, { status }, { new: true, runValidators: true });
+    }
 
     res.status(200).json({
       success: true,
@@ -392,8 +489,24 @@ const updateApplicationStatus = async (req, res, next) => {
 const updateBoothApplication = async (req, res, next) => {
   try {
     const { applicationId } = req.params;
-    const { startDate, endDate, location, boothSize, attendees } = req.body;
+    let { startDate, endDate, location, boothSize, attendees } = req.body; // Use let to allow modification
     const vendorId = req.vendor._id;
+
+    // Process attendees for ID proof uploads
+    const processedAttendees = [];
+    if (attendees) { // Only process if attendees are provided in the update
+      for (const attendee of attendees) {
+        if (attendee.idProofBase64) {
+          const fileName = `id_proof_${vendorId}_${attendee.name.replace(/\s/g, '_')}_${Date.now()}`;
+          const folderName = `applications/booth/id_proofs`;
+          const imageUrl = await uploadImage(attendee.idProofBase64, fileName, folderName);
+          processedAttendees.push({ ...attendee, idProofImageUrl: imageUrl });
+        } else {
+          processedAttendees.push(attendee);
+        }
+      }
+      attendees = processedAttendees.map(({ idProofBase64, ...rest }) => rest); // Remove base64 from object
+    }
 
     // Find the application and ensure it belongs to the vendor
     const application = await BoothApplication.findById(applicationId);
@@ -481,7 +594,76 @@ const updateBoothApplication = async (req, res, next) => {
       message: "Booth application updated successfully.",
       data: updatedApplication,
     });
+
   } catch (error) {
+    console.error('Error updating booth application:', error);
+    next(error);
+  }
+};
+
+// @desc    Cancel an application (only if not paid)
+// @route   DELETE /api/applications/:applicationType/:applicationId
+// @access  Private (Vendor)
+const cancelApplication = async (req, res, next) => {
+  try {
+    const { applicationType, applicationId } = req.params;
+    const vendorId = req.vendor._id;
+
+    // Validate application type
+    if (!['bazaar', 'booth'].includes(applicationType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid application type. Must be "bazaar" or "booth".',
+      });
+    }
+
+    // Determine which model to use
+    const Model = applicationType === 'bazaar' ? BazaarApplication : BoothApplication;
+
+    // Find the application
+    const application = await Model.findById(applicationId);
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Application not found',
+      });
+    }
+
+    // Verify ownership
+    if (application.vendor.toString() !== vendorId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to cancel this application',
+      });
+    }
+
+    // Check if payment has been completed
+    if (application.paymentStatus === 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot cancel application after payment has been completed. Please contact support for refunds.',
+      });
+    }
+
+    // Check if application is already rejected
+    if (application.status === 'rejected') {
+      return res.status(400).json({
+        success: false,
+        message: 'Application is already rejected',
+      });
+    }
+
+    // Delete the application
+    await Model.findByIdAndDelete(applicationId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Application cancelled successfully',
+    });
+
+  } catch (error) {
+    console.error('Error cancelling application:', error);
     next(error);
   }
 };
@@ -497,4 +679,5 @@ module.exports = {
   getBoothConflicts,
   updateApplicationStatus,
   updateBoothApplication,
+  cancelApplication,
 };

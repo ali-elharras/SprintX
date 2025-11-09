@@ -12,6 +12,10 @@ const attendeeSchema = new mongoose.Schema({
     trim: true,
     lowercase: true,
   },
+  idProofImageUrl: { // New field for ImageKit URL
+    type: String,
+    default: null,
+  },
 });
 
 const bazaarApplicationSchema = new mongoose.Schema(
@@ -42,6 +46,31 @@ const bazaarApplicationSchema = new mongoose.Schema(
       type: String,
       enum: ["pending", "approved", "rejected"],
       default: "pending",
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["not_required", "pending", "completed", "failed", "expired"],
+      default: "not_required",
+    },
+    paymentAmount: {
+      type: Number,
+      default: 0,
+    },
+    paymentDeadline: {
+      type: Date,
+      default: null,
+    },
+    stripeSessionId: {
+      type: String,
+      default: null,
+    },
+    paymentIntentId: {
+      type: String,
+      default: null,
+    },
+    paidAt: {
+      type: Date,
+      default: null,
     },
   },
   {

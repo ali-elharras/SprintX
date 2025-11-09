@@ -22,6 +22,8 @@ const bazaarRoutes = require("./routes/bazaar");
 const workshopRoutes = require("./routes/workshop");
 const notificationRoutes = require("./routes/notifications");
 const reportRoutes = require("./routes/report");
+const paymentRoutes = require("./routes/payments");
+const LoyaltyRoutes = require("./routes/LoyaltyRoutes");
 
 
 const app = express();
@@ -116,15 +118,17 @@ app.use("/api/courts", courtRoutes);
 app.use("/api/gym", gymRoutes);
 app.use("/api/conferences", conferenceRoutes);
 app.use("/api/bazaars", bazaarRoutes);
+app.use("/api/loyalty", LoyaltyRoutes);
 
 // Workshop routes (professors create -> saved as pending, Events Office can publish)
 app.use("/api/workshops", workshopRoutes);
 
 // Notification routes (for professors to receive workshop updates)
 app.use("/api/notifications", notificationRoutes);
-
 // Report routes (for admin and events office to view reports)
 app.use("/api/reports", reportRoutes);
+// Payment routes (for vendor payments)
+app.use("/api/payments", paymentRoutes);
 
 // Workshop routes removed as feature deprecated
 

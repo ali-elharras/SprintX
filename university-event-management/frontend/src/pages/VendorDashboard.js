@@ -5,7 +5,9 @@ import toast from "react-hot-toast";
 import theme from "../theme";
 import ApplyBazaarModal from "../components/vendor/ApplyBazaarModal";
 import ApplyBoothModal from "../components/vendor/ApplyBoothModal";
+import PaymentButton from "../components/vendor/PaymentButton";
 import Navbar from "../components/Navbar";
+import LoyaltyProgram from '../components/vendor/LoyaltyProgram';
 
 const styles = {
   pageContainer: {
@@ -365,21 +367,71 @@ const BazaarCard = ({ bazaar, onApply, application }) => {
   );
 };
 
-const ApplicationItem = ({ application }) => (
-  <div className="application-card" style={styles.applicationCard}>
-    <div style={styles.applicationInfo}>
-      <p style={styles.applicationTitle}>
-        {application.bazaar?.name || application.bazaar?.title || "Booth Request"}
-      </p>
-      <p style={styles.applicationDate}>
-        Applied on: {new Date(application.createdAt).toLocaleDateString()}
-      </p>
+const ApplicationItem = ({ application, onCancel }) => {
+  const [cancelling, setCancelling] = React.useState(false);
+  const applicationType = application.bazaar ? 'bazaar' : 'booth';
+  
+  const handleCancel = async () => {
+    if (window.confirm('Are you sure you want to cancel this application? This action cannot be undone.')) {
+      setCancelling(true);
+      try {
+        await applicationServices.cancelApplication(applicationType, application._id);
+        toast.success('Application cancelled successfully');
+        onCancel(); // Refresh the list
+      } catch (error) {
+        toast.error(error.message || 'Failed to cancel application');
+      } finally {
+        setCancelling(false);
+      }
+    }
+  };
+
+  // Can only cancel if:
+  // 1. Payment is not completed
+  // 2. Application is not rejected
+  const canCancel = application.paymentStatus !== 'completed' && application.status !== 'rejected';
+  
+  return (
+    <div className="application-card" style={styles.applicationCard}>
+      <div style={styles.applicationInfo}>
+        <p style={styles.applicationTitle}>
+          {application.bazaar?.name || application.bazaar?.title || "Booth Request"}
+        </p>
+        <p style={styles.applicationDate}>
+          Applied on: {new Date(application.createdAt).toLocaleDateString()}
+        </p>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing[3] }}>
+        <span style={styles.statusBadge(application.status)}>
+          {application.status}
+        </span>
+        {canCancel && (
+          <button
+            onClick={handleCancel}
+            disabled={cancelling}
+            style={{
+              background: theme.colors.error.main,
+              color: theme.colors.neutral.white,
+              padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+              borderRadius: '8px',
+              border: 'none',
+              fontSize: theme.typography.fontSize.sm,
+              fontWeight: theme.typography.fontWeight.semibold,
+              cursor: cancelling ? 'not-allowed' : 'pointer',
+              opacity: cancelling ? 0.6 : 1,
+              transition: 'all 0.3s ease',
+            }}
+          >
+            {cancelling ? 'Cancelling...' : 'Cancel'}
+          </button>
+        )}
+      </div>
+      {application.status === 'approved' && (
+        <PaymentButton application={application} applicationType={applicationType} />
+      )}
     </div>
-    <span style={styles.statusBadge(application.status)}>
-      {application.status}
-    </span>
-  </div>
-);
+  );
+};
 
 const ParticipationItem = ({ participation }) => (
   <div className="application-card" style={styles.applicationCard}>
@@ -614,7 +666,14 @@ const VendorDashboard = () => {
             ) : myApplications.length > 0 ? (
               <div style={styles.applicationList}>
                 {myApplications.map((app) => (
-                  <ApplicationItem key={app._id} application={app} />
+                  <ApplicationItem 
+                    key={app._id} 
+                    application={app} 
+                    onCancel={() => {
+                      fetchApplications();
+                      fetchParticipations();
+                    }}
+                  />
                 ))}
               </div>
             ) : (
@@ -623,6 +682,14 @@ const VendorDashboard = () => {
                 <p style={styles.emptyStateText}>You have not submitted any applications yet</p>
               </div>
             )}
+          </section>
+
+          <section style={styles.section}>
+            <div style={styles.sectionHeader}>
+              <div style={styles.sectionIcon}>⭐</div>
+              <h2 style={styles.sectionTitle}>Loyalty Program</h2>
+            </div>
+            <LoyaltyProgram />
           </section>
         </div>
 
