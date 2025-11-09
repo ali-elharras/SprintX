@@ -894,6 +894,8 @@ const EventsPage = () => {
     type: "",
     search: "",
     upcoming: true,
+    dateFrom: "", // Add this
+    dateTo: "",   // Add this
   });
 
   const cancelTokenRef = useRef(null);
@@ -1124,13 +1126,33 @@ const EventsPage = () => {
         );
       });
     }
+     // Add date filtering
+  if (filters.dateFrom) {
+    const fromDate = new Date(filters.dateFrom);
+    fromDate.setHours(0, 0, 0, 0);
+    filtered = filtered.filter((e) => {
+      const eventDate = new Date(e.startDate);
+      return eventDate >= fromDate;
+    });
+  }
+
+  if (filters.dateTo) {
+    const toDate = new Date(filters.dateTo);
+    toDate.setHours(23, 59, 59, 999);
+    filtered = filtered.filter((e) => {
+      const eventDate = new Date(e.startDate);
+      return eventDate <= toDate;
+    });
+  }
     
     if (filters.upcoming) {
       // const now = new Date();
       // filtered = filtered.filter((e) => new Date(e.startDate) > now);
       const now = new Date();
-      const startOfToday = new Date(now); startOfToday.setHours(0,0,0,0);
-      const endOfToday = new Date(now); endOfToday.setHours(23,59,59,999);
+      const startOfToday = new Date(now); 
+      startOfToday.setHours(0,0,0,0);
+      const endOfToday = new Date(now); 
+      endOfToday.setHours(23,59,59,999);
 
       filtered = filtered.filter((e) => {
         const start = e.startDate ? new Date(e.startDate) : null;
@@ -1915,53 +1937,91 @@ const EventsPage = () => {
               </div>
             </div>
           )}
-          <div
-            style={{
-              background: theme.colors.background.paper,
-              padding: theme.spacing[5],
-              borderRadius: theme.borderRadius.lg,
-              boxShadow: theme.shadows.md,
-              marginBottom: theme.spacing[6],
-            }}
-          >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr auto auto auto",
-                gap: theme.spacing[4],
-                alignItems: "end",
-              }}
-            >
-              <Input
-                label="Search Events"
-                placeholder="Search by title, description, or location..."
-                value={filters.search}
-                onChange={(e) => handleFilterChange("search", e.target.value)}
-              />
-              <Select
-                label="Event Type"
-                options={eventTypeOptions}
-                value={filters.type}
-                onChange={(e) => handleFilterChange("type", e.target.value)}
-              />
-              <Button
-                variant={filters.upcoming ? "primary" : "secondary"}
-                onClick={() => handleFilterChange("upcoming", !filters.upcoming)}
-              >
-                {filters.upcoming ? "Upcoming Only" : "All Events"}
-              </Button>
-              <Button variant="outline" onClick={fetchEvents}>
-                Refresh
-              </Button>
-              {!auth.isAdmin && (
-                <CreateDropdownButton 
-                  onConferenceModalOpen={() => setShowConferenceModal(true)} 
-                  onBazaarModalOpen={() => setCreateBazaarOpen(true)} 
-                  onTripCreate={() => setCreateTripOpen(true)}
-                />
-              )}
-            </div>
-          </div>
+         
+        <div
+  style={{
+    background: theme.colors.background.paper,
+    padding: theme.spacing[5],
+    borderRadius: theme.borderRadius.lg,
+    boxShadow: theme.shadows.md,
+    marginBottom: theme.spacing[6],
+  }}
+>
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr 1fr 1fr",
+      gap: theme.spacing[4],
+      alignItems: "end",
+      marginBottom: theme.spacing[4],
+    }}
+  >
+    <Input
+      label="Search Events"
+      placeholder="Search by title, description, or location..."
+      value={filters.search}
+      onChange={(e) => handleFilterChange("search", e.target.value)}
+    />
+    <Select
+      label="Event Type"
+      options={eventTypeOptions}
+      value={filters.type}
+      onChange={(e) => handleFilterChange("type", e.target.value)}
+    />
+    <Input
+      label="From Date"
+      type="date"
+      value={filters.dateFrom}
+      onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
+    />
+    <Input
+      label="To Date"
+      type="date"
+      value={filters.dateTo}
+      min={filters.dateFrom}
+      onChange={(e) => handleFilterChange("dateTo", e.target.value)}
+    />
+  </div>
+  <div
+    style={{
+      display: "flex",
+      gap: theme.spacing[3],
+      alignItems: "center",
+    }}
+  >
+    <Button
+      variant={filters.upcoming ? "primary" : "secondary"}
+      onClick={() => handleFilterChange("upcoming", !filters.upcoming)}
+    >
+      {filters.upcoming ? "Upcoming Only" : "All Events"}
+    </Button>
+    <Button variant="outline" onClick={fetchEvents}>
+      Refresh
+    </Button>
+    <Button
+      variant="outline"
+      onClick={() => {
+        setFilters({ 
+          type: "", 
+          search: "", 
+          upcoming: false,
+          dateFrom: "",
+          dateTo: ""
+        });
+      }}
+    >
+      Clear All Filters
+    </Button>
+    {!auth.isAdmin && (
+      <CreateDropdownButton 
+        onConferenceModalOpen={() => setShowConferenceModal(true)} 
+        onBazaarModalOpen={() => setCreateBazaarOpen(true)} 
+        onTripCreate={() => setCreateTripOpen(true)}
+      />
+    )}
+  </div>
+</div>
+           
 
           {/* Create Trip modal wired to the Create dropdown */}
           <CreateTripModal
