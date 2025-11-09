@@ -7,6 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import { conferenceAPI } from "../services/api";
 import { eventAPI } from "../services/api";
 import { applicationServices } from "../services/api";
+import { favoritesAPI } from "../services/api";
 import toast from "react-hot-toast";
 
 const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit, onEditTrip, onDelete }) => {
@@ -352,17 +353,42 @@ const handleDeleteWorkshop = async () => {
           >
             {getEventTypeLabel(normalizedEvent.type)}
           </div>
-          <div
-            style={{
-              background: statusInfo.color,
-              color: theme.colors.text.white,
-              padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
-              borderRadius: theme.borderRadius.sm,
-              fontSize: theme.typography.fontSize.xs,
-              fontWeight: theme.typography.fontWeight.medium,
-            }}
-          >
-            {statusInfo.status}
+          <div style={{ display: "flex", gap: theme.spacing[2], alignItems: "center" }}>
+            <button
+              title="Add to favorites"
+              onClick={async (e) => {
+                e.stopPropagation();
+                try {
+                  await favoritesAPI.addFavorite(normalizedEvent._id);
+                  toast.success("Added to favorites");
+                } catch (err) {
+                  toast.error(err.message || "Failed to add to favorites");
+                }
+              }}
+              style={{
+                background: "rgba(255,255,255,0.2)",
+                color: "#fff",
+                border: "none",
+                padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+                borderRadius: theme.borderRadius.full,
+                cursor: "pointer",
+                fontWeight: theme.typography.fontWeight.medium,
+              }}
+            >
+              ♥
+            </button>
+            <div
+              style={{
+                background: statusInfo.color,
+                color: theme.colors.text.white,
+                padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+                borderRadius: theme.borderRadius.sm,
+                fontSize: theme.typography.fontSize.xs,
+                fontWeight: theme.typography.fontWeight.medium,
+              }}
+            >
+              {statusInfo.status}
+            </div>
           </div>
         </div>
         <h3

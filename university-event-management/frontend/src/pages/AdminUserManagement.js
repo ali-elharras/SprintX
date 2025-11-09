@@ -121,6 +121,26 @@ const AdminUserManagement = () => {
     }
   };
 
+  const handleBlock = async (id) => {
+    try {
+      const res = await adminAPI.blockUser(id);
+      toast.success(res?.message || "User blocked");
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.message || "Failed to block user");
+    }
+  };
+
+  const handleUnblock = async (id) => {
+    try {
+      const res = await adminAPI.unblockUser(id);
+      toast.success(res?.message || "User unblocked");
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.message || "Failed to unblock user");
+    }
+  };
+
   const handleApproveAcademic = async (id, role) => {
     // Set this user as being approved
     setApprovingUsers((prev) => ({ ...prev, [id]: true }));
@@ -268,6 +288,28 @@ const AdminUserManagement = () => {
       {...props}
       style={{
         background: `linear-gradient(135deg, ${theme.colors.error.main} 0%, #dc2626 100%)`,
+        color: theme.colors.text.white,
+        border: "none",
+        padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+        borderRadius: theme.borderRadius.md,
+        cursor: "pointer",
+        fontWeight: theme.typography.fontWeight.medium,
+        boxShadow: theme.shadows.sm,
+        transition: `all ${theme.transitions.duration.base} ${theme.transitions.timing.easeOut}`,
+        ...props.style,
+      }}
+      onMouseEnter={(e) =>
+        (e.currentTarget.style.transform = "translateY(-1px)")
+      }
+      onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
+    />
+  );
+
+  const successButton = (props) => (
+    <button
+      {...props}
+      style={{
+        background: `linear-gradient(135deg, ${theme.colors.success.main} 0%, #059669 100%)`,
         color: theme.colors.text.white,
         border: "none",
         padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
@@ -517,7 +559,12 @@ const AdminUserManagement = () => {
           type: "submit",
           disabled: creating,
           children: creating ? "Creating..." : "Create User",
-          style: { gridColumn: "span 6" },
+          style: {
+            gridColumn: "span 6",
+            width: "fit-content",
+            alignSelf: "start",
+            padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
+          },
         })}
       </form>
 
@@ -590,24 +637,30 @@ const AdminUserManagement = () => {
                       ? new Date(user.createdAt).toLocaleString()
                       : "-"}
                   </td>
-                  <td style={tdStyle}>
-                    {["admin", "events_office", "event_office"].includes(
+                  <td style={{ ...tdStyle, display: "flex", gap: theme.spacing[2] }}>
+                    {(["admin", "events_office", "event_office"].includes(
                       user.role
-                    ) ? (
-                      dangerButton({
-                        onClick: () => handleDelete(user.id || user._id),
-                        children: "Delete",
-                      })
-                    ) : (
-                      <span
-                        style={{
-                          color: theme.colors.text.secondary,
-                          fontSize: theme.typography.fontSize.xs,
-                        }}
-                      >
-                        —
-                      </span>
-                    )}
+                    ) && dangerButton({
+                      onClick: () => handleDelete(user.id || user._id),
+                      children: "Delete",
+                      style: { padding: `${theme.spacing[1]} ${theme.spacing[3]}` },
+                    }))}
+
+                    {(() => {
+                      const uid = user.id || user._id;
+                      const isActive = (user.status || "").toString().toLowerCase() === "active";
+                      return isActive
+                        ? dangerButton({
+                            onClick: () => handleBlock(uid),
+                            children: "Block",
+                            style: { padding: `${theme.spacing[1]} ${theme.spacing[3]}` },
+                          })
+                        : successButton({
+                            onClick: () => handleUnblock(uid),
+                            children: "Unblock",
+                            style: { padding: `${theme.spacing[1]} ${theme.spacing[3]}` },
+                          });
+                    })()}
                   </td>
                 </tr>
               ))}

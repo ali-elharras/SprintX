@@ -5,8 +5,9 @@ const {
   getAllUsers,
   getPendingAcademics,
   approveAcademic,
+  blockUser,
+  unblockUser,
 } = require("../controllers/adminController");
-const { verifyAdmin } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -24,5 +25,11 @@ router.get("/pending-academics", getPendingAcademics);
 
 // Approve academic
 router.patch("/approve-academic/:id", approveAcademic);
+
+// Block a user account
+router.patch("/block-user/:id", blockUser);
+
+// Unblock a user account
+router.patch("/unblock-user/:id", unblockUser);
 
 module.exports = router;
