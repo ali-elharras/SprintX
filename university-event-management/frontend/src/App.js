@@ -33,6 +33,7 @@ import Workshops from "./pages/Workshops";
 import AdminUserManagement from "./pages/AdminUserManagement";
 import ReportsPage from "./pages/ReportsPage";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import EventsRatings from './pages/EventsRatings';
 import FavoritesPage from "./pages/FavoritesPage";
 import EventDetailsPage from "./pages/EventDetailsPage";
 // ---------------------------
@@ -230,6 +231,14 @@ const router = createBrowserRouter([
       <PublicRoute>
         <ForgotPassword />
       </PublicRoute>
+    ),
+  },
+  {
+    path: "/events-ratings",
+    element: (
+      <ProtectedRoute>
+        <EventsRatings />
+      </ProtectedRoute>
     ),
   },
   {
