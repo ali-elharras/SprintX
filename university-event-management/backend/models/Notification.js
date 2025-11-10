@@ -29,7 +29,8 @@ const notificationSchema = new mongoose.Schema(
         "professor_workshop_edited",      // For Events Office
         "event_created",                   // For all users when new event is created
         "loyalty_partner_added",          // For all users when vendor joins loyalty program
-        "vendor_application_pending"      // For admin and events_office when vendor applies to bazaar/booth
+        "vendor_application_pending",     // For admin and events_office when vendor applies to bazaar/booth
+        "event_reminder"                  // For registered users - event reminders (1 day, 1 hour before)
       ],
       required: true,
     },

@@ -217,6 +217,8 @@ const NotificationCenter = () => {
                 return '🤝';
             case 'vendor_application_pending':
                 return '🏪';
+            case 'event_reminder':
+                return '⏰';
             default:
                 return '🔔';
         }
