@@ -5,6 +5,7 @@ const BoothApplication = require("../models/BoothApplication");
 const Conference = require("../models/Conference");
 const Workshop = require("../models/Workshop");
 const { validationResult } = require("express-validator");
+const { notifyAllUsersAboutNewEvent } = require("./notificationController");
 
 /* --------------------------------------------------------
    BAZAAR-SPECIFIC CONTROLLERS
@@ -414,6 +415,13 @@ const createEvent = async (req, res) => {
 
     const newEvent = await Event.create(eventPayload);
     await newEvent.populate('organizer', 'firstName lastName email');
+
+    // Notify all users about the new event
+    try {
+        await notifyAllUsersAboutNewEvent(newEvent.title || newEvent.name, newEvent._id);
+    } catch (notifError) {
+        console.error('Error notifying users about new event:', notifError);
+    }
 
     res.status(201).json({ success: true, message: 'Event created successfully', data: newEvent });
   } catch (error) {

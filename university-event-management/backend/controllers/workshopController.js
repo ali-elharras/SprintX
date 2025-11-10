@@ -1,7 +1,7 @@
 const Workshop = require('../models/Workshop');
 const Event = require('../models/Event');
 const User = require('../models/User');
-const { createNotification } = require('./notificationController');
+const { createNotification, notifyAllUsersAboutNewEvent } = require('./notificationController');
 
 // GET /api/workshops - Fetch all workshops (READ)
 // Optional query: ?status=pending|published
@@ -602,6 +602,13 @@ exports.publishWorkshop = async (req, res) => {
             } catch (notifError) {
                 console.error('Error creating notification:', notifError);
             }
+        }
+        
+        // Notify all users about the new event
+        try {
+            await notifyAllUsersAboutNewEvent(workshop.workshopName, createdEvent._id);
+        } catch (notifError) {
+            console.error('Error notifying users about new event:', notifError);
         }
 
         // Populate organizer for the returned object and convert to plain object including virtuals

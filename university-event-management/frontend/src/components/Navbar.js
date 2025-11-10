@@ -818,8 +818,12 @@ const Navbar = () => {
 
       {/* Account Section */}
       <div style={accountSectionStyles}>
-        {/* Notification Center for Professors/Staff/Events Office */}
-        {(user?.role === "professor" || user?.role === "staff" || user?.role === "events_office") && (
+        {/* Notification Center for all stakeholder roles */}
+        {(user?.role === "professor" || 
+          user?.role === "staff" || 
+          user?.role === "events_office" || 
+          user?.role === "student" || 
+          user?.role === "ta") && (
           <div style={{ marginRight: theme.spacing[4] }}>
             <NotificationCenter />
           </div>

@@ -26,7 +26,8 @@ const notificationSchema = new mongoose.Schema(
         "workshop_edit_requested", 
         "workshop_published",
         "professor_workshop_submitted",  // For Events Office
-        "professor_workshop_edited"       // For Events Office
+        "professor_workshop_edited",      // For Events Office
+        "event_created"                   // For all users when new event is created
       ],
       required: true,
     },
@@ -42,6 +43,19 @@ const notificationSchema = new mongoose.Schema(
     workshopName: {
       type: String,
       trim: true,
+    },
+    
+    // Event name for event notifications
+    eventName: {
+      type: String,
+      trim: true,
+    },
+    
+    // Event ID for event notifications
+    eventId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Event",
+      required: false,
     },
     
     // Professor name for Events Office notifications

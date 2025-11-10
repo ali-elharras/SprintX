@@ -158,10 +158,53 @@ exports.createNotification = async (recipientId, message, type, workshopId = nul
             notificationData.professorName = metadata.professorName;
         }
         
+        // Add eventName and eventId if provided in metadata
+        if (metadata.eventName) {
+            notificationData.eventName = metadata.eventName;
+        }
+        if (metadata.eventId) {
+            notificationData.eventId = metadata.eventId;
+        }
+        
         const notification = await Notification.createNotification(notificationData);
         return notification;
     } catch (error) {
         console.error('Error creating notification:', error);
         throw error;
+    }
+};
+
+// Helper function to notify all stakeholders about a new event
+exports.notifyAllUsersAboutNewEvent = async (eventName, eventId) => {
+    try {
+        const User = require('../models/User');
+        
+        // Find all users with roles: student, staff, ta, events_office, professor
+        const stakeholders = await User.find({ 
+            role: { $in: ['student', 'staff', 'ta', 'events_office', 'professor'] } 
+        });
+        
+        console.log(`Creating notifications for ${stakeholders.length} users about new event: ${eventName}`);
+        
+        // Create notification for each stakeholder
+        const notificationPromises = stakeholders.map(user => 
+            exports.createNotification(
+                user._id,
+                `A new event has been added: ${eventName}`,
+                'event_created',
+                null, // no workshop ID
+                null, // no workshop name
+                { 
+                    eventName,
+                    eventId
+                }
+            )
+        );
+        
+        await Promise.all(notificationPromises);
+        console.log(`Successfully created notifications for new event: ${eventName}`);
+    } catch (error) {
+        console.error('Error notifying users about new event:', error);
+        // Don't throw - we don't want to fail the event creation if notifications fail
     }
 };
