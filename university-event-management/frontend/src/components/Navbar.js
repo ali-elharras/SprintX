@@ -423,6 +423,40 @@ const Navbar = () => {
               Dashboard
             </button>
             <button
+              onClick={() => navigate("/admin-comments")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color:
+                  location.pathname === "/admin-comments"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom:
+                  location.pathname === "/admin-comments"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/admin-comments") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/admin-comments") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              Comments
+            </button>
+            <button
               onClick={() => navigate("/events")}
               style={{
                 background: "none",

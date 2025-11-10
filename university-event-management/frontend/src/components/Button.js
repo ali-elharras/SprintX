@@ -17,8 +17,8 @@ const Button = ({
   const buttonId = React.useId().replace(/:/g, "");
 
   const getButtonStyles = () => {
-    const variantStyles = theme.components.button[variant];
-    const sizeStyles = theme.components.button.sizes[size];
+    const variantStyles = theme.components.button[variant] || theme.components.button.primary;
+    const sizeStyles = theme.components.button.sizes[size] || theme.components.button.sizes.md;
 
     const baseStyle = {
       ...variantStyles,
@@ -72,7 +72,7 @@ const Button = ({
         transform: translateY(-1px) scale(0.98);
       }
       .btn-${buttonId}:focus-visible {
-        outline: 2px solid ${theme.colors.primary[500]};
+        outline: 2px solid ${theme.colors.primary.main};
         outline-offset: 2px;
       }
     `;

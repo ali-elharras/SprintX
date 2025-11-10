@@ -34,6 +34,7 @@ import AdminUserManagement from "./pages/AdminUserManagement";
 import ReportsPage from "./pages/ReportsPage";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import EventsRatings from './pages/EventsRatings';
+import AdminComments from './pages/AdminComments';
 import FavoritesPage from "./pages/FavoritesPage";
 import EventDetailsPage from "./pages/EventDetailsPage";
 // ---------------------------
@@ -285,6 +286,16 @@ const router = createBrowserRouter([
       <ProtectedRoute>
         <AdminRoute>
           <AdminUserManagement />
+        </AdminRoute>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/admin-comments",
+    element: (
+      <ProtectedRoute>
+        <AdminRoute>
+          <AdminComments />
         </AdminRoute>
       </ProtectedRoute>
     ),

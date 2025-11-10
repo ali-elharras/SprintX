@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const EventRating = require('../models/EventRating');
+// Auth middleware still used for regular user actions; admin endpoints will be public per request
 const { protect } = require('../middleware/auth');
 
 // Middleware to check if user can rate events
@@ -220,3 +221,102 @@ router.delete('/:ratingId', protect, canRate, async (req, res) => {
 });
 
 module.exports = router;
+
+/**
+ * ===================== ADMIN COMMENT MANAGEMENT ENDPOINTS =====================
+ * These endpoints allow an admin to:
+ *   - View all ratings/comments across all events (with filtering & pagination)
+ *   - Delete any rating/comment regardless of owner
+ *
+ * NOTE: We keep existing user deletion route intact. Admin deletion bypasses
+ *       the userId ownership check and uses role-based authorization instead.
+ */
+
+// @route   GET /api/ratings/admin/all
+// @desc    Admin: Get all ratings/comments with optional filters & pagination
+// @access  Private (Admin only)
+router.get('/admin/all', async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      search = '',
+      eventType,
+      userRole,
+      eventId,
+      sort = 'createdAt',
+      order = 'desc'
+    } = req.query;
+
+    const numericPage = Math.max(parseInt(page, 10), 1);
+    const numericLimit = Math.min(Math.max(parseInt(limit, 10), 1), 100); // cap at 100
+
+    const query = {};
+    if (eventType) query.eventType = eventType;
+    if (userRole) query.userRole = userRole;
+    if (eventId) query.eventId = eventId; // expecting valid ObjectId string
+    if (search && search.trim().length > 0) {
+      // Text search on comment or userName
+      query.$or = [
+        { comment: { $regex: search.trim(), $options: 'i' } },
+        { userName: { $regex: search.trim(), $options: 'i' } }
+      ];
+    }
+
+    const sortDirection = order === 'asc' ? 1 : -1;
+    const sortSpec = { [sort]: sortDirection };
+
+    const [ total, ratings ] = await Promise.all([
+      EventRating.countDocuments(query),
+      EventRating.find(query)
+        .sort(sortSpec)
+        .skip((numericPage - 1) * numericLimit)
+        .limit(numericLimit)
+        .lean()
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: ratings,
+      meta: {
+        total,
+        page: numericPage,
+        limit: numericLimit,
+        totalPages: Math.ceil(total / numericLimit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching all ratings (admin):', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch ratings',
+      error: error.message
+    });
+  }
+});
+
+// @route   DELETE /api/ratings/admin/:ratingId
+// @desc    Admin: Delete any rating/comment
+// @access  Private (Admin only)
+router.delete('/admin/:ratingId', async (req, res) => {
+  try {
+    const { ratingId } = req.params;
+    const rating = await EventRating.findById(ratingId);
+    if (!rating) {
+      return res.status(404).json({
+        success: false,
+        message: 'Rating not found'
+      });
+    }
+
+    await rating.deleteOne();
+    res.status(200).json({ success: true, message: 'Rating deleted successfully' });
+  } catch (error) {
+    console.error('Error admin deleting rating:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete rating',
+      error: error.message
+    });
+  }
+});

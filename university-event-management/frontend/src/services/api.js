@@ -598,6 +598,18 @@ export const ratingAPI = {
   // Delete a rating
   deleteRating: (ratingId) =>
     api.delete(`/ratings/${ratingId}`),
+  
+  // ================= ADMIN COMMENT MANAGEMENT =================
+  // Admin fetch all ratings/comments with filters
+  getAllRatingsAdmin: (params = {}, cancelToken = null) => {
+    const queryString = new URLSearchParams(params).toString();
+    return api.get(`/ratings/admin/all${queryString ? `?${queryString}` : ''}`, {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    });
+  },
+
+  // Admin delete any rating by ID
+  deleteRatingAdmin: (ratingId) => api.delete(`/ratings/admin/${ratingId}`),
 };
 
 // ============================================
