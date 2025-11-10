@@ -9,7 +9,9 @@ import { eventAPI } from "../services/api";
 import { applicationServices } from "../services/api";
 import toast from "react-hot-toast";
 
-const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit, onEditTrip, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive, onExportRegistrations }) => {
+const ALL_ROLES = ["student", "staff", "ta", "professor", "admin", "events_office"];
+
+const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit, onEditTrip, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive, onExportRegistrations, currentUserRole, eligibleRoles }) => {
   // Normalize event/conference object for consistent display
   const normalizedEvent = {
     ...event,
@@ -32,6 +34,10 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   const [vendorsLoading, setVendorsLoading] = useState(false);
   const navigate = useNavigate();
   const { isEventsOffice, user, isAdmin } = useAuth();
+
+  // Determine if the event is restricted to certain roles
+  const isRestricted = eligibleRoles && eligibleRoles.length > 0 && eligibleRoles.length < ALL_ROLES.length;
+  const isEligible = !isRestricted || (currentUserRole && eligibleRoles.includes(currentUserRole));
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -70,13 +76,19 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
       ? new Date(normalizedEvent.registrationDeadline)
       : null;
 
-    return (
+    // Check general event conditions
+    const generalConditions = (
       normalizedEvent.status === "published" &&
       normalizedEvent.registrationRequired &&
       startDate > now &&
       normalizedEvent.currentParticipants < normalizedEvent.maxParticipants &&
       (!registrationDeadline || now <= registrationDeadline)
     );
+
+    // Check role eligibility
+    const roleEligibility = isEligible;
+
+    return generalConditions && roleEligibility;
   };
 
   const getStatusInfo = () => {
@@ -329,6 +341,19 @@ const handleDeleteWorkshop = async () => {
         >
           {normalizedEvent.title}
         </h3>
+        {isRestricted && (
+            <p style={{
+                fontSize: theme.typography.fontSize.sm,
+                color: theme.colors.text.white,
+                background: 'rgba(255, 255, 255, 0.2)',
+                padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+                borderRadius: theme.borderRadius.sm,
+                marginTop: theme.spacing[2],
+                display: 'inline-block',
+            }}>
+                Only for {eligibleRoles.map(role => role.charAt(0).toUpperCase() + role.slice(1)).join(', ')}
+            </p>
+        )}
       </div>
 
       {/* Event Content */}

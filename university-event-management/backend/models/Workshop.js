@@ -66,6 +66,11 @@ const workshopSchema = new mongoose.Schema(
       type: Date,
       required: [true, "Registration deadline is required"],
     },
+    eligibleRoles: {
+      type: [String],
+      enum: ["student", "staff", "ta", "professor", "admin", "events_office"],
+      default: ["student", "staff", "ta", "professor", "admin", "events_office"],
+    },
     extraRequiredResources: {
       type: String,
       maxlength: [500, "Extra resources description cannot exceed 500 characters"],

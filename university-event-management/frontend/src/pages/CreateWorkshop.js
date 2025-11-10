@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
@@ -27,6 +27,8 @@ const getTomorrowDateString = () => {
 
 // --- Configuration ---
 const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:8080/api'}/workshops`;
+
+const ALL_ROLES = ["student", "staff", "ta", "professor", "admin", "events_office"];
 
 // A simplified theme object (Ensured to be complete)
 const theme = {
@@ -174,6 +176,97 @@ const Select = ({ style, isInvalid = false, ...props }) => {
     );
 };
 
+const MultiSelect = ({ label, options, selectedValues, onChange, isInvalid = false, ...props }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    const handleToggle = () => setIsOpen(!isOpen);
+
+    const handleCheckboxChange = (value) => {
+        const newSelectedValues = selectedValues.includes(value)
+            ? selectedValues.filter((v) => v !== value)
+            : [...selectedValues, value];
+        onChange(newSelectedValues);
+    };
+
+    const handleClickOutside = (event) => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+            setIsOpen(false);
+        }
+    };
+
+    useEffect(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    const displayValue = selectedValues.length === 0
+        ? 'Select roles...'
+        : selectedValues.map(role => role.charAt(0).toUpperCase() + role.slice(1)).join(', ');
+
+    return (
+        <div style={{ position: 'relative', width: '100%' }} ref={dropdownRef}>
+            <label style={labelStyles}>{label}</label>
+            <div
+                style={{
+                    ...InputBaseStyles,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    ...(isInvalid ? invalidInputStyles : {}),
+                }}
+                onClick={handleToggle}
+            >
+                <span>{displayValue}</span>
+                <span>&#9662;</span> {/* Dropdown arrow */}
+            </div>
+            {isOpen && (
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        backgroundColor: theme.colors.background.card,
+                        border: `1px solid ${theme.colors.border}`,
+                        borderRadius: theme.borderRadius,
+                        boxShadow: theme.boxShadow,
+                        zIndex: 10,
+                        marginTop: theme.spacing[1],
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                    }}
+                >
+                    {options.map((option) => (
+                        <div
+                            key={option}
+                            style={{
+                                padding: theme.spacing[3],
+                                display: 'flex',
+                                alignItems: 'center',
+                                borderBottom: `1px solid ${theme.colors.border}`,
+                                cursor: 'pointer',
+                            }}
+                            onClick={() => handleCheckboxChange(option)}
+                        >
+                            <input
+                                type="checkbox"
+                                checked={selectedValues.includes(option)}
+                                onChange={() => handleCheckboxChange(option)}
+                                style={{ marginRight: theme.spacing[2] }}
+                            />
+                            {option.charAt(0).toUpperCase() + option.slice(1)}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 // --- Style Definitions ---
 const pageStyles = {
     minHeight: '100vh',
@@ -280,6 +373,7 @@ const CreateWorkshop = () => {
         extraResources: '',
         capacity: '',
         registrationDeadline: '',
+        eligibleRoles: ["student", "staff", "ta", "professor", "admin", "events_office"],
     };
 
     const [workshopData, setWorkshopData] = useState(initialWorkshopData);
@@ -313,6 +407,12 @@ const CreateWorkshop = () => {
                 isValid = false;
             }
         });
+
+        // Check for eligibleRoles
+        if (!data.eligibleRoles || data.eligibleRoles.length === 0) {
+            errors.eligibleRoles = 'At least one eligible role must be selected.';
+            isValid = false;
+        }
 
         const startDate = data.startDate ? new Date(data.startDate) : null;
         const endDate = data.endDate ? new Date(data.endDate) : null;
@@ -405,6 +505,7 @@ const CreateWorkshop = () => {
             requiredBudget: Number(workshopData.requiredBudget),
             fundingSource: workshopData.fundingSource,
             extraRequiredResources: workshopData.extraResources,
+            eligibleRoles: workshopData.eligibleRoles,
         };
 
         try {
@@ -744,6 +845,18 @@ const CreateWorkshop = () => {
                                     />
                                     {isInvalid('registrationDeadline') && <span style={errorTextStyles}>{fieldErrors.registrationDeadline}</span>}
                                 </div>
+                            </div>
+
+                            {/* Eligible Roles */}
+                            <div style={formGroupStyles}>
+                                <MultiSelect
+                                    label={<span>Eligible Roles<span style={requiredAsteriskStyles}>*</span></span>}
+                                    options={ALL_ROLES}
+                                    selectedValues={workshopData.eligibleRoles}
+                                    onChange={(values) => handleChange({ target: { name: 'eligibleRoles', value: values } })}
+                                    isInvalid={isInvalid('eligibleRoles')}
+                                />
+                                {isInvalid('eligibleRoles') && <span style={errorTextStyles}>{fieldErrors.eligibleRoles}</span>}
                             </div>
 
                             {/* Submit Button */}
