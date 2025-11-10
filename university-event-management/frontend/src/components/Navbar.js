@@ -247,6 +247,40 @@ const Navbar = () => {
             >
               Events
             </button>
+            <button
+              onClick={() => navigate("/favorites")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color:
+                  location.pathname === "/favorites"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom:
+                  location.pathname === "/favorites"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/favorites") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/favorites") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              Favorites
+            </button>
 
             <button
               onClick={() => navigate("/gym-schedule")}
@@ -598,6 +632,41 @@ const Navbar = () => {
               }}
             >
               Events
+            </button>
+
+            <button
+              onClick={() => navigate("/favorites")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color:
+                  location.pathname === "/favorites"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom:
+                  location.pathname === "/favorites"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/favorites") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/favorites") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              Favorites
             </button>
 
             {user.role == "student" && (

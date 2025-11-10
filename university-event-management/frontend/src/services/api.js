@@ -87,7 +87,15 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (error.response?.status === 401) {
+    // Treat 401 Unauthorized and 403 Inactive/Forbidden similarly for forced logout cases
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      // If 403 but the message isn't about inactive account, we may decide to not force logout.
+      const message = error.response?.data?.message || "";
+      const shouldForceLogout =
+        error.response?.status === 401 ||
+        /inactive|blocked|access denied/i.test(message);
+
+      if (shouldForceLogout) {
       const wasVendor = localStorage.getItem("userType") === "vendor";
       localStorage.removeItem("token");
       localStorage.removeItem("user");
@@ -99,6 +107,7 @@ api.interceptors.response.use(
         window.location.pathname !== "/vendor-login"
       ) {
         window.location.href = wasVendor ? "/vendor-login" : "/";
+      }
       }
     }
 
@@ -547,5 +556,43 @@ export const adminAPI = {
     } catch (error) {
       throw error;
     }
+  },
+
+  // ✅ Block user
+  blockUser: async (id) => {
+    try {
+      const response = await api.patch(`/admin/block-user/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // ✅ Unblock user
+  unblockUser: async (id) => {
+    try {
+      const response = await api.patch(`/admin/unblock-user/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
+
+// ============================================
+// Favorites API
+// ============================================
+export const favoritesAPI = {
+  getMyFavorites: async () => {
+    const res = await api.get("/favorites");
+    return res.data?.favorites || [];
+  },
+  addFavorite: async (eventId) => {
+    const res = await api.post("/favorites", { eventId });
+    return res.data;
+  },
+  removeFavorite: async (eventId) => {
+    const res = await api.delete(`/favorites/${eventId}`);
+    return res.data;
   },
 };
