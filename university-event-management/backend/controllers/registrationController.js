@@ -117,26 +117,9 @@ const registerForEvent = async (req, res) => {
       universityId: universityId.trim(),
     };
 
-    // If user is authenticated, link to user account and perform role-based eligibility check
-    let user = null;
+    // If user is authenticated, link to user account
     if (req.user) {
-      user = await User.findById(req.user.id);
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "Authenticated user not found",
-        });
-      }
-      registrationData.user = user._id;
-
-      // Perform role-based eligibility check using the event's canUserRegister method
-      // This check is only applicable to events from the Event model, not Conference
-      if (!isConference && event.eligibleRoles && !event.canUserRegister(user)) {
-        return res.status(403).json({
-          success: false,
-          message: `This event is restricted to specific roles. Your role (${user.role}) is not eligible.`,
-        });
-      }
+      registrationData.user = req.user.id;
     }
 
     // Set payment information if event has cost

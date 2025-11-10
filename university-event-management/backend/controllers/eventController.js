@@ -389,7 +389,6 @@ const createEvent = async (req, res) => {
       registrationDeadline,
       maxParticipants,
       cost,
-      eligibleRoles,
     } = req.body;
 
     // Basic required fields for a generic event
@@ -414,8 +413,7 @@ const createEvent = async (req, res) => {
       maxParticipants,
       cost: typeof cost !== 'undefined' ? cost : 0,
       organizer: req.user.id,
-      status : "published",
-      eligibleRoles: eligibleRoles || undefined,
+      status : "published"
     };
 
     // If workshop, copy over workshop-specific fields if provided

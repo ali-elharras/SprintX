@@ -2062,8 +2062,6 @@ const EventsPage = () => {
                     onArchive={() => handleArchive(event._id, true)}
                     onUnarchive={() => handleArchive(event._id, false)}
                     onExportRegistrations={handleExportRegistrations}
-                    currentUserRole={auth.user?.role}
-                    eligibleRoles={event.eligibleRoles}
                   />
                 );
 

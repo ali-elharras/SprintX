@@ -87,8 +87,8 @@ const eventSchema = new mongoose.Schema(
     // Eligibility
     eligibleRoles: {
       type: [String],
-      enum: ["student", "staff", "ta", "professor", "admin", "events_office"],
-      default: ["student", "staff", "ta", "professor", "admin", "events_office"],
+      enum: ["student", "staff", "ta", "professor"],
+      default: ["student", "staff", "ta", "professor"],
     },
     eligibleDepartments: {
       type: [String],

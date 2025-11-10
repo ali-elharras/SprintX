@@ -516,7 +516,7 @@ exports.publishWorkshop = async (req, res) => {
             registrationDeadline: workshop.registrationDeadline,
             maxParticipants: workshop.capacity || 30, // Provide default if missing
             currentParticipants: 0,
-            eligibleRoles: workshop.eligibleRoles || ["student", "staff", "ta", "professor", "admin", "events_office"],
+            eligibleRoles: ['student','staff','ta','professor'],
             organizer: organizerId,
             organizerDetails: { name: 'Events Office' }, // Always provide organizer details
             status: 'published',
