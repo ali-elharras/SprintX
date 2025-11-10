@@ -522,7 +522,7 @@ const Navbar = () => {
                 }
               }}
             >
-              Admin Users
+              User Management
             </button>
 
             <button

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+// Modal view instead of navigation
+import EventDetailsModal from "../components/EventDetailsModal";
 import { favoritesAPI } from "../services/api";
 import Navbar from "../components/Navbar";
 import theme from "../theme";
@@ -91,7 +92,7 @@ const styles = {
 const FavoritesPage = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   const load = async () => {
     try {
@@ -118,9 +119,9 @@ const FavoritesPage = () => {
   };
 
   const openDetails = (item) => {
-    // Navigate to details route and pass the event as state for instant render
-    navigate(`/events/${item._id}`, { state: { event: item } });
+    setSelectedEvent(item);
   };
+  const closeModal = () => setSelectedEvent(null);
 
   return (
     <>
@@ -163,6 +164,14 @@ const FavoritesPage = () => {
           </div>
         )}
       </div>
+      {selectedEvent && (
+        <EventDetailsModal
+          eventId={selectedEvent._id}
+          initialEvent={selectedEvent}
+          disableFavorite={true}
+          onClose={closeModal}
+        />
+      )}
     </>
   );
 };

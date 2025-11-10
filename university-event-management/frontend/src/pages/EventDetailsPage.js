@@ -119,10 +119,11 @@ const EventDetailsPage = () => {
                   background: "rgba(255,255,255,0.2)",
                   color: "#fff",
                   border: "none",
-                  padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+                  padding: `${theme.spacing[3]} ${theme.spacing[5]}`,
                   borderRadius: theme.borderRadius.full,
                   cursor: "pointer",
-                  fontWeight: theme.typography.fontWeight.medium,
+                  fontWeight: theme.typography.fontWeight.semibold,
+                  fontSize: theme.typography.fontSize.base,
                   backdropFilter: "blur(4px)",
                 }}
               >

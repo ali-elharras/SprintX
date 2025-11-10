@@ -557,6 +557,26 @@ export const adminAPI = {
       throw error;
     }
   },
+
+  // ✅ Block user
+  blockUser: async (id) => {
+    try {
+      const response = await api.patch(`/admin/block-user/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // ✅ Unblock user
+  unblockUser: async (id) => {
+    try {
+      const response = await api.patch(`/admin/unblock-user/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 export const ratingAPI = {
   // Submit or update a rating
@@ -578,26 +598,6 @@ export const ratingAPI = {
   // Delete a rating
   deleteRating: (ratingId) =>
     api.delete(`/ratings/${ratingId}`),
-
-  // ✅ Block user
-  blockUser: async (id) => {
-    try {
-      const response = await api.patch(`/admin/block-user/${id}`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // ✅ Unblock user
-  unblockUser: async (id) => {
-    try {
-      const response = await api.patch(`/admin/unblock-user/${id}`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 };
 
 // ============================================

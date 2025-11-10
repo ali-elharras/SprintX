@@ -323,10 +323,11 @@ const handleDeleteWorkshop = async () => {
                 background: "rgba(255,255,255,0.2)",
                 color: "#fff",
                 border: "none",
-                padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+                padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
                 borderRadius: theme.borderRadius.full,
                 cursor: "pointer",
-                fontWeight: theme.typography.fontWeight.medium,
+                fontWeight: theme.typography.fontWeight.semibold,
+                fontSize: theme.typography.fontSize.lg,
               }}
             >
               ♥
