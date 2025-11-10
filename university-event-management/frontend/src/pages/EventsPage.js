@@ -919,10 +919,9 @@ const EventsPage = () => {
   const [filters, setFilters] = useState({
     type: "",
     search: "",
-    view: "all", // all, upcoming, past, archived
-    upcoming: true,
-    dateFrom: "", // Add this
-    dateTo: "",   // Add this
+    view: "upcoming", // all, upcoming, past, archived
+    dateFrom: "",
+    dateTo: "",
   });
 
   const cancelTokenRef = useRef(null);
@@ -1479,6 +1478,16 @@ const EventsPage = () => {
     { value: "conference", label: "Conferences" },
   ];
 
+  const viewOptions = [
+    { value: "upcoming", label: "Upcoming" },
+    { value: "past", label: "Past" },
+    { value: "all", label: "All Events" },
+  ];
+
+  if (isEventsOffice) {
+    viewOptions.push({ value: "archived", label: "Archived" });
+  }
+
   if (loading) return (
     <div style={{ minHeight: "100vh", background: theme.colors.background.default }}>
       <Navbar />
@@ -1988,7 +1997,7 @@ const EventsPage = () => {
   <div
     style={{
       display: "grid",
-      gridTemplateColumns: "1fr 1fr 1fr 1fr",
+      gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
       gap: theme.spacing[4],
       alignItems: "end",
       marginBottom: theme.spacing[4],
@@ -2005,6 +2014,12 @@ const EventsPage = () => {
       options={eventTypeOptions}
       value={filters.type}
       onChange={(e) => handleFilterChange("type", e.target.value)}
+    />
+    <Select
+      label="Event Status"
+      options={viewOptions}
+      value={filters.view}
+      onChange={(e) => handleFilterChange("view", e.target.value)}
     />
     <Input
       label="From Date"
@@ -2025,14 +2040,9 @@ const EventsPage = () => {
       display: "flex",
       gap: theme.spacing[3],
       alignItems: "center",
+      flexWrap: "wrap",
     }}
   >
-    <Button
-      variant={filters.upcoming ? "primary" : "secondary"}
-      onClick={() => handleFilterChange("upcoming", !filters.upcoming)}
-    >
-      {filters.upcoming ? "Upcoming Only" : "All Events"}
-    </Button>
     <Button variant="outline" onClick={fetchEvents}>
       Refresh
     </Button>
@@ -2042,13 +2052,13 @@ const EventsPage = () => {
         setFilters({ 
           type: "", 
           search: "", 
-          upcoming: false,
+          view: "all",
           dateFrom: "",
           dateTo: ""
         });
       }}
     >
-      Clear All Filters
+      Clear Filters
     </Button>
     {!auth.isAdmin && (
       <CreateDropdownButton 
