@@ -2001,8 +2001,7 @@ const EventsPage = () => {
                       setEditingConference(conference);
                       setShowConferenceModal(true);
                     }}
-                    // onEditTrip={handleEditTrip}
-                    // onDelete={handleDeleteEvent}
+                    onDelete={handleDeleteEvent}
                   />
                 );
               })}
