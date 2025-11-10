@@ -28,7 +28,8 @@ const notificationSchema = new mongoose.Schema(
         "professor_workshop_submitted",  // For Events Office
         "professor_workshop_edited",      // For Events Office
         "event_created",                   // For all users when new event is created
-        "loyalty_partner_added"           // For all users when vendor joins loyalty program
+        "loyalty_partner_added",          // For all users when vendor joins loyalty program
+        "vendor_application_pending"      // For admin and events_office when vendor applies to bazaar/booth
       ],
       required: true,
     },
@@ -69,6 +70,37 @@ const notificationSchema = new mongoose.Schema(
     vendorName: {
       type: String,
       trim: true,
+    },
+    
+    // Promo code for loyalty program notifications
+    promoCode: {
+      type: String,
+      trim: true,
+    },
+    
+    // Discount rate for loyalty program notifications
+    discountRate: {
+      type: Number,
+    },
+    
+    // Vendor ID for vendor request notifications
+    vendorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Vendor",
+      required: false,
+    },
+    
+    // Application type (bazaar or booth)
+    applicationType: {
+      type: String,
+      enum: ["bazaar", "booth"],
+      required: false,
+    },
+    
+    // Application ID reference
+    applicationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: false,
     },
     
     // Read/Unread status

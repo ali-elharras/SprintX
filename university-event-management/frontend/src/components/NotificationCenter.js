@@ -7,11 +7,11 @@ const NotificationCenter = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const dropdownRef = useRef(null);
-    const { token, isProfessor, isStaff, isEventsOffice, isStudent, isTA } = useAuth();
+    const { token, isProfessor, isStaff, isEventsOffice, isStudent, isTA, isAdmin } = useAuth();
     const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:8080/api'}/notifications`;
 
     // Check if user has notification access
-    const hasNotificationAccess = isProfessor || isStaff || isEventsOffice || isStudent || isTA;
+    const hasNotificationAccess = isProfessor || isStaff || isEventsOffice || isStudent || isTA || isAdmin;
 
     // Fetch notifications
     const fetchNotifications = useCallback(async () => {
@@ -215,6 +215,8 @@ const NotificationCenter = () => {
                 return '🎉';
             case 'loyalty_partner_added':
                 return '🤝';
+            case 'vendor_application_pending':
+                return '🏪';
             default:
                 return '🔔';
         }

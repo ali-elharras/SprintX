@@ -823,7 +823,8 @@ const Navbar = () => {
           user?.role === "staff" || 
           user?.role === "events_office" || 
           user?.role === "student" || 
-          user?.role === "ta") && (
+          user?.role === "ta" ||
+          user?.role === "admin") && (
           <div style={{ marginRight: theme.spacing[4] }}>
             <NotificationCenter />
           </div>

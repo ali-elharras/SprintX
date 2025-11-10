@@ -16,7 +16,7 @@ exports.createLoyaltyProgram = async (req, res) => {
         // Notify all students, staff, TAs, and professors about the new loyalty partner
         if (vendor && vendor.companyName) {
             try {
-                await notifyAllUsersAboutLoyaltyPartner(vendor.companyName);
+                await notifyAllUsersAboutLoyaltyPartner(vendor.companyName, promoCode, discountRate);
             } catch (notifError) {
                 console.error('Error sending loyalty partner notifications:', notifError);
                 // Don't fail the loyalty program creation if notifications fail
