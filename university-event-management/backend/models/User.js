@@ -179,6 +179,9 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+
+    // Favorites: saved events
+    favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: "Event" }],
   },
   {
     timestamps: true, // Adds createdAt and updatedAt

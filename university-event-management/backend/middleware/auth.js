@@ -85,6 +85,13 @@ const protect = async (req, res, next) => {
             message: "Vendor not found",
           });
         }
+        // Immediately reject inactive vendor accounts
+        if (req.vendor.isActive === false) {
+          return res.status(403).json({
+            success: false,
+            message: "Account is inactive. Please contact support.",
+          });
+        }
         req.userType = "vendor";
       } else {
         req.user = await User.findById(decoded.id);
@@ -92,6 +99,13 @@ const protect = async (req, res, next) => {
           return res.status(401).json({
             success: false,
             message: "User not found",
+          });
+        }
+        // Immediately reject inactive user accounts
+        if (req.user.isActive === false) {
+          return res.status(403).json({
+            success: false,
+            message: "Account is inactive. Please contact support.",
           });
         }
         req.userType = "user";

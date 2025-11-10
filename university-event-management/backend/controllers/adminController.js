@@ -258,10 +258,60 @@ const approveAcademic = async (req, res) => {
   }
 };
 
+const blockUser = async (req, res) => {
+  try { 
+    const { id } = req.params;
+    // Validate ObjectId shape (optional but safer)
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user.isActive) {
+      return res.status(200).json({ message: "User already blocked" });
+    }
+    user.isActive = false;
+    await user.save();
+    const { password, ...safe } = user.toObject();
+    return res.status(200).json({ message: "User blocked successfully", user: safe });
+  } catch (error) {
+    console.error("Error blocking user:", error);
+    return res.status(500).json({ message: "Error blocking user" });
+  }
+};
+
+// Unblock a user (set isActive = true)
+const unblockUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    if (user.isActive) {
+      return res.status(200).json({ message: "User already active" });
+    }
+    user.isActive = true;
+    await user.save();
+    const { password, ...safe } = user.toObject();
+    return res
+      .status(200)
+      .json({ message: "User unblocked successfully", user: safe });
+  } catch (error) {
+    console.error("Error unblocking user:", error);
+    return res.status(500).json({ message: "Error unblocking user" });
+  }
+};
+
 module.exports = {
   createAdminOrEventOffice,
   deleteAdminOrEventOffice,
   getAllUsers,
   getPendingAcademics,
   approveAcademic,
+  blockUser, // added export
+  unblockUser,
 };
+
+

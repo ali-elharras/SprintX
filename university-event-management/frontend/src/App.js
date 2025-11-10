@@ -34,6 +34,8 @@ import AdminUserManagement from "./pages/AdminUserManagement";
 import ReportsPage from "./pages/ReportsPage";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import EventsRatings from './pages/EventsRatings';
+import FavoritesPage from "./pages/FavoritesPage";
+import EventDetailsPage from "./pages/EventDetailsPage";
 // ---------------------------
 // Protected Route Components
 // ---------------------------
@@ -320,6 +322,22 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <MyRegistrations />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/favorites",
+    element: (
+      <ProtectedRoute>
+        <FavoritesPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/events/:id",
+    element: (
+      <ProtectedRoute>
+        <EventDetailsPage />
       </ProtectedRoute>
     ),
   },
