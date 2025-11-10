@@ -547,3 +547,24 @@ export const adminAPI = {
     }
   },
 };
+export const ratingAPI = {
+  // Submit or update a rating
+  submitRating: (ratingData) => 
+    api.post('/ratings', ratingData),
+
+  // Get all ratings for an event
+  getEventRatings: (eventId, cancelToken = null) =>
+    api.get(`/ratings/event/${eventId}`, {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    }),
+
+  // Get current user's rating for an event
+  getMyRating: (eventId, cancelToken = null) =>
+    api.get(`/ratings/my-rating/${eventId}`, {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    }),
+
+  // Delete a rating
+  deleteRating: (ratingId) =>
+    api.delete(`/ratings/${ratingId}`),
+};

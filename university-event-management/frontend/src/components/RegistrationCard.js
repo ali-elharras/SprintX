@@ -1,16 +1,35 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import theme, { getEventTypeColor } from "../theme";
 import Card from "./Card";
 import Button from "./Button";
+import RatingModal from "./RatingModal";
+import ViewRatingsModal from "./ViewRatingsModal";
+import { useAuth } from "../context/AuthContext";
 
 const RegistrationCard = ({ registration, onCancel, isPastEvent = false }) => {
+  const { user } = useAuth();
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [showViewRatingsModal, setShowViewRatingsModal] = useState(false);
+
   if (!registration || !registration.event) {
     return null;
   }
 
   const { event } = registration;
   
+  // Check if user can rate events
+  const canRateEvents = () => {
+    const allowedRoles = ['student', 'staff', 'ta', 'professor'];
+    return user && allowedRoles.includes(user.role.toLowerCase());
+  };
+
+  // Check if user can view ratings
+  const canViewRatings = () => {
+    const allowedRoles = ['student', 'staff', 'ta', 'professor', 'events_office', 'admin'];
+    return user && allowedRoles.includes(user.role.toLowerCase());
+  };
+
   // Format dates
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -179,219 +198,266 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false }) => {
   const buttonGroupStyles = {
     display: "flex",
     gap: theme.spacing[2],
+    flexWrap: "wrap",
   };
 
   return (
-    <Card style={cardStyles} hover>
-      {/* Header */}
-      <div style={headerStyles}>
-        <div style={{ flex: 1 }}>
-          <div style={typeStyles}>
-            <div
-              style={{
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                backgroundColor: getEventTypeColor(event.type),
-                marginRight: theme.spacing[2],
-              }}
-            />
-            {event.type}
+    <>
+      <Card style={cardStyles} hover>
+        {/* Header */}
+        <div style={headerStyles}>
+          <div style={{ flex: 1 }}>
+            <div style={typeStyles}>
+              <div
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  backgroundColor: getEventTypeColor(event.type),
+                  marginRight: theme.spacing[2],
+                }}
+              />
+              {event.type}
+            </div>
+            <h3 style={titleStyles}>{event.title}</h3>
           </div>
-          <h3 style={titleStyles}>{event.title}</h3>
-        </div>
-        <div style={statusStyles}>
-          {getStatusText(registration.status)}
-        </div>
-      </div>
-
-      {/* Event Details */}
-      <div style={detailsStyles}>
-        <div style={detailRowStyles}>
-          <span style={detailLabelStyles}>📅 Date:</span>
-          <span style={detailValueStyles}>
-            {isGymSession && event.dayOfWeek !== undefined 
-              ? `${getDayName(event.dayOfWeek)}s (${formatDate(event.startDate)} - ${formatDate(event.endDate)})`
-              : (
-                <>
-                  {formatDate(event.startDate)}
-                  {event.endDate && 
-                    new Date(event.startDate).toDateString() !== new Date(event.endDate).toDateString() && 
-                    ` - ${formatDate(event.endDate)}`
-                  }
-                </>
-              )
-            }
-          </span>
-        </div>
-        
-        <div style={detailRowStyles}>
-          <span style={detailLabelStyles}>🕒 Time:</span>
-          <span style={detailValueStyles}>
-            {isGymSession && event.startTime 
-              ? `${formatGymTime(event.startTime)} - ${formatGymTime(event.endTime)}`
-              : isCourtReservation && event.startTime
-              ? `${formatGymTime(event.startTime)} - ${formatGymTime(event.endTime)}`
-              : (
-                <>
-                  {formatTime(event.startDate)}
-                  {event.endDate && ` - ${formatTime(event.endDate)}`}
-                </>
-              )
-            }
-          </span>
-        </div>
-
-        <div style={detailRowStyles}>
-          <span style={detailLabelStyles}>📍 Location:</span>
-          <span style={detailValueStyles}>
-            {event.location}
-            {event.room && ` (${event.room})`}
-          </span>
-        </div>
-
-        {isGymSession && event.instructor && (
-          <div style={detailRowStyles}>
-            <span style={detailLabelStyles}>👤 Instructor:</span>
-            <span style={detailValueStyles}>{event.instructor.name}</span>
+          <div style={statusStyles}>
+            {getStatusText(registration.status)}
           </div>
-        )}
+        </div>
 
-        {isGymSession && event.skillLevel && (
+        {/* Event Details */}
+        <div style={detailsStyles}>
           <div style={detailRowStyles}>
-            <span style={detailLabelStyles}>📊 Level:</span>
-            <span style={{ ...detailValueStyles, textTransform: 'capitalize' }}>
-              {event.skillLevel.replace('_', ' ')}
-            </span>
-          </div>
-        )}
-
-        {isCourtReservation && event.courtType && (
-          <div style={detailRowStyles}>
-            <span style={detailLabelStyles}>🏟️ Court Type:</span>
-            <span style={{ ...detailValueStyles, textTransform: 'capitalize' }}>
-              {event.courtType}
-            </span>
-          </div>
-        )}
-
-        {isCourtReservation && event.duration && (
-          <div style={detailRowStyles}>
-            <span style={detailLabelStyles}>⏱️ Duration:</span>
+            <span style={detailLabelStyles}>📅 Date:</span>
             <span style={detailValueStyles}>
-              {Math.round(event.duration / 60)} hour{event.duration > 60 ? 's' : ''}
+              {isGymSession && event.dayOfWeek !== undefined 
+                ? `${getDayName(event.dayOfWeek)}s (${formatDate(event.startDate)} - ${formatDate(event.endDate)})`
+                : (
+                  <>
+                    {formatDate(event.startDate)}
+                    {event.endDate && 
+                      new Date(event.startDate).toDateString() !== new Date(event.endDate).toDateString() && 
+                      ` - ${formatDate(event.endDate)}`
+                    }
+                  </>
+                )
+              }
             </span>
           </div>
-        )}
-
-        {isCourtReservation && event.purpose && (
-          <div style={detailRowStyles}>
-            <span style={detailLabelStyles}>🎯 Purpose:</span>
-            <span style={{ ...detailValueStyles, textTransform: 'capitalize' }}>
-              {event.purpose}
-            </span>
-          </div>
-        )}
-
-        {(event.cost > 0 || (isCourtReservation && event.amountPaid !== undefined)) && (
-          <div style={detailRowStyles}>
-            <span style={detailLabelStyles}>💰 Cost:</span>
-            <span style={detailValueStyles}>
-              ${isCourtReservation ? event.amountPaid : event.cost}
-              {(registration.paymentStatus || event.paymentStatus) && (
-                <span style={{ 
-                  marginLeft: theme.spacing[2],
-                  color: (registration.paymentStatus || event.paymentStatus) === 'paid' 
-                    ? theme.colors.success.main 
-                    : (registration.paymentStatus || event.paymentStatus) === 'waived'
-                    ? theme.colors.info.main
-                    : theme.colors.warning.main,
-                  fontWeight: theme.typography.fontWeight.medium,
-                  textTransform: 'capitalize'
-                }}>
-                  ({registration.paymentStatus || event.paymentStatus})
-                </span>
-              )}
-            </span>
-          </div>
-        )}
-
-        {event.maxParticipants && (
-          <div style={detailRowStyles}>
-            <span style={detailLabelStyles}>👥 Capacity:</span>
-            <span style={detailValueStyles}>
-              {event.currentParticipants}/{event.maxParticipants} participants
-            </span>
-          </div>
-        )}
-
-        {registration.checkedIn && (
-          <div style={detailRowStyles}>
-            <span style={detailLabelStyles}>✅ Check-in:</span>
-            <span style={detailValueStyles}>
-              {formatDate(registration.checkInTime)} at {formatTime(registration.checkInTime)}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div style={actionsStyles}>
-        <div style={registrationDateStyles}>
-          Registered on {formatDate(registration.registrationDate)}
-        </div>
-        
-        <div style={buttonGroupStyles}>
-          <Link to="/events">
-            <Button variant="outline" size="sm">
-              Browse Events
-            </Button>
-          </Link>
           
-          {canCancel() && (
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={() => onCancel(registration._id)}
-            >
-              Cancel
-            </Button>
-          )}
-        </div>
-      </div>
+          <div style={detailRowStyles}>
+            <span style={detailLabelStyles}>🕒 Time:</span>
+            <span style={detailValueStyles}>
+              {isGymSession && event.startTime 
+                ? `${formatGymTime(event.startTime)} - ${formatGymTime(event.endTime)}`
+                : isCourtReservation && event.startTime
+                ? `${formatGymTime(event.startTime)} - ${formatGymTime(event.endTime)}`
+                : (
+                  <>
+                    {formatTime(event.startDate)}
+                    {event.endDate && ` - ${formatTime(event.endDate)}`}
+                  </>
+                )
+              }
+            </span>
+          </div>
 
-      {/* Special Requirements Display */}
-      {(registration.specialRequirements || registration.dietaryRestrictions) && (
-        <div style={{
-          marginTop: theme.spacing[3],
-          padding: theme.spacing[3],
-          backgroundColor: theme.colors.background.subtle,
-          borderRadius: theme.borderRadius.md,
-          fontSize: theme.typography.fontSize.sm,
-        }}>
-          {registration.specialRequirements && (
-            <div style={{ marginBottom: theme.spacing[2] }}>
-              <strong style={{ color: theme.colors.text.primary }}>
-                Special Requirements:
-              </strong>
-              <span style={{ marginLeft: theme.spacing[2], color: theme.colors.text.secondary }}>
-                {registration.specialRequirements}
+          <div style={detailRowStyles}>
+            <span style={detailLabelStyles}>📍 Location:</span>
+            <span style={detailValueStyles}>
+              {event.location}
+              {event.room && ` (${event.room})`}
+            </span>
+          </div>
+
+          {isGymSession && event.instructor && (
+            <div style={detailRowStyles}>
+              <span style={detailLabelStyles}>👤 Instructor:</span>
+              <span style={detailValueStyles}>{event.instructor.name}</span>
+            </div>
+          )}
+
+          {isGymSession && event.skillLevel && (
+            <div style={detailRowStyles}>
+              <span style={detailLabelStyles}>📊 Level:</span>
+              <span style={{ ...detailValueStyles, textTransform: 'capitalize' }}>
+                {event.skillLevel.replace('_', ' ')}
               </span>
             </div>
           )}
-          {registration.dietaryRestrictions && (
-            <div>
-              <strong style={{ color: theme.colors.text.primary }}>
-                Dietary Restrictions:
-              </strong>
-              <span style={{ marginLeft: theme.spacing[2], color: theme.colors.text.secondary }}>
-                {registration.dietaryRestrictions}
+
+          {isCourtReservation && event.courtType && (
+            <div style={detailRowStyles}>
+              <span style={detailLabelStyles}>🏟️ Court Type:</span>
+              <span style={{ ...detailValueStyles, textTransform: 'capitalize' }}>
+                {event.courtType}
+              </span>
+            </div>
+          )}
+
+          {isCourtReservation && event.duration && (
+            <div style={detailRowStyles}>
+              <span style={detailLabelStyles}>⏱️ Duration:</span>
+              <span style={detailValueStyles}>
+                {Math.round(event.duration / 60)} hour{event.duration > 60 ? 's' : ''}
+              </span>
+            </div>
+          )}
+
+          {isCourtReservation && event.purpose && (
+            <div style={detailRowStyles}>
+              <span style={detailLabelStyles}>🎯 Purpose:</span>
+              <span style={{ ...detailValueStyles, textTransform: 'capitalize' }}>
+                {event.purpose}
+              </span>
+            </div>
+          )}
+
+          {(event.cost > 0 || (isCourtReservation && event.amountPaid !== undefined)) && (
+            <div style={detailRowStyles}>
+              <span style={detailLabelStyles}>💰 Cost:</span>
+              <span style={detailValueStyles}>
+                ${isCourtReservation ? event.amountPaid : event.cost}
+                {(registration.paymentStatus || event.paymentStatus) && (
+                  <span style={{ 
+                    marginLeft: theme.spacing[2],
+                    color: (registration.paymentStatus || event.paymentStatus) === 'paid' 
+                      ? theme.colors.success.main 
+                      : (registration.paymentStatus || event.paymentStatus) === 'waived'
+                      ? theme.colors.info.main
+                      : theme.colors.warning.main,
+                    fontWeight: theme.typography.fontWeight.medium,
+                    textTransform: 'capitalize'
+                  }}>
+                    ({registration.paymentStatus || event.paymentStatus})
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
+
+          {event.maxParticipants && (
+            <div style={detailRowStyles}>
+              <span style={detailLabelStyles}>👥 Capacity:</span>
+              <span style={detailValueStyles}>
+                {event.currentParticipants}/{event.maxParticipants} participants
+              </span>
+            </div>
+          )}
+
+          {registration.checkedIn && (
+            <div style={detailRowStyles}>
+              <span style={detailLabelStyles}>✅ Check-in:</span>
+              <span style={detailValueStyles}>
+                {formatDate(registration.checkInTime)} at {formatTime(registration.checkInTime)}
               </span>
             </div>
           )}
         </div>
-      )}
-    </Card>
+
+        {/* Actions */}
+        <div style={actionsStyles}>
+          <div style={registrationDateStyles}>
+            Registered on {formatDate(registration.registrationDate)}
+          </div>
+          
+          <div style={buttonGroupStyles}>
+            {/* Show View Ratings button for allowed roles */}
+            {canViewRatings() && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowViewRatingsModal(true)}
+              >
+                View All Ratings
+              </Button>
+            )}
+
+            {/* Show Rate & Comment button only for past events and allowed roles */}
+            {isPastEvent && canRateEvents() && registration.status !== "cancelled" && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setShowRatingModal(true)}
+              >
+                Rate & Comment
+              </Button>
+            )}
+
+            {/* Existing Browse Events button */}
+            {!isPastEvent && (
+              <Link to="/events">
+                <Button variant="outline" size="sm">
+                  Browse Events
+                </Button>
+              </Link>
+            )}
+            
+            {/* Existing Cancel button */}
+            {canCancel() && (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => onCancel(registration._id)}
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Special Requirements Display */}
+        {(registration.specialRequirements || registration.dietaryRestrictions) && (
+          <div style={{
+            marginTop: theme.spacing[3],
+            padding: theme.spacing[3],
+            backgroundColor: theme.colors.background.subtle,
+            borderRadius: theme.borderRadius.md,
+            fontSize: theme.typography.fontSize.sm,
+          }}>
+            {registration.specialRequirements && (
+              <div style={{ marginBottom: theme.spacing[2] }}>
+                <strong style={{ color: theme.colors.text.primary }}>
+                  Special Requirements:
+                </strong>
+                <span style={{ marginLeft: theme.spacing[2], color: theme.colors.text.secondary }}>
+                  {registration.specialRequirements}
+                </span>
+              </div>
+            )}
+            {registration.dietaryRestrictions && (
+              <div>
+                <strong style={{ color: theme.colors.text.primary }}>
+                  Dietary Restrictions:
+                </strong>
+                <span style={{ marginLeft: theme.spacing[2], color: theme.colors.text.secondary }}>
+                  {registration.dietaryRestrictions}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+
+      {/* Rating Modal */}
+      <RatingModal
+        isOpen={showRatingModal}
+        onClose={() => setShowRatingModal(false)}
+        event={event}
+        onRatingSubmitted={() => {
+          // Optionally refresh data or show success message
+          setShowRatingModal(false);
+        }}
+      />
+
+      {/* View Ratings Modal */}
+      <ViewRatingsModal
+        isOpen={showViewRatingsModal}
+        onClose={() => setShowViewRatingsModal(false)}
+        event={event}
+      />
+    </>
   );
 };
 

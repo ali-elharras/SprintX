@@ -24,7 +24,7 @@ const notificationRoutes = require("./routes/notifications");
 const reportRoutes = require("./routes/report");
 const paymentRoutes = require("./routes/payments");
 const LoyaltyRoutes = require("./routes/LoyaltyRoutes");
-
+//const eventReviewRoutes = require("./routes/eventReviews");
 
 const app = express();
 
@@ -119,7 +119,7 @@ app.use("/api/gym", gymRoutes);
 app.use("/api/conferences", conferenceRoutes);
 app.use("/api/bazaars", bazaarRoutes);
 app.use("/api/loyalty", LoyaltyRoutes);
-
+app.use('/api/ratings', require('./routes/ratings'));
 // Workshop routes (professors create -> saved as pending, Events Office can publish)
 app.use("/api/workshops", workshopRoutes);
 
@@ -129,6 +129,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/reports", reportRoutes);
 // Payment routes (for vendor payments)
 app.use("/api/payments", paymentRoutes);
+//app.use("/api/event-reviews", eventReviewRoutes);
 
 // Workshop routes removed as feature deprecated
 
