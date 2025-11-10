@@ -27,7 +27,8 @@ const notificationSchema = new mongoose.Schema(
         "workshop_published",
         "professor_workshop_submitted",  // For Events Office
         "professor_workshop_edited",      // For Events Office
-        "event_created"                   // For all users when new event is created
+        "event_created",                   // For all users when new event is created
+        "loyalty_partner_added"           // For all users when vendor joins loyalty program
       ],
       required: true,
     },
@@ -60,6 +61,12 @@ const notificationSchema = new mongoose.Schema(
     
     // Professor name for Events Office notifications
     professorName: {
+      type: String,
+      trim: true,
+    },
+    
+    // Vendor name for loyalty program notifications
+    vendorName: {
       type: String,
       trim: true,
     },

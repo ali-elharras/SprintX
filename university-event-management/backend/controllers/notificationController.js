@@ -166,6 +166,11 @@ exports.createNotification = async (recipientId, message, type, workshopId = nul
             notificationData.eventId = metadata.eventId;
         }
         
+        // Add vendorName if provided in metadata
+        if (metadata.vendorName) {
+            notificationData.vendorName = metadata.vendorName;
+        }
+        
         const notification = await Notification.createNotification(notificationData);
         return notification;
     } catch (error) {
@@ -206,5 +211,39 @@ exports.notifyAllUsersAboutNewEvent = async (eventName, eventId) => {
     } catch (error) {
         console.error('Error notifying users about new event:', error);
         // Don't throw - we don't want to fail the event creation if notifications fail
+    }
+};
+
+// Helper function to notify all stakeholders about a new loyalty program partner
+exports.notifyAllUsersAboutLoyaltyPartner = async (vendorName) => {
+    try {
+        const User = require('../models/User');
+        
+        // Find all users with roles: student, staff, ta, professor
+        const stakeholders = await User.find({ 
+            role: { $in: ['student', 'staff', 'ta', 'professor'] } 
+        });
+        
+        console.log(`Creating notifications for ${stakeholders.length} users about new loyalty partner: ${vendorName}`);
+        
+        // Create notification for each stakeholder
+        const notificationPromises = stakeholders.map(user => 
+            exports.createNotification(
+                user._id,
+                `New GUC Loyalty Program partner added: ${vendorName}`,
+                'loyalty_partner_added',
+                null, // no workshop ID
+                null, // no workshop name
+                { 
+                    vendorName
+                }
+            )
+        );
+        
+        await Promise.all(notificationPromises);
+        console.log(`Successfully created notifications for new loyalty partner: ${vendorName}`);
+    } catch (error) {
+        console.error('Error notifying users about new loyalty partner:', error);
+        // Don't throw - we don't want to fail the loyalty program creation if notifications fail
     }
 };

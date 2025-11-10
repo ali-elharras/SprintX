@@ -213,6 +213,8 @@ const NotificationCenter = () => {
                 return '🔄';
             case 'event_created':
                 return '🎉';
+            case 'loyalty_partner_added':
+                return '🤝';
             default:
                 return '🔔';
         }
