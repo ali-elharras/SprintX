@@ -7,12 +7,12 @@ const NotificationCenter = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const dropdownRef = useRef(null);
-    const { token, isProfessor, isStaff } = useAuth();
+    const { token, isProfessor, isStaff, isEventsOffice } = useAuth();
     const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:8080/api'}/notifications`;
 
     // Fetch notifications
     const fetchNotifications = useCallback(async () => {
-        if (!token || (!isProfessor && !isStaff)) return;
+        if (!token || (!isProfessor && !isStaff && !isEventsOffice)) return;
 
         try {
             const response = await fetch(API_URL, {
@@ -29,11 +29,11 @@ const NotificationCenter = () => {
         } catch (error) {
             console.error('Error fetching notifications:', error);
         }
-    }, [token, isProfessor, isStaff, API_URL]);
+    }, [token, isProfessor, isStaff, isEventsOffice, API_URL]);
 
     // Fetch unread count
     const fetchUnreadCount = useCallback(async () => {
-        if (!token || (!isProfessor && !isStaff)) return;
+        if (!token || (!isProfessor && !isStaff && !isEventsOffice)) return;
 
         try {
             const response = await fetch(`${API_URL}/unread-count`, {
@@ -50,7 +50,7 @@ const NotificationCenter = () => {
         } catch (error) {
             console.error('Error fetching unread count:', error);
         }
-    }, [token, isProfessor, isStaff, API_URL]);
+    }, [token, isProfessor, isStaff, isEventsOffice, API_URL]);
 
     // Mark notification as read
     const markAsRead = async (notificationId) => {
@@ -142,15 +142,15 @@ const NotificationCenter = () => {
 
     // Initial fetch
     useEffect(() => {
-        if (token && (isProfessor || isStaff)) {
+        if (token && (isProfessor || isStaff || isEventsOffice)) {
             fetchNotifications();
             fetchUnreadCount();
         }
-    }, [token, isProfessor, isStaff, fetchNotifications, fetchUnreadCount]);
+    }, [token, isProfessor, isStaff, isEventsOffice, fetchNotifications, fetchUnreadCount]);
 
     // Refresh every 30 seconds
     useEffect(() => {
-        if (!token || (!isProfessor && !isStaff)) return;
+        if (!token || (!isProfessor && !isStaff && !isEventsOffice)) return;
 
         const interval = setInterval(() => {
             fetchNotifications();
@@ -158,7 +158,7 @@ const NotificationCenter = () => {
         }, 30000);
 
         return () => clearInterval(interval);
-    }, [token, isProfessor, isStaff, fetchNotifications, fetchUnreadCount]);
+    }, [token, isProfessor, isStaff, isEventsOffice, fetchNotifications, fetchUnreadCount]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -204,12 +204,16 @@ const NotificationCenter = () => {
                 return '❌';
             case 'workshop_edit_requested':
                 return '✏️';
+            case 'professor_workshop_submitted':
+                return '📤';
+            case 'professor_workshop_edited':
+                return '🔄';
             default:
                 return '🔔';
         }
     };
 
-    if (!isProfessor && !isStaff) return null;
+    if (!isProfessor && !isStaff && !isEventsOffice) return null;
 
     return (
         <div style={styles.container} ref={dropdownRef}>

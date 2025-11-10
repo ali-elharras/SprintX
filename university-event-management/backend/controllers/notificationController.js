@@ -1,6 +1,6 @@
 const Notification = require('../models/Notification');
 
-// GET /api/notifications - Get all notifications for the logged-in professor
+// GET /api/notifications - Get all notifications for the logged-in user (professor, staff, or events_office)
 exports.getNotifications = async (req, res) => {
     try {
         const notifications = await Notification.find({ recipient: req.user._id })
@@ -144,14 +144,21 @@ exports.deleteAllNotifications = async (req, res) => {
 // Helper function to create notification (used by other controllers)
 exports.createNotification = async (recipientId, message, type, workshopId = null, workshopName = null, metadata = {}) => {
     try {
-        const notification = await Notification.createNotification({
+        const notificationData = {
             recipient: recipientId,
             message,
             type,
             workshopId,
             workshopName,
             metadata,
-        });
+        };
+        
+        // Add professorName if provided in metadata
+        if (metadata.professorName) {
+            notificationData.professorName = metadata.professorName;
+        }
+        
+        const notification = await Notification.createNotification(notificationData);
         return notification;
     } catch (error) {
         console.error('Error creating notification:', error);

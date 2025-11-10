@@ -20,7 +20,14 @@ const notificationSchema = new mongoose.Schema(
     // Type of notification for categorization
     type: {
       type: String,
-      enum: ["workshop_submitted", "workshop_rejected", "workshop_edit_requested", "workshop_published"],
+      enum: [
+        "workshop_submitted", 
+        "workshop_rejected", 
+        "workshop_edit_requested", 
+        "workshop_published",
+        "professor_workshop_submitted",  // For Events Office
+        "professor_workshop_edited"       // For Events Office
+      ],
       required: true,
     },
     
@@ -33,6 +40,12 @@ const notificationSchema = new mongoose.Schema(
     
     // Workshop name for quick reference
     workshopName: {
+      type: String,
+      trim: true,
+    },
+    
+    // Professor name for Events Office notifications
+    professorName: {
       type: String,
       trim: true,
     },
