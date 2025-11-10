@@ -9,7 +9,7 @@ import { eventAPI } from "../services/api";
 import { applicationServices } from "../services/api";
 import toast from "react-hot-toast";
 
-const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit, onEditTrip, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive }) => {
+const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit, onEditTrip, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive, onExportRegistrations }) => {
   // Normalize event/conference object for consistent display
   const normalizedEvent = {
     ...event,
@@ -723,6 +723,20 @@ const handleDeleteWorkshop = async () => {
                     }}
                   >
                     Unarchive
+                  </Button>
+                )}
+                 {isEventsOffice && normalizedEvent.type !== 'conference' && (
+                  <Button
+                    variant="outline"
+                    onClick={() => onExportRegistrations(normalizedEvent)}
+                    style={{
+                      width: "100%",
+                      minHeight: "44px",
+                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Export Registrations
                   </Button>
                 )}
               </>

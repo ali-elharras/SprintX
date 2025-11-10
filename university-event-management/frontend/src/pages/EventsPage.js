@@ -14,6 +14,7 @@ import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 import CreateDropdownButton from '../components/CreateDropdownButton';
 import CreateTripModal from '../components/CreateTripModal';
+import { exportRegistrationsToXLSX } from '../services/exportService';
 
 // Helper function to get tomorrow's date string in local time (not UTC)
 const getTomorrowDateTimeString = () => {
@@ -660,7 +661,7 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
   );
 };
 
-const BazaarManagementCard = ({ bazaar, onEdit, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive }) => {
+const BazaarManagementCard = ({ bazaar, onEdit, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive, onExportRegistrations }) => {
   const [participatingVendors, setParticipatingVendors] = useState([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
 
@@ -892,6 +893,11 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete, showArchiveButton, sho
           {showUnarchiveButton && (
             <Button variant="outline" onClick={onUnarchive} style={{ flex: 1 }}>
               Unarchive
+            </Button>
+          )}
+          {onExportRegistrations && (
+            <Button variant="outline" onClick={() => onExportRegistrations(bazaar)} style={{ flex: 1 }}>
+              Export Registrations
             </Button>
           )}
         </div>
@@ -1431,6 +1437,15 @@ const EventsPage = () => {
       fetchEvents(); // Refresh the list
     } catch (error) {
       toast.error(error.message || `Failed to ${isArchived ? 'archive' : 'unarchive'} event.`);
+    }
+  };
+
+  const handleExportRegistrations = async (event) => {
+    try {
+      await exportRegistrationsToXLSX(event);
+    } catch (error) {
+      // The service itself shows toasts, so just log here
+      console.error("Export failed:", error);
     }
   };
 
@@ -2022,6 +2037,7 @@ const EventsPage = () => {
                       showUnarchiveButton={isEventsOffice && filters.view === 'archived'}
                       onArchive={() => handleArchive(event._id, true)}
                       onUnarchive={() => handleArchive(event._id, false)}
+                      onExportRegistrations={handleExportRegistrations}
                     />
                   );
                 }
@@ -2045,6 +2061,7 @@ const EventsPage = () => {
                     showUnarchiveButton={isEventsOffice && filters.view === 'archived'}
                     onArchive={() => handleArchive(event._id, true)}
                     onUnarchive={() => handleArchive(event._id, false)}
+                    onExportRegistrations={handleExportRegistrations}
                   />
                 );
 
