@@ -9,12 +9,14 @@ import Select from "../components/Select";
 import Navbar from "../components/Navbar";
 import ConferenceModal from "./ConferenceModal";
 import LoadingScreen from "../components/LoadingScreen";
-import api, { eventAPI, workshopAPI, createCancelTokenSource, applicationServices } from "../services/api";
+import api, { eventAPI, workshopAPI, registrationAPI, createCancelTokenSource, applicationServices, boothPollAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 import CreateDropdownButton from '../components/CreateDropdownButton';
 import CreateTripModal from '../components/CreateTripModal';
 import { exportRegistrationsToXLSX } from '../services/exportService';
+import BoothPollManager from '../components/BoothPollManager';
+import BoothPollVoting from '../components/BoothPollVoting';
 
 // Helper function to get tomorrow's date string in local time (not UTC)
 const getTomorrowDateTimeString = () => {
@@ -157,6 +159,9 @@ const WorkshopCard = ({ workshop, onEdit, onDelete, isEventsOffice = false }) =>
   const [isToggleHovered, setIsToggleHovered] = useState(false);
   const [isEditHovered, setIsEditHovered] = useState(false);
   const [isDeleteHovered, setIsDeleteHovered] = useState(false);
+  const [participantsModalOpen, setParticipantsModalOpen] = useState(false);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
+  const [participants, setParticipants] = useState([]);
 
   // Check if editing is allowed
   const isPublished = workshop.status === 'published';
@@ -254,6 +259,10 @@ const WorkshopCard = ({ workshop, onEdit, onDelete, isEventsOffice = false }) =>
           </p>
           <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
             <strong style={{ color: '#1f2937', fontWeight: 600 }}>Capacity:</strong> {workshop.attendees || 0} / {workshop.capacity}
+            {' '}
+            <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.25rem' }}>
+              ({Math.max(0, workshop.capacity - (workshop.attendees || 0))} spots remaining)
+            </span>
           </p>
           <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
             <strong style={{ color: '#1f2937', fontWeight: 600 }}>Required Resources:</strong> {workshop.extraRequiredResources}
@@ -320,6 +329,36 @@ const WorkshopCard = ({ workshop, onEdit, onDelete, isEventsOffice = false }) =>
         </button>
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>
+          {/* Participants button - opens modal with list of registrations for published workshop */}
+          <div>
+            <button
+              disabled={!isPublished || !workshop.publishedEventId}
+              title={!isPublished || !workshop.publishedEventId ? "No participants yet" : "View participants"}
+              style={{
+                ...workshopStyleSheet['card-btn-view-toggle-default'],
+                padding: '0.35rem 0.75rem', fontSize: '0.8rem', fontWeight: 500,
+                borderRadius: '0.5rem', transition: 'all 0.15s', cursor: isPublished ? 'pointer' : 'not-allowed',
+                border: 'none',
+              }}
+              onClick={async () => {
+                if (!isPublished || !workshop.publishedEventId) return;
+                setParticipantsModalOpen(true);
+                setParticipantsLoading(true);
+                try {
+                  const resp = await registrationAPI.getEventRegistrations(workshop.publishedEventId);
+                  const regs = resp.data?.data || [];
+                  setParticipants(regs);
+                } catch (err) {
+                  console.error('Failed to fetch participants for workshop', err);
+                  setParticipants([]);
+                } finally {
+                  setParticipantsLoading(false);
+                }
+              }}
+            >
+              Participants
+            </button>
+          </div>
           <div style={{ position: 'relative' }}>
             <button 
               disabled={!canEdit}
@@ -368,6 +407,33 @@ const WorkshopCard = ({ workshop, onEdit, onDelete, isEventsOffice = false }) =>
           )}
         </div>
       </div>
+      {/* Participants Modal (per-workshop) */}
+      <Modal isOpen={participantsModalOpen} onClose={() => setParticipantsModalOpen(false)} ariaLabel={`Participants for ${workshop.workshopName}`}>
+        <div>
+          <h3 style={{ marginTop: 0, color: themeColors.gray900 }}>{`Participants — ${workshop.workshopName}`}</h3>
+          {participantsLoading ? (
+            <p>Loading participants…</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {participants.length === 0 ? (
+                <p style={{ color: '#6b7280' }}>No participants registered yet.</p>
+              ) : (
+                participants.map((p) => (
+                  <div key={p._id || p.email} style={{ padding: '0.5rem', borderRadius: '0.5rem', background: '#fff', border: '1px solid #eee' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{p.user ? `${p.user.firstName} ${p.user.lastName}` : `${p.firstName} ${p.lastName}`}</div>
+                        <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>{p.user ? p.user.email : p.email} • {p.universityId}</div>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#6b7280', fontWeight: 600 }}>{(p.status || '').toUpperCase()}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };
@@ -980,6 +1046,12 @@ const EventsPage = () => {
   const [deleteEventCandidate, setDeleteEventCandidate] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Booth Poll states
+  const [boothPollsTab, setBoothPollsTab] = useState('manage'); // 'manage' or 'vote'
+  const [pollsManagerOpen, setPollsManagerOpen] = useState(false);
+  const [eventsOfficePolls, setEventsOfficePolls] = useState([]);
+  const [pollsLoading, setPollsLoading] = useState(false);
+
   const fetchEvents = async () => {
     if (cancelTokenRef.current) {
       cancelTokenRef.current.cancel('Operation cancelled due to new request');
@@ -1097,10 +1169,37 @@ const EventsPage = () => {
     fetchEvents();
     
     const handleStorageChange = (e) => {
-      if (e.key === 'workshop_deleted' && e.newValue) {
-        console.log('Workshop deleted in another tab, refreshing events...');
-        fetchEvents();
-        localStorage.removeItem('workshop_deleted');
+      try {
+        if (e.key === 'workshop_deleted' && e.newValue) {
+          console.log('Workshop deleted in another tab, refreshing events...');
+          fetchEvents();
+          localStorage.removeItem('workshop_deleted');
+        }
+
+        // When a registration is made in another tab (student), refresh so professors see updated counts
+        if (e.key === 'registration_made' && e.newValue) {
+          console.log('Registration made in another tab, refreshing events/workshops...');
+          fetchEvents();
+          // Also refresh professor workshops specifically
+          if (auth?.user?.role === 'professor') {
+            // re-fetch professor workshops
+            (async () => {
+              try {
+                const resp = await api.get('/workshops');
+                const allWorkshops = resp.data || [];
+                const myWorkshops = allWorkshops.filter(w => (typeof w.createdBy === 'object' ? w.createdBy?._id === auth.user?.id : w.createdBy === auth.user?.id));
+                setProfessorWorkshops(myWorkshops);
+              } catch (err) {
+                console.warn('Could not refresh professor workshops after registration', err);
+              }
+            })();
+          }
+          // remove the key to avoid repeated refresh
+          localStorage.removeItem('registration_made');
+        }
+      } catch (err) {
+        // ignore storage handler errors
+        console.warn('Error handling storage event:', err);
       }
     };
     
@@ -1984,6 +2083,54 @@ const EventsPage = () => {
               </div>
             </div>
           )}
+
+          {/* Booth Polls Section (Events Office Only) */}
+          {isEventsOffice && (
+            <div
+              style={{
+                background: theme.colors.background.paper,
+                padding: theme.spacing[5],
+                borderRadius: theme.borderRadius.lg,
+                boxShadow: theme.shadows.md,
+                marginBottom: theme.spacing[6],
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: theme.spacing[4] }}>
+                <h2
+                  style={{
+                    margin: 0,
+                    color: theme.colors.text.primary,
+                  }}
+                >
+                  Booth Vendor Polls
+                </h2>
+                <Button
+                  variant="primary"
+                  onClick={() => setPollsManagerOpen(true)}
+                >
+                  + Create New Poll
+                </Button>
+              </div>
+              
+              {pollsManagerOpen && (
+                <div style={{ marginBottom: theme.spacing[4], padding: theme.spacing[4], backgroundColor: theme.colors.background.default, borderRadius: theme.borderRadius.base }}>
+                  <BoothPollManager
+                    onPollCreated={() => {
+                      setPollsManagerOpen(false);
+                      toast.success("Booth poll created successfully!");
+                      // Could refresh polls list here if needed
+                    }}
+                    onCancel={() => setPollsManagerOpen(false)}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Booth Polls Voting Section (All Users) */}
+          <div style={{ marginBottom: theme.spacing[6] }}>
+            <BoothPollVoting />
+          </div>
          
         <div
   style={{

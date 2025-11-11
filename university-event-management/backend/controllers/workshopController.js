@@ -7,6 +7,7 @@ const { createNotification } = require('./notificationController');
 // Optional query: ?status=pending|published
 exports.getAllWorkshops = async (req, res) => {
     try {
+        const Registration = require('../models/Registration');
         const { status } = req.query;
         const query = {};
         
@@ -39,7 +40,32 @@ exports.getAllWorkshops = async (req, res) => {
             .populate('createdBy', 'firstName lastName email role')
             .sort({ startDate: 1 });
         
-        res.status(200).json(workshops);
+        // Attach attendee count for published workshops
+        const workshopsWithAttendees = await Promise.all(
+            workshops.map(async (workshop) => {
+                const workshopObj = workshop.toObject();
+                
+                // If workshop is published, get attendee count from registrations
+                if (workshop.status === 'published' && workshop.publishedEventId) {
+                    try {
+                        const attendeeCount = await Registration.countDocuments({
+                            event: workshop.publishedEventId,
+                            status: { $in: ['confirmed', 'pending', 'attended'] }
+                        });
+                        workshopObj.attendees = attendeeCount;
+                    } catch (err) {
+                        console.error('Error counting attendees:', err);
+                        workshopObj.attendees = 0;
+                    }
+                } else {
+                    workshopObj.attendees = 0;
+                }
+                
+                return workshopObj;
+            })
+        );
+        
+        res.status(200).json(workshopsWithAttendees);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching workshops', error: error.message });
     }

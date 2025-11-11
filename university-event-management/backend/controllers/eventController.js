@@ -174,11 +174,63 @@ const getEvents = async (req, res) => {
     );
 
     // Combine and transform the data
+    // For workshops, compute currentParticipants by counting registrations for the published Event (if available)
+    const Registration = require('../models/Registration');
+
+    const workshopEvents = await Promise.all(
+      workshops.map(async (workshop) => {
+        const workshopObj = workshop.toObject();
+        let currentParticipants = 0;
+
+        try {
+          if (workshopObj.publishedEventId) {
+            currentParticipants = await Registration.countDocuments({
+              event: workshopObj.publishedEventId,
+              status: { $in: ['confirmed', 'pending', 'attended'] },
+            });
+          }
+        } catch (err) {
+          console.error('Error counting workshop registrations for workshop', workshopObj._id, err);
+          currentParticipants = 0;
+        }
+
+        return {
+          _id: workshopObj._id,
+          type: 'workshop',
+          name: workshopObj.workshopName,
+          title: workshopObj.workshopName,
+          description: workshopObj.shortDescription,
+          shortDescription: workshopObj.shortDescription,
+          location: workshopObj.location,
+          startDate: workshopObj.startDate,
+          endDate: workshopObj.endDate,
+          status: workshopObj.status || 'pending',
+          registrationRequired: true,
+          currentParticipants: currentParticipants,
+          maxParticipants: workshopObj.capacity,
+          cost: 0,
+          instructor: workshopObj.facultyResponsible,
+          professorName: workshopObj.facultyResponsible,
+          fullAgenda: workshopObj.fullAgenda,
+          registrationDeadline: workshopObj.registrationDeadline,
+          duration: Math.round((new Date(workshopObj.endDate) - new Date(workshopObj.startDate)) / (1000 * 60 * 60)),
+          facultyResponsible: workshopObj.facultyResponsible,
+          requiredBudget: workshopObj.requiredBudget,
+          fundingSource: workshopObj.fundingSource,
+          extraRequiredResources: workshopObj.extraRequiredResources,
+          createdAt: workshopObj.createdAt,
+          updatedAt: workshopObj.updatedAt,
+          isArchived: workshopObj.isArchived,
+          publishedEventId: workshopObj.publishedEventId,
+        };
+      })
+    );
+
     const allEvents = [
       ...eventsWithCounts,
       ...booths.map(booth => transformBoothToEvent(booth)),
       ...conferences.map(conference => transformConferenceToEvent(conference)),
-      ...workshops.map(workshop => transformWorkshopToEvent(workshop))
+      ...workshopEvents
     ];
 
     // Sort combined results by date

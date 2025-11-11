@@ -37,6 +37,7 @@ import EventsRatings from './pages/EventsRatings';
 import AdminComments from './pages/AdminComments';
 import FavoritesPage from "./pages/FavoritesPage";
 import EventDetailsPage from "./pages/EventDetailsPage";
+import LoyaltyProgram from "./pages/LoyaltyProgram";
 // ---------------------------
 // Protected Route Components
 // ---------------------------
@@ -357,6 +358,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <GymSchedulePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/loyalty-program",
+    element: (
+      <ProtectedRoute>
+        <LoyaltyProgram />
       </ProtectedRoute>
     ),
   },
