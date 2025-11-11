@@ -5,6 +5,7 @@ import theme from '../../theme';
 import Button from '../Button';
 import Card from '../Card';
 import LoyaltyEnrollmentModal from './LoyaltyEnrollmentModal';
+import api from '../../services/api';
 
 const LoyaltyProgram = () => {
   const { vendor } = useAuth();
@@ -14,19 +15,18 @@ const LoyaltyProgram = () => {
 
   useEffect(() => {
     fetchLoyaltyPrograms();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchLoyaltyPrograms = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/loyalty', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      const data = await response.json();
-      setPrograms(data);
+      setLoading(true);
+      const res = await api.get('/loyalty');
+      setPrograms(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
-      toast.error('Failed to fetch loyalty programs');
+      // axios error shape handling
+      const msg = error?.response?.data?.error || error?.message || 'Failed to fetch loyalty programs';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -34,48 +34,26 @@ const LoyaltyProgram = () => {
 
   const handleCreateProgram = async (formData) => {
     try {
-      const response = await fetch('http://localhost:8080/api/loyalty', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
-      
-      const data = await response.json();
-      if (response.ok) {
-        toast.success('Successfully created loyalty program');
-        fetchLoyaltyPrograms();
-      } else {
-        throw new Error(data.error);
-      }
+      const res = await api.post('/loyalty', formData);
+      toast.success('Successfully created loyalty program');
+      await fetchLoyaltyPrograms();
+      return res.data;
     } catch (error) {
-      toast.error(error.message || 'Failed to create loyalty program');
+      const msg = error?.response?.data?.error || error?.message || 'Failed to create loyalty program';
+      toast.error(msg);
       throw error;
     }
   };
 
   const handleCancelProgram = async (programId) => {
-    if (window.confirm('Are you sure you want to cancel this loyalty program?')) {
-      try {
-        const response = await fetch(`http://localhost:8080/api/loyalty/${programId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-
-        if (response.ok) {
-          toast.success('Successfully cancelled loyalty program');
-          fetchLoyaltyPrograms();
-        } else {
-          const data = await response.json();
-          throw new Error(data.error);
-        }
-      } catch (error) {
-        toast.error(error.message || 'Failed to cancel program');
-      }
+    if (!window.confirm('Are you sure you want to cancel this loyalty program?')) return;
+    try {
+      await api.delete(`/loyalty/${programId}`);
+      toast.success('Successfully cancelled loyalty program');
+      fetchLoyaltyPrograms();
+    } catch (error) {
+      const msg = error?.response?.data?.error || error?.message || 'Failed to cancel program';
+      toast.error(msg);
     }
   };
 
