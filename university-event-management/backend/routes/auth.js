@@ -171,6 +171,30 @@ const vendorRegistrationValidation = [
     .withMessage(
       "Interested event types must be from: bazaar, career_fair, conference, workshop"
     ),
+  body("taxCard")
+    .notEmpty()
+    .withMessage("Tax card document is required")
+    .custom((value) => {
+      if (!value || typeof value !== "string") {
+        throw new Error("Tax card must be a valid file");
+      }
+      if (!value.startsWith("data:")) {
+        throw new Error("Tax card must be a valid base64 encoded file");
+      }
+      return true;
+    }),
+  body("logo")
+    .notEmpty()
+    .withMessage("Company logo is required")
+    .custom((value) => {
+      if (!value || typeof value !== "string") {
+        throw new Error("Logo must be a valid file");
+      }
+      if (!value.startsWith("data:")) {
+        throw new Error("Logo must be a valid base64 encoded file");
+      }
+      return true;
+    }),
 ];
 
 // Validation rules for login

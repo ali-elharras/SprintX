@@ -70,7 +70,7 @@ const Navbar = () => {
         name: vendor.companyName,
         subtitle: `${vendor.industry} • ${vendor.verificationStatus}`,
         role: "vendor",
-        avatar: vendor.logo || null,
+        avatar: vendor.logoUrl || null,
       };
     } else if (isUser && user) {
       return {
@@ -352,39 +352,39 @@ const Navbar = () => {
               Reports
             </button>
             <button
-  onClick={() => navigate("/events-ratings")}
-  style={{
-    background: "none",
-    border: "none",
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.medium,
-    color:
-      location.pathname === "/events-ratings"
-        ? theme.colors.primary.main
-        : theme.colors.text.secondary,
-    cursor: "pointer",
-    padding: theme.spacing[2],
-    textDecoration: "none",
-    borderBottom:
-      location.pathname === "/events-ratings"
-        ? `2px solid ${theme.colors.primary.main}`
-        : "2px solid transparent",
-    transition: "all 0.2s ease",
-    fontFamily: theme.typography.fontFamily.primary,
-  }}
-  onMouseEnter={(e) => {
-    if (location.pathname !== "/events-ratings") {
-      e.target.style.color = theme.colors.primary.main;
-    }
-  }}
-  onMouseLeave={(e) => {
-    if (location.pathname !== "/events-ratings") {
-      e.target.style.color = theme.colors.text.secondary;
-    }
-  }}
->
-  Events Ratings
-</button>
+              onClick={() => navigate("/events-ratings")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color:
+                  location.pathname === "/events-ratings"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom:
+                  location.pathname === "/events-ratings"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/events-ratings") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/events-ratings") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              Events Ratings
+            </button>
           </>
         ) : user && user.role === "admin" ? (
           <>
@@ -594,39 +594,39 @@ const Navbar = () => {
               Reports
             </button>
             <button
-  onClick={() => navigate("/events-ratings")}
-  style={{
-    background: "none",
-    border: "none",
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.medium,
-    color:
-      location.pathname === "/events-ratings"
-        ? theme.colors.primary.main
-        : theme.colors.text.secondary,
-    cursor: "pointer",
-    padding: theme.spacing[2],
-    textDecoration: "none",
-    borderBottom:
-      location.pathname === "/events-ratings"
-        ? `2px solid ${theme.colors.primary.main}`
-        : "2px solid transparent",
-    transition: "all 0.2s ease",
-    fontFamily: theme.typography.fontFamily.primary,
-  }}
-  onMouseEnter={(e) => {
-    if (location.pathname !== "/events-ratings") {
-      e.target.style.color = theme.colors.primary.main;
-    }
-  }}
-  onMouseLeave={(e) => {
-    if (location.pathname !== "/events-ratings") {
-      e.target.style.color = theme.colors.text.secondary;
-    }
-  }}
->
-  Events Ratings
-</button>
+              onClick={() => navigate("/events-ratings")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color:
+                  location.pathname === "/events-ratings"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom:
+                  location.pathname === "/events-ratings"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/events-ratings") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/events-ratings") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              Events Ratings
+            </button>
           </>
         ) : isVendor ? (
           <>

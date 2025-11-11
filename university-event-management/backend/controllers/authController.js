@@ -3,6 +3,7 @@ const { validationResult } = require("express-validator");
 const User = require("../models/User");
 const Vendor = require("../models/Vendor");
 const crypto = require("crypto");
+const { uploadImage } = require("../utils/imageKitUploader");
 
 // Helper function to determine if email is a vendor email
 const isVendorEmail = (email) => {
@@ -263,7 +264,24 @@ const registerVendor = async (req, res, next) => {
       description,
       servicesOffered,
       interestedEventTypes,
+      taxCard,
+      logo,
     } = req.body;
+
+    // Validate required file uploads
+    if (!taxCard) {
+      return res.status(400).json({
+        success: false,
+        message: "Tax card document is required",
+      });
+    }
+
+    if (!logo) {
+      return res.status(400).json({
+        success: false,
+        message: "Company logo is required",
+      });
+    }
 
     // Check if vendor already exists
     const existingVendor = await Vendor.findByEmail(email);
@@ -330,6 +348,50 @@ const registerVendor = async (req, res, next) => {
       vendorData.servicesOffered = servicesOffered;
     }
 
+    // Upload tax card and logo to ImageKit
+    try {
+      console.log("📤 Uploading tax card and logo to ImageKit...");
+
+      // Upload tax card
+      const taxCardFileName = `tax_card_${email.replace(
+        /[^a-zA-Z0-9]/g,
+        "_"
+      )}_${Date.now()}`;
+      const taxCardFolder = "vendors/tax-cards";
+      const taxCardUrl = await uploadImage(
+        taxCard,
+        taxCardFileName,
+        taxCardFolder
+      );
+
+      // Upload logo
+      const logoFileName = `logo_${email.replace(
+        /[^a-zA-Z0-9]/g,
+        "_"
+      )}_${Date.now()}`;
+      const logoFolder = "vendors/logos";
+      const logoUrl = await uploadImage(logo, logoFileName, logoFolder);
+
+      // Add uploaded URLs to vendor data (as simple strings)
+      vendorData.taxCardUrl = taxCardUrl;
+      vendorData.taxCardUploadedAt = new Date();
+      vendorData.taxCardVerified = false;
+
+      vendorData.logoUrl = logoUrl;
+      vendorData.logoUploadedAt = new Date();
+
+      console.log("✅ Files uploaded successfully");
+      console.log("Tax Card URL:", taxCardUrl);
+      console.log("Logo URL:", logoUrl);
+    } catch (uploadError) {
+      console.error("🚨 [ERROR] File upload failed:", uploadError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to upload documents. Please try again.",
+        error: uploadError.message,
+      });
+    }
+
     // Create vendor
     const vendor = await Vendor.create(vendorData);
 
@@ -353,6 +415,7 @@ const registerVendor = async (req, res, next) => {
           businessRegistrationNumber: vendor.businessRegistrationNumber,
           verificationStatus: vendor.verificationStatus,
           industry: vendor.industry,
+          logoUrl: vendor.logoUrl,
         },
       },
     });
@@ -627,6 +690,7 @@ const login = async (req, res, next) => {
           verificationStatus: account.verificationStatus,
           industry: account.industry,
           interestedEventTypes: account.interestedEventTypes,
+          logoUrl: account.logoUrl,
         },
       };
     } else {
@@ -702,6 +766,7 @@ const getProfile = async (req, res, next) => {
             description: vendor.description,
             servicesOffered: vendor.servicesOffered,
             interestedEventTypes: vendor.interestedEventTypes,
+            logoUrl: vendor.logoUrl,
             createdAt: vendor.createdAt,
             lastLogin: vendor.lastLogin,
           },
