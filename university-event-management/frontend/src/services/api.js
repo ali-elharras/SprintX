@@ -629,3 +629,44 @@ export const favoritesAPI = {
     return res.data;
   },
 };
+
+// ============================================
+// BOOTH POLL API ENDPOINTS
+// ============================================
+export const boothPollAPI = {
+  getAllPolls: (params = {}, cancelToken = null) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return retryRequest(async () =>
+      api.get(`/booth-polls${queryParams ? `?${queryParams}` : ""}`, {
+        ...(cancelToken && { cancelToken: cancelToken.token }),
+      })
+    );
+  },
+
+  getPoll: (id, cancelToken = null) =>
+    retryRequest(async () =>
+      api.get(`/booth-polls/${id}`, {
+        ...(cancelToken && { cancelToken: cancelToken.token }),
+      })
+    ),
+
+  createPoll: (pollData) =>
+    retryRequest(async () =>
+      api.post('/booth-polls', pollData)
+    ),
+
+  voteOnPoll: (pollId, vendorIndex) =>
+    retryRequest(async () =>
+      api.post(`/booth-polls/${pollId}/vote`, { vendorIndex })
+    ),
+
+  closePoll: (pollId) =>
+    retryRequest(async () =>
+      api.post(`/booth-polls/${pollId}/close`, {})
+    ),
+
+  deletePoll: (pollId) =>
+    retryRequest(async () =>
+      api.delete(`/booth-polls/${pollId}`)
+    ),
+};
