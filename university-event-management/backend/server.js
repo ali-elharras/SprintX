@@ -23,6 +23,8 @@ const workshopRoutes = require("./routes/workshop");
 const notificationRoutes = require("./routes/notifications");
 const reportRoutes = require("./routes/report");
 const paymentRoutes = require("./routes/payments");
+const eventPaymentRoutes = require("./routes/eventPayments");
+const walletRoutes = require("./routes/wallet");
 const LoyaltyRoutes = require("./routes/LoyaltyRoutes");
 //const eventReviewRoutes = require("./routes/eventReviews");
 const favoritesRoutes = require("./routes/favorites");
@@ -133,6 +135,10 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/reports", reportRoutes);
 // Payment routes (for vendor payments)
 app.use("/api/payments", paymentRoutes);
+// Event payment routes (for student/staff event payments)
+app.use("/api/payments", eventPaymentRoutes);
+// Wallet routes (for user wallet management)
+app.use("/api/wallet", walletRoutes);
 //app.use("/api/event-reviews", eventReviewRoutes);
 
 // Workshop routes removed as feature deprecated

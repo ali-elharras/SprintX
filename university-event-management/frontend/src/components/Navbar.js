@@ -284,6 +284,41 @@ const Navbar = () => {
             </button>
 
             <button
+              onClick={() => navigate("/wallet")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color:
+                  location.pathname === "/wallet"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom:
+                  location.pathname === "/wallet"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/wallet") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/wallet") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              💳 Wallet
+            </button>
+
+            <button
               onClick={() => navigate("/gym-schedule")}
               style={{
                 background: "none",
@@ -770,6 +805,41 @@ const Navbar = () => {
               }}
             >
               Favorites
+            </button>
+
+            <button
+              onClick={() => navigate("/wallet")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color:
+                  location.pathname === "/wallet"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom:
+                  location.pathname === "/wallet"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/wallet") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/wallet") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              💳 Wallet
             </button>
 
             {user.role == "student" && (

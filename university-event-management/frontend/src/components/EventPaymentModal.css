@@ -1,0 +1,193 @@
+/* EventPaymentModal Animations and Enhanced Styles */
+
+@keyframes spin {
+  0% { 
+    transform: rotate(0deg); 
+  }
+  100% { 
+    transform: rotate(360deg); 
+  }
+}
+
+@keyframes fadeInUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(30px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+  50% { 
+    opacity: 0.8; 
+    transform: scale(1.02); 
+  }
+}
+
+@keyframes slideInRight {
+  from { 
+    opacity: 0; 
+    transform: translateX(30px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateX(0); 
+  }
+}
+
+@keyframes glow {
+  0%, 100% { 
+    box-shadow: 0 0 5px rgba(102, 126, 234, 0.5); 
+  }
+  50% { 
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.8); 
+  }
+}
+
+/* Enhanced loading spinner */
+.payment-loading-spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+/* Payment modal container animation */
+.payment-modal-container {
+  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Payment method option animations */
+.payment-method-option {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.payment-method-option:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+}
+
+.payment-method-selected {
+  animation: pulse 2s infinite;
+}
+
+/* Header animation */
+.payment-header {
+  animation: slideInRight 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s both;
+}
+
+/* Event info animation */
+.payment-event-info {
+  animation: slideInRight 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.2s both;
+}
+
+/* Cost info animation */
+.payment-cost-info {
+  animation: slideInRight 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.3s both;
+}
+
+/* Payment methods animation */
+.payment-methods {
+  animation: slideInRight 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.4s both;
+}
+
+/* Button hover effects */
+.payment-button-primary {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.payment-button-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.payment-button-primary:hover::before {
+  left: 100%;
+}
+
+.payment-button-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5) !important;
+}
+
+/* Security badge animation */
+.payment-security-badge {
+  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.6s both;
+}
+
+/* Gradient text effect */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Floating effect for icons */
+.floating-icon {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* Enhanced focus styles */
+.payment-method-option:focus,
+.payment-button-primary:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .payment-modal-container {
+    padding: 16px;
+    max-width: 90vw;
+  }
+  
+  .payment-method-option {
+    padding: 16px;
+  }
+  
+  .payment-button-primary {
+    padding: 16px 24px;
+    font-size: 16px;
+  }
+}

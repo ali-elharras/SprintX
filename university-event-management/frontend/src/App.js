@@ -38,6 +38,7 @@ import AdminComments from './pages/AdminComments';
 import FavoritesPage from "./pages/FavoritesPage";
 import EventDetailsPage from "./pages/EventDetailsPage";
 import LoyaltyProgram from "./pages/LoyaltyProgram";
+import WalletPage from "./pages/WalletPage";
 // ---------------------------
 // Protected Route Components
 // ---------------------------
@@ -342,6 +343,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <FavoritesPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/wallet",
+    element: (
+      <ProtectedRoute>
+        <WalletPage />
       </ProtectedRoute>
     ),
   },

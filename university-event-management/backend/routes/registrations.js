@@ -2,6 +2,7 @@ const express = require("express");
 const { body } = require("express-validator");
 const {
   registerForEvent,
+  registerForPaidEvent,
   getMyRegistrations,
   getEventRegistrations,
   cancelRegistration,
@@ -110,6 +111,9 @@ const registrationValidation = [
 
 // Registration route with optional authentication
 router.post("/", optionalAuth, registrationValidation, registerForEvent);
+
+// Paid event registration route (requires authentication)
+router.post("/paid-event", protect, registrationValidation, registerForPaidEvent);
 
 // Protected routes (require authentication)
 router.use(protect);

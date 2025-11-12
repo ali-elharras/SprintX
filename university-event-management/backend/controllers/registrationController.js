@@ -614,8 +614,137 @@ const checkInParticipant = async (req, res) => {
   }
 };
 
+// @desc    Register for a paid event (requires payment before confirmation)
+// @route   POST /api/registrations/paid-event
+// @access  Private
+const registerForPaidEvent = async (req, res) => {
+  try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: errors.array(),
+      });
+    }
+
+    const { 
+      eventId, 
+      firstName, 
+      lastName, 
+      email, 
+      universityId
+    } = req.body;
+
+    // Try to find event in Event model first
+    let event = await Event.findById(eventId);
+    let isConference = false;
+    
+    // If not found in Event model, try Conference model
+    if (!event) {
+      event = await Conference.findById(eventId);
+      isConference = true;
+    }
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    // Check if event has cost (this function is only for paid events)
+    if (!event.cost || event.cost <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "This event is free. Use regular registration instead.",
+      });
+    }
+
+    // Check if event is still accepting registrations
+    if (event.status === "cancelled") {
+      return res.status(400).json({
+        success: false,
+        message: "This event has been cancelled",
+      });
+    }
+
+    // Check if registration deadline has passed
+    if (event.registrationDeadline && new Date() > new Date(event.registrationDeadline)) {
+      return res.status(400).json({
+        success: false,
+        message: "Registration deadline has passed",
+      });
+    }
+
+    // Check if event is full
+    if (event.maxParticipants && event.currentParticipants >= event.maxParticipants) {
+      return res.status(400).json({
+        success: false,
+        message: "Event is full",
+      });
+    }
+
+    // Check for existing registration
+    const existingRegistration = await Registration.findOne({
+      event: eventId,
+      $or: [
+        { email: email.toLowerCase().trim() },
+        { universityId: universityId }
+      ]
+    });
+
+    if (existingRegistration) {
+      return res.status(400).json({
+        success: false,
+        message: "You are already registered for this event",
+      });
+    }
+
+    // Create registration data with pending payment status
+    const registrationData = {
+      event: eventId,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.toLowerCase().trim(),
+      universityId: universityId.trim(),
+      paymentStatus: "pending",
+      paymentAmount: event.cost,
+      status: "pending", // Registration is pending until payment
+    };
+
+    // If user is authenticated, link to user account
+    if (req.user) {
+      registrationData.user = req.user.id;
+    }
+
+    // Create registration
+    const registration = await Registration.create(registrationData);
+
+    // Populate the registration with event data
+    await registration.populate("event", "title type startDate endDate location cost maxParticipants currentParticipants");
+
+    res.status(201).json({
+      success: true,
+      message: "Registration created. Payment required to confirm your spot.",
+      data: registration,
+      requiresPayment: true,
+      paymentAmount: event.cost,
+    });
+  } catch (error) {
+    console.error("Error in paid event registration:", error);
+    res.status(500).json({
+      success: false,
+      message: "Registration failed",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   registerForEvent,
+  registerForPaidEvent,
   getMyRegistrations,
   getEventRegistrations,
   cancelRegistration,

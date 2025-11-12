@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import theme from "../theme";
 import Button from "./Button";
 import Input from "./Input";
+import EventPaymentModal from "./EventPaymentModal";
 import { registrationAPI } from "../services/api";
 
 // Validation schema
@@ -36,6 +37,8 @@ const registrationSchema = yup.object({
 
 const RegistrationForm = ({ event, onSuccess, onCancel }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [registrationData, setRegistrationData] = useState(null);
 
   const {
     register,
@@ -45,11 +48,13 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
     resolver: yupResolver(registrationSchema),
   });
 
+  const isPaidEvent = event?.cost && event.cost > 0;
+
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
       // Prepare registration data
-      const registrationData = {
+      const regData = {
         eventId: event._id,
         firstName: data.firstName.trim(),
         lastName: data.lastName.trim(),
@@ -58,7 +63,23 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
         role: "student", // Default role since we removed the role field
       };
 
-      const response = await registrationAPI.registerForEvent(registrationData);
+      let response;
+      
+      if (isPaidEvent) {
+        // Use paid event registration endpoint
+        response = await registrationAPI.registerForPaidEvent(regData);
+        
+        if (response.data.requiresPayment) {
+          // Show payment modal for paid events
+          setRegistrationData(response.data);
+          setShowPaymentModal(true);
+          setIsSubmitting(false);
+          return; // Don't call onSuccess yet - wait for payment
+        }
+      } else {
+        // Use regular registration for free events
+        response = await registrationAPI.registerForEvent(regData);
+      }
       
       toast.success("Registration successful!");
       // Notify other tabs/windows that a registration occurred so they can refresh
@@ -75,6 +96,11 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handlePaymentModalClose = () => {
+    setShowPaymentModal(false);
+    setRegistrationData(null);
   };
 
   return (
@@ -110,18 +136,38 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
           {event.type.charAt(0).toUpperCase() + event.type.slice(1)} â€¢{" "}
           {new Date(event.startDate).toLocaleDateString()} â€¢ {event.location}
         </p>
-        {event.cost > 0 && (
-          <p
+        {isPaidEvent && (
+          <div
             style={{
-              fontSize: theme.typography.fontSize.sm,
-              color: theme.colors.primary.main,
-              fontWeight: theme.typography.fontWeight.semibold,
+              background: theme.colors.primary.light,
+              padding: theme.spacing[3],
+              borderRadius: '8px',
               textAlign: "center",
-              marginTop: theme.spacing[2],
+              marginTop: theme.spacing[3],
+              border: `1px solid ${theme.colors.primary.main}`,
             }}
           >
-            Registration Fee: ${event.cost}
-          </p>
+            <p
+              style={{
+                fontSize: theme.typography.fontSize.base,
+                color: theme.colors.primary.dark,
+                fontWeight: theme.typography.fontWeight.semibold,
+                margin: 0,
+                marginBottom: theme.spacing[1],
+              }}
+            >
+              💳 Paid Event - ${event.cost}
+            </p>
+            <p
+              style={{
+                fontSize: theme.typography.fontSize.sm,
+                color: theme.colors.primary.dark,
+                margin: 0,
+              }}
+            >
+              Payment required after registration to secure your spot
+            </p>
+          </div>
         )}
       </div>
 
@@ -208,10 +254,20 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
               minWidth: "140px",
             }}
           >
-            {isSubmitting ? "Registering..." : "Register"}
+            {isSubmitting ? "Registering..." : isPaidEvent ? "Register & Pay" : "Register"}
           </Button>
         </div>
       </form>
+
+      {/* Payment Modal for Paid Events */}
+      {showPaymentModal && registrationData && (
+        <EventPaymentModal
+          isOpen={showPaymentModal}
+          onClose={handlePaymentModalClose}
+          registration={registrationData}
+          event={event}
+        />
+      )}
     </div>
   );
 };

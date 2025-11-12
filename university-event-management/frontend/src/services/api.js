@@ -322,6 +322,9 @@ export const registrationAPI = {
   registerForEvent: (registrationData) =>
     api.post("/registrations", registrationData),
 
+  registerForPaidEvent: (registrationData) =>
+    api.post("/registrations/paid-event", registrationData),
+
   getMyRegistrations: (params = {}, cancelToken = null) => {
     const queryParams = new URLSearchParams(params).toString();
     return retryRequest(async () => {
