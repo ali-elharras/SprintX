@@ -1051,6 +1051,280 @@ class EmailService {
     `;
   }
 
+  // Send workshop certificate of attendance email
+  async sendWorkshopCertificate(user, workshopName, workshopDate, location) {
+    console.log(
+      `📧 sendWorkshopCertificate called for user: ${user.firstName} ${user.lastName}`
+    );
+    console.log(
+      `User emails - email: ${user.email}, verificationEmail: ${user.verificationEmail}`
+    );
+
+    const fullName = `${user.firstName} ${user.lastName}`;
+    const emailsToSend = [];
+
+    // Determine which email(s) to send to
+    if (user.verificationEmail) {
+      emailsToSend.push(user.verificationEmail);
+    }
+
+    // Also send to primary email if different
+    if (user.email && user.email !== user.verificationEmail) {
+      emailsToSend.push(user.email);
+    }
+
+    if (emailsToSend.length === 0) {
+      console.error("No email addresses found for user");
+      throw new Error("User has no email address");
+    }
+
+    const formattedDate = new Date(workshopDate).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const mailOptions = {
+      from: `"SprintX" <${process.env.EMAIL_USER}>`,
+      to: emailsToSend.join(", "),
+      subject: `Certificate of Attendance - ${workshopName}`,
+      html: this.getWorkshopCertificateTemplate(
+        fullName,
+        workshopName,
+        formattedDate,
+        location
+      ),
+      text: `
+        Dear ${fullName},
+
+        Congratulations on completing the workshop "${workshopName}"!
+
+        This email serves as your official Certificate of Attendance for:
+
+        Workshop: ${workshopName}
+        Date: ${formattedDate}
+        Location: ${location}
+
+        Thank you for your participation and dedication to professional development.
+
+        Best regards,
+        The SprintX Team
+      `,
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log(
+        `✅ Workshop certificate email sent successfully to: ${emailsToSend.join(
+          ", "
+        )}`
+      );
+      console.log("Message ID:", info.messageId);
+      return info;
+    } catch (error) {
+      console.error("❌ Error sending workshop certificate email:", error);
+      throw new Error(
+        `Failed to send workshop certificate email: ${error.message}`
+      );
+    }
+  }
+
+  getWorkshopCertificateTemplate(
+    fullName,
+    workshopName,
+    formattedDate,
+    location
+  ) {
+    const currentYear = new Date().getFullYear();
+
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Certificate of Attendance - SprintX</title>
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+          }
+          .email-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            text-align: center;
+            color: white;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+          }
+          .content {
+            background: white;
+            padding: 40px 30px;
+            color: #333333;
+          }
+          .content p {
+            color: #333333 !important;
+          }
+          .content h2 {
+            color: #667eea;
+            margin-top: 0;
+          }
+          .certificate-box {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border: 3px solid #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            margin: 30px 0;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+          }
+          .certificate-box h3 {
+            color: #667eea;
+            font-size: 24px;
+            margin: 0 0 20px 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+          }
+          .certificate-box .recipient {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            margin: 20px 0;
+            font-style: italic;
+          }
+          .workshop-details {
+            background-color: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+          .workshop-details strong {
+            color: #667eea;
+            display: inline-block;
+            min-width: 100px;
+          }
+          .workshop-details p {
+            margin: 10px 0;
+            font-size: 16px;
+          }
+          .achievement-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            margin: 20px 0;
+            font-size: 18px;
+          }
+          .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+          }
+          .footer a {
+            color: #667eea;
+            text-decoration: none;
+          }
+          .signature {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+            text-align: center;
+          }
+          .signature p {
+            margin: 5px 0;
+            font-style: italic;
+            color: #666;
+          }
+          .congratulations {
+            text-align: center;
+            font-size: 48px;
+            margin: 20px 0;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <h1>🎓 Certificate of Attendance</h1>
+          </div>
+          
+          <div class="content">
+            <div class="congratulations">🎉</div>
+            
+            <h2 style="text-align: center;">Congratulations!</h2>
+            
+            <p style="text-align: center; font-size: 18px;">
+              This email serves as your official certificate of attendance for successfully completing the workshop.
+            </p>
+
+            <div class="certificate-box">
+              <h3>Certificate of Attendance</h3>
+              <p style="font-size: 16px; color: #666; margin: 10px 0;">This certifies that</p>
+              <div class="recipient">${fullName}</div>
+              <p style="font-size: 16px; color: #666; margin: 10px 0;">has successfully attended</p>
+              <div class="achievement-badge">${workshopName}</div>
+              <p style="font-size: 14px; color: #999; margin-top: 20px;">
+                Completed on ${formattedDate}<br>
+                ${location}
+              </p>
+            </div>
+
+            <div class="workshop-details">
+              <h3 style="color: #667eea; margin-top: 0;">Workshop Details</h3>
+              <p><strong>Workshop:</strong> ${workshopName}</p>
+              <p><strong>Date:</strong> ${formattedDate}</p>
+              <p><strong>Location:</strong> ${location}</p>
+              <p><strong>Year:</strong> ${currentYear}</p>
+            </div>
+
+            <p style="text-align: center; margin: 30px 0;">
+              Thank you for your participation and commitment to continuous learning and professional development. 
+              Your active engagement in this workshop contributes to building a stronger academic community.
+            </p>
+
+            <div class="signature">
+              <p><strong>SprintX Event Management System</strong></p>
+              <p>German University in Cairo</p>
+              <p style="font-size: 12px; margin-top: 10px;">
+                This is an official certificate of attendance issued by SprintX.
+              </p>
+            </div>
+
+            <p style="margin-top: 30px; font-size: 14px; color: #666; text-align: center;">
+              Keep this email for your records. You may present this certificate as proof of attendance for professional development purposes.
+            </p>
+          </div>
+          
+          <div class="footer">
+            <p><strong>SprintX Event Management System</strong></p>
+            <p>If you have questions, contact us at <a href="mailto:support@campusevents.edu">support@campusevents.edu</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
   // Send application approval email with payment information
   async sendApplicationApprovalEmail(
     to,
