@@ -10,7 +10,7 @@ import { applicationServices } from "../services/api";
 import { favoritesAPI } from "../services/api";
 import toast from "react-hot-toast";
 
-const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit, onEditTrip, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive, onExportRegistrations }) => {
+const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit, onEditTrip, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive, onExportRegistrations, onRestrict }) => {
   // Normalize event/conference object for consistent display
   const normalizedEvent = {
     ...event,
@@ -234,6 +234,7 @@ const handleDeleteWorkshop = async () => {
   })();
 
   const hasStarted = eventHasStarted(normalizedEvent);
+  const hasEnded = new Date(normalizedEvent.endDate) < new Date();
 
   return (
     <>
@@ -764,6 +765,20 @@ const handleDeleteWorkshop = async () => {
                     }}
                   >
                     Export Registrations
+                  </Button>
+                )}
+                {isEventsOffice && !hasEnded && onRestrict && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => onRestrict(normalizedEvent)}
+                    style={{
+                      width: "100%",
+                      minHeight: "44px",
+                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Restrict Event
                   </Button>
                 )}
               </>
