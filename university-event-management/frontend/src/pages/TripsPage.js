@@ -194,6 +194,15 @@ const TripsPage = () => {
                       setEditEvent(evt); 
                       setEditOpen(true);
                       console.log('Modal state set - editOpen should be true now');
+                    }}
+                    onDelete={async (evt) => {
+                      try {
+                        await eventAPI.deleteEvent(evt._id || evt.id);
+                        toast.success('Trip deleted');
+                        fetchTrips();
+                      } catch (err) {
+                        toast.error(err?.response?.data?.message || err.message || 'Failed to delete trip');
+                      }
                     }} 
                   />
                 ))}

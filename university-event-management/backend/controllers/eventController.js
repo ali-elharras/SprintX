@@ -623,7 +623,7 @@ const deleteEvent = async (req, res) => {
     const Registration = require("../models/Registration");
     const registrationCount = await Registration.countDocuments({
       event: req.params.id,
-      status: { $in: ["confirmed", "pending", "attended"] }, // Only count active registrations
+      status: { $in: ["confirmed", "attended"] }, // Exclude pending/unpaid registrations
     });
 
     if (registrationCount > 0) {

@@ -8,6 +8,7 @@ import Input from "../components/Input";
 import Select from "../components/Select";
 import Navbar from "../components/Navbar";
 import ConferenceModal from "./ConferenceModal";
+import EventEditModal from "../components/EventEditModal";
 import LoadingScreen from "../components/LoadingScreen";
 import api, { eventAPI, workshopAPI, registrationAPI, createCancelTokenSource, applicationServices, boothPollAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
@@ -2263,7 +2264,7 @@ const EventsPage = () => {
                       setEditingConference(conference);
                       setShowConferenceModal(true);
                     }}
-                    onDeleteEvent={handleDeleteEvent}
+                    onDelete={handleDeleteEvent}
                     onEditTrip={(trip) => {
                       setEditingTrip(trip);
                       setEditTripOpen(true);
@@ -3047,6 +3048,17 @@ const EventsPage = () => {
             setEditingConference(null);
           }}
         />
+        {editTripOpen && (
+          <EventEditModal
+            open={editTripOpen}
+            event={editingTrip}
+            onClose={() => setEditTripOpen(false)}
+            onSaved={() => {
+              setEditTripOpen(false);
+              fetchEvents();
+            }}
+          />
+        )}
         {renderEditModal()}
         <EditWorkshopModal
           open={editWorkshopModalOpen}

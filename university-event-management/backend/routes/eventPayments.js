@@ -17,8 +17,8 @@ router.use(protect);
 // Validation middleware
 const createPaymentValidation = [
   body("paymentMethod")
-    .isIn(["stripe", "wallet"])
-    .withMessage("Payment method must be either 'stripe' or 'wallet'"),
+    .isIn(["stripe"]) 
+    .withMessage("Payment method must be 'stripe'"),
 ];
 
 const verifyPaymentValidation = [

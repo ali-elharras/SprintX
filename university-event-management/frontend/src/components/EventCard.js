@@ -126,7 +126,8 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
     return { status: "Registration Open", color: theme.colors.success.main };
   };
 
-  const handleEditClick = () => {
+  const handleEditClick = (e) => {
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
     if (onEditConference && normalizedEvent.type === "conference") {
       onEditConference(normalizedEvent);
     } else if (onEditTrip && normalizedEvent.type === "trip") {
@@ -138,14 +139,16 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
     }
   };
 
-const handleDeleteConference = async () => {
+const handleDeleteConference = async (e) => {
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
   // Call parent delete handler
   if (onDelete) {
     onDelete(normalizedEvent);
   }
 };
 
-const handleDeleteWorkshop = async () => {
+const handleDeleteWorkshop = async (e) => {
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
   // Check if there are registrations before triggering delete
   if (normalizedEvent.currentParticipants > 0) {
     toast.error("This workshop cannot be deleted because there are registered users.");
@@ -158,7 +161,8 @@ const handleDeleteWorkshop = async () => {
   }
 };
 
-  const handleDeleteEvent = async () => {
+  const handleDeleteEvent = async (e) => {
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
     // Check if there are registrations before triggering delete
     if (normalizedEvent.currentParticipants > 0) {
       toast.error("This event cannot be deleted because there are registered participants.");
@@ -693,7 +697,7 @@ const handleDeleteWorkshop = async () => {
             ) : isEventsOffice ? (
               <>
                 {/* Events Office: Edit shown only for events they own and only if event has NOT started */}
-                {isOwner && !hasStarted && normalizedEvent.type !== 'workshop' && (
+                {(isOwner || onEdit || onEditTrip || onEditConference) && !hasStarted && normalizedEvent.type !== 'workshop' && (
                   <Button
                     variant="primary"
                     onClick={handleEditClick}
@@ -709,7 +713,7 @@ const handleDeleteWorkshop = async () => {
                 )}
 
                 {/* Events Office: Delete shown only for events they own, only if NOT started AND participants === 0 */}
-                {isOwner && !hasStarted && normalizedEvent.currentParticipants === 0 && (
+                {(isOwner || onDelete) && !hasStarted && normalizedEvent.currentParticipants === 0 && (
                   <Button
                     variant="danger"
                     onClick={handleDeleteEvent}

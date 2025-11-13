@@ -315,7 +315,7 @@ const Navbar = () => {
                 }
               }}
             >
-              💳 Wallet
+            Wallet
             </button>
 
             <button

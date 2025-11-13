@@ -304,7 +304,9 @@ const styles = {
   buttonContainer: {
     display: 'flex',
     gap: theme.spacing[4],
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    flexWrap: 'wrap',
     marginTop: theme.spacing[6],
     paddingTop: theme.spacing[4],
     borderTop: '1px solid rgba(102, 126, 234, 0.1)',
@@ -313,10 +315,11 @@ const styles = {
   cancelButton: {
     flex: '0 0 auto',
     minWidth: '120px',
+    width: 'auto',
   },
   
   payButton: {
-    flex: '1',
+    flex: '0 0 auto',
     minWidth: '180px',
     background: theme.colors.primary.gradient,
     border: 'none',
@@ -325,6 +328,8 @@ const styles = {
     fontWeight: theme.typography.fontWeight.bold,
     padding: `${theme.spacing[3]}px ${theme.spacing[6]}px`,
     borderRadius: '16px',
+    display: 'inline-flex',
+    alignItems: 'center',
     cursor: 'pointer',
     transition: 'all 0.3s ease',
     boxShadow: '0 6px 20px rgba(102, 126, 234, 0.3)',
@@ -413,27 +418,16 @@ const styles = {
 
 const EventPaymentModal = ({ isOpen, onClose, registration, event }) => {
   const [loading, setLoading] = useState(false);
-  const [walletBalance, setWalletBalance] = useState(null);
-  const [selectedMethod, setSelectedMethod] = useState('wallet');
+  // Stripe-only for now
+  const [selectedMethod, setSelectedMethod] = useState('stripe');
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
-      fetchWalletBalance();
-      setSelectedMethod('wallet');
+      setSelectedMethod('stripe');
       setError(null);
     }
   }, [isOpen]);
-
-  const fetchWalletBalance = async () => {
-    try {
-      const response = await walletAPI.getBalance();
-      setWalletBalance(response.data.balance);
-    } catch (error) {
-      console.error('Error fetching wallet balance:', error);
-      setWalletBalance(0);
-    }
-  };
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -454,20 +448,14 @@ const EventPaymentModal = ({ isOpen, onClose, registration, event }) => {
   };
 
   const calculateProcessingFee = (amount, method) => {
-    if (method === 'stripe') {
-      return (amount * 0.029) + 0.30; // 2.9% + $0.30
-    }
+    // Stripe sandbox: 2.9% + $0.30
+    if (method === 'stripe') return (amount * 0.029) + 0.30;
     return 0;
   };
 
   const handlePayment = async () => {
     if (!selectedMethod) {
       setError('Please select a payment method');
-      return;
-    }
-
-    if (selectedMethod === 'wallet' && walletBalance < event.cost) {
-      setError('Insufficient wallet balance');
       return;
     }
 
@@ -479,16 +467,9 @@ const EventPaymentModal = ({ isOpen, onClose, registration, event }) => {
         paymentMethod: selectedMethod,
       });
 
-      if (selectedMethod === 'wallet') {
-        // Wallet payment completed immediately
-        toast.success('Payment completed successfully!');
-        onClose();
-        // Refresh the page or update registration status
-        window.location.reload();
-      } else {
-        // Redirect to Stripe checkout
-        window.location.href = response.data.checkoutUrl;
-      }
+      // Redirect to Stripe checkout to enter card details
+      // eventPaymentAPI.createPayment returns response.data already
+      window.location.href = response.checkoutUrl;
     } catch (error) {
       console.error('Payment error:', error);
       setError(error.message || 'Payment failed. Please try again.');
@@ -504,7 +485,7 @@ const EventPaymentModal = ({ isOpen, onClose, registration, event }) => {
   const eventCost = event.cost || 0;
   const processingFee = calculateProcessingFee(eventCost, selectedMethod);
   const totalAmount = eventCost + processingFee;
-  const hasInsufficientBalance = selectedMethod === 'wallet' && walletBalance < eventCost;
+  const hasInsufficientBalance = false; // wallet disabled
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} ariaLabel="Payment for event">
@@ -549,48 +530,11 @@ const EventPaymentModal = ({ isOpen, onClose, registration, event }) => {
           </div>
         </div>
 
-        {/* Enhanced Payment Methods */}
+        {/* Stripe-only Payment Method */}
         <div style={styles.paymentMethods} className="payment-methods">
           <h3 style={styles.methodTitle}>💳 Choose Payment Method</h3>
 
-          {/* Enhanced Wallet Payment */}
-          <div
-            style={{
-              ...styles.methodOption,
-              ...(selectedMethod === 'wallet' && styles.methodOptionSelected),
-              ...(hasInsufficientBalance && styles.methodOptionDisabled),
-            }}
-            className={`payment-method-option ${selectedMethod === 'wallet' ? 'payment-method-selected' : ''}`}
-            onClick={() => !hasInsufficientBalance && setSelectedMethod('wallet')}
-            tabIndex={0}
-            role="button"
-            aria-pressed={selectedMethod === 'wallet'}
-          >
-            {selectedMethod === 'wallet' && <div style={styles.methodOptionSelectedGlow}></div>}
-            {selectedMethod === 'wallet' && (
-              <div style={styles.methodBadge}>✓ Selected</div>
-            )}
-            <div style={{ ...styles.methodIcon, ...styles.walletIcon }} className="floating-icon">
-              🪙
-            </div>
-            <div style={styles.methodInfo}>
-              <div style={styles.methodName}>💰 Wallet Balance</div>
-              <div style={styles.methodDescription}>
-                Pay instantly using your digital wallet balance
-              </div>
-              <div 
-                style={{
-                  ...styles.walletBalance,
-                  ...(hasInsufficientBalance ? styles.insufficientBalance : styles.walletBalancePositive),
-                }}
-              >
-                💵 Available: {walletBalance !== null ? formatCurrency(walletBalance) : 'Loading...'}
-                {hasInsufficientBalance && ' ❌ (Insufficient)'}
-              </div>
-            </div>
-          </div>
-
-          {/* Enhanced Stripe Payment */}
+          {/* Stripe Payment */}
           <div
             style={{
               ...styles.methodOption,
@@ -666,11 +610,6 @@ const EventPaymentModal = ({ isOpen, onClose, registration, event }) => {
               <>
                 <span className="payment-loading-spinner"></span>
                 Processing Payment...
-              </>
-            ) : selectedMethod === 'wallet' ? (
-              <>
-                <span className="floating-icon">💰</span>
-                {` Pay ${formatCurrency(eventCost)}`}
               </>
             ) : (
               <>

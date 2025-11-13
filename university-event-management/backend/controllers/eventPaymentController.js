@@ -13,11 +13,11 @@ const createEventPayment = async (req, res) => {
     const { registrationId } = req.params;
     const { paymentMethod } = req.body; // 'stripe' or 'wallet'
     
-    // Validate payment method
-    if (!["stripe", "wallet"].includes(paymentMethod)) {
+    // Validate payment method (Stripe-only for now)
+    if (!["stripe"].includes(paymentMethod)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid payment method. Use 'stripe' or 'wallet'",
+        message: "Invalid payment method. Only 'stripe' is supported at the moment",
       });
     }
     
@@ -79,62 +79,7 @@ const createEventPayment = async (req, res) => {
       dueDate: registration.event.startDate,
     });
     
-    if (paymentMethod === "wallet") {
-      // Process wallet payment immediately
-      try {
-        const wallet = await Wallet.findOrCreateForUser(req.user.id);
-        
-        // Check wallet balance
-        if (wallet.balance < eventCost) {
-          payment.status = "failed";
-          await payment.save();
-          
-          return res.status(400).json({
-            success: false,
-            message: "Insufficient wallet balance",
-            data: {
-              required: eventCost,
-              available: wallet.balance,
-              shortfall: eventCost - wallet.balance,
-            },
-          });
-        }
-        
-        // Deduct from wallet
-        const transaction = await wallet.deduct(
-          eventCost,
-          `Payment for ${registration.event.title}`,
-          {
-            entityType: "EventPayment",
-            entityId: payment._id,
-          }
-        );
-        
-        // Mark payment as completed
-        await payment.markCompleted({ walletTransactionId: transaction._id });
-        
-        // Update registration payment and confirmation status
-        registration.paymentStatus = "paid";
-        registration.paymentAmount = eventCost;
-        registration.status = "confirmed"; // Confirm the registration
-        await registration.save();
-        
-        res.status(200).json({
-          success: true,
-          message: "Payment completed successfully using wallet",
-          data: payment,
-        });
-        
-      } catch (walletError) {
-        payment.status = "failed";
-        await payment.save();
-        
-        res.status(400).json({
-          success: false,
-          message: walletError.message,
-        });
-      }
-    } else {
+    if (paymentMethod === "stripe") {
       // Create Stripe checkout session
       try {
         const session = await stripe.checkout.sessions.create({
@@ -189,7 +134,7 @@ const createEventPayment = async (req, res) => {
           error: stripeError.message,
         });
       }
-    }
+  }
   } catch (error) {
     console.error("Error creating event payment:", error);
     res.status(500).json({

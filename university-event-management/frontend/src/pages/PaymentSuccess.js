@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { verifyPayment } from '../services/payment';
+import { eventPaymentAPI } from '../services/wallet';
 import toast from 'react-hot-toast';
 import theme from '../theme';
 import Navbar from '../components/Navbar';
@@ -84,18 +85,32 @@ const PaymentSuccess = () => {
   const [success, setSuccess] = useState(false);
 
   const sessionId = searchParams.get('session_id');
+  const paymentId = searchParams.get('payment_id'); // for event payments
   const applicationType = searchParams.get('type');
   const applicationId = searchParams.get('applicationId');
 
   useEffect(() => {
     const verify = async () => {
-      if (!sessionId || !applicationType || !applicationId) {
-        toast.error('Invalid payment session');
-        setVerifying(false);
-        return;
-      }
-
       try {
+        // Event payments flow (Stripe Checkout success)
+        if (sessionId && paymentId) {
+          const res = await eventPaymentAPI.verifyStripePayment({ sessionId, paymentId });
+          if (res.success) {
+            setSuccess(true);
+            toast.success('Event payment verified successfully!');
+          } else {
+            toast.error(res.message || 'Payment verification failed');
+          }
+          setVerifying(false);
+          return;
+        }
+
+        // Vendor/application payments flow
+        if (!sessionId || !applicationType || !applicationId) {
+          toast.error('Invalid payment session');
+          setVerifying(false);
+          return;
+        }
         const response = await verifyPayment(applicationType, applicationId, sessionId);
         if (response.success) {
           setSuccess(true);
@@ -115,7 +130,12 @@ const PaymentSuccess = () => {
   }, [sessionId, applicationType, applicationId]);
 
   const handleGoToDashboard = () => {
-    navigate('/vendor/dashboard');
+    if (paymentId) {
+      // Event payment: send user to My Registrations
+      navigate('/my-registrations');
+    } else {
+      navigate('/vendor/dashboard');
+    }
   };
 
   return (
@@ -137,7 +157,8 @@ const PaymentSuccess = () => {
                 </div>
                 <h1 style={styles.title}>Payment Successful!</h1>
                 <p style={styles.message}>
-                  Your payment has been processed successfully. You can now access your participation details.
+                  Your payment has been processed successfully.
+                  {paymentId ? ' Your registration is now confirmed.' : ' You can now access your participation details.'}
                 </p>
                 <button style={styles.button} onClick={handleGoToDashboard}>
                   Go to Dashboard

@@ -175,12 +175,13 @@ const getMyRegistrations = async (req, res) => {
   try {
     const { filter, search, sortBy = 'startDate', sortOrder = 'asc' } = req.query;
     
-    // Build the query to find user's registrations
+    // Build the query to find user's registrations (exclude pending/unpaid)
     let query = {
       $or: [
         { user: req.user.id },
         { email: req.user.email }
-      ]
+      ],
+      status: { $in: ["confirmed", "attended"] }
     };
 
     // Find registrations
@@ -225,8 +226,8 @@ const getMyRegistrations = async (req, res) => {
       })
     );
 
-    // Filter out null values (where event was not found)
-    const validRegistrations = populatedRegistrations.filter(reg => reg !== null);
+  // Filter out null values (where event was not found)
+  const validRegistrations = populatedRegistrations.filter(reg => reg !== null);
 
     // Categorize events into upcoming and past
     const now = new Date();

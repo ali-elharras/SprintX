@@ -60,7 +60,9 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
         lastName: data.lastName.trim(),
         email: data.email.toLowerCase().trim(),
         universityId: data.universityId.trim(),
-        role: "student", // Default role since we removed the role field
+        // Provide minimal fields to satisfy backend validation
+        role: "student",
+        yearOfStudy: 1,
       };
 
       let response;
@@ -70,8 +72,8 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
         response = await registrationAPI.registerForPaidEvent(regData);
         
         if (response.data.requiresPayment) {
-          // Show payment modal for paid events
-          setRegistrationData(response.data);
+          // Show payment modal for paid events (store actual registration object)
+          setRegistrationData(response.data.data);
           setShowPaymentModal(true);
           setIsSubmitting(false);
           return; // Don't call onSuccess yet - wait for payment
