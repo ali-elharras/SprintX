@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import theme from '../theme';
 import { createRegistrationCheckoutSession, createGymCheckoutSession } from '../services/payment';
+import { walletAPI } from '../services/wallet';
 import { useAuth } from '../context/AuthContext';
 
 const PaymentModal = ({ 
   isOpen, 
   onClose, 
-  registrationId, 
+  registrationId, // Legacy - for old pending registrations
+  registrationData, // New - registration data before payment
   gymRegistrationId,
   amount, 
   title,
@@ -16,6 +18,28 @@ const PaymentModal = ({
   const { user } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState('stripe');
   const [processing, setProcessing] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [loadingBalance, setLoadingBalance] = useState(true);
+
+  // Fetch wallet balance when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchWalletBalance();
+    }
+  }, [isOpen]);
+
+  const fetchWalletBalance = async () => {
+    try {
+      setLoadingBalance(true);
+      const response = await walletAPI.getBalance();
+      setWalletBalance(response.data.balance || 0);
+    } catch (error) {
+      console.error('Error fetching wallet balance:', error);
+      setWalletBalance(0);
+    } finally {
+      setLoadingBalance(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -29,8 +53,12 @@ const PaymentModal = ({
     try {
       let response;
       
-      if (type === 'event' && registrationId) {
-        response = await createRegistrationCheckoutSession(registrationId, paymentMethod);
+      if (type === 'event') {
+        // Use registrationData for new flow, registrationId for legacy
+        response = await createRegistrationCheckoutSession(
+          registrationData || registrationId, 
+          paymentMethod
+        );
       } else if (type === 'gym' && gymRegistrationId) {
         response = await createGymCheckoutSession(gymRegistrationId, paymentMethod);
       } else {
@@ -55,8 +83,7 @@ const PaymentModal = ({
     }
   };
 
-  const userBalance = user?.balance || 0;
-  const hasInsufficientBalance = paymentMethod === 'balance' && userBalance < amount;
+  const hasInsufficientBalance = paymentMethod === 'balance' && walletBalance < amount;
 
   return (
     <div 
@@ -74,7 +101,10 @@ const PaymentModal = ({
         zIndex: 10000,
         padding: theme.spacing[4],
       }}
-      onClick={onClose}
+      onClick={(e) => {
+        // Prevent closing by clicking overlay
+        e.stopPropagation();
+      }}
     >
       <div 
         style={{
@@ -225,9 +255,39 @@ const PaymentModal = ({
               <div style={{
                 fontSize: theme.typography.fontSize.xs,
                 color: hasInsufficientBalance ? theme.colors.error.main : theme.colors.text.secondary,
+                display: 'flex',
+                alignItems: 'center',
+                gap: theme.spacing[2],
               }}>
-                Available: ${userBalance.toFixed(2)}
-                {hasInsufficientBalance && ' (Insufficient)'}
+                {loadingBalance ? (
+                  'Loading balance...'
+                ) : (
+                  <>
+                    <span>
+                      Available: ${walletBalance.toFixed(2)}
+                      {hasInsufficientBalance && ' (Insufficient)'}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        fetchWalletBalance();
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: theme.spacing[1],
+                        fontSize: theme.typography.fontSize.xs,
+                        color: theme.colors.primary.main,
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                      title="Refresh balance"
+                    >
+                      🔄
+                    </button>
+                  </>
+                )}
               </div>
             </div>
             <div style={{
@@ -243,7 +303,7 @@ const PaymentModal = ({
           gap: theme.spacing[3],
         }}>
           <button
-            onClick={onClose}
+            onClick={() => onClose(false)}
             disabled={processing}
             style={{
               flex: 1,

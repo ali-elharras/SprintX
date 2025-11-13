@@ -2,6 +2,7 @@ const Registration = require("../models/Registration");
 const Event = require("../models/Event");
 const Conference = require("../models/Conference");
 const User = require("../models/User");
+const Wallet = require("../models/Wallet");
 const { validationResult } = require("express-validator");
 
 // @desc    Register for an event
@@ -61,7 +62,7 @@ const registerForEvent = async (req, res) => {
         maxParticipants: event.capacity,
         currentParticipants: await Registration.countDocuments({
           event: eventId,
-          status: { $in: ["confirmed", "pending"] }
+          status: { $in: ["confirmed", "attended"] }
         }),
         status: "published"
       };
@@ -91,10 +92,10 @@ const registerForEvent = async (req, res) => {
       });
     }
 
-    // Check if user is already registered (excluding cancelled registrations)
+    // Check if user is already registered with an active registration
     const existingRegistration = await Registration.findOne({
       event: eventId,
-      status: { $ne: "cancelled" }, // Exclude cancelled registrations
+      status: { $in: ["confirmed", "attended"] }, // Only confirmed or attended registrations exist now
       $or: [
         { email: email.toLowerCase() },
         { universityId: universityId }
@@ -102,6 +103,7 @@ const registerForEvent = async (req, res) => {
     });
 
     if (existingRegistration) {
+      console.log('Found existing registration:', existingRegistration); // Debug
       return res.status(400).json({
         success: false,
         message: "You are already registered for this event",
@@ -122,16 +124,52 @@ const registerForEvent = async (req, res) => {
       registrationData.user = req.user.id;
     }
 
-    // Set payment information if event has cost
-    if (eventData.cost > 0) {
-      registrationData.paymentStatus = "pending";
-      registrationData.paymentAmount = eventData.cost;
-      registrationData.status = "pending"; // Keep pending until payment
-    } else {
-      registrationData.paymentStatus = "completed";
-      registrationData.paymentMethod = "free";
-      registrationData.status = "confirmed"; // Auto-confirm for free events
+    // Get the actual cost value - handle both mongoose document and plain object
+    const eventCost = isConference ? eventData.cost : (event.cost || 0);
+    
+    console.log('=== PAYMENT DEBUG ===');
+    console.log('Event:', event.title);
+    console.log('Event type:', event.type);
+    console.log('Is conference?', isConference);
+    console.log('Raw event.cost value:', event.cost);
+    console.log('Type of event.cost:', typeof event.cost);
+    console.log('Calculated eventCost:', eventCost);
+    console.log('EventData cost:', eventData?.cost);
+    console.log('eventCost > 0?', eventCost > 0);
+    console.log('====================');
+
+    // For paid events, DO NOT create registration yet - return event info for payment
+    if (eventCost > 0) {
+      // Store registration data in response for payment to use
+      return res.status(200).json({
+        success: true,
+        message: "Please complete payment to confirm registration",
+        requiresPayment: true,
+        registrationData: {
+          eventId: eventId,
+          firstName: registrationData.firstName,
+          lastName: registrationData.lastName,
+          email: registrationData.email,
+          universityId: registrationData.universityId,
+          userId: registrationData.user,
+          paymentAmount: eventCost
+        },
+        event: isConference ? eventData : {
+          _id: event._id,
+          title: event.title,
+          type: event.type,
+          startDate: event.startDate,
+          endDate: event.endDate,
+          location: event.location,
+          cost: event.cost
+        }
+      });
     }
+
+    // For FREE events, create registration immediately
+    registrationData.paymentStatus = "completed";
+    registrationData.paymentMethod = "free";
+    registrationData.status = "confirmed";
 
     // Create registration
     const registration = await Registration.create(registrationData);
@@ -143,17 +181,17 @@ const registerForEvent = async (req, res) => {
       populatedRegistration.event = eventData;
       res.status(201).json({
         success: true,
-        message: eventData.cost > 0 ? "Registration created. Please complete payment." : "Registration successful",
+        message: "Registration successful",
         data: populatedRegistration,
-        requiresPayment: eventData.cost > 0,
+        requiresPayment: false,
       });
     } else {
       await registration.populate("event", "title type startDate endDate location cost maxParticipants currentParticipants");
       res.status(201).json({
         success: true,
-        message: eventData.cost > 0 ? "Registration created. Please complete payment." : "Registration successful",
+        message: "Registration successful",
         data: registration,
-        requiresPayment: eventData.cost > 0,
+        requiresPayment: false,
       });
     }
   } catch (error) {
@@ -217,7 +255,7 @@ const getMyRegistrations = async (req, res) => {
               maxParticipants: conference.capacity,
               currentParticipants: await Registration.countDocuments({
                 event: conference._id,
-                status: { $in: ["confirmed", "pending"] }
+                status: { $in: ["confirmed", "attended"] }
               }),
               status: "published"
             };
@@ -463,11 +501,57 @@ const cancelRegistration = async (req, res) => {
       });
     }
     
-    await registration.cancelRegistration();
+    // Process refund if the registration was paid
+    if (registration.paymentStatus === "completed" && registration.paymentAmount > 0) {
+      // Only process refund if user exists
+      if (registration.user) {
+        try {
+          // Find or create wallet for the user
+          const wallet = await Wallet.findOrCreateForUser(registration.user);
+          
+          // Process refund using the wallet's processRefund method
+          await wallet.processRefund(
+            registration.paymentAmount,
+            `Refund for cancelled registration: ${event.title || 'Event'}`,
+            {
+              entityType: "Registration",
+              entityId: registration._id
+            }
+          );
+          
+          console.log(`Refunded ${registration.paymentAmount} to user ${registration.user} wallet`);
+        } catch (walletError) {
+          console.error("Error processing refund to wallet:", walletError);
+          return res.status(500).json({
+            success: false,
+            message: "Error processing refund to wallet",
+            error: walletError.message,
+          });
+        }
+      }
+    }
+    
+    // Delete the registration completely
+    await Registration.findByIdAndDelete(req.params.id);
+    
+    // Manually decrement participant count if registration was confirmed
+    if (registration.status === "confirmed") {
+      const eventFromEvent = await Event.findById(registration.event);
+      if (eventFromEvent) {
+        await Event.findByIdAndUpdate(registration.event, { $inc: { currentParticipants: -1 } });
+      } else {
+        const eventFromConference = await Conference.findById(registration.event);
+        if (eventFromConference) {
+          await Conference.findByIdAndUpdate(registration.event, { $inc: { currentParticipants: -1 } });
+        }
+      }
+    }
     
     res.status(200).json({
       success: true,
-      message: "Registration cancelled successfully",
+      message: "Registration cancelled successfully and refund processed",
+      refunded: registration.paymentStatus === "completed" && registration.paymentAmount > 0,
+      refundAmount: registration.paymentAmount || 0,
     });
   } catch (error) {
     console.error("Error cancelling registration:", error);
@@ -710,35 +794,32 @@ const registerForPaidEvent = async (req, res) => {
       });
     }
 
-    // Create registration data with pending payment status
+    // For paid events, DO NOT create registration yet - return info for payment
+    // Registration will be created only after successful payment
     const registrationData = {
-      event: eventId,
+      eventId: eventId,
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       email: email.toLowerCase().trim(),
       universityId: universityId.trim(),
-      paymentStatus: "pending",
-      paymentAmount: event.cost,
-      status: "pending", // Registration is pending until payment
+      userId: req.user ? req.user.id : undefined,
+      paymentAmount: event.cost
     };
 
-    // If user is authenticated, link to user account
-    if (req.user) {
-      registrationData.user = req.user.id;
-    }
-
-    // Create registration
-    const registration = await Registration.create(registrationData);
-
-    // Populate the registration with event data
-    await registration.populate("event", "title type startDate endDate location cost maxParticipants currentParticipants");
-
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      message: "Registration created. Payment required to confirm your spot.",
-      data: registration,
+      message: "Please complete payment to confirm registration",
       requiresPayment: true,
-      paymentAmount: event.cost,
+      registrationData: registrationData,
+      event: {
+        _id: event._id,
+        title: event.title,
+        type: isConference ? "conference" : event.type,
+        startDate: isConference ? event.date : event.startDate,
+        endDate: isConference ? event.date : event.endDate,
+        location: event.location,
+        cost: event.cost
+      }
     });
   } catch (error) {
     console.error("Error in paid event registration:", error);

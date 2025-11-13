@@ -97,12 +97,13 @@ registrationSchema.virtual("fullName").get(function () {
   return `${this.firstName} ${this.lastName}`;
 });
 
-// Compound index to prevent duplicate registrations (only for non-cancelled registrations)
+// Compound index to prevent duplicate registrations (only for active registrations)
+// Note: 'pending' status removed - registrations are only created after successful payment
 registrationSchema.index(
   { event: 1, email: 1 }, 
   { 
     unique: true,
-    partialFilterExpression: { status: { $in: ["pending", "confirmed", "attended", "no-show"] } },
+    partialFilterExpression: { status: { $in: ["confirmed", "attended"] } },
     name: 'event_email_unique_active'
   }
 );
@@ -110,7 +111,7 @@ registrationSchema.index(
   { event: 1, universityId: 1 }, 
   { 
     unique: true,
-    partialFilterExpression: { status: { $in: ["pending", "confirmed", "attended", "no-show"] } },
+    partialFilterExpression: { status: { $in: ["confirmed", "attended"] } },
     name: 'event_universityId_unique_active'
   }
 );

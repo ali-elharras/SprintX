@@ -186,7 +186,7 @@ const getEvents = async (req, res) => {
           if (workshopObj.publishedEventId) {
             currentParticipants = await Registration.countDocuments({
               event: workshopObj.publishedEventId,
-              status: { $in: ['confirmed', 'pending', 'attended'] },
+              status: { $in: ['confirmed', 'attended'] },
             });
           }
         } catch (err) {

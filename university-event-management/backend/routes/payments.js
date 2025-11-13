@@ -19,6 +19,10 @@ router.post('/verify-payment/:applicationType/:applicationId', protect, requireV
 router.get('/status/:applicationType/:applicationId', protect, requireVendor, getPaymentStatus);
 
 // User payment routes for event registrations
+// New flow: no registrationId needed - registrationData passed in body
+router.post('/create-checkout-session/registration', protect, createRegistrationCheckoutSession);
+router.post('/verify-payment/registration', protect, verifyRegistrationPayment);
+// Legacy routes for backward compatibility (if any old pending registrations exist)
 router.post('/create-checkout-session/registration/:registrationId', protect, createRegistrationCheckoutSession);
 router.post('/verify-payment/registration/:registrationId', protect, verifyRegistrationPayment);
 

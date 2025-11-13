@@ -50,7 +50,7 @@ exports.getAllWorkshops = async (req, res) => {
                     try {
                         const attendeeCount = await Registration.countDocuments({
                             event: workshop.publishedEventId,
-                            status: { $in: ['confirmed', 'pending', 'attended'] }
+                            status: { $in: ['confirmed', 'attended'] }
                         });
                         workshopObj.attendees = attendeeCount;
                     } catch (err) {
@@ -275,7 +275,7 @@ exports.deleteWorkshop = async (req, res) => {
             const Registration = require('../models/Registration');
             const registrationCount = await Registration.countDocuments({ 
                 event: workshop.publishedEventId,
-                status: { $in: ['confirmed', 'pending', 'attended'] } // Only count active registrations
+                status: { $in: ['confirmed', 'attended'] } // Only count confirmed/attended registrations
             });
 
             if (registrationCount > 0) {
@@ -323,7 +323,7 @@ exports.deleteWorkshopByEventId = async (req, res) => {
         const Registration = require('../models/Registration');
         const registrationCount = await Registration.countDocuments({ 
             event: eventId,
-            status: { $in: ['confirmed', 'pending', 'attended'] }
+            status: { $in: ['confirmed', 'attended'] }
         });
 
         if (registrationCount > 0) {

@@ -6,7 +6,6 @@ import toast from "react-hot-toast";
 import theme from "../theme";
 import Button from "./Button";
 import Input from "./Input";
-import EventPaymentModal from "./EventPaymentModal";
 import { registrationAPI } from "../services/api";
 import PaymentModal from "./PaymentModal";
 
@@ -53,6 +52,11 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
+    
+    console.log('Submitting registration for event:', event); // Debug
+    console.log('Event cost:', event?.cost); // Debug
+    console.log('Is paid event:', isPaidEvent); // Debug
+    
     try {
       // Prepare registration data
       const regData = {
@@ -66,11 +70,25 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
 
       const response = await registrationAPI.registerForEvent(regData);
       
+      console.log('Full registration response:', response); // Debug log
+      console.log('Response data:', response.data); // Debug log
+      
+      // The response structure is: response.data = { success, message, data, requiresPayment }
+      const requiresPayment = response.data.requiresPayment;
+      const registrationRecord = response.data.data;
+      
+      console.log('Requires payment?', requiresPayment); // Debug log
+      console.log('Registration record:', registrationRecord); // Debug log
+      
       // Check if payment is required
-      if (response.data.requiresPayment) {
-        // Store registration info and show payment modal
-        setRegistrationData(response.data.data);
+      if (requiresPayment) {
+        // For paid events, backend returns registrationData (not a DB record)
+        // Store this data to pass to payment
+        const regDataForPayment = response.data.registrationData || registrationRecord;
+        setRegistrationData(regDataForPayment);
         setShowPaymentModal(true);
+        toast.info("Please complete payment to confirm your registration");
+        // Don't reset isSubmitting here - keep it true until payment is complete
       } else {
         // Free event - registration complete
         toast.success("Registration successful!");
@@ -81,7 +99,8 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
         } catch (err) {
           // Ignore storage errors (e.g., quota)
         }
-        onSuccess && onSuccess(response.data.data);
+        setIsSubmitting(false);
+        onSuccess && onSuccess(registrationRecord);
       }
     } catch (error) {
       console.error("Registration error:", error);
@@ -104,6 +123,10 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
         // Ignore storage errors (e.g., quota)
       }
       onSuccess && onSuccess(registrationData);
+    } else {
+      // Payment was cancelled - no registration was created
+      toast.error("Payment cancelled. No registration was created.");
+      onCancel && onCancel();
     }
   };
 
@@ -268,7 +291,8 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
         <PaymentModal
           isOpen={showPaymentModal}
           onClose={handlePaymentComplete}
-          registrationId={registrationData._id}
+          registrationId={registrationData._id} // Legacy: for old pending registrations
+          registrationData={registrationData._id ? null : registrationData} // New flow: pass data if no _id
           amount={event.cost || 0}
           title={`Registration for ${event.title}`}
           type="event"

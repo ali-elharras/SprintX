@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { eventPaymentAPI } from '../services/wallet';
+import { registrationAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import theme from '../theme';
 import Modal from './Modal';
@@ -195,13 +196,14 @@ const CancelRegistrationModal = ({ isOpen, onClose, registration, event, payment
 
     try {
       if (payment && payment.status === 'completed') {
-        // Process refund if payment exists
+        // Process refund if payment exists (this also deletes the registration)
         await eventPaymentAPI.processRefund(payment._id, {
           reason: reason.trim(),
         });
         toast.success('Registration cancelled and refund processed to your wallet!');
       } else {
-        // Just cancel registration if no payment or payment not completed
+        // Delete registration if no payment or payment not completed
+        await registrationAPI.cancelRegistration(registration._id);
         toast.success('Registration cancelled successfully!');
       }
 

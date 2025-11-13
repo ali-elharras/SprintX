@@ -2,6 +2,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const BazaarApplication = require('../models/BazaarApplication');
 const BoothApplication = require('../models/BoothApplication');
 const Event = require('../models/Event');
+const Conference = require('../models/Conference');
 const Registration = require('../models/Registration');
 const GymRegistration = require('../models/GymRegistration');
 const GymSession = require('../models/GymSession');
@@ -459,84 +460,210 @@ exports.getPaymentStatus = async (req, res, next) => {
 };
 
 // @desc    Create Stripe checkout session for event registration
-// @route   POST /api/payments/create-checkout-session/registration/:registrationId
+// @route   POST /api/payments/create-checkout-session/registration
+// @route   POST /api/payments/create-checkout-session/registration/:registrationId (legacy)
 // @access  Private
 exports.createRegistrationCheckoutSession = async (req, res, next) => {
   try {
-    const { registrationId } = req.params;
-    const { paymentMethod } = req.body; // 'stripe' or 'balance'
+    const { paymentMethod, registrationData } = req.body;
+    const { registrationId } = req.params; // Legacy support
     const userId = req.user.id;
 
-    // Find the registration
-    const registration = await Registration.findById(registrationId).populate('event');
-
-    if (!registration) {
-      return res.status(404).json({
-        success: false,
-        message: 'Registration not found',
-      });
-    }
-
-    // Verify ownership
-    if (registration.user && registration.user.toString() !== userId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'You can only pay for your own registrations',
-      });
-    }
-
-    // Check if payment is already completed
-    if (registration.paymentStatus === 'completed') {
-      return res.status(400).json({
-        success: false,
-        message: 'Payment has already been completed for this registration',
-      });
-    }
-
-    // Get payment amount from event
-    const amount = Math.round((registration.paymentAmount || registration.event.cost || 0) * 100); // Convert to cents
-
-    if (amount === 0) {
-      // Free event - auto-confirm
-      registration.paymentStatus = 'completed';
-      registration.paymentMethod = 'free';
-      registration.paymentDate = new Date();
-      registration.status = 'confirmed';
-      await registration.save();
-
-      return res.status(200).json({
-        success: true,
-        message: 'Registration confirmed for free event',
-        data: { paymentMethod: 'free' },
-      });
-    }
-
-    // Handle balance payment
-    if (paymentMethod === 'balance') {
-      const user = await User.findById(userId);
+    // Handle legacy flow (old pending registrations with registrationId in URL)
+    if (registrationId && !registrationData) {
+      const registration = await Registration.findById(registrationId).populate('event');
       
-      if (!user.balance || user.balance < (amount / 100)) {
-        return res.status(400).json({
+      if (!registration) {
+        return res.status(404).json({
           success: false,
-          message: 'Insufficient balance',
+          message: 'Registration not found',
         });
       }
 
-      // Deduct from balance
-      user.balance -= (amount / 100);
-      await user.save();
+      // Verify ownership
+      if (registration.user && registration.user.toString() !== userId.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'You can only pay for your own registrations',
+        });
+      }
 
-      // Update registration
-      registration.paymentStatus = 'completed';
-      registration.paymentMethod = 'balance';
-      registration.paymentDate = new Date();
-      registration.status = 'confirmed';
+      // Check if already paid
+      if (registration.paymentStatus === 'completed') {
+        return res.status(400).json({
+          success: false,
+          message: 'Payment has already been completed for this registration',
+        });
+      }
+
+      // Continue with legacy flow - update existing registration
+      const amount = Math.round((registration.paymentAmount || registration.event.cost || 0) * 100);
+      
+      if (amount === 0) {
+        registration.paymentStatus = 'completed';
+        registration.paymentMethod = 'free';
+        registration.paymentDate = new Date();
+        registration.status = 'confirmed';
+        await registration.save();
+        
+        return res.status(200).json({
+          success: true,
+          message: 'Registration confirmed for free event',
+          data: { paymentMethod: 'free' },
+        });
+      }
+
+      // Handle wallet payment for legacy
+      if (paymentMethod === 'balance') {
+        const Wallet = require('../models/Wallet');
+        const wallet = await Wallet.findOrCreateForUser(userId);
+        
+        if (wallet.balance < (amount / 100)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Insufficient wallet balance',
+          });
+        }
+
+        await wallet.deduct(
+          amount / 100,
+          `Payment for event registration: ${registration.event.title}`,
+          {
+            entityType: 'Registration',
+            entityId: registration._id
+          }
+        );
+
+        registration.paymentStatus = 'completed';
+        registration.paymentMethod = 'balance';
+        registration.paymentDate = new Date();
+        registration.status = 'confirmed';
+        await registration.save();
+
+        return res.status(200).json({
+          success: true,
+          message: 'Payment completed using wallet',
+          data: { paymentMethod: 'balance', amountPaid: amount / 100, registration },
+        });
+      }
+
+      // Handle Stripe payment for legacy
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `Event Registration - ${registration.event.title}`,
+              description: `Registration for ${registration.event.type} event`,
+            },
+            unit_amount: amount,
+          },
+          quantity: 1,
+        }],
+        mode: 'payment',
+        success_url: `${process.env.FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}&type=registration&registrationId=${registrationId}`,
+        cancel_url: `${process.env.FRONTEND_URL}/my-registrations?payment=cancelled`,
+        client_reference_id: registrationId,
+        metadata: {
+          registrationType: 'event',
+          registrationId: registrationId,
+          userId: userId.toString(),
+        },
+      });
+
+      registration.stripeSessionId = session.id;
       await registration.save();
 
       return res.status(200).json({
         success: true,
-        message: 'Payment completed using balance',
-        data: { paymentMethod: 'balance', amountPaid: amount / 100 },
+        data: {
+          sessionId: session.id,
+          url: session.url,
+        },
+      });
+    }
+
+    // NEW FLOW: Validate registration data
+    if (!registrationData || !registrationData.eventId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Registration data is required',
+      });
+    }
+
+    // Find the event
+    let event = await Event.findById(registrationData.eventId);
+    let isConference = false;
+    
+    if (!event) {
+      event = await Conference.findById(registrationData.eventId);
+      isConference = true;
+    }
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found',
+      });
+    }
+
+    // Get payment amount
+    const eventCost = isConference ? (event.cost || 0) : (event.cost || 0);
+    const amount = Math.round(eventCost * 100); // Convert to cents
+
+    if (amount === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'This is a free event, no payment required',
+      });
+    }
+
+    // Handle wallet payment
+    if (paymentMethod === 'balance') {
+      const Wallet = require('../models/Wallet');
+      const wallet = await Wallet.findOrCreateForUser(userId);
+      
+      if (wallet.balance < eventCost) {
+        return res.status(400).json({
+          success: false,
+          message: 'Insufficient wallet balance',
+        });
+      }
+
+      // Deduct from wallet
+      await wallet.deduct(
+        eventCost,
+        `Payment for event registration: ${event.title}`,
+        {
+          entityType: 'Event',
+          entityId: event._id
+        }
+      );
+
+      // Now create the registration after successful payment
+      const newRegistration = await Registration.create({
+        event: registrationData.eventId,
+        user: userId,
+        firstName: registrationData.firstName,
+        lastName: registrationData.lastName,
+        email: registrationData.email,
+        universityId: registrationData.universityId,
+        paymentStatus: 'completed',
+        paymentMethod: 'balance',
+        paymentAmount: eventCost,
+        paymentDate: new Date(),
+        status: 'confirmed'
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Payment completed using wallet and registration confirmed',
+        data: { 
+          paymentMethod: 'balance', 
+          amountPaid: eventCost,
+          registration: newRegistration
+        },
       });
     }
 
@@ -548,8 +675,8 @@ exports.createRegistrationCheckoutSession = async (req, res, next) => {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: `Event Registration - ${registration.event.title}`,
-              description: `Registration for ${registration.event.type} event`,
+              name: `Event Registration - ${event.title}`,
+              description: `Registration for ${isConference ? 'conference' : event.type} event`,
             },
             unit_amount: amount,
           },
@@ -557,19 +684,20 @@ exports.createRegistrationCheckoutSession = async (req, res, next) => {
         },
       ],
       mode: 'payment',
-      success_url: `${process.env.FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}&type=registration&registrationId=${registrationId}`,
-      cancel_url: `${process.env.FRONTEND_URL}/my-registrations?payment=cancelled`,
-      client_reference_id: registrationId,
+      success_url: `${process.env.FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}&type=registration`,
+      cancel_url: `${process.env.FRONTEND_URL}/events?payment=cancelled`,
+      client_reference_id: userId.toString(),
       metadata: {
         registrationType: 'event',
-        registrationId: registrationId,
+        eventId: registrationData.eventId,
         userId: userId.toString(),
+        firstName: registrationData.firstName,
+        lastName: registrationData.lastName,
+        email: registrationData.email,
+        universityId: registrationData.universityId,
+        paymentAmount: eventCost.toString()
       },
     });
-
-    // Update registration with session ID
-    registration.stripeSessionId = session.id;
-    await registration.save();
 
     res.status(200).json({
       success: true,
@@ -712,44 +840,46 @@ exports.createGymCheckoutSession = async (req, res, next) => {
 };
 
 // @desc    Verify payment for event registration
-// @route   POST /api/payments/verify-payment/registration/:registrationId
+// @route   POST /api/payments/verify-payment/registration
+// @route   POST /api/payments/verify-payment/registration/:registrationId (legacy)
 // @access  Private
 exports.verifyRegistrationPayment = async (req, res, next) => {
   try {
-    const { registrationId } = req.params;
     const { sessionId } = req.body;
+    const { registrationId } = req.params; // Legacy support
     const userId = req.user.id;
-
-    const registration = await Registration.findById(registrationId).populate('event');
-
-    if (!registration) {
-      return res.status(404).json({
-        success: false,
-        message: 'Registration not found',
-      });
-    }
-
-    // Verify ownership
-    if (registration.user && registration.user.toString() !== userId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Unauthorized',
-      });
-    }
-
-    if (registration.paymentStatus === 'completed') {
-      return res.status(200).json({
-        success: true,
-        message: 'Payment already verified',
-        data: registration,
-      });
-    }
 
     // Retrieve the session from Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    if (session.payment_status === 'paid') {
-      // Update registration
+    if (session.payment_status !== 'paid') {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment not completed',
+      });
+    }
+
+    // Handle legacy flow (registrationId in metadata)
+    const metadata = session.metadata;
+    if (metadata && metadata.registrationId) {
+      // Legacy: Update existing registration
+      const registration = await Registration.findById(metadata.registrationId).populate('event');
+      
+      if (!registration) {
+        return res.status(404).json({
+          success: false,
+          message: 'Registration not found',
+        });
+      }
+
+      if (registration.paymentStatus === 'completed') {
+        return res.status(200).json({
+          success: true,
+          message: 'Payment already verified',
+          data: registration,
+        });
+      }
+
       registration.paymentStatus = 'completed';
       registration.status = 'confirmed';
       registration.paymentDate = new Date();
@@ -761,12 +891,53 @@ exports.verifyRegistrationPayment = async (req, res, next) => {
         message: 'Payment verified successfully',
         data: registration,
       });
-    } else {
+    }
+
+    // NEW FLOW: Create registration from metadata
+    if (!metadata || !metadata.eventId) {
       return res.status(400).json({
         success: false,
-        message: 'Payment not completed',
+        message: 'Invalid session metadata',
       });
     }
+
+    // Check if registration already exists for this session
+    const existingRegistration = await Registration.findOne({
+      stripeSessionId: sessionId
+    });
+
+    if (existingRegistration) {
+      return res.status(200).json({
+        success: true,
+        message: 'Payment already verified',
+        data: existingRegistration,
+      });
+    }
+
+    // Create the registration after successful payment
+    const registration = await Registration.create({
+      event: metadata.eventId,
+      user: userId,
+      firstName: metadata.firstName,
+      lastName: metadata.lastName,
+      email: metadata.email,
+      universityId: metadata.universityId,
+      paymentStatus: 'completed',
+      paymentMethod: 'stripe',
+      paymentAmount: parseFloat(metadata.paymentAmount),
+      paymentDate: new Date(),
+      status: 'confirmed',
+      stripeSessionId: sessionId,
+      stripePaymentIntentId: session.payment_intent
+    });
+
+    await registration.populate('event');
+
+    return res.status(201).json({
+      success: true,
+      message: 'Payment verified and registration created successfully',
+      data: registration,
+    });
   } catch (error) {
     console.error('Error verifying registration payment:', error);
     next(error);

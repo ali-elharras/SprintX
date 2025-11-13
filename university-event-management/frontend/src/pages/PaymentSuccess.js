@@ -102,8 +102,9 @@ const PaymentSuccess = () => {
         let response;
         
         // Handle different payment types
-        if (applicationType === 'registration' && registrationId) {
-          response = await verifyRegistrationPayment(registrationId, sessionId);
+        if (applicationType === 'registration') {
+          // New flow: registration is created from session metadata, no registrationId needed
+          response = await verifyRegistrationPayment(sessionId);
         } else if (applicationType === 'gym' && gymRegistrationId) {
           response = await verifyGymPayment(gymRegistrationId, sessionId);
         } else if ((applicationType === 'bazaar' || applicationType === 'booth') && applicationId) {

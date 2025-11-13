@@ -2,6 +2,7 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const EventPayment = require("../models/EventPayment");
 const Registration = require("../models/Registration");
 const Event = require("../models/Event");
+const Conference = require("../models/Conference");
 const Wallet = require("../models/Wallet");
 const User = require("../models/User");
 
@@ -294,11 +295,15 @@ const processEventRefund = async (req, res) => {
       // Update payment record
       await payment.processRefund(refundAmount, reason, "wallet");
       
-      // Update registration status
-      const registration = await Registration.findById(payment.registration._id);
-      registration.status = "cancelled";
-      registration.paymentStatus = "refunded";
-      await registration.save();
+      // Delete the registration completely
+      await Registration.findByIdAndDelete(payment.registration._id);
+      
+      // Decrement participant count
+      if (payment.event.eventType === 'conference') {
+        await Conference.findByIdAndUpdate(payment.event._id, { $inc: { currentParticipants: -1 } });
+      } else {
+        await Event.findByIdAndUpdate(payment.event._id, { $inc: { currentParticipants: -1 } });
+      }
       
       res.status(200).json({
         success: true,
