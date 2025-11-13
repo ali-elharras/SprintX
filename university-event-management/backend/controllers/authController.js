@@ -4,6 +4,7 @@ const User = require("../models/User");
 const Vendor = require("../models/Vendor");
 const crypto = require("crypto");
 const { uploadImage } = require("../utils/imageKitUploader");
+const emailService = require("../services/emailService");
 
 // Helper function to determine if email is a vendor email
 const isVendorEmail = (email) => {
@@ -98,17 +99,17 @@ const registerUser = async (req, res, next) => {
     }
 
     // New role assignment logic with requestedRole system:
-    // - Students: Get immediate access with role "student"
+    // - Students: Need email verification before access
     // - Staff/TA/Professor: Get "pending" role until admin verification
 
-    let finalRole, needsAdminVerification;
+    let finalRole, needsEmailVerification;
 
     if (targetRole === "student") {
       finalRole = "student";
-      needsAdminVerification = false;
+      needsEmailVerification = true; // Students need to verify their email
     } else if (["staff", "ta", "professor"].includes(targetRole)) {
       finalRole = "pending";
-      needsAdminVerification = true;
+      needsEmailVerification = true; // Staff/TA/Professor also need email verification
     } else {
       return res.status(400).json({
         success: false,
@@ -116,8 +117,8 @@ const registerUser = async (req, res, next) => {
       });
     }
 
-    // For staff, TA, and professor requesting verification email process
-    if (needsAdminVerification && !verificationEmail) {
+    // For all users requesting verification email process (students, staff, TA, professor)
+    if (needsEmailVerification && !verificationEmail) {
       // Create incomplete user record for verification email selection
       const incompleteUserData = {
         firstName,
@@ -132,6 +133,11 @@ const registerUser = async (req, res, next) => {
         isRegistrationComplete: false,
         isVerified: false,
       };
+
+      // Add yearOfStudy for students
+      if (targetRole === "student") {
+        incompleteUserData.yearOfStudy = yearOfStudy;
+      }
 
       const incompleteUser = await User.create(incompleteUserData);
 
@@ -150,12 +156,13 @@ const registerUser = async (req, res, next) => {
             universityId,
             department,
             phoneNumber,
+            yearOfStudy: targetRole === "student" ? yearOfStudy : undefined,
           },
         },
       });
     }
 
-    // Create user
+    // If we reach here, verificationEmail was provided - complete the registration
     const userData = {
       firstName,
       lastName,
@@ -166,8 +173,8 @@ const registerUser = async (req, res, next) => {
       phoneNumber,
     };
 
-    // Add requestedRole for non-student registrations
-    if (needsAdminVerification) {
+    // Add requestedRole for non-student registrations (staff/TA/professor need admin approval)
+    if (targetRole !== "student") {
       userData.requestedRole = targetRole;
     }
 
@@ -179,19 +186,82 @@ const registerUser = async (req, res, next) => {
       userData.yearOfStudy = yearOfStudy;
     }
 
-    // Add verification email for staff, TA, professor
-    if (needsAdminVerification && verificationEmail) {
+    // Add verification email - all users who reach this point have selected one
+    if (verificationEmail) {
       userData.verificationEmail = verificationEmail;
     }
 
     // Verification policy:
-    // - Students are auto-verified and get immediate access
+    // - Students need to verify their email before logging in
     // - Staff/TA/Professor are verified but pending admin role approval
-    userData.isVerified = true; // All users are email-verified upon complete registration
+    if (targetRole === "student") {
+      // Generate verification token for students
+      const verificationToken = crypto.randomBytes(32).toString("hex");
+      userData.verificationToken = verificationToken;
+      userData.verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+      userData.emailVerificationSent = true;
+      userData.isVerified = false; // Students must verify email before login
+    } else {
+      userData.isVerified = true; // Staff/TA/Professor are verified upon complete registration
+    }
+
     userData.isRegistrationComplete = true;
 
     const user = await User.create(userData);
 
+    // Send verification email for students
+    if (targetRole === "student") {
+      try {
+        await emailService.sendStudentVerificationEmail(
+          user.verificationEmail,
+          user.verificationToken,
+          `${user.firstName} ${user.lastName}`
+        );
+
+        return res.status(201).json({
+          success: true,
+          message:
+            "Registration successful! Please check your email to verify your account before logging in.",
+          data: {
+            user: {
+              id: user._id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              role: user.role,
+              universityId: user.universityId,
+              department: user.department,
+              yearOfStudy: user.yearOfStudy,
+              isVerified: user.isVerified,
+              emailVerificationSent: true,
+            },
+          },
+        });
+      } catch (emailError) {
+        console.error("Error sending verification email:", emailError);
+        // Still return success but notify about email issue
+        return res.status(201).json({
+          success: true,
+          message:
+            "Registration successful, but there was an issue sending the verification email. Please contact support.",
+          data: {
+            user: {
+              id: user._id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              role: user.role,
+              universityId: user.universityId,
+              department: user.department,
+              yearOfStudy: user.yearOfStudy,
+              isVerified: user.isVerified,
+            },
+          },
+        });
+      }
+    }
+
+    // For non-students (staff/TA/professor), proceed with normal flow
     // Generate token
     const token = generateToken(user._id, "user");
 
@@ -470,8 +540,59 @@ const completeUserRegistration = async (req, res, next) => {
     // Update user with verification email and mark registration complete
     user.verificationEmail = verificationEmail;
     user.isRegistrationComplete = true;
+
+    // Generate verification token for students (they need to verify before login)
+    if (user.role === "student") {
+      const verificationToken = crypto.randomBytes(32).toString("hex");
+      user.verificationToken = verificationToken;
+      user.verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+      user.emailVerificationSent = true;
+      user.isVerified = false; // Students must verify email before login
+    }
+
     await user.save();
 
+    // Send verification email for students
+    if (user.role === "student") {
+      try {
+        await emailService.sendStudentVerificationEmail(
+          user.verificationEmail,
+          user.verificationToken,
+          `${user.firstName} ${user.lastName}`
+        );
+        console.log(
+          `✉️ Verification email sent to ${user.verificationEmail} for student ${user.firstName} ${user.lastName}`
+        );
+      } catch (emailError) {
+        console.error("Error sending verification email:", emailError);
+        // Continue anyway - user can request a new verification email later
+      }
+    }
+
+    // For students, don't generate a login token since they need to verify first
+    if (user.role === "student") {
+      return res.status(200).json({
+        success: true,
+        message:
+          "Registration completed successfully! Please check your email to verify your account.",
+        data: {
+          user: {
+            id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            role: user.role,
+            universityId: user.universityId,
+            department: user.department,
+            verificationEmail: user.verificationEmail,
+            isVerified: user.isVerified,
+            emailVerificationSent: user.emailVerificationSent,
+          },
+        },
+      });
+    }
+
+    // For non-students (staff/TA/professor), generate token for immediate access
     // Generate token
     const token = generateToken(user._id, "user");
 
@@ -583,6 +704,33 @@ const login = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: "Account is inactive. Please contact support.",
+      });
+    }
+
+    // Check if student has verified their email
+    if (
+      accountType === "user" &&
+      account.role === "student" &&
+      !account.isVerified
+    ) {
+      // Check password first
+      const isPasswordMatch = await account.comparePassword(password);
+      if (!isPasswordMatch) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid credentials",
+        });
+      }
+
+      return res.status(403).json({
+        success: false,
+        message:
+          "Please verify your email before logging in. Check your inbox for the verification link.",
+        requiresEmailVerification: true,
+        data: {
+          email: account.email,
+          emailVerificationSent: account.emailVerificationSent,
+        },
       });
     }
 
