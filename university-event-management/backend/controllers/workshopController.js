@@ -529,6 +529,17 @@ exports.publishWorkshop = async (req, res) => {
         }
 
         // Ensure we have all required fields for the Event model
+        // Determine instructor name from createdBy or professorsParticipating
+        let instructorName = 'University Faculty'; // Default fallback
+        
+        if (workshop.createdBy && workshop.createdBy.firstName) {
+            instructorName = `${workshop.createdBy.firstName} ${workshop.createdBy.lastName || ''}`.trim();
+        } else if (workshop.professorsParticipating && workshop.professorsParticipating.length > 0) {
+            instructorName = Array.isArray(workshop.professorsParticipating) ? 
+                            workshop.professorsParticipating.join(', ') : 
+                            workshop.professorsParticipating;
+        }
+        
         const eventPayload = {
             name: workshop.workshopName, // Map from Workshop model field to Event model field
             title: workshop.workshopName,
@@ -551,11 +562,7 @@ exports.publishWorkshop = async (req, res) => {
             cost: workshop.requiredBudget || 0,
             tags: [workshop.facultyResponsible || 'Academic'], // Use faculty as a tag
             images: [],
-            instructor: workshop.professorsParticipating ? 
-                        (Array.isArray(workshop.professorsParticipating) ? 
-                            workshop.professorsParticipating.join(', ') : 
-                            workshop.professorsParticipating) : 
-                        'University Faculty',
+            instructor: instructorName,
             duration: 2, // Default duration in hours if not specified
         };
 

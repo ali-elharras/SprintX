@@ -123,6 +123,7 @@ app.use("/api/bazaars", bazaarRoutes);
 app.use("/api/loyalty", LoyaltyRoutes);
 app.use('/api/ratings', require('./routes/ratings'));
 app.use("/api/favorites", favoritesRoutes);
+app.use("/api/booth-polls", require('./routes/boothPolls'));
 
 // Workshop routes (professors create -> saved as pending, Events Office can publish)
 app.use("/api/workshops", workshopRoutes);

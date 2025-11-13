@@ -35,9 +35,8 @@ exports.createBoothPoll = async (req, res) => {
       boothSize,
       pollEndDate: new Date(pollEndDate),
       createdBy: req.user._id,
-      vendors: vendors.map((v, idx) => ({
-        vendor: v.vendorId || null,
-        companyName: v.companyName,
+      vendors: vendors.map((v) => ({
+        companyName: v.companyName.trim(),
         description: v.description || '',
         votes: 0,
       })),
@@ -45,10 +44,7 @@ exports.createBoothPoll = async (req, res) => {
     };
 
     const poll = await BoothPoll.create(pollData);
-    const populatedPoll = await poll.populate([
-      { path: 'createdBy', select: 'firstName lastName email' },
-      { path: 'vendors.vendor', select: 'companyName email' },
-    ]);
+    const populatedPoll = await poll.populate('createdBy', 'firstName lastName email');
 
     res.status(201).json({
       success: true,
@@ -79,7 +75,6 @@ exports.getAllBoothPolls = async (req, res) => {
 
     const polls = await BoothPoll.find(query)
       .populate('createdBy', 'firstName lastName email')
-      .populate('vendors.vendor', 'companyName email')
       .sort({ createdAt: -1 });
 
     // Add votedBy info for current user if authenticated
@@ -114,7 +109,6 @@ exports.getBoothPoll = async (req, res) => {
   try {
     const poll = await BoothPoll.findById(req.params.id)
       .populate('createdBy', 'firstName lastName email')
-      .populate('vendors.vendor', 'companyName email')
       .populate('votes.user', 'firstName lastName email');
 
     if (!poll) {
@@ -215,10 +209,7 @@ exports.voteOnPoll = async (req, res) => {
     poll.vendors[vendorIndex].votes += 1;
 
     await poll.save();
-    const populatedPoll = await poll.populate([
-      { path: 'createdBy', select: 'firstName lastName email' },
-      { path: 'vendors.vendor', select: 'companyName email' },
-    ]);
+    const populatedPoll = await poll.populate('createdBy', 'firstName lastName email');
 
     const pollObj = populatedPoll.toObject();
     pollObj.userVote = vendorIndex;
@@ -274,7 +265,6 @@ exports.closeBoothPoll = async (req, res) => {
 
     poll.status = 'closed';
     poll.winner = {
-      vendorId: winnerVendor.vendor,
       vendorIndex: winnerIndex,
       companyName: winnerVendor.companyName,
       voteCount: winnerVendor.votes,
@@ -282,11 +272,7 @@ exports.closeBoothPoll = async (req, res) => {
     };
 
     await poll.save();
-    const populatedPoll = await poll.populate([
-      { path: 'createdBy', select: 'firstName lastName email' },
-      { path: 'vendors.vendor', select: 'companyName email' },
-      { path: 'winner.vendorId', select: 'companyName email' },
-    ]);
+    const populatedPoll = await poll.populate('createdBy', 'firstName lastName email');
 
     res.status(200).json({
       success: true,

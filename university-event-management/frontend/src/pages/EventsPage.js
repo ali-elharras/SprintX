@@ -329,19 +329,19 @@ const WorkshopCard = ({ workshop, onEdit, onDelete, isEventsOffice = false }) =>
         </button>
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          {/* Participants button - opens modal with list of registrations for published workshop */}
+          {/* Participants button - opens modal with list of registrations (available for professors and events office) */}
           <div>
             <button
-              disabled={!isPublished || !workshop.publishedEventId}
-              title={!isPublished || !workshop.publishedEventId ? "No participants yet" : "View participants"}
+              disabled={!workshop.publishedEventId}
+              title={!workshop.publishedEventId ? "No participants yet" : "View participants and remaining spots"}
               style={{
                 ...workshopStyleSheet['card-btn-view-toggle-default'],
                 padding: '0.35rem 0.75rem', fontSize: '0.8rem', fontWeight: 500,
-                borderRadius: '0.5rem', transition: 'all 0.15s', cursor: isPublished ? 'pointer' : 'not-allowed',
+                borderRadius: '0.5rem', transition: 'all 0.15s', cursor: workshop.publishedEventId ? 'pointer' : 'not-allowed',
                 border: 'none',
               }}
               onClick={async () => {
-                if (!isPublished || !workshop.publishedEventId) return;
+                if (!workshop.publishedEventId) return;
                 setParticipantsModalOpen(true);
                 setParticipantsLoading(true);
                 try {
@@ -411,6 +411,40 @@ const WorkshopCard = ({ workshop, onEdit, onDelete, isEventsOffice = false }) =>
       <Modal isOpen={participantsModalOpen} onClose={() => setParticipantsModalOpen(false)} ariaLabel={`Participants for ${workshop.workshopName}`}>
         <div>
           <h3 style={{ marginTop: 0, color: themeColors.gray900 }}>{`Participants — ${workshop.workshopName}`}</h3>
+          {/* Capacity and Remaining Spots Summary */}
+          <div style={{ 
+            background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)', 
+            padding: '1rem', 
+            borderRadius: '0.75rem', 
+            marginBottom: '1rem',
+            border: '1px solid #c7d2fe'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <div>
+                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Total Capacity</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#4f46e5' }}>{workshop.capacity}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Registered</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#059669' }}>{participants.length}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Remaining Spots</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: participants.length >= workshop.capacity ? '#dc2626' : '#16a34a' }}>
+                  {Math.max(0, workshop.capacity - participants.length)}
+                </div>
+              </div>
+            </div>
+            <div style={{ 
+              fontSize: '0.75rem', 
+              color: participants.length >= workshop.capacity ? '#dc2626' : '#16a34a',
+              fontWeight: 600,
+              textAlign: 'center',
+              marginTop: '0.5rem'
+            }}>
+              {participants.length >= workshop.capacity ? '⚠️ Workshop is full' : '✓ Spots available'}
+            </div>
+          </div>
           {participantsLoading ? (
             <p>Loading participants…</p>
           ) : (
