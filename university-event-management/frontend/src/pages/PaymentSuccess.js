@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { verifyPayment } from '../services/payment';
-import { eventPaymentAPI } from '../services/wallet';
+import { verifyPayment, verifyRegistrationPayment, verifyGymPayment } from '../services/payment';
 import toast from 'react-hot-toast';
 import theme from '../theme';
 import Navbar from '../components/Navbar';
@@ -88,30 +87,31 @@ const PaymentSuccess = () => {
   const paymentId = searchParams.get('payment_id'); // for event payments
   const applicationType = searchParams.get('type');
   const applicationId = searchParams.get('applicationId');
+  const registrationId = searchParams.get('registrationId');
+  const gymRegistrationId = searchParams.get('gymRegistrationId');
 
   useEffect(() => {
     const verify = async () => {
+      if (!sessionId || !applicationType) {
+        toast.error('Invalid payment session');
+        setVerifying(false);
+        return;
+      }
+
       try {
-        // Event payments flow (Stripe Checkout success)
-        if (sessionId && paymentId) {
-          const res = await eventPaymentAPI.verifyStripePayment({ sessionId, paymentId });
-          if (res.success) {
-            setSuccess(true);
-            toast.success('Event payment verified successfully!');
-          } else {
-            toast.error(res.message || 'Payment verification failed');
-          }
-          setVerifying(false);
-          return;
+        let response;
+        
+        // Handle different payment types
+        if (applicationType === 'registration' && registrationId) {
+          response = await verifyRegistrationPayment(registrationId, sessionId);
+        } else if (applicationType === 'gym' && gymRegistrationId) {
+          response = await verifyGymPayment(gymRegistrationId, sessionId);
+        } else if ((applicationType === 'bazaar' || applicationType === 'booth') && applicationId) {
+          response = await verifyPayment(applicationType, applicationId, sessionId);
+        } else {
+          throw new Error('Invalid payment parameters');
         }
 
-        // Vendor/application payments flow
-        if (!sessionId || !applicationType || !applicationId) {
-          toast.error('Invalid payment session');
-          setVerifying(false);
-          return;
-        }
-        const response = await verifyPayment(applicationType, applicationId, sessionId);
         if (response.success) {
           setSuccess(true);
           toast.success('Payment verified successfully!');
@@ -127,12 +127,14 @@ const PaymentSuccess = () => {
     };
 
     verify();
-  }, [sessionId, applicationType, applicationId]);
+  }, [sessionId, applicationType, applicationId, registrationId, gymRegistrationId]);
 
   const handleGoToDashboard = () => {
-    if (paymentId) {
-      // Event payment: send user to My Registrations
+    // Navigate based on payment type
+    if (applicationType === 'registration') {
       navigate('/my-registrations');
+    } else if (applicationType === 'gym') {
+      navigate('/fitness');
     } else {
       navigate('/vendor/dashboard');
     }
@@ -157,11 +159,18 @@ const PaymentSuccess = () => {
                 </div>
                 <h1 style={styles.title}>Payment Successful!</h1>
                 <p style={styles.message}>
-                  Your payment has been processed successfully.
-                  {paymentId ? ' Your registration is now confirmed.' : ' You can now access your participation details.'}
+                  {applicationType === 'registration' 
+                    ? 'Your event registration payment has been processed successfully. You are now registered for the event!'
+                    : applicationType === 'gym'
+                    ? 'Your gym session payment has been processed successfully. You are now registered for the session!'
+                    : 'Your payment has been processed successfully. You can now access your participation details.'}
                 </p>
                 <button style={styles.button} onClick={handleGoToDashboard}>
-                  Go to Dashboard
+                  {applicationType === 'registration' 
+                    ? 'View My Registrations'
+                    : applicationType === 'gym'
+                    ? 'View Gym Schedule'
+                    : 'Go to Dashboard'}
                 </button>
               </>
             ) : (

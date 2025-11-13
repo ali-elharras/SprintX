@@ -313,6 +313,23 @@ const registerForGymSession = async (req, res) => {
       }
     }
 
+    // Determine payment status and amount
+    let paymentStatus = "pending";
+    let paymentMethod = null;
+    let amountPaid = session.cost || 0;
+    
+    // If free session or waitlisted, mark as paid/waived
+    if (amountPaid === 0) {
+      paymentStatus = "paid";
+      paymentMethod = "free";
+    } else if (registrationStatus === "waitlisted") {
+      paymentStatus = "waived"; // Don't charge for waitlist
+      amountPaid = 0;
+    } else {
+      // Keep as pending - user needs to pay
+      registrationStatus = "pending"; // Change status to pending until payment
+    }
+
     // Create registration
     const registration = new GymRegistration({
       user: userId,
@@ -325,12 +342,15 @@ const registerForGymSession = async (req, res) => {
       medicalConditions,
       emergencyContact,
       notifications,
+      paymentStatus,
+      paymentMethod,
+      amountPaid,
     });
 
     await registration.save();
 
-    // Update session participant count if not waitlisted
-    if (registrationStatus === "active") {
+    // Update session participant count only if paid and active (not waitlisted or pending)
+    if (registrationStatus === "active" && paymentStatus === "paid") {
       await GymSession.findByIdAndUpdate(sessionId, {
         $inc: { currentParticipants: 1 },
       });
@@ -339,12 +359,18 @@ const registerForGymSession = async (req, res) => {
     await registration.populate("gymSession");
     await registration.populate("user", "firstName lastName email");
 
+    let message = "Successfully registered for gym session";
+    if (registrationStatus === "waitlisted") {
+      message = `Added to waitlist at position ${waitlistPosition}`;
+    } else if (paymentStatus === "pending") {
+      message = "Registration created. Please complete payment.";
+    }
+
     res.status(201).json({
       success: true,
-      message: registrationStatus === "active" 
-        ? "Successfully registered for gym session" 
-        : `Added to waitlist at position ${waitlistPosition}`,
+      message,
       data: registration,
+      requiresPayment: paymentStatus === "pending",
     });
   } catch (error) {
     console.error("Error registering for gym session:", error);

@@ -5,6 +5,7 @@ import { gymAPI } from "../services/api";
 import theme from "../theme";
 import EditSessionModal from "./EditSessionModal";
 import GymSessionDetailsModal from "./GymSessionDetailsModal";
+import PaymentModal from "./PaymentModal";
 
 const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
   const { user, isAdmin, isEventsOffice } = useAuth();
@@ -12,6 +13,8 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [registering, setRegistering] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [gymRegistrationData, setGymRegistrationData] = useState(null);
 
   const getSessionTypeColor = (type) => {
     const colors = {
@@ -67,18 +70,40 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
         }
       };
       
-      await gymAPI.register(session._id, registrationData);
-      toast.success("Successfully registered for this session!");
+      const response = await gymAPI.register(session._id, registrationData);
       
-      // Refresh the session data
-      if (onUpdated) {
-        onUpdated(session._id);
+      // Check if payment is required
+      if (response.data.requiresPayment) {
+        // Store registration info and show payment modal
+        setGymRegistrationData(response.data.data);
+        setShowPaymentModal(true);
+      } else {
+        // Free session or waitlisted - registration complete
+        toast.success(response.data.message || "Successfully registered for this session!");
+        
+        // Refresh the session data
+        if (onUpdated) {
+          onUpdated(session._id);
+        }
+        setRegistering(false);
       }
     } catch (error) {
       console.error("Registration error:", error);
       toast.error(error.response?.data?.message || "Failed to register for session");
-    } finally {
       setRegistering(false);
+    }
+  };
+
+  const handlePaymentComplete = (success) => {
+    setShowPaymentModal(false);
+    setRegistering(false);
+    
+    if (success) {
+      toast.success("Registration and payment successful!");
+      // Refresh the session data
+      if (onUpdated) {
+        onUpdated(session._id);
+      }
     }
   };
 
@@ -384,6 +409,18 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
           onSaved={(id) => { if (typeof onUpdated === 'function') onUpdated(id); }} 
           viewOnly={viewOnly}
         />
+
+        {/* Payment Modal */}
+        {showPaymentModal && gymRegistrationData && (
+          <PaymentModal
+            isOpen={showPaymentModal}
+            onClose={handlePaymentComplete}
+            gymRegistrationId={gymRegistrationData._id}
+            amount={session.cost || 0}
+            title={`Registration for ${session.title}`}
+            type="gym"
+          />
+        )}
       </div>
     </div>
   );

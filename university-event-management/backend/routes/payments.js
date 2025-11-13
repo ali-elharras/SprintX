@@ -5,17 +5,25 @@ const {
   createBoothCheckoutSession,
   verifyPayment,
   getPaymentStatus,
+  createRegistrationCheckoutSession,
+  createGymCheckoutSession,
+  verifyRegistrationPayment,
+  verifyGymPayment,
 } = require('../controllers/paymentController');
 const { protect, requireVendor } = require('../middleware/auth');
 
-// Create checkout session routes
+// Vendor payment routes
 router.post('/create-checkout-session/bazaar/:applicationId', protect, requireVendor, createBazaarCheckoutSession);
 router.post('/create-checkout-session/booth/:applicationId', protect, requireVendor, createBoothCheckoutSession);
-
-// Verify payment
 router.post('/verify-payment/:applicationType/:applicationId', protect, requireVendor, verifyPayment);
-
-// Get payment status
 router.get('/status/:applicationType/:applicationId', protect, requireVendor, getPaymentStatus);
+
+// User payment routes for event registrations
+router.post('/create-checkout-session/registration/:registrationId', protect, createRegistrationCheckoutSession);
+router.post('/verify-payment/registration/:registrationId', protect, verifyRegistrationPayment);
+
+// User payment routes for gym registrations
+router.post('/create-checkout-session/gym/:gymRegistrationId', protect, createGymCheckoutSession);
+router.post('/verify-payment/gym/:gymRegistrationId', protect, verifyGymPayment);
 
 module.exports = router;

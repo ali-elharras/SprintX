@@ -8,6 +8,7 @@ import Button from "./Button";
 import Input from "./Input";
 import EventPaymentModal from "./EventPaymentModal";
 import { registrationAPI } from "../services/api";
+import PaymentModal from "./PaymentModal";
 
 // Validation schema
 const registrationSchema = yup.object({
@@ -60,30 +61,41 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
         lastName: data.lastName.trim(),
         email: data.email.toLowerCase().trim(),
         universityId: data.universityId.trim(),
-        // Provide minimal fields to satisfy backend validation
-        role: "student",
-        yearOfStudy: 1,
+        role: "student", // Default role since we removed the role field
       };
 
-      let response;
+      const response = await registrationAPI.registerForEvent(regData);
       
-      if (isPaidEvent) {
-        // Use paid event registration endpoint
-        response = await registrationAPI.registerForPaidEvent(regData);
-        
-        if (response.data.requiresPayment) {
-          // Show payment modal for paid events (store actual registration object)
-          setRegistrationData(response.data.data);
-          setShowPaymentModal(true);
-          setIsSubmitting(false);
-          return; // Don't call onSuccess yet - wait for payment
-        }
+      // Check if payment is required
+      if (response.data.requiresPayment) {
+        // Store registration info and show payment modal
+        setRegistrationData(response.data.data);
+        setShowPaymentModal(true);
       } else {
-        // Use regular registration for free events
-        response = await registrationAPI.registerForEvent(regData);
+        // Free event - registration complete
+        toast.success("Registration successful!");
+        // Notify other tabs/windows that a registration occurred so they can refresh
+        try {
+          const payload = JSON.stringify({ eventId: event._id, ts: Date.now() });
+          localStorage.setItem('registration_made', payload);
+        } catch (err) {
+          // Ignore storage errors (e.g., quota)
+        }
+        onSuccess && onSuccess(response.data.data);
       }
-      
-      toast.success("Registration successful!");
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast.error(error.message || "Registration failed. Please try again.");
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePaymentComplete = (success) => {
+    setShowPaymentModal(false);
+    setIsSubmitting(false);
+    
+    if (success) {
+      toast.success("Registration and payment successful!");
       // Notify other tabs/windows that a registration occurred so they can refresh
       try {
         const payload = JSON.stringify({ eventId: event._id, ts: Date.now() });
@@ -91,18 +103,8 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
       } catch (err) {
         // Ignore storage errors (e.g., quota)
       }
-      onSuccess && onSuccess(response.data);
-    } catch (error) {
-      console.error("Registration error:", error);
-      toast.error(error.message || "Registration failed. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+      onSuccess && onSuccess(registrationData);
     }
-  };
-
-  const handlePaymentModalClose = () => {
-    setShowPaymentModal(false);
-    setRegistrationData(null);
   };
 
   return (
@@ -261,13 +263,15 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
         </div>
       </form>
 
-      {/* Payment Modal for Paid Events */}
+      {/* Payment Modal */}
       {showPaymentModal && registrationData && (
-        <EventPaymentModal
+        <PaymentModal
           isOpen={showPaymentModal}
-          onClose={handlePaymentModalClose}
-          registration={registrationData}
-          event={event}
+          onClose={handlePaymentComplete}
+          registrationId={registrationData._id}
+          amount={event.cost || 0}
+          title={`Registration for ${event.title}`}
+          type="event"
         />
       )}
     </div>

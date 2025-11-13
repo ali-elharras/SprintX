@@ -180,6 +180,13 @@ const userSchema = new mongoose.Schema(
       default: 0,
     },
 
+    // Balance for payments
+    balance: {
+      type: Number,
+      default: 0,
+      min: [0, "Balance cannot be negative"],
+    },
+
     // Favorites: saved events
     favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: "Event" }],
   },

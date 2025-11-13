@@ -53,11 +53,36 @@ const registrationSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["pending", "confirmed", "cancelled", "attended", "no-show"],
-      default: "confirmed", // Auto-confirm for now
+      default: "pending", // Now pending until payment is confirmed
     },
     registrationDate: {
       type: Date,
       default: Date.now,
+    },
+
+    // Payment Information
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "completed", "failed", "refunded", "waived"],
+      default: "pending",
+    },
+    paymentAmount: {
+      type: Number,
+      min: [0, "Payment amount cannot be negative"],
+      default: 0,
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["stripe", "balance", "free"],
+    },
+    paymentDate: {
+      type: Date,
+    },
+    stripeSessionId: {
+      type: String,
+    },
+    stripePaymentIntentId: {
+      type: String,
     },
   },
   {

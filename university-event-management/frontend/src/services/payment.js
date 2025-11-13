@@ -78,3 +78,75 @@ export const getPaymentStatus = async (applicationType, applicationId) => {
     throw error.response?.data || error;
   }
 };
+
+// Create checkout session for event registration
+export const createRegistrationCheckoutSession = async (registrationId, paymentMethod) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/payments/create-checkout-session/registration/${registrationId}`,
+      { paymentMethod },
+      {
+        headers: {
+          Authorization: getAuthToken(),
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Create checkout session for gym registration
+export const createGymCheckoutSession = async (gymRegistrationId, paymentMethod) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/payments/create-checkout-session/gym/${gymRegistrationId}`,
+      { paymentMethod },
+      {
+        headers: {
+          Authorization: getAuthToken(),
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Verify registration payment
+export const verifyRegistrationPayment = async (registrationId, sessionId) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/payments/verify-payment/registration/${registrationId}`,
+      { sessionId },
+      {
+        headers: {
+          Authorization: getAuthToken(),
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Verify gym payment
+export const verifyGymPayment = async (gymRegistrationId, sessionId) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/payments/verify-payment/gym/${gymRegistrationId}`,
+      { sessionId },
+      {
+        headers: {
+          Authorization: getAuthToken(),
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};

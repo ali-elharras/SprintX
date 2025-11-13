@@ -126,6 +126,11 @@ const registerForEvent = async (req, res) => {
     if (eventData.cost > 0) {
       registrationData.paymentStatus = "pending";
       registrationData.paymentAmount = eventData.cost;
+      registrationData.status = "pending"; // Keep pending until payment
+    } else {
+      registrationData.paymentStatus = "completed";
+      registrationData.paymentMethod = "free";
+      registrationData.status = "confirmed"; // Auto-confirm for free events
     }
 
     // Create registration
@@ -138,15 +143,17 @@ const registerForEvent = async (req, res) => {
       populatedRegistration.event = eventData;
       res.status(201).json({
         success: true,
-        message: "Registration successful",
+        message: eventData.cost > 0 ? "Registration created. Please complete payment." : "Registration successful",
         data: populatedRegistration,
+        requiresPayment: eventData.cost > 0,
       });
     } else {
       await registration.populate("event", "title type startDate endDate location cost maxParticipants currentParticipants");
       res.status(201).json({
         success: true,
-        message: "Registration successful",
+        message: eventData.cost > 0 ? "Registration created. Please complete payment." : "Registration successful",
         data: registration,
+        requiresPayment: eventData.cost > 0,
       });
     }
   } catch (error) {

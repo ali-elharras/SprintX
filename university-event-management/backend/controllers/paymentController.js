@@ -2,6 +2,10 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const BazaarApplication = require('../models/BazaarApplication');
 const BoothApplication = require('../models/BoothApplication');
 const Event = require('../models/Event');
+const Registration = require('../models/Registration');
+const GymRegistration = require('../models/GymRegistration');
+const GymSession = require('../models/GymSession');
+const User = require('../models/User');
 const emailService = require('../services/emailService');
 const qrCodeService = require('../services/qrCodeService');
 
@@ -450,6 +454,383 @@ exports.getPaymentStatus = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error getting payment status:', error);
+    next(error);
+  }
+};
+
+// @desc    Create Stripe checkout session for event registration
+// @route   POST /api/payments/create-checkout-session/registration/:registrationId
+// @access  Private
+exports.createRegistrationCheckoutSession = async (req, res, next) => {
+  try {
+    const { registrationId } = req.params;
+    const { paymentMethod } = req.body; // 'stripe' or 'balance'
+    const userId = req.user.id;
+
+    // Find the registration
+    const registration = await Registration.findById(registrationId).populate('event');
+
+    if (!registration) {
+      return res.status(404).json({
+        success: false,
+        message: 'Registration not found',
+      });
+    }
+
+    // Verify ownership
+    if (registration.user && registration.user.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only pay for your own registrations',
+      });
+    }
+
+    // Check if payment is already completed
+    if (registration.paymentStatus === 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment has already been completed for this registration',
+      });
+    }
+
+    // Get payment amount from event
+    const amount = Math.round((registration.paymentAmount || registration.event.cost || 0) * 100); // Convert to cents
+
+    if (amount === 0) {
+      // Free event - auto-confirm
+      registration.paymentStatus = 'completed';
+      registration.paymentMethod = 'free';
+      registration.paymentDate = new Date();
+      registration.status = 'confirmed';
+      await registration.save();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Registration confirmed for free event',
+        data: { paymentMethod: 'free' },
+      });
+    }
+
+    // Handle balance payment
+    if (paymentMethod === 'balance') {
+      const user = await User.findById(userId);
+      
+      if (!user.balance || user.balance < (amount / 100)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Insufficient balance',
+        });
+      }
+
+      // Deduct from balance
+      user.balance -= (amount / 100);
+      await user.save();
+
+      // Update registration
+      registration.paymentStatus = 'completed';
+      registration.paymentMethod = 'balance';
+      registration.paymentDate = new Date();
+      registration.status = 'confirmed';
+      await registration.save();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Payment completed using balance',
+        data: { paymentMethod: 'balance', amountPaid: amount / 100 },
+      });
+    }
+
+    // Handle Stripe payment
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `Event Registration - ${registration.event.title}`,
+              description: `Registration for ${registration.event.type} event`,
+            },
+            unit_amount: amount,
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: `${process.env.FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}&type=registration&registrationId=${registrationId}`,
+      cancel_url: `${process.env.FRONTEND_URL}/my-registrations?payment=cancelled`,
+      client_reference_id: registrationId,
+      metadata: {
+        registrationType: 'event',
+        registrationId: registrationId,
+        userId: userId.toString(),
+      },
+    });
+
+    // Update registration with session ID
+    registration.stripeSessionId = session.id;
+    await registration.save();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        sessionId: session.id,
+        url: session.url,
+      },
+    });
+  } catch (error) {
+    console.error('Error creating registration checkout session:', error);
+    next(error);
+  }
+};
+
+// @desc    Create Stripe checkout session for gym session registration
+// @route   POST /api/payments/create-checkout-session/gym/:gymRegistrationId
+// @access  Private
+exports.createGymCheckoutSession = async (req, res, next) => {
+  try {
+    const { gymRegistrationId } = req.params;
+    const { paymentMethod } = req.body; // 'stripe' or 'balance'
+    const userId = req.user.id;
+
+    // Find the gym registration
+    const gymRegistration = await GymRegistration.findById(gymRegistrationId).populate('gymSession');
+
+    if (!gymRegistration) {
+      return res.status(404).json({
+        success: false,
+        message: 'Gym registration not found',
+      });
+    }
+
+    // Verify ownership
+    if (gymRegistration.user.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only pay for your own registrations',
+      });
+    }
+
+    // Check if payment is already completed
+    if (gymRegistration.paymentStatus === 'completed' || gymRegistration.paymentStatus === 'paid') {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment has already been completed for this registration',
+      });
+    }
+
+    // Get payment amount from gym session
+    const amount = Math.round((gymRegistration.amountPaid || gymRegistration.gymSession.cost || 0) * 100); // Convert to cents
+
+    if (amount === 0) {
+      // Free session - auto-confirm
+      gymRegistration.paymentStatus = 'paid';
+      gymRegistration.paymentMethod = 'free';
+      gymRegistration.paymentDate = new Date();
+      gymRegistration.status = 'active';
+      await gymRegistration.save();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Registration confirmed for free session',
+        data: { paymentMethod: 'free' },
+      });
+    }
+
+    // Handle balance payment
+    if (paymentMethod === 'balance') {
+      const user = await User.findById(userId);
+      
+      if (!user.balance || user.balance < (amount / 100)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Insufficient balance',
+        });
+      }
+
+      // Deduct from balance
+      user.balance -= (amount / 100);
+      await user.save();
+
+      // Update gym registration
+      gymRegistration.paymentStatus = 'paid';
+      gymRegistration.paymentMethod = 'balance';
+      gymRegistration.paymentDate = new Date();
+      gymRegistration.amountPaid = amount / 100;
+      gymRegistration.status = 'active';
+      await gymRegistration.save();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Payment completed using balance',
+        data: { paymentMethod: 'balance', amountPaid: amount / 100 },
+      });
+    }
+
+    // Handle Stripe payment
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `Gym Session - ${gymRegistration.gymSession.title}`,
+              description: `${gymRegistration.gymSession.type} session`,
+            },
+            unit_amount: amount,
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: `${process.env.FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}&type=gym&gymRegistrationId=${gymRegistrationId}`,
+      cancel_url: `${process.env.FRONTEND_URL}/fitness?payment=cancelled`,
+      client_reference_id: gymRegistrationId,
+      metadata: {
+        registrationType: 'gym',
+        gymRegistrationId: gymRegistrationId,
+        userId: userId.toString(),
+      },
+    });
+
+    // Update gym registration with session ID
+    gymRegistration.stripeSessionId = session.id;
+    await gymRegistration.save();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        sessionId: session.id,
+        url: session.url,
+      },
+    });
+  } catch (error) {
+    console.error('Error creating gym checkout session:', error);
+    next(error);
+  }
+};
+
+// @desc    Verify payment for event registration
+// @route   POST /api/payments/verify-payment/registration/:registrationId
+// @access  Private
+exports.verifyRegistrationPayment = async (req, res, next) => {
+  try {
+    const { registrationId } = req.params;
+    const { sessionId } = req.body;
+    const userId = req.user.id;
+
+    const registration = await Registration.findById(registrationId).populate('event');
+
+    if (!registration) {
+      return res.status(404).json({
+        success: false,
+        message: 'Registration not found',
+      });
+    }
+
+    // Verify ownership
+    if (registration.user && registration.user.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized',
+      });
+    }
+
+    if (registration.paymentStatus === 'completed') {
+      return res.status(200).json({
+        success: true,
+        message: 'Payment already verified',
+        data: registration,
+      });
+    }
+
+    // Retrieve the session from Stripe
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    if (session.payment_status === 'paid') {
+      // Update registration
+      registration.paymentStatus = 'completed';
+      registration.status = 'confirmed';
+      registration.paymentDate = new Date();
+      registration.stripePaymentIntentId = session.payment_intent;
+      await registration.save();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Payment verified successfully',
+        data: registration,
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment not completed',
+      });
+    }
+  } catch (error) {
+    console.error('Error verifying registration payment:', error);
+    next(error);
+  }
+};
+
+// @desc    Verify payment for gym registration
+// @route   POST /api/payments/verify-payment/gym/:gymRegistrationId
+// @access  Private
+exports.verifyGymPayment = async (req, res, next) => {
+  try {
+    const { gymRegistrationId } = req.params;
+    const { sessionId } = req.body;
+    const userId = req.user.id;
+
+    const gymRegistration = await GymRegistration.findById(gymRegistrationId).populate('gymSession');
+
+    if (!gymRegistration) {
+      return res.status(404).json({
+        success: false,
+        message: 'Gym registration not found',
+      });
+    }
+
+    // Verify ownership
+    if (gymRegistration.user.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized',
+      });
+    }
+
+    if (gymRegistration.paymentStatus === 'paid' || gymRegistration.paymentStatus === 'completed') {
+      return res.status(200).json({
+        success: true,
+        message: 'Payment already verified',
+        data: gymRegistration,
+      });
+    }
+
+    // Retrieve the session from Stripe
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    if (session.payment_status === 'paid') {
+      // Update gym registration
+      gymRegistration.paymentStatus = 'paid';
+      gymRegistration.status = 'active';
+      gymRegistration.paymentDate = new Date();
+      gymRegistration.stripePaymentIntentId = session.payment_intent;
+      await gymRegistration.save();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Payment verified successfully',
+        data: gymRegistration,
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment not completed',
+      });
+    }
+  } catch (error) {
+    console.error('Error verifying gym payment:', error);
     next(error);
   }
 };

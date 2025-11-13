@@ -68,7 +68,7 @@ const gymRegistrationSchema = new mongoose.Schema(
     // Payment Information
     paymentStatus: {
       type: String,
-      enum: ["pending", "paid", "refunded", "waived"],
+      enum: ["pending", "paid", "refunded", "waived", "completed", "failed"],
       default: "pending",
     },
     amountPaid: {
@@ -78,7 +78,7 @@ const gymRegistrationSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["cash", "card", "bank_transfer", "free", "scholarship"],
+      enum: ["cash", "card", "bank_transfer", "free", "scholarship", "stripe", "balance"],
     },
     paymentDate: {
       type: Date,
@@ -90,6 +90,12 @@ const gymRegistrationSchema = new mongoose.Schema(
     },
     refundDate: {
       type: Date,
+    },
+    stripeSessionId: {
+      type: String,
+    },
+    stripePaymentIntentId: {
+      type: String,
     },
 
     // Waitlist Information
