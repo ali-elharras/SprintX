@@ -70,7 +70,7 @@ const Navbar = () => {
         name: vendor.companyName,
         subtitle: `${vendor.industry} • ${vendor.verificationStatus}`,
         role: "vendor",
-        avatar: vendor.logo || null,
+        avatar: vendor.logoUrl || null,
       };
     } else if (isUser && user) {
       return {
@@ -213,6 +213,7 @@ const Navbar = () => {
             >
               Dashboard
             </button>
+            
             <button
               onClick={() => navigate("/events")}
               style={{
@@ -351,6 +352,40 @@ const Navbar = () => {
             >
               Reports
             </button>
+            <button
+              onClick={() => navigate("/events-ratings")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color:
+                  location.pathname === "/events-ratings"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom:
+                  location.pathname === "/events-ratings"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/events-ratings") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/events-ratings") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              Events Ratings
+            </button>
           </>
         ) : user && user.role === "admin" ? (
           <>
@@ -387,6 +422,40 @@ const Navbar = () => {
               }}
             >
               Dashboard
+            </button>
+            <button
+              onClick={() => navigate("/admin-comments")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color:
+                  location.pathname === "/admin-comments"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom:
+                  location.pathname === "/admin-comments"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/admin-comments") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/admin-comments") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              Comments
             </button>
             <button
               onClick={() => navigate("/events")}
@@ -488,7 +557,7 @@ const Navbar = () => {
                 }
               }}
             >
-              Admin Users
+              User Management
             </button>
 
             <button
@@ -524,6 +593,40 @@ const Navbar = () => {
               }}
             >
               Reports
+            </button>
+            <button
+              onClick={() => navigate("/events-ratings")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color:
+                  location.pathname === "/events-ratings"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom:
+                  location.pathname === "/events-ratings"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/events-ratings") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/events-ratings") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              Events Ratings
             </button>
           </>
         ) : isVendor ? (
@@ -705,7 +808,40 @@ const Navbar = () => {
                 Courts
               </button>
             )}
-
+<button
+              onClick={() => navigate("/loyalty-program")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color:
+                  location.pathname === "/loyalty-program"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom:
+                  location.pathname === "/loyalty-program"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/loyalty-program") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/loyalty-program") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              Loyalty Program
+            </button>
             <button
               onClick={() => navigate("/gym-schedule")}
               style={{
@@ -740,6 +876,7 @@ const Navbar = () => {
             >
               Gym Schedule
             </button>
+             
 
             {isUser && user.role !== "events_office" && (
               <button

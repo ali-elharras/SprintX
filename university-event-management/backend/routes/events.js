@@ -9,8 +9,9 @@ const {
   getEventsByType,
   getUpcomingBazaars,
   seedBazaar,
+  toggleArchiveStatus,
 } = require("../controllers/eventController");
-const { protect, authorize } = require("../middleware/auth");
+const { protect, authorize, optionalProtect } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -86,7 +87,7 @@ const createEventValidation = [
 // =============================
 // Public Routes
 // =============================
-router.get("/", getEvents);
+router.get("/", optionalProtect, getEvents);
 router.get("/type/:type", getEventsByType);
 router.get("/:id", getEvent);
 
@@ -116,6 +117,11 @@ router.delete(
   "/:id",
   authorize("admin", "events_office"),
   deleteEvent
+);
+router.patch(
+  "/:id/archive",
+  authorize("admin", "events_office"),
+  toggleArchiveStatus
 );
 
 

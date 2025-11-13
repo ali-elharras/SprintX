@@ -10,7 +10,7 @@ import { applicationServices } from "../services/api";
 import { favoritesAPI } from "../services/api";
 import toast from "react-hot-toast";
 
-const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit, onEditTrip, onDelete }) => {
+const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit, onEditTrip, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive, onExportRegistrations, onRestrict }) => {
   // Normalize event/conference object for consistent display
   const normalizedEvent = {
     ...event,
@@ -27,18 +27,6 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
     startDate: event.startDate || event.date || new Date().toISOString(),
     endDate: event.endDate || event.startDate || event.date || new Date().toISOString(),
   };
-
-  // Debug logging for bazaars
-  if (normalizedEvent.type === 'bazaar') {
-    console.log('Bazaar EventCard Data:', {
-      title: normalizedEvent.title,
-      type: normalizedEvent.type,
-      registrationRequired: normalizedEvent.registrationRequired,
-      currentParticipants: normalizedEvent.currentParticipants,
-      maxParticipants: normalizedEvent.maxParticipants,
-      showParticipants: normalizedEvent.registrationRequired || normalizedEvent.type === 'bazaar'
-    });
-  }
 
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [participatingVendors, setParticipatingVendors] = useState([]);
@@ -139,24 +127,11 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   };
 
   const handleEditClick = () => {
-    console.log('Edit button clicked!', { 
-      event: normalizedEvent, 
-      onEdit, 
-      onEditConference,
-      onEditTrip,
-      hasOnEdit: !!onEdit,
-      hasOnEditConference: !!onEditConference,
-      hasOnEditTrip: !!onEditTrip,
-      willCallOnEdit: !onEditConference || normalizedEvent.type !== "conference"
-    });
     if (onEditConference && normalizedEvent.type === "conference") {
-      console.log('Calling onEditConference');
       onEditConference(normalizedEvent);
     } else if (onEditTrip && normalizedEvent.type === "trip") {
-      console.log('Calling onEditTrip with event:', normalizedEvent);
       onEditTrip(normalizedEvent);
     } else if (onEdit) {
-      console.log('Calling onEdit with event:', normalizedEvent);
       onEdit(normalizedEvent);
     } else {
       console.log('ERROR: No edit callback available!');
@@ -209,22 +184,15 @@ const handleDeleteWorkshop = async () => {
       if (normalizedEvent.type === 'bazaar' && normalizedEvent._id) {
         setVendorsLoading(true);
         try {
-          console.log('Fetching vendors for bazaar:', normalizedEvent._id, 'Type:', normalizedEvent.type);
           const response = await applicationServices.getApprovedVendorsForBazaar(normalizedEvent._id);
-          console.log('Vendors response:', response);
-          console.log('Vendors data:', response.data);
-          console.log('Setting vendors:', response.data || []);
           setParticipatingVendors(response.data || []);
         } catch (error) {
           console.error('Error fetching participating vendors:', error);
-          console.error('Error details:', error.response?.data);
           // Don't show error toast for this - it's not critical for event display
           setParticipatingVendors([]);
         } finally {
           setVendorsLoading(false);
         }
-      } else {
-        console.log('Not fetching vendors - Type:', normalizedEvent.type, 'ID:', normalizedEvent._id);
       }
     };
 
@@ -266,20 +234,7 @@ const handleDeleteWorkshop = async () => {
   })();
 
   const hasStarted = eventHasStarted(normalizedEvent);
-
-  // Debug logging for trip edit button
-  if (normalizedEvent.type === 'trip') {
-    console.log('Trip Edit Debug:', {
-      type: normalizedEvent.type,
-      isEventsOffice,
-      isOwner,
-      hasStarted,
-      userId: user?.id || user?._id,
-      organizer: normalizedEvent.organizer,
-      createdBy: normalizedEvent.createdBy,
-      showEditButton: isEventsOffice && isOwner && !hasStarted
-    });
-  }
+  const hasEnded = new Date(normalizedEvent.endDate) < new Date();
 
   return (
     <>
@@ -369,10 +324,11 @@ const handleDeleteWorkshop = async () => {
                 background: "rgba(255,255,255,0.2)",
                 color: "#fff",
                 border: "none",
-                padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+                padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
                 borderRadius: theme.borderRadius.full,
                 cursor: "pointer",
-                fontWeight: theme.typography.fontWeight.medium,
+                fontWeight: theme.typography.fontWeight.semibold,
+                fontSize: theme.typography.fontSize.lg,
               }}
             >
               ♥
@@ -767,6 +723,62 @@ const handleDeleteWorkshop = async () => {
                     }}
                   >
                     Delete
+                  </Button>
+                )}
+                {showArchiveButton && (
+                  <Button
+                    variant="outline"
+                    onClick={onArchive}
+                    style={{
+                      width: "100%",
+                      minHeight: "44px",
+                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Archive
+                  </Button>
+                )}
+                {showUnarchiveButton && (
+                  <Button
+                    variant="outline"
+                    onClick={onUnarchive}
+                    style={{
+                      width: "100%",
+                      minHeight: "44px",
+                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Unarchive
+                  </Button>
+                )}
+                 {isEventsOffice && normalizedEvent.type !== 'conference' && (
+                  <Button
+                    variant="outline"
+                    onClick={() => onExportRegistrations(normalizedEvent)}
+                    style={{
+                      width: "100%",
+                      minHeight: "44px",
+                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Export Registrations
+                  </Button>
+                )}
+                {isEventsOffice && !hasEnded && onRestrict && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => onRestrict(normalizedEvent)}
+                    style={{
+                      width: "100%",
+                      minHeight: "44px",
+                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Restrict Event
                   </Button>
                 )}
               </>

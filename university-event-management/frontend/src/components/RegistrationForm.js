@@ -61,6 +61,13 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
       const response = await registrationAPI.registerForEvent(registrationData);
       
       toast.success("Registration successful!");
+      // Notify other tabs/windows that a registration occurred so they can refresh
+      try {
+        const payload = JSON.stringify({ eventId: event._id, ts: Date.now() });
+        localStorage.setItem('registration_made', payload);
+      } catch (err) {
+        // Ignore storage errors (e.g., quota)
+      }
       onSuccess && onSuccess(response.data);
     } catch (error) {
       console.error("Registration error:", error);

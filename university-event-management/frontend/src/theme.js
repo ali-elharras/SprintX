@@ -388,6 +388,12 @@ const theme = {
         },
       },
       sizes: {
+        xs: {
+          padding: "0.375rem 0.75rem",
+          fontSize: "0.75rem", // 12px
+          minHeight: "30px",
+          fontWeight: "500",
+        },
         sm: {
           padding: "0.5rem 1rem",
           fontSize: "0.875rem",

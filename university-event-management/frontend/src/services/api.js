@@ -288,6 +288,8 @@ export const eventAPI = {
   updateEventStatus: (id, status, message = null) =>
     api.put(`/events/${id}/status`, message ? { status, message } : { status }),
   deleteEvent: (id) => api.delete(`/events/${id}`),
+
+  toggleArchiveStatus: (id, isArchived) => api.patch(`/events/${id}/archive`, { isArchived }),
 };
 
 // ============================================
@@ -576,6 +578,39 @@ export const adminAPI = {
     }
   },
 };
+export const ratingAPI = {
+  // Submit or update a rating
+  submitRating: (ratingData) => 
+    api.post('/ratings', ratingData),
+
+  // Get all ratings for an event
+  getEventRatings: (eventId, cancelToken = null) =>
+    api.get(`/ratings/event/${eventId}`, {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    }),
+
+  // Get current user's rating for an event
+  getMyRating: (eventId, cancelToken = null) =>
+    api.get(`/ratings/my-rating/${eventId}`, {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    }),
+
+  // Delete a rating
+  deleteRating: (ratingId) =>
+    api.delete(`/ratings/${ratingId}`),
+  
+  // ================= ADMIN COMMENT MANAGEMENT =================
+  // Admin fetch all ratings/comments with filters
+  getAllRatingsAdmin: (params = {}, cancelToken = null) => {
+    const queryString = new URLSearchParams(params).toString();
+    return api.get(`/ratings/admin/all${queryString ? `?${queryString}` : ''}`, {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    });
+  },
+
+  // Admin delete any rating by ID
+  deleteRatingAdmin: (ratingId) => api.delete(`/ratings/admin/${ratingId}`),
+};
 
 // ============================================
 // Favorites API
@@ -593,4 +628,45 @@ export const favoritesAPI = {
     const res = await api.delete(`/favorites/${eventId}`);
     return res.data;
   },
+};
+
+// ============================================
+// BOOTH POLL API ENDPOINTS
+// ============================================
+export const boothPollAPI = {
+  getAllPolls: (params = {}, cancelToken = null) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return retryRequest(async () =>
+      api.get(`/booth-polls${queryParams ? `?${queryParams}` : ""}`, {
+        ...(cancelToken && { cancelToken: cancelToken.token }),
+      })
+    );
+  },
+
+  getPoll: (id, cancelToken = null) =>
+    retryRequest(async () =>
+      api.get(`/booth-polls/${id}`, {
+        ...(cancelToken && { cancelToken: cancelToken.token }),
+      })
+    ),
+
+  createPoll: (pollData) =>
+    retryRequest(async () =>
+      api.post('/booth-polls', pollData)
+    ),
+
+  voteOnPoll: (pollId, vendorIndex) =>
+    retryRequest(async () =>
+      api.post(`/booth-polls/${pollId}/vote`, { vendorIndex })
+    ),
+
+  closePoll: (pollId) =>
+    retryRequest(async () =>
+      api.post(`/booth-polls/${pollId}/close`, {})
+    ),
+
+  deletePoll: (pollId) =>
+    retryRequest(async () =>
+      api.delete(`/booth-polls/${pollId}`)
+    ),
 };

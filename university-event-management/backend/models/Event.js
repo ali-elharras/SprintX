@@ -111,6 +111,11 @@ const eventSchema = new mongoose.Schema(
       enum: ["draft", "published", "approved","accepted","rejected","cancelled", "completed"],
       default: "draft",
     },
+    isArchived: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
 
     // Additional Information
     prerequisites: {

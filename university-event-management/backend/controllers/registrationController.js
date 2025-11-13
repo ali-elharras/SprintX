@@ -377,6 +377,7 @@ const getEventRegistrations = async (req, res) => {
     }
     
     const registrations = await Registration.find({ event: eventId })
+      .populate('user', 'firstName lastName email universityId role')
       .sort({ registrationDate: -1 });
     
     res.status(200).json({

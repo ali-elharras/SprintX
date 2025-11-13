@@ -60,6 +60,11 @@ const boothApplicationSchema = new mongoose.Schema(
       enum: ["pending", "approved", "rejected"],
       default: "pending",
     },
+    isArchived: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     paymentStatus: {
       type: String,
       enum: ["not_required", "pending", "completed", "failed", "expired"],

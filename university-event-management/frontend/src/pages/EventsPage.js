@@ -9,11 +9,15 @@ import Select from "../components/Select";
 import Navbar from "../components/Navbar";
 import ConferenceModal from "./ConferenceModal";
 import LoadingScreen from "../components/LoadingScreen";
-import api, { eventAPI, workshopAPI, createCancelTokenSource, applicationServices } from "../services/api";
+import api, { eventAPI, workshopAPI, registrationAPI, createCancelTokenSource, applicationServices, boothPollAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 import CreateDropdownButton from '../components/CreateDropdownButton';
 import CreateTripModal from '../components/CreateTripModal';
+import { exportRegistrationsToXLSX } from '../services/exportService';
+import BoothPollManager from '../components/BoothPollManager';
+import BoothPollVoting from '../components/BoothPollVoting';
+import RestrictEventModal from "../components/RestrictEventModal";
 
 // Helper function to get tomorrow's date string in local time (not UTC)
 const getTomorrowDateTimeString = () => {
@@ -156,6 +160,9 @@ const WorkshopCard = ({ workshop, onEdit, onDelete, isEventsOffice = false }) =>
   const [isToggleHovered, setIsToggleHovered] = useState(false);
   const [isEditHovered, setIsEditHovered] = useState(false);
   const [isDeleteHovered, setIsDeleteHovered] = useState(false);
+  const [participantsModalOpen, setParticipantsModalOpen] = useState(false);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
+  const [participants, setParticipants] = useState([]);
 
   // Check if editing is allowed
   const isPublished = workshop.status === 'published';
@@ -253,6 +260,10 @@ const WorkshopCard = ({ workshop, onEdit, onDelete, isEventsOffice = false }) =>
           </p>
           <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
             <strong style={{ color: '#1f2937', fontWeight: 600 }}>Capacity:</strong> {workshop.attendees || 0} / {workshop.capacity}
+            {' '}
+            <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.25rem' }}>
+              ({Math.max(0, workshop.capacity - (workshop.attendees || 0))} spots remaining)
+            </span>
           </p>
           <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
             <strong style={{ color: '#1f2937', fontWeight: 600 }}>Required Resources:</strong> {workshop.extraRequiredResources}
@@ -319,6 +330,36 @@ const WorkshopCard = ({ workshop, onEdit, onDelete, isEventsOffice = false }) =>
         </button>
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>
+          {/* Participants button - opens modal with list of registrations for published workshop */}
+          <div>
+            <button
+              disabled={!isPublished || !workshop.publishedEventId}
+              title={!isPublished || !workshop.publishedEventId ? "No participants yet" : "View participants"}
+              style={{
+                ...workshopStyleSheet['card-btn-view-toggle-default'],
+                padding: '0.35rem 0.75rem', fontSize: '0.8rem', fontWeight: 500,
+                borderRadius: '0.5rem', transition: 'all 0.15s', cursor: isPublished ? 'pointer' : 'not-allowed',
+                border: 'none',
+              }}
+              onClick={async () => {
+                if (!isPublished || !workshop.publishedEventId) return;
+                setParticipantsModalOpen(true);
+                setParticipantsLoading(true);
+                try {
+                  const resp = await registrationAPI.getEventRegistrations(workshop.publishedEventId);
+                  const regs = resp.data?.data || [];
+                  setParticipants(regs);
+                } catch (err) {
+                  console.error('Failed to fetch participants for workshop', err);
+                  setParticipants([]);
+                } finally {
+                  setParticipantsLoading(false);
+                }
+              }}
+            >
+              Participants
+            </button>
+          </div>
           <div style={{ position: 'relative' }}>
             <button 
               disabled={!canEdit}
@@ -367,6 +408,33 @@ const WorkshopCard = ({ workshop, onEdit, onDelete, isEventsOffice = false }) =>
           )}
         </div>
       </div>
+      {/* Participants Modal (per-workshop) */}
+      <Modal isOpen={participantsModalOpen} onClose={() => setParticipantsModalOpen(false)} ariaLabel={`Participants for ${workshop.workshopName}`}>
+        <div>
+          <h3 style={{ marginTop: 0, color: themeColors.gray900 }}>{`Participants — ${workshop.workshopName}`}</h3>
+          {participantsLoading ? (
+            <p>Loading participants…</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {participants.length === 0 ? (
+                <p style={{ color: '#6b7280' }}>No participants registered yet.</p>
+              ) : (
+                participants.map((p) => (
+                  <div key={p._id || p.email} style={{ padding: '0.5rem', borderRadius: '0.5rem', background: '#fff', border: '1px solid #eee' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{p.user ? `${p.user.firstName} ${p.user.lastName}` : `${p.firstName} ${p.lastName}`}</div>
+                        <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>{p.user ? p.user.email : p.email} • {p.universityId}</div>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#6b7280', fontWeight: 600 }}>{(p.status || '').toUpperCase()}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };
@@ -660,7 +728,7 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
   );
 };
 
-const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
+const BazaarManagementCard = ({ bazaar, onEdit, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive, onExportRegistrations, onRestrict }) => {
   const [participatingVendors, setParticipatingVendors] = useState([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
 
@@ -727,8 +795,22 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
     <div style={cardStyle}>
       <div>
         <div style={headerStyle}>
-          <div style={labelStyle}>
-            Bazaar
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+            <div style={labelStyle}>
+              Bazaar
+            </div>
+            {hasEnded && (
+              <div style={{
+                background: 'rgba(0,0,0,0.2)',
+                color: theme.colors.text.white,
+                padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+                borderRadius: theme.borderRadius.sm,
+                fontSize: theme.typography.fontSize.xs,
+                fontWeight: theme.typography.fontWeight.medium,
+              }}>
+                Event Ended
+              </div>
+            )}
           </div>
           <h3 style={titleStyle}>
             {bazaar.title || bazaar.name}
@@ -858,7 +940,7 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
           </span>
         </div>
         <div style={{ display: "flex", gap: theme.spacing[2], width: "100%" }}>
-          {!hasStarted ? (
+          {!hasStarted && (
             <>
               <Button variant="primary" onClick={() => onEdit(bazaar)} style={{ flex: 1 }}>
                 Edit
@@ -869,9 +951,25 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete }) => {
                 </Button>
               )}
             </>
-          ) : (
-            <Button variant="secondary" disabled style={{ width: "100%" }}>
-              {hasEnded ? "Event Ended" : "Event Started"}
+          )}
+          {showArchiveButton && (
+            <Button variant="outline" onClick={onArchive} style={{ flex: 1 }}>
+              Archive
+            </Button>
+          )}
+          {showUnarchiveButton && (
+            <Button variant="outline" onClick={onUnarchive} style={{ flex: 1 }}>
+              Unarchive
+            </Button>
+          )}
+          {onExportRegistrations && (
+            <Button variant="outline" onClick={() => onExportRegistrations(bazaar)} style={{ flex: 1 }}>
+              Export Registrations
+            </Button>
+          )}
+          {!hasEnded && onRestrict && (
+            <Button variant="secondary" onClick={() => onRestrict(bazaar)} style={{ flex: 1 }}>
+              Restrict Event
             </Button>
           )}
         </div>
@@ -893,7 +991,9 @@ const EventsPage = () => {
   const [filters, setFilters] = useState({
     type: "",
     search: "",
-    upcoming: true,
+    view: "upcoming", // all, upcoming, past, archived
+    dateFrom: "",
+    dateTo: "",
   });
 
   const cancelTokenRef = useRef(null);
@@ -952,6 +1052,28 @@ const EventsPage = () => {
   const [deleteEventCandidate, setDeleteEventCandidate] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Booth Poll states
+  const [boothPollsTab, setBoothPollsTab] = useState('manage'); // 'manage' or 'vote'
+  const [pollsManagerOpen, setPollsManagerOpen] = useState(false);
+  const [eventsOfficePolls, setEventsOfficePolls] = useState([]);
+  const [pollsLoading, setPollsLoading] = useState(false);
+
+  // Event restriction modal state
+  const [restrictEvent, setRestrictEvent] = useState(null);
+  const [isRestrictModalOpen, setIsRestrictModalOpen] = useState(false);
+
+  const handleOpenRestrictModal = (event) => {
+    setRestrictEvent(event);
+    setIsRestrictModalOpen(true);
+  };
+
+  const handleRestrictionSuccess = () => {
+    setIsRestrictModalOpen(false);
+    setRestrictEvent(null);
+    fetchEvents();
+  };
+
+
   const fetchEvents = async () => {
     if (cancelTokenRef.current) {
       cancelTokenRef.current.cancel('Operation cancelled due to new request');
@@ -964,14 +1086,11 @@ const EventsPage = () => {
       setLoading(true);
       setError(null);
       
-      console.log("Fetching events...");
+      const params = { upcoming: "false", includeArchived: true };
       const response = await eventAPI.getEvents(
-        { upcoming: "false" },
+        params,
         currentCancelToken
       );
-      
-      console.log("API Response:", response);
-      console.log("Events data:", response.data?.data);
       
       let allEvents = response.data?.data || [];
       
@@ -987,8 +1106,6 @@ const EventsPage = () => {
         if (auth?.isEventsOffice) return event.status === 'published'; // Events Office sees published workshops in main grid
         return event.status === 'published'; // All other users (students, staff, TAs, professors) see published workshops
       });
-      
-      console.log("Filtered events:", allEvents);
 
       // Fetch workshops for Events Office (pending approvals)
       if (auth?.isEventsOffice) {
@@ -1071,10 +1188,37 @@ const EventsPage = () => {
     fetchEvents();
     
     const handleStorageChange = (e) => {
-      if (e.key === 'workshop_deleted' && e.newValue) {
-        console.log('Workshop deleted in another tab, refreshing events...');
-        fetchEvents();
-        localStorage.removeItem('workshop_deleted');
+      try {
+        if (e.key === 'workshop_deleted' && e.newValue) {
+          console.log('Workshop deleted in another tab, refreshing events...');
+          fetchEvents();
+          localStorage.removeItem('workshop_deleted');
+        }
+
+        // When a registration is made in another tab (student), refresh so professors see updated counts
+        if (e.key === 'registration_made' && e.newValue) {
+          console.log('Registration made in another tab, refreshing events/workshops...');
+          fetchEvents();
+          // Also refresh professor workshops specifically
+          if (auth?.user?.role === 'professor') {
+            // re-fetch professor workshops
+            (async () => {
+              try {
+                const resp = await api.get('/workshops');
+                const allWorkshops = resp.data || [];
+                const myWorkshops = allWorkshops.filter(w => (typeof w.createdBy === 'object' ? w.createdBy?._id === auth.user?.id : w.createdBy === auth.user?.id));
+                setProfessorWorkshops(myWorkshops);
+              } catch (err) {
+                console.warn('Could not refresh professor workshops after registration', err);
+              }
+            })();
+          }
+          // remove the key to avoid repeated refresh
+          localStorage.removeItem('registration_made');
+        }
+      } catch (err) {
+        // ignore storage handler errors
+        console.warn('Error handling storage event:', err);
       }
     };
     
@@ -1100,10 +1244,6 @@ const EventsPage = () => {
   const applyFilters = () => {
     let filtered = [...events];
     
-    console.log("Applying filters to events:", events.length, "events");
-    console.log("Filters:", filters);
-    console.log("Event types:", events.map(e => ({ type: e.type, title: e.title || e.name, startDate: e.startDate })));
-    
     if (filters.type) {
       filtered = filtered.filter((e) => e.type === filters.type);
     }
@@ -1124,40 +1264,58 @@ const EventsPage = () => {
         );
       });
     }
+     // Add date filtering
+  if (filters.dateFrom) {
+    const fromDate = new Date(filters.dateFrom);
+    fromDate.setHours(0, 0, 0, 0);
+    filtered = filtered.filter((e) => {
+      const eventDate = new Date(e.startDate);
+      return eventDate >= fromDate;
+    });
+  }
+
+  if (filters.dateTo) {
+    const toDate = new Date(filters.dateTo);
+    toDate.setHours(23, 59, 59, 999);
+    filtered = filtered.filter((e) => {
+      const eventDate = new Date(e.startDate);
+      return eventDate <= toDate;
+    });
+  }
     
-    if (filters.upcoming) {
-      // const now = new Date();
-      // filtered = filtered.filter((e) => new Date(e.startDate) > now);
+    if (filters.view === 'archived') {
+      filtered = filtered.filter(e => e.isArchived);
+    } else {
+      filtered = filtered.filter(e => !e.isArchived);
       const now = new Date();
-      const startOfToday = new Date(now); startOfToday.setHours(0,0,0,0);
-      const endOfToday = new Date(now); endOfToday.setHours(23,59,59,999);
+      if (filters.view === 'upcoming') {
+        const startOfToday = new Date(now); startOfToday.setHours(0,0,0,0);
+        const endOfToday = new Date(now); endOfToday.setHours(23,59,59,999);
 
-      filtered = filtered.filter((e) => {
-        const start = e.startDate ? new Date(e.startDate) : null;
-        const end = e.endDate ? new Date(e.endDate) : start;
-        if (!start) return false;
+        filtered = filtered.filter((e) => {
+          const start = e.startDate ? new Date(e.startDate) : null;
+          const end = e.endDate ? new Date(e.endDate) : start;
+          if (!start) return false;
 
-        // If start is in future -> upcoming
-        if (start >= now) return true;
+          if (start >= now) return true;
 
-        // If start and end are the same calendar day and that day is today -> include as upcoming
-        const sameDay =
-          start &&
-          end &&
-          start.getFullYear() === end.getFullYear() &&
-          start.getMonth() === end.getMonth() &&
-          start.getDate() === end.getDate();
+          const sameDay =
+            start &&
+            end &&
+            start.getFullYear() === end.getFullYear() &&
+            start.getMonth() === end.getMonth() &&
+            start.getDate() === end.getDate();
 
-        const isToday = start >= startOfToday && start <= endOfToday;
+          const isToday = start >= startOfToday && start <= endOfToday;
 
-        if (sameDay && isToday) return true;
+          if (sameDay && isToday) return true;
 
-        return false;
-      });
+          return false;
+        });
+      } else if (filters.view === 'past') {
+        filtered = filtered.filter((e) => new Date(e.endDate) < now);
+      }
     }
-    
-    console.log("After all filters applied:", filtered.length, "events");
-    console.log("Filtered events:", filtered.map(e => ({ type: e.type, title: e.title || e.name, startDate: e.startDate })));
     
     setFilteredEvents(filtered);
   };
@@ -1410,6 +1568,29 @@ const EventsPage = () => {
     }
   };
 
+  const handleArchive = async (eventId, isArchived) => {
+    try {
+      await eventAPI.toggleArchiveStatus(eventId, isArchived);
+      toast.success(`Event ${isArchived ? 'archived' : 'unarchived'} successfully!`);
+      setEvents(prevEvents => 
+        prevEvents.map(event => 
+          event._id === eventId ? { ...event, isArchived } : event
+        )
+      );
+    } catch (error) {
+      toast.error(error.message || `Failed to ${isArchived ? 'archive' : 'unarchive'} event.`);
+    }
+  };
+
+  const handleExportRegistrations = async (event) => {
+    try {
+      await exportRegistrationsToXLSX(event);
+    } catch (error) {
+      // The service itself shows toasts, so just log here
+      console.error("Export failed:", error);
+    }
+  };
+
   const eventTypeOptions = [
     { value: "", label: "All Types" },
     { value: "workshop", label: "Workshops" },
@@ -1418,6 +1599,16 @@ const EventsPage = () => {
     { value: "booth", label: "Booths" },
     { value: "conference", label: "Conferences" },
   ];
+
+  const viewOptions = [
+    { value: "upcoming", label: "Upcoming" },
+    { value: "past", label: "Past" },
+    { value: "all", label: "All Events" },
+  ];
+
+  if (isEventsOffice) {
+    viewOptions.push({ value: "archived", label: "Archived" });
+  }
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: theme.colors.background.default }}>
@@ -1615,6 +1806,12 @@ const EventsPage = () => {
         }
       `}</style>
       <Navbar />
+      <RestrictEventModal
+        isOpen={isRestrictModalOpen}
+        onClose={() => setIsRestrictModalOpen(false)}
+        event={restrictEvent}
+        onSuccess={handleRestrictionSuccess}
+      />
       <div
         style={{
           minHeight: "100vh",
@@ -1915,53 +2112,140 @@ const EventsPage = () => {
               </div>
             </div>
           )}
-          <div
-            style={{
-              background: theme.colors.background.paper,
-              padding: theme.spacing[5],
-              borderRadius: theme.borderRadius.lg,
-              boxShadow: theme.shadows.md,
-              marginBottom: theme.spacing[6],
-            }}
-          >
+
+          {/* Booth Polls Section (Events Office Only) */}
+          {isEventsOffice && (
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr auto auto auto",
-                gap: theme.spacing[4],
-                alignItems: "end",
+                background: theme.colors.background.paper,
+                padding: theme.spacing[5],
+                borderRadius: theme.borderRadius.lg,
+                boxShadow: theme.shadows.md,
+                marginBottom: theme.spacing[6],
               }}
             >
-              <Input
-                label="Search Events"
-                placeholder="Search by title, description, or location..."
-                value={filters.search}
-                onChange={(e) => handleFilterChange("search", e.target.value)}
-              />
-              <Select
-                label="Event Type"
-                options={eventTypeOptions}
-                value={filters.type}
-                onChange={(e) => handleFilterChange("type", e.target.value)}
-              />
-              <Button
-                variant={filters.upcoming ? "primary" : "secondary"}
-                onClick={() => handleFilterChange("upcoming", !filters.upcoming)}
-              >
-                {filters.upcoming ? "Upcoming Only" : "All Events"}
-              </Button>
-              <Button variant="outline" onClick={fetchEvents}>
-                Refresh
-              </Button>
-              {!auth.isAdmin && (
-                <CreateDropdownButton 
-                  onConferenceModalOpen={() => setShowConferenceModal(true)} 
-                  onBazaarModalOpen={() => setCreateBazaarOpen(true)} 
-                  onTripCreate={() => setCreateTripOpen(true)}
-                />
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: theme.spacing[4] }}>
+                <h2
+                  style={{
+                    margin: 0,
+                    color: theme.colors.text.primary,
+                  }}
+                >
+                  Booth Vendor Polls
+                </h2>
+                <Button
+                  variant="primary"
+                  onClick={() => setPollsManagerOpen(true)}
+                >
+                  + Create New Poll
+                </Button>
+              </div>
+              
+              {pollsManagerOpen && (
+                <div style={{ marginBottom: theme.spacing[4], padding: theme.spacing[4], backgroundColor: theme.colors.background.default, borderRadius: theme.borderRadius.base }}>
+                  <BoothPollManager
+                    onPollCreated={() => {
+                      setPollsManagerOpen(false);
+                      toast.success("Booth poll created successfully!");
+                      // Could refresh polls list here if needed
+                    }}
+                    onCancel={() => setPollsManagerOpen(false)}
+                  />
+                </div>
               )}
             </div>
+          )}
+
+          {/* Booth Polls Voting Section (All Users) */}
+          <div style={{ marginBottom: theme.spacing[6] }}>
+            <BoothPollVoting />
           </div>
+         
+        <div
+  style={{
+    background: theme.colors.background.paper,
+    padding: theme.spacing[5],
+    borderRadius: theme.borderRadius.lg,
+    boxShadow: theme.shadows.md,
+    marginBottom: theme.spacing[6],
+  }}
+>
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+      gap: theme.spacing[4],
+      alignItems: "end",
+      marginBottom: theme.spacing[4],
+    }}
+  >
+    <Input
+      label="Search Events"
+      placeholder="Search by title, description, or location..."
+      value={filters.search}
+      onChange={(e) => handleFilterChange("search", e.target.value)}
+    />
+    <Select
+      label="Event Type"
+      options={eventTypeOptions}
+      value={filters.type}
+      onChange={(e) => handleFilterChange("type", e.target.value)}
+    />
+    <Select
+      label="Event Status"
+      options={viewOptions}
+      value={filters.view}
+      onChange={(e) => handleFilterChange("view", e.target.value)}
+    />
+    <Input
+      label="From Date"
+      type="date"
+      value={filters.dateFrom}
+      onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
+    />
+    <Input
+      label="To Date"
+      type="date"
+      value={filters.dateTo}
+      min={filters.dateFrom}
+      onChange={(e) => handleFilterChange("dateTo", e.target.value)}
+    />
+  </div>
+  <div
+    style={{
+      display: "flex",
+      gap: theme.spacing[3],
+      alignItems: "center",
+      flexWrap: "wrap",
+    }}
+  >
+    <Button variant="outline" onClick={fetchEvents}>
+      Refresh
+    </Button>
+    <Button
+      variant="outline"
+      onClick={() => {
+        setFilters({ 
+          type: "", 
+          search: "", 
+          view: "all",
+          dateFrom: "",
+          dateTo: ""
+        });
+      }}
+    >
+      Clear Filters
+    </Button>
+    {!auth.isAdmin && (
+      <CreateDropdownButton 
+        onConferenceModalOpen={() => setShowConferenceModal(true)} 
+        onBazaarModalOpen={() => setCreateBazaarOpen(true)} 
+        onTripCreate={() => setCreateTripOpen(true)}
+      />
+    )}
+  </div>
+</div>
+           
 
           {/* Create Trip modal wired to the Create dropdown */}
           <CreateTripModal
@@ -1982,15 +2266,24 @@ const EventsPage = () => {
               {filteredEvents.map((event) => {
                 const isOwner = (typeof event.organizer === "object" && event.organizer?._id === auth.user?.id) || (typeof event.organizer === "string" && event.organizer === auth.user?.id);
                 if (event.type === 'bazaar' && auth.isEventsOffice && isOwner) {
-                  return (
-                    <BazaarManagementCard
-                      key={event._id}
-                      bazaar={event}
-                      onEdit={handleOpenEditModal}
-                      onDelete={handleDeleteBazaar}
-                    />
-                  );
+                  const isPast = new Date(event.endDate) < new Date();
+                        return (
+                          <BazaarManagementCard
+                            key={event._id}
+                            bazaar={event}
+                            onEdit={handleOpenEditModal}
+                            onDelete={handleDeleteBazaar}
+                            showArchiveButton={isEventsOffice && isPast && (filters.view === 'past' || filters.view === 'all')}
+                            showUnarchiveButton={isEventsOffice && event.isArchived}
+                            onArchive={() => handleArchive(event._id, true)}
+                            onUnarchive={() => handleArchive(event._id, false)}
+                            onExportRegistrations={handleExportRegistrations}
+                            onRestrict={isEventsOffice ? () => handleOpenRestrictModal(event) : null}
+                          />
+                        );
+                  
                 }
+                const isPast = new Date(event.endDate) < new Date();
                 return (
                   <EventCard
                     key={event._id}
@@ -2001,9 +2294,20 @@ const EventsPage = () => {
                       setEditingConference(conference);
                       setShowConferenceModal(true);
                     }}
-                    onDelete={handleDeleteEvent}
-                  />
+                    onDeleteEvent={handleDeleteEvent}
+                    onEditTrip={(trip) => {
+                      setEditingTrip(trip);
+                      setEditTripOpen(true);
+                    }}
+                    showArchiveButton={isEventsOffice && isPast && (filters.view === 'past' || filters.view === 'all')}
+                    showUnarchiveButton={isEventsOffice && filters.view === 'archived'}
+        onArchive={isEventsOffice ? () => handleArchive(event._id, true) : null}
+        onUnarchive={isEventsOffice ? () => handleArchive(event._id, false) : null}
+        onExportRegistrations={isEventsOffice ? () => handleExportRegistrations(event) : null}
+        onRestrict={isEventsOffice ? () => handleOpenRestrictModal(event) : null}
+      />
                 );
+
               })}
             </div>
           ) : (

@@ -86,12 +86,19 @@ const seedBazaar = async (req, res, next) => {
 // @access  Public
 const getEvents = async (req, res) => {
   try {
-    const { type, status = ["approved", "accepted", "published"], upcoming = false } = req.query;
+    const { type, status = ["approved", "accepted", "published"], upcoming = false, includeArchived = false } = req.query;
 
     let eventQuery = { status };
     let boothQuery = { status };
     let conferenceQuery = {};
     let workshopQuery = {};
+
+    if (includeArchived !== 'true') {
+        eventQuery.isArchived = { $ne: true };
+        boothQuery.isArchived = { $ne: true };
+        conferenceQuery.isArchived = { $ne: true };
+        workshopQuery.isArchived = { $ne: true };
+    }
 
     if (type) {
       eventQuery.type = type;
@@ -103,6 +110,16 @@ const getEvents = async (req, res) => {
       boothQuery.startDate = { $gte: now };
       conferenceQuery.startDate = { $gte: now };
       workshopQuery.startDate = { $gte: now };
+    }
+
+    // Role-based filtering
+    if (req.user) {
+      if (!["admin", "events_office"].includes(req.user.role)) {
+        eventQuery.eligibleRoles = req.user.role;
+      }
+    } else {
+      // For guests, only show events that are not restricted
+      eventQuery.eligibleRoles = { $all: ["student", "ta", "professor", "staff"] };
     }
 
     // Handle type filter
@@ -168,11 +185,63 @@ const getEvents = async (req, res) => {
     );
 
     // Combine and transform the data
+    // For workshops, compute currentParticipants by counting registrations for the published Event (if available)
+    const Registration = require('../models/Registration');
+
+    const workshopEvents = await Promise.all(
+      workshops.map(async (workshop) => {
+        const workshopObj = workshop.toObject();
+        let currentParticipants = 0;
+
+        try {
+          if (workshopObj.publishedEventId) {
+            currentParticipants = await Registration.countDocuments({
+              event: workshopObj.publishedEventId,
+              status: { $in: ['confirmed', 'pending', 'attended'] },
+            });
+          }
+        } catch (err) {
+          console.error('Error counting workshop registrations for workshop', workshopObj._id, err);
+          currentParticipants = 0;
+        }
+
+        return {
+          _id: workshopObj._id,
+          type: 'workshop',
+          name: workshopObj.workshopName,
+          title: workshopObj.workshopName,
+          description: workshopObj.shortDescription,
+          shortDescription: workshopObj.shortDescription,
+          location: workshopObj.location,
+          startDate: workshopObj.startDate,
+          endDate: workshopObj.endDate,
+          status: workshopObj.status || 'pending',
+          registrationRequired: true,
+          currentParticipants: currentParticipants,
+          maxParticipants: workshopObj.capacity,
+          cost: 0,
+          instructor: workshopObj.facultyResponsible,
+          professorName: workshopObj.facultyResponsible,
+          fullAgenda: workshopObj.fullAgenda,
+          registrationDeadline: workshopObj.registrationDeadline,
+          duration: Math.round((new Date(workshopObj.endDate) - new Date(workshopObj.startDate)) / (1000 * 60 * 60)),
+          facultyResponsible: workshopObj.facultyResponsible,
+          requiredBudget: workshopObj.requiredBudget,
+          fundingSource: workshopObj.fundingSource,
+          extraRequiredResources: workshopObj.extraRequiredResources,
+          createdAt: workshopObj.createdAt,
+          updatedAt: workshopObj.updatedAt,
+          isArchived: workshopObj.isArchived,
+          publishedEventId: workshopObj.publishedEventId,
+        };
+      })
+    );
+
     const allEvents = [
       ...eventsWithCounts,
       ...booths.map(booth => transformBoothToEvent(booth)),
       ...conferences.map(conference => transformConferenceToEvent(conference)),
-      ...workshops.map(workshop => transformWorkshopToEvent(workshop))
+      ...workshopEvents
     ];
 
     // Sort combined results by date
@@ -236,6 +305,7 @@ const transformBoothToEvent = (booth) => {
     attendees: boothObj.attendees || [],
     createdAt: boothObj.createdAt,
     updatedAt: boothObj.updatedAt,
+    isArchived: booth.isArchived,
   };
 };
 
@@ -265,6 +335,7 @@ const transformConferenceToEvent = (conference) => {
     extraRequiredResources: conferenceObj.extraRequiredResources,
     createdAt: conferenceObj.createdAt,
     updatedAt: conferenceObj.updatedAt,
+    isArchived: conference.isArchived,
   };
 };
 
@@ -298,6 +369,7 @@ const transformWorkshopToEvent = (workshop) => {
     extraRequiredResources: workshopObj.extraRequiredResources,
     createdAt: workshopObj.createdAt,
     updatedAt: workshopObj.updatedAt,
+    isArchived: workshop.isArchived,
   };
 };
 
@@ -674,6 +746,48 @@ const getEventsByType = async (req, res) => {
 /* --------------------------------------------------------
    EXPORTS
 -------------------------------------------------------- */
+
+// @desc    Archive or unarchive an event
+// @route   PATCH /api/events/:id/archive
+// @access  Private (Admin/Events Office)
+const toggleArchiveStatus = async (req, res) => {
+  try {
+    const { isArchived } = req.body;
+
+    if (typeof isArchived !== 'boolean') {
+      return res.status(400).json({ success: false, message: "isArchived is required and must be a boolean." });
+    }
+
+    let doc = await Event.findById(req.params.id) || 
+              await BoothApplication.findById(req.params.id) ||
+              await Conference.findById(req.params.id) ||
+              await Workshop.findById(req.params.id);
+
+    if (!doc) {
+      return res.status(404).json({ success: false, message: "Event not found" });
+    }
+
+    // Only Events Office or admin can archive
+    if (!["admin", "events_office"].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: "Not authorized to archive this event" });
+    }
+
+    // An event must have ended to be archived
+    if (isArchived && doc.endDate > new Date()) {
+        return res.status(400).json({ success: false, message: "Cannot archive an event that has not ended yet." });
+    }
+
+    doc.isArchived = isArchived;
+    await doc.save();
+
+    res.status(200).json({ success: true, message: `Event ${isArchived ? 'archived' : 'unarchived'} successfully.`, data: doc });
+
+  } catch (error) {
+    console.error("Error updating event archive status:", error);
+    res.status(500).json({ success: false, message: "Error updating event archive status", error: error.message });
+  }
+};
+
 module.exports = {
   getUpcomingBazaars,
   seedBazaar,
@@ -683,4 +797,5 @@ module.exports = {
   updateEvent,
   deleteEvent,
   getEventsByType,
+  toggleArchiveStatus,
 };
