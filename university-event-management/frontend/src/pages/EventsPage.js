@@ -1064,10 +1064,7 @@ const EventsPage = () => {
       setLoading(true);
       setError(null);
       
-      const params = { upcoming: "false" };
-      if (filters.view === 'archived') {
-        params.includeArchived = true;
-      }
+      const params = { upcoming: "false", includeArchived: true };
       const response = await eventAPI.getEvents(
         params,
         currentCancelToken
@@ -1553,7 +1550,11 @@ const EventsPage = () => {
     try {
       await eventAPI.toggleArchiveStatus(eventId, isArchived);
       toast.success(`Event ${isArchived ? 'archived' : 'unarchived'} successfully!`);
-      fetchEvents(); // Refresh the list
+      setEvents(prevEvents => 
+        prevEvents.map(event => 
+          event._id === eventId ? { ...event, isArchived } : event
+        )
+      );
     } catch (error) {
       toast.error(error.message || `Failed to ${isArchived ? 'archive' : 'unarchive'} event.`);
     }
