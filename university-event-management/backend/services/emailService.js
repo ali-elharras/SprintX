@@ -800,6 +800,257 @@ class EmailService {
     `;
   }
 
+  // Send comment deletion warning email to user
+  async sendCommentDeletionWarning(
+    user,
+    eventName,
+    comment,
+    reason = "inappropriate content"
+  ) {
+    console.log(
+      `📧 sendCommentDeletionWarning called for user: ${user.firstName} ${user.lastName}`
+    );
+    console.log(
+      `User emails - email: ${user.email}, verificationEmail: ${user.verificationEmail}`
+    );
+
+    const fullName = `${user.firstName} ${user.lastName}`;
+    const emailsToSend = [];
+
+    // Determine which email(s) to send to
+    if (user.verificationEmail) {
+      emailsToSend.push(user.verificationEmail);
+    }
+
+    // For events office or users without verification email, use their primary email
+    if (user.email && user.email !== user.verificationEmail) {
+      emailsToSend.push(user.email);
+    }
+
+    if (emailsToSend.length === 0) {
+      console.error("No email addresses found for user");
+      throw new Error("User has no email address");
+    }
+
+    const mailOptions = {
+      from: `"SprintX" <${process.env.EMAIL_USER}>`,
+      to: emailsToSend.join(", "),
+      subject: "Comment Removed - SprintX",
+      html: this.getCommentDeletionWarningTemplate(
+        fullName,
+        eventName,
+        comment,
+        reason
+      ),
+      text: `
+        Dear ${fullName},
+
+        This is to inform you that your comment on the event "${eventName}" has been removed by an administrator.
+
+        Your Comment:
+        "${comment}"
+
+        Reason: ${reason}
+
+        Please be mindful of our community guidelines when posting comments. Repeated violations may result in account restrictions.
+
+        If you believe this was done in error, please contact support@campusevents.edu
+
+        Best regards,
+        The SprintX Team
+      `,
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log(
+        `✅ Comment deletion warning email sent successfully to: ${emailsToSend.join(
+          ", "
+        )}`
+      );
+      console.log("Message ID:", info.messageId);
+      return info;
+    } catch (error) {
+      console.error("❌ Error sending comment deletion warning email:", error);
+      throw new Error(
+        `Failed to send comment deletion warning email: ${error.message}`
+      );
+    }
+  }
+
+  getCommentDeletionWarningTemplate(fullName, eventName, comment, reason) {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Comment Removed - SprintX</title>
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+          }
+          .email-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            text-align: center;
+            color: white;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+          }
+          .content {
+            background: white;
+            padding: 40px 30px;
+            color: #333333;
+          }
+          .content p {
+            color: #333333 !important;
+          }
+          .content h2 {
+            color: #667eea;
+            margin-top: 0;
+          }
+          .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+          .warning-box strong {
+            color: #856404;
+          }
+          .comment-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-style: italic;
+            color: #495057;
+          }
+          .info-box {
+            background-color: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+          .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+          }
+          .footer a {
+            color: #667eea;
+            text-decoration: none;
+          }
+          .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 20px 0;
+          }
+          .guidelines-list {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+          }
+          .guidelines-list ul {
+            margin: 10px 0;
+            padding-left: 20px;
+          }
+          .guidelines-list li {
+            margin: 8px 0;
+            color: #495057;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <h1>⚠️ Comment Removed</h1>
+          </div>
+          
+          <div class="content">
+            <h2>Hello ${fullName},</h2>
+            
+            <p>We're writing to inform you that your comment on the event <strong>"${eventName}"</strong> has been removed by an administrator.</p>
+            
+            <div class="comment-box">
+              <strong>Your Comment:</strong><br>
+              "${comment}"
+            </div>
+
+            <div class="warning-box">
+              <strong>⚠️ Reason for Removal:</strong> ${reason}
+            </div>
+
+            <div class="info-box">
+              <strong>What this means:</strong><br>
+              Your comment violated our community guidelines and has been removed from the event. This serves as a formal warning.
+            </div>
+
+            <div class="guidelines-list">
+              <strong>Community Guidelines Reminder:</strong>
+              <ul>
+                <li>Be respectful and courteous to others</li>
+                <li>No offensive, hateful, or discriminatory language</li>
+                <li>Keep comments relevant to the event</li>
+                <li>No spam or promotional content</li>
+                <li>No personal attacks or harassment</li>
+              </ul>
+            </div>
+
+            <p><strong>Please note:</strong> Repeated violations of our community guidelines may result in:</p>
+            <ul>
+              <li>Temporary or permanent account suspension</li>
+              <li>Loss of commenting privileges</li>
+              <li>Restrictions on event participation</li>
+            </ul>
+
+            <p>If you believe this action was taken in error or have questions about our community guidelines, please contact our support team.</p>
+
+            <div style="text-align: center;">
+              <a href="mailto:support@campusevents.edu" class="button">Contact Support</a>
+            </div>
+
+            <p style="margin-top: 30px; font-size: 14px; color: #666;">
+              Thank you for your understanding and cooperation in maintaining a positive community environment.</p>
+          </div>
+          
+          <div class="footer">
+            <p><strong>SprintX Event Management System</strong></p>
+            <p>If you have questions, contact us at <a href="mailto:support@campusevents.edu">support@campusevents.edu</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
   // Send application approval email with payment information
   async sendApplicationApprovalEmail(
     to,
