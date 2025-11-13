@@ -66,6 +66,9 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false }) => {
 
   const isGymSession = registration.isGymSession || event.type === 'gym';
   const isCourtReservation = registration.isCourtReservation || event.type === 'court';
+  
+  // Determine if ratings and comments should be shown
+  const showRatingsAndComments = !isGymSession && !isCourtReservation;
 
   // Check if cancellation is allowed (24 hours before event)
   const canCancel = () => {
@@ -363,8 +366,8 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false }) => {
           </div>
           
           <div style={buttonGroupStyles}>
-            {/* Show View Ratings button for allowed roles */}
-            {canViewRatings() && (
+            {/* Show View Ratings button for allowed roles (only for regular events) */}
+            {showRatingsAndComments && canViewRatings() && (
               <Button
                 variant="outline"
                 size="sm"
@@ -374,8 +377,8 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false }) => {
               </Button>
             )}
 
-            {/* Show Rate & Comment button only for past events and allowed roles */}
-            {isPastEvent && canRateEvents() && registration.status !== "cancelled" && (
+            {/* Show Rate & Comment button only for past events and allowed roles (only for regular events) */}
+            {showRatingsAndComments && isPastEvent && canRateEvents() && registration.status !== "cancelled" && (
               <Button
                 variant="primary"
                 size="sm"
@@ -440,23 +443,27 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false }) => {
         )}
       </Card>
 
-      {/* Rating Modal */}
-      <RatingModal
-        isOpen={showRatingModal}
-        onClose={() => setShowRatingModal(false)}
-        event={event}
-        onRatingSubmitted={() => {
-          // Optionally refresh data or show success message
-          setShowRatingModal(false);
-        }}
-      />
+      {/* Rating Modal - only for regular events */}
+      {showRatingsAndComments && (
+        <RatingModal
+          isOpen={showRatingModal}
+          onClose={() => setShowRatingModal(false)}
+          event={event}
+          onRatingSubmitted={() => {
+            // Optionally refresh data or show success message
+            setShowRatingModal(false);
+          }}
+        />
+      )}
 
-      {/* View Ratings Modal */}
-      <ViewRatingsModal
-        isOpen={showViewRatingsModal}
-        onClose={() => setShowViewRatingsModal(false)}
-        event={event}
-      />
+      {/* View Ratings Modal - only for regular events */}
+      {showRatingsAndComments && (
+        <ViewRatingsModal
+          isOpen={showViewRatingsModal}
+          onClose={() => setShowViewRatingsModal(false)}
+          event={event}
+        />
+      )}
     </>
   );
 };
