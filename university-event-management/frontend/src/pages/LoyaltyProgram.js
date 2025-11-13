@@ -17,7 +17,7 @@ const LoyaltyProgram = () => {
   const fetchLoyaltyPrograms = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("/api/loyalty-program/all");
+      const response = await axios.get("/api/loyalty/all");
       setLoyaltyPrograms(response.data);
       setError(null);
     } catch (err) {

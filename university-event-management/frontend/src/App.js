@@ -38,6 +38,7 @@ import AdminComments from './pages/AdminComments';
 import FavoritesPage from "./pages/FavoritesPage";
 import EventDetailsPage from "./pages/EventDetailsPage";
 import LoyaltyProgram from "./pages/LoyaltyProgram";
+import RoleRoute from "./components/RoleRoute";
 // ---------------------------
 // Protected Route Components
 // ---------------------------
@@ -365,7 +366,9 @@ const router = createBrowserRouter([
     path: "/loyalty-program",
     element: (
       <ProtectedRoute>
-        <LoyaltyProgram />
+        <RoleRoute allowedRoles={["student","staff","ta","professor","events_office","admin"]}>
+          <LoyaltyProgram />
+        </RoleRoute>
       </ProtectedRoute>
     ),
   },
