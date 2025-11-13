@@ -111,6 +111,16 @@ const getEvents = async (req, res) => {
       workshopQuery.startDate = { $gte: now };
     }
 
+    // Role-based filtering
+    if (req.user) {
+      if (!["admin", "events_office"].includes(req.user.role)) {
+        eventQuery.eligibleRoles = req.user.role;
+      }
+    } else {
+      // For guests, only show events that are not restricted
+      eventQuery.eligibleRoles = { $all: ["student", "ta", "professor", "staff"] };
+    }
+
     // Handle type filter
     if (type) {
       // If specifically asking for booths, only return booths

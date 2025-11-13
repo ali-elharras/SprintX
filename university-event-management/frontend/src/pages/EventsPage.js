@@ -17,6 +17,7 @@ import CreateTripModal from '../components/CreateTripModal';
 import { exportRegistrationsToXLSX } from '../services/exportService';
 import BoothPollManager from '../components/BoothPollManager';
 import BoothPollVoting from '../components/BoothPollVoting';
+import RestrictEventModal from "../components/RestrictEventModal";
 
 // Helper function to get tomorrow's date string in local time (not UTC)
 const getTomorrowDateTimeString = () => {
@@ -727,7 +728,7 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
   );
 };
 
-const BazaarManagementCard = ({ bazaar, onEdit, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive, onExportRegistrations }) => {
+const BazaarManagementCard = ({ bazaar, onEdit, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive, onExportRegistrations, onRestrict }) => {
   const [participatingVendors, setParticipatingVendors] = useState([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
 
@@ -966,6 +967,11 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete, showArchiveButton, sho
               Export Registrations
             </Button>
           )}
+          {!hasEnded && onRestrict && (
+            <Button variant="secondary" onClick={() => onRestrict(bazaar)} style={{ flex: 1 }}>
+              Restrict Event
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -1051,6 +1057,22 @@ const EventsPage = () => {
   const [pollsManagerOpen, setPollsManagerOpen] = useState(false);
   const [eventsOfficePolls, setEventsOfficePolls] = useState([]);
   const [pollsLoading, setPollsLoading] = useState(false);
+
+  // Event restriction modal state
+  const [restrictEvent, setRestrictEvent] = useState(null);
+  const [isRestrictModalOpen, setIsRestrictModalOpen] = useState(false);
+
+  const handleOpenRestrictModal = (event) => {
+    setRestrictEvent(event);
+    setIsRestrictModalOpen(true);
+  };
+
+  const handleRestrictionSuccess = () => {
+    setIsRestrictModalOpen(false);
+    setRestrictEvent(null);
+    fetchEvents();
+  };
+
 
   const fetchEvents = async () => {
     if (cancelTokenRef.current) {
@@ -1784,6 +1806,12 @@ const EventsPage = () => {
         }
       `}</style>
       <Navbar />
+      <RestrictEventModal
+        isOpen={isRestrictModalOpen}
+        onClose={() => setIsRestrictModalOpen(false)}
+        event={restrictEvent}
+        onSuccess={handleRestrictionSuccess}
+      />
       <div
         style={{
           minHeight: "100vh",
@@ -2239,19 +2267,21 @@ const EventsPage = () => {
                 const isOwner = (typeof event.organizer === "object" && event.organizer?._id === auth.user?.id) || (typeof event.organizer === "string" && event.organizer === auth.user?.id);
                 if (event.type === 'bazaar' && auth.isEventsOffice && isOwner) {
                   const isPast = new Date(event.endDate) < new Date();
-                  return (
-                    <BazaarManagementCard
-                      key={event._id}
-                      bazaar={event}
-                      onEdit={handleOpenEditModal}
-                      onDelete={handleDeleteBazaar}
-                      showArchiveButton={isEventsOffice && isPast && (filters.view === 'past' || filters.view === 'all')}
-                      showUnarchiveButton={isEventsOffice && filters.view === 'archived'}
-                      onArchive={() => handleArchive(event._id, true)}
-                      onUnarchive={() => handleArchive(event._id, false)}
-                      onExportRegistrations={handleExportRegistrations}
-                    />
-                  );
+                        return (
+                          <BazaarManagementCard
+                            key={event._id}
+                            bazaar={event}
+                            onEdit={handleOpenEditModal}
+                            onDelete={handleDeleteBazaar}
+                            showArchiveButton={isEventsOffice && isPast && (filters.view === 'past' || filters.view === 'all')}
+                            showUnarchiveButton={isEventsOffice && event.isArchived}
+                            onArchive={() => handleArchive(event._id, true)}
+                            onUnarchive={() => handleArchive(event._id, false)}
+                            onExportRegistrations={handleExportRegistrations}
+                            onRestrict={isEventsOffice ? () => handleOpenRestrictModal(event) : null}
+                          />
+                        );
+                  
                 }
                 const isPast = new Date(event.endDate) < new Date();
                 return (
@@ -2271,10 +2301,11 @@ const EventsPage = () => {
                     }}
                     showArchiveButton={isEventsOffice && isPast && (filters.view === 'past' || filters.view === 'all')}
                     showUnarchiveButton={isEventsOffice && filters.view === 'archived'}
-                    onArchive={() => handleArchive(event._id, true)}
-                    onUnarchive={() => handleArchive(event._id, false)}
-                    onExportRegistrations={handleExportRegistrations}
-                  />
+        onArchive={isEventsOffice ? () => handleArchive(event._id, true) : null}
+        onUnarchive={isEventsOffice ? () => handleArchive(event._id, false) : null}
+        onExportRegistrations={isEventsOffice ? () => handleExportRegistrations(event) : null}
+        onRestrict={isEventsOffice ? () => handleOpenRestrictModal(event) : null}
+      />
                 );
 
               })}
