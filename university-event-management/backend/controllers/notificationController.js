@@ -346,26 +346,40 @@ exports.notifyAdminAndEventsOfficeAboutVendorApplication = async (vendorName, ap
             message = `Vendor "${vendorName}" has submitted an application for "${eventName}".`;
         }
         
-        // Create notification for each admin/events office user
-        const notificationPromises = adminsAndEventsOffice.map(user => 
-            exports.createNotification(
-                user._id,
-                message,
-                'vendor_application_pending',
-                null, // no workshop ID
-                null, // no workshop name
-                { 
-                    vendorName,
-                    vendorId,
-                    applicationType,
-                    applicationId,
-                    eventName
-                }
-            )
-        );
+        // Create notification for each admin/events office user (only if not already sent)
+        const notificationPromises = adminsAndEventsOffice.map(async (user) => {
+            // Check if notification already exists for this user and application
+            const existingNotification = await Notification.findOne({
+                recipient: user._id,
+                type: 'vendor_application_pending',
+                applicationId: applicationId
+            });
+            
+            // Only create notification if it doesn't already exist
+            if (!existingNotification) {
+                return exports.createNotification(
+                    user._id,
+                    message,
+                    'vendor_application_pending',
+                    null, // no workshop ID
+                    null, // no workshop name
+                    { 
+                        vendorName,
+                        vendorId,
+                        applicationType,
+                        applicationId,
+                        eventName
+                    }
+                );
+            } else {
+                console.log(`Skipping duplicate notification for user ${user._id} for application ${applicationId}`);
+                return null;
+            }
+        });
         
-        await Promise.all(notificationPromises);
-        console.log(`Successfully created notifications for vendor application: ${vendorName} - ${applicationType}`);
+        const results = await Promise.all(notificationPromises);
+        const createdCount = results.filter(r => r !== null).length;
+        console.log(`Successfully created ${createdCount} notifications for vendor application: ${vendorName} - ${applicationType}`);
     } catch (error) {
         console.error('Error notifying admin/events office about vendor application:', error);
         // Don't throw - we don't want to fail the application if notifications fail
