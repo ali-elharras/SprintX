@@ -20,7 +20,18 @@ const notificationSchema = new mongoose.Schema(
     // Type of notification for categorization
     type: {
       type: String,
-      enum: ["workshop_submitted", "workshop_rejected", "workshop_edit_requested", "workshop_published"],
+      enum: [
+        "workshop_submitted", 
+        "workshop_rejected", 
+        "workshop_edit_requested", 
+        "workshop_published",
+        "professor_workshop_submitted",  // For Events Office
+        "professor_workshop_edited",      // For Events Office
+        "event_created",                   // For all users when new event is created
+        "loyalty_partner_added",          // For all users when vendor joins loyalty program
+        "vendor_application_pending",     // For admin and events_office when vendor applies to bazaar/booth
+        "event_reminder"                  // For registered users - event reminders (1 day, 1 hour before)
+      ],
       required: true,
     },
     
@@ -35,6 +46,62 @@ const notificationSchema = new mongoose.Schema(
     workshopName: {
       type: String,
       trim: true,
+    },
+    
+    // Event name for event notifications
+    eventName: {
+      type: String,
+      trim: true,
+    },
+    
+    // Event ID for event notifications
+    eventId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Event",
+      required: false,
+    },
+    
+    // Professor name for Events Office notifications
+    professorName: {
+      type: String,
+      trim: true,
+    },
+    
+    // Vendor name for loyalty program notifications
+    vendorName: {
+      type: String,
+      trim: true,
+    },
+    
+    // Promo code for loyalty program notifications
+    promoCode: {
+      type: String,
+      trim: true,
+    },
+    
+    // Discount rate for loyalty program notifications
+    discountRate: {
+      type: Number,
+    },
+    
+    // Vendor ID for vendor request notifications
+    vendorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Vendor",
+      required: false,
+    },
+    
+    // Application type (bazaar or booth)
+    applicationType: {
+      type: String,
+      enum: ["bazaar", "booth"],
+      required: false,
+    },
+    
+    // Application ID reference
+    applicationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: false,
     },
     
     // Read/Unread status
