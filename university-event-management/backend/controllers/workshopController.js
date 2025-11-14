@@ -245,32 +245,32 @@ exports.updateWorkshop = async (req, res) => {
         }
         
         // Create resubmission notification (workshop waiting for approval again)
-        if (isBeingResubmitted && workshop.createdBy && workshop.createdBy._id) {
+        if (isBeingResubmitted && updatedWorkshop.createdBy && updatedWorkshop.createdBy._id) {
             try {
                 // Notification for professor
                 await createNotification(
-                    workshop.createdBy._id,
-                    `Workshop "${workshop.workshopName}" resubmitted and waiting for approval.`,
+                    updatedWorkshop.createdBy._id,
+                    `Workshop "${updatedWorkshop.workshopName}" resubmitted and waiting for approval.`,
                     'workshop_submitted',
-                    workshop._id,
-                    workshop.workshopName,
+                    updatedWorkshop._id,
+                    updatedWorkshop.workshopName,
                     { status: 'pending', isResubmission: true }
                 );
                 
                 // Notification for Events Office: "Professor [NAME] edited the workshop based on your requested changes."
                 const eventsOfficeUsers = await User.find({ role: 'events_office' });
-                const professorName = `${workshop.createdBy.firstName} ${workshop.createdBy.lastName}`;
+                const professorName = `${updatedWorkshop.createdBy.firstName} ${updatedWorkshop.createdBy.lastName}`;
                 
                 for (const eventsOfficeUser of eventsOfficeUsers) {
                     await createNotification(
                         eventsOfficeUser._id,
                         `Professor ${professorName} edited the workshop based on your requested changes.`,
                         'professor_workshop_edited',
-                        workshop._id,
-                        workshop.workshopName,
+                        updatedWorkshop._id,
+                        updatedWorkshop.workshopName,
                         { 
                             professorName,
-                            professorId: workshop.createdBy._id,
+                            professorId: updatedWorkshop.createdBy._id,
                             isResubmission: true 
                         }
                     );

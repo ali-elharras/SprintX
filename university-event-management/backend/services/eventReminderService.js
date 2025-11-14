@@ -1,9 +1,7 @@
 const Event = require('../models/Event');
 const Registration = require('../models/Registration');
+const Notification = require('../models/Notification');
 const { createNotification } = require('../controllers/notificationController');
-
-// Track which reminders have been sent to avoid duplicates
-const sentReminders = new Set();
 
 /**
  * Check and send event reminders for registered users
@@ -57,9 +55,6 @@ const checkAndSendEventReminders = async () => {
     for (const event of eventsIn1Hour) {
       await sendEventReminder(event, '1 hour');
     }
-
-    // Clean up old sent reminders (older than 2 days)
-    cleanupSentReminders();
     
     console.log('✅ [EVENT REMINDERS] Check completed');
   } catch (error) {
@@ -72,14 +67,6 @@ const checkAndSendEventReminders = async () => {
  */
 const sendEventReminder = async (event, timeframe) => {
   try {
-    const reminderKey = `${event._id}-${timeframe}`;
-    
-    // Check if we already sent this reminder
-    if (sentReminders.has(reminderKey)) {
-      console.log(`⏭️  Reminder already sent for "${event.title}" (${timeframe})`);
-      return;
-    }
-
     // Find all users registered for this event
     const registrations = await Registration.find({
       event: event._id,
@@ -91,49 +78,55 @@ const sendEventReminder = async (event, timeframe) => {
       return;
     }
 
-    console.log(`📬 Sending ${timeframe} reminder for "${event.title}" to ${registrations.length} users`);
+    console.log(`📬 Checking ${timeframe} reminder for "${event.title}" for ${registrations.length} users`);
 
-    // Create notification for each registered user
-    const notificationPromises = registrations.map(registration => {
-      if (!registration.user) return Promise.resolve();
+    let sentCount = 0;
+    let skippedCount = 0;
+
+    // Create notification for each registered user (only if not already sent)
+    const notificationPromises = registrations.map(async (registration) => {
+      if (!registration.user) return;
       
+      // Check if this user already has a reminder notification for this event and timeframe
+      const existingReminder = await Notification.findOne({
+        recipient: registration.user._id,
+        type: 'event_reminder',
+        eventId: event._id,
+        'metadata.timeframe': timeframe
+      });
+
+      if (existingReminder) {
+        skippedCount++;
+        console.log(`⏭️  Reminder already sent to user ${registration.user._id} for "${event.title}" (${timeframe})`);
+        return null;
+      }
+
       const message = `Reminder: "${event.title}" starts in ${timeframe}`;
       
-      return createNotification(
-        registration.user._id,
-        message,
-        'event_reminder',
-        null, // no workshop ID
-        null, // no workshop name
-        {
-          eventName: event.title,
-          eventId: event._id,
-          timeframe,
-        }
-      ).catch(err => {
+      try {
+        await createNotification(
+          registration.user._id,
+          message,
+          'event_reminder',
+          null, // no workshop ID
+          null, // no workshop name
+          {
+            eventName: event.title,
+            eventId: event._id,
+            timeframe,
+          }
+        );
+        sentCount++;
+      } catch (err) {
         console.error(`Failed to send reminder to user ${registration.user._id}:`, err);
-      });
+      }
     });
 
     await Promise.all(notificationPromises);
     
-    // Mark this reminder as sent
-    sentReminders.add(reminderKey);
-    
-    console.log(`✅ Sent ${timeframe} reminders for "${event.title}"`);
+    console.log(`✅ Sent ${sentCount} new ${timeframe} reminders for "${event.title}" (${skippedCount} already sent)`);
   } catch (error) {
     console.error(`❌ Error sending reminder for event ${event._id}:`, error);
-  }
-};
-
-/**
- * Clean up old sent reminder keys to prevent memory leaks
- */
-const cleanupSentReminders = () => {
-  // Keep only recent reminders (simple approach - clear all if size gets too large)
-  if (sentReminders.size > 10000) {
-    console.log('🧹 Cleaning up sent reminders cache');
-    sentReminders.clear();
   }
 };
 
