@@ -534,6 +534,7 @@ const MyRegistrations = () => {
                   registration={item}
                   onCancel={(regId) => handleCancelRegistration(regId, item.isGymSession, item.isCourtReservation)}
                   isPastEvent={activeTab === "past"}
+                   
                 />
             )}
           </div>
