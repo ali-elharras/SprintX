@@ -124,6 +124,7 @@ const notificationSchema = new mongoose.Schema(
 
 // Index for efficient queries
 notificationSchema.index({ recipient: 1, isRead: 1, createdAt: -1 });
+notificationSchema.index({ recipient: 1, type: 1, eventId: 1 }); // For checking duplicate event notifications
 
 // Static method to get unread count for a user
 notificationSchema.statics.getUnreadCount = async function (userId) {

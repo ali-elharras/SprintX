@@ -216,23 +216,37 @@ exports.notifyAllUsersAboutNewEvent = async (eventName, eventId) => {
         
         console.log(`Creating notifications for ${stakeholders.length} users about new event: ${eventName}`);
         
-        // Create notification for each stakeholder
-        const notificationPromises = stakeholders.map(user => 
-            exports.createNotification(
-                user._id,
-                `A new event has been added: ${eventName}`,
-                'event_created',
-                null, // no workshop ID
-                null, // no workshop name
-                { 
-                    eventName,
-                    eventId
-                }
-            )
-        );
+        // Create notification for each stakeholder only if they don't already have one for this event
+        const notificationPromises = stakeholders.map(async (user) => {
+            // Check if notification already exists for this user and event
+            const existingNotification = await Notification.findOne({
+                recipient: user._id,
+                type: 'event_created',
+                eventId: eventId
+            });
+            
+            // Only create notification if it doesn't already exist
+            if (!existingNotification) {
+                return exports.createNotification(
+                    user._id,
+                    `A new event has been added: ${eventName}`,
+                    'event_created',
+                    null, // no workshop ID
+                    null, // no workshop name
+                    { 
+                        eventName,
+                        eventId
+                    }
+                );
+            } else {
+                console.log(`Skipping duplicate notification for user ${user._id} for event ${eventId}`);
+                return null;
+            }
+        });
         
-        await Promise.all(notificationPromises);
-        console.log(`Successfully created notifications for new event: ${eventName}`);
+        const results = await Promise.all(notificationPromises);
+        const createdCount = results.filter(r => r !== null).length;
+        console.log(`Successfully created ${createdCount} notifications for new event: ${eventName}`);
     } catch (error) {
         console.error('Error notifying users about new event:', error);
         // Don't throw - we don't want to fail the event creation if notifications fail
