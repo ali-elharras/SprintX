@@ -123,6 +123,11 @@ workshopSchema.add({
     enum: ["pending", "published", "rejected", "needs_revision"],
     default: "pending",
   },
+  isArchived: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
   // link to the published Event (if published)
   publishedEventId: {
     type: String,

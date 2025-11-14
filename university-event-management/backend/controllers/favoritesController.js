@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const User = require("../models/User");
 const Event = require("../models/Event");
+const BoothApplication = require("../models/BoothApplication");
 
 // Roles allowed to favorite events
 const ALLOWED_ROLES = ["student", "staff", "events_office", "ta", "professor"]; // admin excluded intentionally
@@ -22,9 +23,24 @@ exports.addFavorite = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(eventId)) {
       return res.status(400).json({ message: "Invalid event id" });
     }
+    // Try Event first
+    let isValidTarget = false;
     const event = await Event.findById(eventId);
-    if (!event || event.status !== "published") {
-      return res.status(404).json({ message: "Event not found or not published" });
+    if (event && event.status === "published") {
+      isValidTarget = true;
+    } else {
+      // If not an Event, try BoothApplication
+      const booth = await BoothApplication.findById(eventId);
+      if (booth) {
+        // Allow approved booths to be favorited
+        const allowedBoothStatuses = ["approved", "published", "active", "upcoming"];
+        if (!booth.status || allowedBoothStatuses.includes(booth.status)) {
+          isValidTarget = true;
+        }
+      }
+    }
+    if (!isValidTarget) {
+      return res.status(404).json({ message: "Item not found or not eligible to favorite" });
     }
 
     if (user.favorites.some(f => f.toString() === eventId)) {
@@ -60,18 +76,61 @@ exports.removeFavorite = async (req, res) => {
   }
 };
 
-// List favorites
+// List favorites (supports Event and BoothApplication)
 exports.listFavorites = async (req, res) => {
   try {
     const userId = req.user?._id;
     if (!userId) return res.status(401).json({ message: "Authentication required" });
-    const user = await User.findById(userId).populate({
-      path: "favorites",
-      select: "title type startDate endDate location status images shortDescription organizer",
-      match: { status: "published" },
-    });
+    const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
-    return res.status(200).json({ favorites: user.favorites || [] });
+
+    const favIds = (user.favorites || []).map((id) => id.toString());
+    if (favIds.length === 0) return res.status(200).json({ favorites: [] });
+
+    // Fetch matching Events
+    const events = await Event.find({ _id: { $in: favIds }, status: "published" })
+      .select("title name type startDate endDate location status images shortDescription organizer");
+
+    // Fetch matching Booths
+    const booths = await BoothApplication.find({ _id: { $in: favIds } })
+      .populate("vendor", "companyName firstName lastName email")
+      .select("location startDate endDate status attendees vendor createdAt updatedAt");
+
+    const transformedEvents = events.map((ev) => ({
+      _id: ev._id,
+      title: ev.title || ev.name,
+      type: ev.type || "event",
+      startDate: ev.startDate,
+      endDate: ev.endDate,
+      location: ev.location,
+      status: ev.status,
+      images: ev.images || [],
+      shortDescription: ev.shortDescription,
+    }));
+
+    const transformedBooths = booths.map((booth) => {
+      const vendorName = booth.vendor?.companyName ||
+        (booth.vendor?.firstName && booth.vendor?.lastName
+          ? `${booth.vendor.firstName} ${booth.vendor.lastName}`
+          : "Vendor");
+      return {
+        _id: booth._id,
+        title: `${vendorName} - Booth at ${booth.location || "TBD"}`,
+        type: "booth",
+        startDate: booth.startDate,
+        endDate: booth.endDate,
+        location: booth.location || "TBD",
+        status: booth.status || "pending",
+        images: [],
+        shortDescription: `Booth by ${vendorName}`,
+      };
+    });
+
+    // Maintain original order of favorites
+    const mapById = new Map([...transformedEvents, ...transformedBooths].map((it) => [it._id.toString(), it]));
+    const ordered = favIds.map((id) => mapById.get(id)).filter(Boolean);
+
+    return res.status(200).json({ favorites: ordered });
   } catch (err) {
     console.error("Error listing favorites:", err);
     return res.status(500).json({ message: "Server error" });

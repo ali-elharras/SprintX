@@ -179,6 +179,28 @@ const vendorSchema = new mongoose.Schema(
       },
     },
 
+    // Required Documents for Registration (Store as simple strings)
+    taxCardUrl: {
+      type: String,
+      required: [true, "Tax card document is required"],
+    },
+    taxCardUploadedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    taxCardVerified: {
+      type: Boolean,
+      default: false,
+    },
+    logoUrl: {
+      type: String,
+      required: [true, "Company logo is required"],
+    },
+    logoUploadedAt: {
+      type: Date,
+      default: Date.now,
+    },
+
     // Verification Status
     /*
     verificationStatus: {
@@ -208,12 +230,6 @@ const vendorSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
-    },
-
-    // Profile Information
-    logo: {
-      type: String, // URL to company logo
-      default: null,
     },
 
     // Password Reset

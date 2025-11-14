@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -11,6 +11,7 @@ import Card from "../components/Card";
 import Input from "../components/Input";
 import Select from "../components/Select";
 import Button from "../components/Button";
+import FileUpload from "../components/FileUpload";
 import PreLoginNavbar from "../components/PreLoginNavbar";
 
 // Validation schema
@@ -126,6 +127,24 @@ const vendorSchema = yup.object({
     .max(1000, "Description must be less than 1000 characters")
     .nullable(),
   interestedEventTypes: yup.array().nullable(),
+  taxCard: yup
+    .string()
+    .required("Tax card document is required")
+    .test(
+      "is-base64",
+      "Please upload a valid tax card document",
+      function (value) {
+        if (!value) return false;
+        return value.startsWith("data:");
+      }
+    ),
+  logo: yup
+    .string()
+    .required("Company logo is required")
+    .test("is-base64", "Please upload a valid company logo", function (value) {
+      if (!value) return false;
+      return value.startsWith("data:");
+    }),
 });
 
 const VendorSignup = () => {
@@ -140,6 +159,8 @@ const VendorSignup = () => {
     formState: { errors },
   } = useForm({
     resolver: yupResolver(vendorSchema),
+    mode: "onSubmit",
+    reValidateMode: "onChange",
     defaultValues: {
       companyName: "",
       contactPersonFirstName: "",
@@ -159,6 +180,8 @@ const VendorSignup = () => {
       country: "",
       description: "",
       interestedEventTypes: [],
+      taxCard: null,
+      logo: null,
     },
   });
 
@@ -178,6 +201,53 @@ const VendorSignup = () => {
   ];
 
   const [selectedEventTypes, setSelectedEventTypes] = useState([]);
+
+  // Scroll to first error when validation fails
+  useEffect(() => {
+    if (Object.keys(errors).length > 0) {
+      console.log("Validation errors detected:", errors);
+
+      const firstError = Object.keys(errors)[0];
+      const errorMessage = errors[firstError]?.message;
+
+      // Show toast notification about the first error
+      if (errorMessage) {
+        toast.error(`Please fix: ${errorMessage}`);
+      }
+
+      // Wait a bit for DOM to update
+      setTimeout(() => {
+        // Try to find the element by name attribute first
+        let errorElement = document.querySelector(`[name="${firstError}"]`);
+
+        // If not found, try to find by ID (for FileUpload fields)
+        if (!errorElement) {
+          errorElement = document.getElementById(`${firstError}-field`);
+        }
+
+        if (errorElement) {
+          console.log("Scrolling to error element:", firstError);
+          errorElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+            inline: "nearest",
+          });
+
+          // Also try to focus the element if it's focusable
+          setTimeout(() => {
+            const focusableElement = errorElement.querySelector(
+              "input, textarea, select"
+            );
+            if (focusableElement) {
+              focusableElement.focus();
+            }
+          }, 500);
+        } else {
+          console.log("Error element not found for:", firstError);
+        }
+      }, 100);
+    }
+  }, [errors]);
 
   const handleEventTypeChange = (eventType) => {
     const updated = selectedEventTypes.includes(eventType)
@@ -200,6 +270,8 @@ const VendorSignup = () => {
         state,
         zipCode,
         country,
+        taxCard,
+        logo,
         ...otherData
       } = data;
 
@@ -207,6 +279,8 @@ const VendorSignup = () => {
       const submitData = {
         ...otherData,
         interestedEventTypes: selectedEventTypes,
+        taxCard, // Keep base64 data for upload
+        logo, // Keep base64 data for upload
       };
 
       // Remove empty string fields that have unique indexes in the database
@@ -460,6 +534,41 @@ const VendorSignup = () => {
                     error={errors.website?.message}
                     {...register("website")}
                   />
+                </div>
+
+                <div style={rowStyles}>
+                  <div id="taxCard-field">
+                    <FileUpload
+                      label="Tax Card"
+                      name="taxCard"
+                      accept="image/*,.pdf"
+                      required
+                      helperText="Upload your company's tax registration card (PNG, JPG, or PDF)"
+                      error={errors.taxCard?.message}
+                      onChange={(e) =>
+                        setValue("taxCard", e.target.value, {
+                          shouldValidate: true,
+                          shouldDirty: true,
+                        })
+                      }
+                    />
+                  </div>
+                  <div id="logo-field">
+                    <FileUpload
+                      label="Company Logo"
+                      name="logo"
+                      accept="image/*"
+                      required
+                      helperText="Upload your company logo (PNG or JPG)"
+                      error={errors.logo?.message}
+                      onChange={(e) =>
+                        setValue("logo", e.target.value, {
+                          shouldValidate: true,
+                          shouldDirty: true,
+                        })
+                      }
+                    />
+                  </div>
                 </div>
 
                 <div style={{ gridColumn: "1 / -1" }}>
