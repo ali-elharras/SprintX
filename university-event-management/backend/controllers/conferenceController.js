@@ -1,4 +1,5 @@
 const Event = require("../models/Event");
+const { notifyAllUsersAboutNewEvent } = require("./notificationController");
 
 // Get all conferences
 const getConferences = async (req, res) => {
@@ -98,6 +99,13 @@ const createConference = async (req, res) => {
         });
 
         const savedConference = await conference.save();
+        
+        // Notify all users about the new event
+        try {
+            await notifyAllUsersAboutNewEvent(savedConference.title || savedConference.name, savedConference._id);
+        } catch (notifError) {
+            console.error('Error notifying users about new conference event:', notifError);
+        }
         
         res.status(201).json({
             success: true,

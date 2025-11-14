@@ -17,6 +17,7 @@ import CreateTripModal from '../components/CreateTripModal';
 import { exportRegistrationsToXLSX } from '../services/exportService';
 import BoothPollManager from '../components/BoothPollManager';
 import BoothPollVoting from '../components/BoothPollVoting';
+import RestrictEventModal from "../components/RestrictEventModal";
 
 // Helper function to get tomorrow's date string in local time (not UTC)
 const getTomorrowDateTimeString = () => {
@@ -727,7 +728,7 @@ const EditWorkshopModal = ({ open, workshop, onClose, onSubmit }) => {
   );
 };
 
-const BazaarManagementCard = ({ bazaar, onEdit, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive, onExportRegistrations }) => {
+const BazaarManagementCard = ({ bazaar, onEdit, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive, onExportRegistrations, onRestrict }) => {
   const [participatingVendors, setParticipatingVendors] = useState([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
 
@@ -966,6 +967,11 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete, showArchiveButton, sho
               Export Registrations
             </Button>
           )}
+          {!hasEnded && onRestrict && (
+            <Button variant="secondary" onClick={() => onRestrict(bazaar)} style={{ flex: 1 }}>
+              Restrict Event
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -988,6 +994,7 @@ const EventsPage = () => {
     view: "upcoming", // all, upcoming, past, archived
     dateFrom: "",
     dateTo: "",
+   // sortOrder: "asc", // asc or desc
   });
 
   const cancelTokenRef = useRef(null);
@@ -1052,6 +1059,22 @@ const EventsPage = () => {
   const [eventsOfficePolls, setEventsOfficePolls] = useState([]);
   const [pollsLoading, setPollsLoading] = useState(false);
 
+  // Event restriction modal state
+  const [restrictEvent, setRestrictEvent] = useState(null);
+  const [isRestrictModalOpen, setIsRestrictModalOpen] = useState(false);
+
+  const handleOpenRestrictModal = (event) => {
+    setRestrictEvent(event);
+    setIsRestrictModalOpen(true);
+  };
+
+  const handleRestrictionSuccess = () => {
+    setIsRestrictModalOpen(false);
+    setRestrictEvent(null);
+    fetchEvents();
+  };
+
+
   const fetchEvents = async () => {
     if (cancelTokenRef.current) {
       cancelTokenRef.current.cancel('Operation cancelled due to new request');
@@ -1064,10 +1087,7 @@ const EventsPage = () => {
       setLoading(true);
       setError(null);
       
-      const params = { upcoming: "false" };
-      if (filters.view === 'archived') {
-        params.includeArchived = true;
-      }
+      const params = { upcoming: "false", includeArchived: true };
       const response = await eventAPI.getEvents(
         params,
         currentCancelToken
@@ -1223,83 +1243,107 @@ const EventsPage = () => {
   }, [events, filters]);
 
   const applyFilters = () => {
-    let filtered = [...events];
-    
-    if (filters.type) {
-      filtered = filtered.filter((e) => e.type === filters.type);
-    }
-    
-    if (filters.search) {
-      const s = filters.search.toLowerCase();
-      filtered = filtered.filter((e) => {
-        const title = (e.title || e.name || "").toLowerCase();
-        const description = (e.description || "").toLowerCase();
-        const location = (e.location || "").toLowerCase();
-        const instructor = (e.instructor || e.professorName || "").toLowerCase();
-        
-        return (
-          title.includes(s) ||
-          description.includes(s) ||
-          location.includes(s) ||
-          instructor.includes(s)
-        );
-      });
-    }
-     // Add date filtering
-  if (filters.dateFrom) {
-    const fromDate = new Date(filters.dateFrom);
-    fromDate.setHours(0, 0, 0, 0);
+  let filtered = [...events];
+
+  // --- type filter ---
+  if (filters.type) {
+    filtered = filtered.filter((e) => e.type === filters.type);
+  }
+
+  // --- text search ---
+  if (filters.search) {
+    const s = filters.search.toLowerCase();
     filtered = filtered.filter((e) => {
-      const eventDate = new Date(e.startDate);
-      return eventDate >= fromDate;
+      const title = (e.title || e.name || "").toLowerCase();
+      const description = (e.description || "").toLowerCase();
+      const location = (e.location || "").toLowerCase();
+      const instructor = (e.instructor || e.professorName || "").toLowerCase();
+      return (
+        title.includes(s) ||
+        description.includes(s) ||
+        location.includes(s) ||
+        instructor.includes(s)
+      );
     });
   }
 
-  if (filters.dateTo) {
-    const toDate = new Date(filters.dateTo);
-    toDate.setHours(23, 59, 59, 999);
-    filtered = filtered.filter((e) => {
-      const eventDate = new Date(e.startDate);
-      return eventDate <= toDate;
-    });
-  }
-    
-    if (filters.view === 'archived') {
-      filtered = filtered.filter(e => e.isArchived);
-    } else {
-      filtered = filtered.filter(e => !e.isArchived);
-      const now = new Date();
-      if (filters.view === 'upcoming') {
-        const startOfToday = new Date(now); startOfToday.setHours(0,0,0,0);
-        const endOfToday = new Date(now); endOfToday.setHours(23,59,59,999);
-
-        filtered = filtered.filter((e) => {
-          const start = e.startDate ? new Date(e.startDate) : null;
-          const end = e.endDate ? new Date(e.endDate) : start;
-          if (!start) return false;
-
-          if (start >= now) return true;
-
-          const sameDay =
-            start &&
-            end &&
-            start.getFullYear() === end.getFullYear() &&
-            start.getMonth() === end.getMonth() &&
-            start.getDate() === end.getDate();
-
-          const isToday = start >= startOfToday && start <= endOfToday;
-
-          if (sameDay && isToday) return true;
-
-          return false;
-        });
-      } else if (filters.view === 'past') {
-        filtered = filtered.filter((e) => new Date(e.endDate) < now);
-      }
-    }
-    
-    setFilteredEvents(filtered);
+  // --- helper: parse YYYY-MM-DD as LOCAL date ---
+  const parseDateInputAsLocal = (dateStr, endOfDay = false) => {
+    if (!dateStr) return null;
+    const [y, m, d] = dateStr.split("-").map(Number);
+    if (!y || !m || !d) return null;
+    return endOfDay
+      ? new Date(y, m - 1, d, 23, 59, 59, 999)
+      : new Date(y, m - 1, d, 0, 0, 0, 0);
   };
+
+
+const fromDate = parseDateInputAsLocal(filters.dateFrom);
+const toDate = parseDateInputAsLocal(filters.dateTo, true);
+
+if (fromDate || toDate) {
+  filtered = filtered.filter((e) => {
+    const start = e.startDate ? new Date(e.startDate) : null;
+    const end   = e.endDate   ? new Date(e.endDate)   : start;
+    if (!start || isNaN(start) || !end || isNaN(end)) return false;
+
+    //if (!start || isNaN(start)) return false;
+
+    // 1️⃣ Only START date selected → show events starting on or after this date
+    if (fromDate && !toDate) return start >= fromDate;
+
+    // 2️⃣ Only END date selected → show events starting on or before this date
+    if (!fromDate && toDate) return end <= toDate;
+
+    // 3️⃣ Both START + END selected → strict range
+    if (fromDate && toDate) return start >= fromDate && end <= toDate;
+
+    return true;
+  });
+}
+
+
+  // --- view filter (archived / upcoming / past) ---
+  if (filters.view === "archived") {
+    filtered = filtered.filter((e) => e.isArchived);
+  } else {
+    filtered = filtered.filter((e) => !e.isArchived);
+    const now = new Date();
+
+    if (filters.view === "upcoming") {
+      const startOfToday = new Date(now); startOfToday.setHours(0, 0, 0, 0);
+      const endOfToday = new Date(now);   endOfToday.setHours(23, 59, 59, 999);
+
+      filtered = filtered.filter((e) => {
+        const start = e.startDate ? new Date(e.startDate) : null;
+        const end = e.endDate ? new Date(e.endDate) : start;
+        if (!start) return false;
+        if (start >= now) return true;
+
+        const sameDay =
+          start && end &&
+          start.getFullYear() === end.getFullYear() &&
+          start.getMonth() === end.getMonth() &&
+          start.getDate() === end.getDate();
+
+        const isToday = start >= startOfToday && start <= endOfToday;
+        return sameDay && isToday;
+      });
+    } else if (filters.view === "past") {
+      filtered = filtered.filter((e) => new Date(e.endDate) < now);
+    }
+  }
+
+  // --- NEW: sort by startDate ---
+  filtered.sort((a, b) => {
+    const da = new Date(a.startDate);
+    const db = new Date(b.startDate);
+    return filters.sortOrder === "asc" ? da - db : db - da;
+  });
+
+  setFilteredEvents(filtered);
+};
+
 
   // Workshop Action Handlers
   const handleEditWorkshop = useCallback((id, title) => {
@@ -1553,7 +1597,11 @@ const EventsPage = () => {
     try {
       await eventAPI.toggleArchiveStatus(eventId, isArchived);
       toast.success(`Event ${isArchived ? 'archived' : 'unarchived'} successfully!`);
-      fetchEvents(); // Refresh the list
+      setEvents(prevEvents => 
+        prevEvents.map(event => 
+          event._id === eventId ? { ...event, isArchived } : event
+        )
+      );
     } catch (error) {
       toast.error(error.message || `Failed to ${isArchived ? 'archive' : 'unarchive'} event.`);
     }
@@ -1783,6 +1831,12 @@ const EventsPage = () => {
         }
       `}</style>
       <Navbar />
+      <RestrictEventModal
+        isOpen={isRestrictModalOpen}
+        onClose={() => setIsRestrictModalOpen(false)}
+        event={restrictEvent}
+        onSuccess={handleRestrictionSuccess}
+      />
       <div
         style={{
           minHeight: "100vh",
@@ -2182,6 +2236,22 @@ const EventsPage = () => {
       onChange={(e) => handleFilterChange("dateTo", e.target.value)}
     />
   </div>
+  <div style={{ display: "flex", gap: "0.75rem", marginTop: "1rem", marginBottom: "1rem" }}>
+  <Button
+    variant={filters.sortOrder === "asc" ? "primary" : "outline"}
+    onClick={() => handleFilterChange("sortOrder", "asc")}
+  >
+    Sort Ascending (🡑 Earliest First)
+  </Button>
+
+  <Button
+    variant={filters.sortOrder === "desc" ? "primary" : "outline"}
+    onClick={() => handleFilterChange("sortOrder", "desc")}
+  >
+    Sort Descending (🡓 Latest First)
+  </Button>
+</div>
+
   <div
     style={{
       display: "flex",
@@ -2238,19 +2308,21 @@ const EventsPage = () => {
                 const isOwner = (typeof event.organizer === "object" && event.organizer?._id === auth.user?.id) || (typeof event.organizer === "string" && event.organizer === auth.user?.id);
                 if (event.type === 'bazaar' && auth.isEventsOffice && isOwner) {
                   const isPast = new Date(event.endDate) < new Date();
-                  return (
-                    <BazaarManagementCard
-                      key={event._id}
-                      bazaar={event}
-                      onEdit={handleOpenEditModal}
-                      onDelete={handleDeleteBazaar}
-                      showArchiveButton={isEventsOffice && isPast && (filters.view === 'past' || filters.view === 'all')}
-                      showUnarchiveButton={isEventsOffice && filters.view === 'archived'}
-                      onArchive={() => handleArchive(event._id, true)}
-                      onUnarchive={() => handleArchive(event._id, false)}
-                      onExportRegistrations={handleExportRegistrations}
-                    />
-                  );
+                        return (
+                          <BazaarManagementCard
+                            key={event._id}
+                            bazaar={event}
+                            onEdit={handleOpenEditModal}
+                            onDelete={handleDeleteBazaar}
+                            showArchiveButton={isEventsOffice && isPast && (filters.view === 'past' || filters.view === 'all')}
+                            showUnarchiveButton={isEventsOffice && event.isArchived}
+                            onArchive={() => handleArchive(event._id, true)}
+                            onUnarchive={() => handleArchive(event._id, false)}
+                            onExportRegistrations={handleExportRegistrations}
+                            onRestrict={isEventsOffice ? () => handleOpenRestrictModal(event) : null}
+                          />
+                        );
+                  
                 }
                 const isPast = new Date(event.endDate) < new Date();
                 return (
@@ -2270,10 +2342,11 @@ const EventsPage = () => {
                     }}
                     showArchiveButton={isEventsOffice && isPast && (filters.view === 'past' || filters.view === 'all')}
                     showUnarchiveButton={isEventsOffice && filters.view === 'archived'}
-                    onArchive={() => handleArchive(event._id, true)}
-                    onUnarchive={() => handleArchive(event._id, false)}
-                    onExportRegistrations={handleExportRegistrations}
-                  />
+        onArchive={isEventsOffice ? () => handleArchive(event._id, true) : null}
+        onUnarchive={isEventsOffice ? () => handleArchive(event._id, false) : null}
+        onExportRegistrations={isEventsOffice ? () => handleExportRegistrations(event) : null}
+        onRestrict={isEventsOffice ? () => handleOpenRestrictModal(event) : null}
+      />
                 );
 
               })}

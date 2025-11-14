@@ -1,4 +1,5 @@
 const Event = require("../models/Event");
+const { notifyAllUsersAboutNewEvent } = require("./notificationController");
 
 // ================================
 // @desc    Create a new bazaar
@@ -51,6 +52,13 @@ exports.createBazaar = async (req, res) => {
       organizer: req.user.id, // 👈 required in schema
       status: "published",
     });
+
+    // Notify all users about the new event
+    try {
+      await notifyAllUsersAboutNewEvent(newBazaar.title, newBazaar._id);
+    } catch (notifError) {
+      console.error('Error notifying users about new bazaar event:', notifError);
+    }
 
     res.status(201).json({
       success: true,

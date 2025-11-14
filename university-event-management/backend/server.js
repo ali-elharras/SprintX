@@ -4,12 +4,13 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
+const cron = require("node-cron");
 require("dotenv").config();
 
 const { errorHandler } = require("./middleware/errorHandler");
 const {
-  initializeWorkshopCertificateScheduler,
-} = require("./services/workshopCertificateScheduler");
+  checkAndSendEventReminders,
+} = require("./services/eventReminderService");
 
 // ===== Route Imports =====
 const authRoutes = require("./routes/auth");
@@ -177,6 +178,14 @@ app.listen(PORT, () => {
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
   console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
 
-  // Initialize workshop certificate scheduler
-  initializeWorkshopCertificateScheduler();
+  // ===== Event Reminder Scheduler =====
+  // Run every hour to check for upcoming events and send reminders
+  cron.schedule("0 * * * *", () => {
+    console.log("⏰ Running scheduled event reminder check...");
+    checkAndSendEventReminders();
+  });
+
+  // Run once on startup to catch any immediate reminders
+  console.log("🔔 Running initial event reminder check...");
+  checkAndSendEventReminders();
 });
