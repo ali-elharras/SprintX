@@ -467,13 +467,15 @@ const EventPaymentModal = ({ isOpen, onClose, registration, event }) => {
         paymentMethod: selectedMethod,
       });
 
-      // Redirect to Stripe checkout to enter card details
-      // eventPaymentAPI.createPayment returns response.data already
-      window.location.href = response.checkoutUrl;
+      // Redirect to Stripe checkout page
+      if (response.checkoutUrl) {
+        window.location.href = response.checkoutUrl;
+      } else {
+        throw new Error('No checkout URL received');
+      }
     } catch (error) {
       console.error('Payment error:', error);
       setError(error.message || 'Payment failed. Please try again.');
-    } finally {
       setLoading(false);
     }
   };

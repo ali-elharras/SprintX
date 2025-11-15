@@ -839,7 +839,7 @@ const Navbar = () => {
                 }
               }}
             >
-              💳 Wallet
+             Wallet
             </button>
 
             {user.role == "student" && (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import theme, { getEventTypeColor } from "../theme";
 import EventCard from "../components/EventCard";
@@ -975,12 +975,14 @@ const BazaarManagementCard = ({ bazaar, onEdit, onDelete, showArchiveButton, sho
 
 const EventsPage = () => {
   const navigate = useNavigate();
-  const { isEventsOffice } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { isEventsOffice, user } = useAuth();
   const auth = useAuth();
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [userRegistrations, setUserRegistrations] = useState([]);
   const [showConferenceModal, setShowConferenceModal] = useState(false);
   const [editingConference, setEditingConference] = useState(null);
   const [filters, setFilters] = useState({
@@ -1064,6 +1066,29 @@ const EventsPage = () => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Fetch user registrations for regular users (not admin/events office)
+      console.log('EventsPage - Fetching registrations. User:', user, 'isEventsOffice:', auth?.isEventsOffice, 'isAdmin:', auth?.isAdmin);
+      if (user && !auth?.isEventsOffice && !auth?.isAdmin) {
+        try {
+          const registrationsResponse = await registrationAPI.getMyRegistrations({}, currentCancelToken);
+          console.log('EventsPage - Fetched registrations:', registrationsResponse.data);
+          // API returns { data: { upcoming: [], past: [] } }, combine them into a flat array
+          const allRegistrations = [
+            ...(registrationsResponse.data?.upcoming || []),
+            ...(registrationsResponse.data?.past || [])
+          ];
+          console.log('EventsPage - Combined registrations:', allRegistrations);
+          setUserRegistrations(allRegistrations);
+        } catch (err) {
+          if (!err.isCancelled && err.name !== 'CanceledError') {
+            console.warn('Could not fetch user registrations', err);
+            setUserRegistrations([]);
+          }
+        }
+      } else {
+        console.log('EventsPage - Skipping registration fetch (admin/events office or no user)');
+      }
       
       const params = { upcoming: "false" };
       if (filters.view === 'archived') {
@@ -1165,6 +1190,33 @@ const EventsPage = () => {
       setTimeout(() => setLoading(false), 1000);
     }
   };
+
+  // Handle payment verification after Stripe redirect
+  useEffect(() => {
+    const sessionId = searchParams.get('session_id');
+    const paymentId = searchParams.get('payment_id');
+    
+    if (sessionId && paymentId) {
+      const verifyPayment = async () => {
+        try {
+          const { eventPaymentAPI } = await import('../services/wallet');
+          await eventPaymentAPI.verifyStripePayment({ sessionId, paymentId });
+          toast.success('Payment successful! Your registration is confirmed.');
+          // Clear the URL params
+          setSearchParams({});
+          // Refresh events
+          fetchEvents();
+        } catch (error) {
+          console.error('Payment verification error:', error);
+          toast.error(error.message || 'Payment verification failed');
+          // Clear the URL params even on error
+          setSearchParams({});
+        }
+      };
+      
+      verifyPayment();
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     fetchEvents();
@@ -2274,6 +2326,7 @@ const EventsPage = () => {
                     onArchive={() => handleArchive(event._id, true)}
                     onUnarchive={() => handleArchive(event._id, false)}
                     onExportRegistrations={handleExportRegistrations}
+                    userRegistrations={userRegistrations}
                   />
                 );
 

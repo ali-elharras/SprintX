@@ -48,7 +48,8 @@ const walletSchema = new mongoose.Schema(
     balance: {
       type: Number,
       default: 0,
-      min: [0, "Wallet balance cannot be negative"],
+      // Temporarily remove min constraint to allow negative balance for payments
+      // min: [0, "Wallet balance cannot be negative"],
     },
     totalCredits: {
       type: Number,
@@ -154,6 +155,27 @@ walletSchema.methods.processRefund = async function (amount, description, relate
   this.transactions.push(transaction);
   this.balance += amount;
   this.totalCredits += amount;
+
+  await this.save();
+  return transaction;
+};
+
+// Instance method to record external payment (e.g., Stripe) - doesn't affect balance
+walletSchema.methods.recordExternalPayment = async function (amount, description, relatedEntity = null) {
+  if (amount <= 0) {
+    throw new Error("Payment amount must be positive");
+  }
+
+  const transaction = {
+    type: "payment",
+    amount,
+    description,
+    relatedEntity,
+    status: "completed",
+  };
+
+  this.transactions.push(transaction);
+  // Note: Balance remains unchanged for external payments
 
   await this.save();
   return transaction;

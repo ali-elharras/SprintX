@@ -93,9 +93,10 @@ const registerForEvent = async (req, res) => {
     }
 
     // Check if user is already registered with an active registration
+    // Include ALL non-cancelled statuses to prevent duplicates
     const existingRegistration = await Registration.findOne({
       event: eventId,
-      status: { $in: ["confirmed", "attended"] }, // Only confirmed or attended registrations exist now
+      status: { $in: ["pending", "confirmed", "attended"] }, // Check pending, confirmed, and attended
       $or: [
         { email: email.toLowerCase() },
         { universityId: universityId }
@@ -104,6 +105,15 @@ const registerForEvent = async (req, res) => {
 
     if (existingRegistration) {
       console.log('Found existing registration:', existingRegistration); // Debug
+      
+      // If registration is pending payment, inform user
+      if (existingRegistration.status === 'pending') {
+        return res.status(400).json({
+          success: false,
+          message: "You have a pending registration for this event. Please complete payment or cancel the existing registration first.",
+        });
+      }
+      
       return res.status(400).json({
         success: false,
         message: "You are already registered for this event",
@@ -532,20 +542,9 @@ const cancelRegistration = async (req, res) => {
     }
     
     // Delete the registration completely
+    // Note: The post-remove middleware in the Registration model will automatically
+    // decrement the currentParticipants count, so we don't do it manually here
     await Registration.findByIdAndDelete(req.params.id);
-    
-    // Manually decrement participant count if registration was confirmed
-    if (registration.status === "confirmed") {
-      const eventFromEvent = await Event.findById(registration.event);
-      if (eventFromEvent) {
-        await Event.findByIdAndUpdate(registration.event, { $inc: { currentParticipants: -1 } });
-      } else {
-        const eventFromConference = await Conference.findById(registration.event);
-        if (eventFromConference) {
-          await Conference.findByIdAndUpdate(registration.event, { $inc: { currentParticipants: -1 } });
-        }
-      }
-    }
     
     res.status(200).json({
       success: true,

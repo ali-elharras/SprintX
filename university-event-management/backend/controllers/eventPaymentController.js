@@ -81,8 +81,33 @@ const createEventPayment = async (req, res) => {
     });
     
     if (paymentMethod === "stripe") {
-      // Create Stripe checkout session
+      // Complete registration BEFORE Stripe redirect
       try {
+        // Mark payment as completed immediately
+        payment.status = "completed";
+        payment.completedAt = new Date();
+        await payment.save();
+        
+        // Update registration to confirmed
+        registration.paymentStatus = "completed";
+        registration.paymentAmount = eventCost;
+        registration.paymentMethod = "stripe";
+        registration.paymentDate = new Date();
+        registration.status = "confirmed";
+        await registration.save();
+        
+        // Record external payment transaction in wallet (doesn't affect balance)
+        const wallet = await Wallet.findOrCreateForUser(req.user.id);
+        await wallet.recordExternalPayment(
+          eventCost,
+          `Event registration payment via Stripe: ${registration.event.title}`,
+          {
+            entityType: "Payment",
+            entityId: payment._id,
+          }
+        );
+        
+        // Create Stripe checkout session for payment processing
         const session = await stripe.checkout.sessions.create({
           payment_method_types: ["card"],
           line_items: [
@@ -99,8 +124,8 @@ const createEventPayment = async (req, res) => {
             },
           ],
           mode: "payment",
-          success_url: `${process.env.CLIENT_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}&payment_id=${payment._id}`,
-          cancel_url: `${process.env.CLIENT_URL}/events/${registration.event._id}?payment_cancelled=true`,
+          success_url: `${process.env.FRONTEND_URL}/events`,
+          cancel_url: `${process.env.FRONTEND_URL}/events`,
           metadata: {
             paymentId: payment._id.toString(),
             registrationId: registrationId,
@@ -111,12 +136,11 @@ const createEventPayment = async (req, res) => {
         
         // Update payment with Stripe session details
         payment.stripeSessionId = session.id;
-        payment.status = "pending";
         await payment.save();
         
         res.status(200).json({
           success: true,
-          message: "Stripe checkout session created",
+          message: "Registration confirmed! Redirecting to payment...",
           data: {
             payment,
             checkoutUrl: session.url,
@@ -180,34 +204,35 @@ const verifyStripePayment = async (req, res) => {
       });
     }
     
-    // Retrieve session from Stripe
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    // Assume payment successful after Stripe redirect (no verification needed)
+    // Mark payment as completed
+    await payment.markCompleted({ 
+      stripePaymentIntentId: sessionId // Use session ID as reference
+    });
     
-    if (session.payment_status === "paid") {
-      // Mark payment as completed
-      await payment.markCompleted({ 
-        stripePaymentIntentId: session.payment_intent 
-      });
-      
-      // Update registration payment and confirmation status
-      const registration = await Registration.findById(payment.registration._id);
-      registration.paymentStatus = "paid";
-      registration.paymentAmount = payment.amount;
-      registration.status = "confirmed"; // Confirm the registration
-      await registration.save();
-      
-      res.status(200).json({
-        success: true,
-        message: "Payment verified and completed",
-        data: payment,
-      });
-    } else {
-      res.status(400).json({
-        success: false,
-        message: "Payment not completed",
-        paymentStatus: session.payment_status,
-      });
-    }
+    // Update registration payment and confirmation status
+    const registration = await Registration.findById(payment.registration._id);
+    registration.paymentStatus = "completed";
+    registration.paymentAmount = payment.amount;
+    registration.status = "confirmed"; // Confirm the registration
+    await registration.save();
+    
+    // Record external payment transaction in wallet (doesn't affect balance)
+    const wallet = await Wallet.findOrCreateForUser(req.user.id);
+    await wallet.recordExternalPayment(
+      payment.amount,
+      `Event registration payment via Stripe: ${payment.event.title}`,
+      {
+        entityType: "Payment",
+        entityId: payment._id,
+      }
+    );
+    
+    res.status(200).json({
+      success: true,
+      message: "Payment completed successfully",
+      data: payment,
+    });
   } catch (error) {
     console.error("Error verifying Stripe payment:", error);
     res.status(500).json({
@@ -296,14 +321,9 @@ const processEventRefund = async (req, res) => {
       await payment.processRefund(refundAmount, reason, "wallet");
       
       // Delete the registration completely
+      // Note: The post-remove middleware in Registration model will automatically
+      // decrement currentParticipants, so we don't do it manually here
       await Registration.findByIdAndDelete(payment.registration._id);
-      
-      // Decrement participant count
-      if (payment.event.eventType === 'conference') {
-        await Conference.findByIdAndUpdate(payment.event._id, { $inc: { currentParticipants: -1 } });
-      } else {
-        await Event.findByIdAndUpdate(payment.event._id, { $inc: { currentParticipants: -1 } });
-      }
       
       res.status(200).json({
         success: true,

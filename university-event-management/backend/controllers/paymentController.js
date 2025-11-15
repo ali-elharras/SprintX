@@ -562,8 +562,8 @@ exports.createRegistrationCheckoutSession = async (req, res, next) => {
           quantity: 1,
         }],
         mode: 'payment',
-        success_url: `${process.env.FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}&type=registration&registrationId=${registrationId}`,
-        cancel_url: `${process.env.FRONTEND_URL}/my-registrations?payment=cancelled`,
+        success_url: `${process.env.FRONTEND_URL}/events`,
+        cancel_url: `${process.env.FRONTEND_URL}/events`,
         client_reference_id: registrationId,
         metadata: {
           registrationType: 'event',
@@ -619,6 +619,27 @@ exports.createRegistrationCheckoutSession = async (req, res, next) => {
       });
     }
 
+    // CRITICAL: Check for duplicate registration BEFORE processing payment
+    const existingRegistration = await Registration.findOne({
+      event: registrationData.eventId,
+      status: { $in: ["pending", "confirmed", "attended"] },
+      $or: [
+        { email: registrationData.email.toLowerCase() },
+        { universityId: registrationData.universityId }
+      ]
+    });
+
+    if (existingRegistration) {
+      const statusMessage = existingRegistration.status === 'pending'
+        ? "You have a pending registration for this event. Please complete payment or cancel the existing registration first."
+        : "You are already registered for this event";
+      
+      return res.status(400).json({
+        success: false,
+        message: statusMessage,
+      });
+    }
+
     // Handle wallet payment
     if (paymentMethod === 'balance') {
       const Wallet = require('../models/Wallet');
@@ -667,7 +688,35 @@ exports.createRegistrationCheckoutSession = async (req, res, next) => {
       });
     }
 
-    // Handle Stripe payment
+    // Handle Stripe payment - Create registration BEFORE redirect
+    // Create the registration immediately
+    const newRegistration = await Registration.create({
+      event: registrationData.eventId,
+      user: userId,
+      firstName: registrationData.firstName,
+      lastName: registrationData.lastName,
+      email: registrationData.email,
+      universityId: registrationData.universityId,
+      paymentStatus: 'completed',
+      paymentMethod: 'stripe',
+      paymentAmount: eventCost,
+      paymentDate: new Date(),
+      status: 'confirmed'
+    });
+
+    // Record external payment transaction in wallet (doesn't affect balance)
+    const Wallet = require('../models/Wallet');
+    const wallet = await Wallet.findOrCreateForUser(userId);
+    await wallet.recordExternalPayment(
+      eventCost,
+      `Event registration payment via Stripe: ${event.title}`,
+      {
+        entityType: 'Registration',
+        entityId: newRegistration._id
+      }
+    );
+
+    // Create Stripe checkout session for payment processing
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -684,12 +733,13 @@ exports.createRegistrationCheckoutSession = async (req, res, next) => {
         },
       ],
       mode: 'payment',
-      success_url: `${process.env.FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}&type=registration`,
-      cancel_url: `${process.env.FRONTEND_URL}/events?payment=cancelled`,
+      success_url: `${process.env.FRONTEND_URL}/events`,
+      cancel_url: `${process.env.FRONTEND_URL}/events`,
       client_reference_id: userId.toString(),
       metadata: {
         registrationType: 'event',
         eventId: registrationData.eventId,
+        registrationId: newRegistration._id.toString(),
         userId: userId.toString(),
         firstName: registrationData.firstName,
         lastName: registrationData.lastName,
@@ -699,11 +749,17 @@ exports.createRegistrationCheckoutSession = async (req, res, next) => {
       },
     });
 
+    // Store session ID in registration
+    newRegistration.stripeSessionId = session.id;
+    await newRegistration.save();
+
     res.status(200).json({
       success: true,
+      message: 'Registration confirmed! Redirecting to payment...',
       data: {
         sessionId: session.id,
         url: session.url,
+        registration: newRegistration
       },
     });
   } catch (error) {
@@ -911,6 +967,24 @@ exports.verifyRegistrationPayment = async (req, res, next) => {
         success: true,
         message: 'Payment already verified',
         data: existingRegistration,
+      });
+    }
+
+    // CRITICAL: Check for duplicate registration by email/universityId before creating
+    const duplicateCheck = await Registration.findOne({
+      event: metadata.eventId,
+      status: { $in: ["pending", "confirmed", "attended"] },
+      $or: [
+        { email: metadata.email.toLowerCase() },
+        { universityId: metadata.universityId }
+      ]
+    });
+
+    if (duplicateCheck) {
+      return res.status(400).json({
+        success: false,
+        message: 'You are already registered for this event. Payment cannot be completed.',
+        error: 'DUPLICATE_REGISTRATION'
       });
     }
 

@@ -121,8 +121,27 @@ registrationSchema.index({ user: 1 });
 registrationSchema.index({ status: 1 });
 registrationSchema.index({ registrationDate: 1 });
 
+// Post-init middleware to track original status when document is loaded from DB
+registrationSchema.post("init", function(doc) {
+  doc.$locals.originalStatus = doc.status;
+});
+
 // Pre-save middleware to auto-populate from user if user ID is provided
 registrationSchema.pre("save", async function (next) {
+  // Track if we should increment participant count
+  if (this.isNew) {
+    // New document: increment if being created as confirmed
+    this.$locals.shouldIncrementParticipants = (this.status === "confirmed");
+  } else if (this.isModified('status')) {
+    // Existing document with status change: increment if changing TO confirmed
+    const wasConfirmed = this.$locals.originalStatus === "confirmed";
+    const nowConfirmed = this.status === "confirmed";
+    this.$locals.shouldIncrementParticipants = !wasConfirmed && nowConfirmed;
+  } else {
+    // Existing document without status change: don't increment
+    this.$locals.shouldIncrementParticipants = false;
+  }
+  
   if (this.user && this.isNew) {
     try {
       const User = mongoose.model("User");
@@ -142,12 +161,14 @@ registrationSchema.pre("save", async function (next) {
       console.error("Error populating user data:", error);
     }
   }
+  
   next();
 });
 
-// Post-save middleware to update event participant count
-registrationSchema.post("save", async function (doc) {
-  if (doc.status === "confirmed") {
+// // Post-save middleware to update event participant count
+registrationSchema.post("save", async function (doc, next) {
+  // Increment only if pre-save determined we should
+  if (doc.$locals.shouldIncrementParticipants) {
     try {
       // Determine whether the registration points to an Event or a Conference
       const Event = mongoose.model("Event");
