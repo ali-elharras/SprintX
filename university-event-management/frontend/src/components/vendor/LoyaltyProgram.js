@@ -6,7 +6,6 @@ import theme from '../../theme';
 import Button from '../Button';
 import Card from '../Card';
 import LoyaltyEnrollmentModal from './LoyaltyEnrollmentModal';
-import api from '../../services/api';
 
 const LoyaltyProgram = () => {
   const { vendor } = useAuth();
@@ -51,7 +50,7 @@ const LoyaltyProgram = () => {
     try {
       await api.delete(`/loyalty/${programId}`);
       toast.success('Successfully cancelled loyalty program');
-      fetchLoyaltyPrograms();
+      await fetchLoyaltyPrograms();
     } catch (error) {
       const msg = error?.response?.data?.error || error?.message || 'Failed to cancel program';
       toast.error(msg);
