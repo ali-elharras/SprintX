@@ -118,8 +118,9 @@ router.use(protect);
 router.get("/my", getMyRegistrations);
 router.delete("/:id", cancelRegistration);
 
-// Admin/Events Office/Organizer routes
-router.get("/event/:eventId", authorize("admin", "events_office"), getEventRegistrations);
+// Admin/Events Office/Organizer/Professor routes
+// Authorization is handled in the controller to check workshop ownership for professors
+router.get("/event/:eventId", getEventRegistrations);
 router.put("/:id/status", authorize("admin", "events_office"), updateRegistrationStatus);
 router.post("/:id/checkin", authorize("admin", "events_office"), checkInParticipant);
 

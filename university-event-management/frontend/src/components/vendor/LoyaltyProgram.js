@@ -100,6 +100,11 @@ const LoyaltyProgram = () => {
     cancelButton: {
       marginTop: theme.spacing[4],
     },
+    emptyState: {
+      textAlign: 'center',
+      padding: theme.spacing[12],
+      color: theme.colors.text.secondary,
+    },
   };
 
   if (loading) {
@@ -109,7 +114,7 @@ const LoyaltyProgram = () => {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>Vendor Loyalty Programs</h2>
+        <h2 style={styles.title}>My Loyalty Programs</h2>
         <Button
           variant="primary"
           onClick={() => setShowEnrollmentModal(true)}
@@ -118,31 +123,39 @@ const LoyaltyProgram = () => {
         </Button>
       </div>
 
-      <div style={styles.programsGrid}>
-        {programs.map(program => (
-          <Card key={program._id}>
-            <div style={styles.programCard}>
-              <h3 style={styles.programTitle}>
-                Promo Code: {program.promoCode}
-              </h3>
-              <p style={styles.discountRate}>
-                Discount Rate: {program.discountRate}%
-              </p>
-              <div style={styles.termsBox}>
-                <h4 style={styles.termsTitle}>Terms & Conditions:</h4>
-                <p style={styles.termsText}>{program.termsAndConditions}</p>
+      {/* Programs List */}
+      {programs.length === 0 ? (
+        <div style={styles.emptyState}>
+          <p>You haven't created any loyalty programs yet.</p>
+          <p>Click "Create New Program" to get started!</p>
+        </div>
+      ) : (
+        <div style={styles.programsGrid}>
+          {programs.map(program => (
+            <Card key={program._id}>
+              <div style={styles.programCard}>
+                <h3 style={styles.programTitle}>
+                  Promo Code: {program.promoCode}
+                </h3>
+                <p style={styles.discountRate}>
+                  Discount Rate: {program.discountRate}%
+                </p>
+                <div style={styles.termsBox}>
+                  <h4 style={styles.termsTitle}>Terms & Conditions:</h4>
+                  <p style={styles.termsText}>{program.termsAndConditions}</p>
+                </div>
+                <Button
+                  variant="danger"
+                  onClick={() => handleCancelProgram(program._id)}
+                  style={styles.cancelButton}
+                >
+                  Cancel Program
+                </Button>
               </div>
-              <Button
-                variant="danger"
-                onClick={() => handleCancelProgram(program._id)}
-                style={styles.cancelButton}
-              >
-                Cancel Program
-              </Button>
-            </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <LoyaltyEnrollmentModal
         isOpen={showEnrollmentModal}

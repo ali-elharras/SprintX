@@ -4,8 +4,8 @@ const { protect, requireVendor } = require("../middleware/auth");
 
 const router = express.Router();
 
-// Get all loyalty programs (public endpoint)
-router.get("/all", getAllLoyaltyPrograms);
+// Get all loyalty programs (accessible to all authenticated users)
+router.get("/all", protect, getAllLoyaltyPrograms);
 
 // Vendor routes for loyalty programs
 router.get("/", [protect, requireVendor], getLoyaltyProgramsByVendor);

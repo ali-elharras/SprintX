@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../services/api";
 import theme from "../theme";
 import Navbar from "../components/Navbar";
 import LoadingScreen from "../components/LoadingScreen";
@@ -8,7 +8,6 @@ const LoyaltyProgram = () => {
   const [loyaltyPrograms, setLoyaltyPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedVendor, setSelectedVendor] = useState(null);
 
   useEffect(() => {
     fetchLoyaltyPrograms();
@@ -17,7 +16,7 @@ const LoyaltyProgram = () => {
   const fetchLoyaltyPrograms = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("/api/loyalty/all");
+      const response = await api.get("/loyalty/all");
       setLoyaltyPrograms(response.data);
       setError(null);
     } catch (err) {
@@ -70,15 +69,8 @@ const LoyaltyProgram = () => {
     borderRadius: theme.components.card.borderRadius,
     padding: theme.spacing[6],
     boxShadow: theme.components.card.boxShadow,
-    cursor: "pointer",
     transition: "all 0.3s ease",
     border: "1px solid " + theme.colors.neutral.gray200,
-  };
-
-  const cardHoverStyles = {
-    ...cardStyles,
-    boxShadow: "0 12px 24px rgba(0, 0, 0, 0.12)",
-    transform: "translateY(-4px)",
   };
 
   const vendorLogoStyles = {
@@ -176,40 +168,6 @@ const LoyaltyProgram = () => {
     textAlign: "center",
   };
 
-  const modalOverlayStyles = {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    display: selectedVendor ? "flex" : "none",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1000,
-  };
-
-  const modalContentStyles = {
-    backgroundColor: theme.colors.text.white,
-    borderRadius: theme.components.card.borderRadius,
-    padding: theme.spacing[8],
-    maxWidth: "600px",
-    maxHeight: "80vh",
-    overflow: "auto",
-    boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
-  };
-
-  const closeButtonStyles = {
-    float: "right",
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.secondary,
-    cursor: "pointer",
-    background: "none",
-    border: "none",
-    padding: theme.spacing[2],
-  };
-
   if (loading) {
     return <LoadingScreen />;
   }
@@ -244,15 +202,6 @@ const LoyaltyProgram = () => {
               <div
                 key={program._id}
                 style={cardStyles}
-                onMouseEnter={(e) => {
-                  Object.assign(e.currentTarget.style, {
-                    ...cardHoverStyles,
-                  });
-                }}
-                onMouseLeave={(e) => {
-                  Object.assign(e.currentTarget.style, cardStyles);
-                }}
-                onClick={() => setSelectedVendor(program)}
               >
                 {/* Vendor Logo */}
                 <div style={vendorLogoStyles}>
@@ -288,147 +237,78 @@ const LoyaltyProgram = () => {
                   <div style={promoCodeStyles}>{program.promoCode}</div>
                 </div>
 
-                {/* Click to View Details */}
+                {/* Terms and Conditions */}
+                {program.termsAndConditions && (
+                  <div style={{ marginTop: theme.spacing[4] }}>
+                    <h4
+                      style={{
+                        fontSize: theme.typography.fontSize.sm,
+                        fontWeight: theme.typography.fontWeight.semibold,
+                        marginBottom: theme.spacing[2],
+                        color: theme.colors.text.primary,
+                      }}
+                    >
+                      Terms & Conditions
+                    </h4>
+                    <div style={termsStyles}>{program.termsAndConditions}</div>
+                  </div>
+                )}
+
+                {/* Description */}
+                {program.Vendor?.description && (
+                  <div style={{ marginTop: theme.spacing[4] }}>
+                    <h4
+                      style={{
+                        fontSize: theme.typography.fontSize.sm,
+                        fontWeight: theme.typography.fontWeight.semibold,
+                        marginBottom: theme.spacing[2],
+                        color: theme.colors.text.primary,
+                      }}
+                    >
+                      About
+                    </h4>
+                    <p style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.secondary, lineHeight: 1.6 }}>
+                      {program.Vendor.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Contact Information */}
                 <div
                   style={{
-                    textAlign: "center",
-                    fontSize: theme.typography.fontSize.sm,
-                    color: theme.colors.primary.main,
-                    cursor: "pointer",
+                    marginTop: theme.spacing[4],
+                    paddingTop: theme.spacing[4],
+                    borderTop: `1px solid ${theme.colors.neutral.gray200}`,
                   }}
                 >
-                  Click to view details →
+                  {program.Vendor?.email && (
+                    <p style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.secondary, marginBottom: theme.spacing[2] }}>
+                      📧 {program.Vendor.email}
+                    </p>
+                  )}
+                  {program.Vendor?.phoneNumber && (
+                    <p style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.secondary, marginBottom: theme.spacing[2] }}>
+                      📱 {program.Vendor.phoneNumber}
+                    </p>
+                  )}
+                  {program.Vendor?.website && (
+                    <p style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.secondary }}>
+                      🌐{" "}
+                      <a
+                        href={program.Vendor.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: theme.colors.primary.main, textDecoration: "none" }}
+                      >
+                        {program.Vendor.website}
+                      </a>
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
-
-      {/* Modal */}
-      <div style={modalOverlayStyles} onClick={() => setSelectedVendor(null)}>
-        <div style={modalContentStyles} onClick={(e) => e.stopPropagation()}>
-          <button style={closeButtonStyles} onClick={() => setSelectedVendor(null)}>
-            ✕
-          </button>
-
-          {selectedVendor && (
-            <>
-              {/* Vendor Logo in Modal */}
-              <div style={{ ...vendorLogoStyles, marginTop: theme.spacing[4] }}>
-                {selectedVendor.Vendor?.logo ? (
-                  <img
-                    src={selectedVendor.Vendor.logo}
-                    alt={selectedVendor.Vendor.companyName}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                  />
-                ) : (
-                  <span style={{ fontSize: "48px" }}>🏢</span>
-                )}
-              </div>
-
-              {/* Vendor Name */}
-              <h2 style={{ ...vendorNameStyles, marginTop: theme.spacing[4] }}>
-                {selectedVendor.Vendor?.companyName || "Unknown Vendor"}
-              </h2>
-
-              {/* Industry */}
-              {selectedVendor.Vendor?.industry && (
-                <p style={vendorIndustryStyles}>{selectedVendor.Vendor.industry}</p>
-              )}
-
-              {/* Discount */}
-              <div style={discountBadgeStyles}>{selectedVendor.discountRate}% OFF</div>
-
-              {/* Promo Code */}
-              <div style={promoCodeContainerStyles}>
-                <div style={promoCodeLabelStyles}>Promo Code</div>
-                <div style={promoCodeStyles}>{selectedVendor.promoCode}</div>
-              </div>
-
-              {/* Terms and Conditions */}
-              {selectedVendor.termsAndConditions && (
-                <div>
-                  <h3
-                    style={{
-                      fontSize: theme.typography.fontSize.base,
-                      fontWeight: theme.typography.fontWeight.semibold,
-                      marginBottom: theme.spacing[2],
-                      marginTop: theme.spacing[4],
-                    }}
-                  >
-                    Terms & Conditions
-                  </h3>
-                  <div style={termsStyles}>{selectedVendor.termsAndConditions}</div>
-                </div>
-              )}
-
-              {/* Additional Vendor Info */}
-              {selectedVendor.Vendor?.description && (
-                <div style={{ marginTop: theme.spacing[6] }}>
-                  <h3
-                    style={{
-                      fontSize: theme.typography.fontSize.base,
-                      fontWeight: theme.typography.fontWeight.semibold,
-                      marginBottom: theme.spacing[2],
-                    }}
-                  >
-                    About
-                  </h3>
-                  <p style={{ color: theme.colors.text.secondary, lineHeight: 1.6 }}>
-                    {selectedVendor.Vendor.description}
-                  </p>
-                </div>
-              )}
-
-              {/* Contact Information */}
-              <div
-                style={{
-                  marginTop: theme.spacing[6],
-                  paddingTop: theme.spacing[4],
-                  borderTop: `1px solid ${theme.colors.neutral.gray200}`,
-                }}
-              >
-                <h3
-                  style={{
-                    fontSize: theme.typography.fontSize.base,
-                    fontWeight: theme.typography.fontWeight.semibold,
-                    marginBottom: theme.spacing[3],
-                  }}
-                >
-                  Contact Information
-                </h3>
-                {selectedVendor.Vendor?.email && (
-                  <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[2] }}>
-                    📧 Email: {selectedVendor.Vendor.email}
-                  </p>
-                )}
-                {selectedVendor.Vendor?.phoneNumber && (
-                  <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[2] }}>
-                    📱 Phone: {selectedVendor.Vendor.phoneNumber}
-                  </p>
-                )}
-                {selectedVendor.Vendor?.website && (
-                  <p style={{ color: theme.colors.text.secondary }}>
-                    🌐 Website:{" "}
-                    <a
-                      href={selectedVendor.Vendor.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: theme.colors.primary.main, textDecoration: "none" }}
-                    >
-                      {selectedVendor.Vendor.website}
-                    </a>
-                  </p>
-                )}
-              </div>
-            </>
-          )}
-        </div>
       </div>
     </div>
   );

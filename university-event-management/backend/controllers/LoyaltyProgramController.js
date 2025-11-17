@@ -3,7 +3,7 @@ const LoyaltyProgram = require('../models/LoyaltyProgram');
 // Get all loyalty programs with vendor details
 exports.getAllLoyaltyPrograms = async (req, res) => {
     try {
-        const programs = await LoyaltyProgram.find().populate('Vendor', 'companyName logo industry');
+        const programs = await LoyaltyProgram.find().populate('Vendor', 'companyName logo industry description email phoneNumber website address');
         res.status(200).json(programs);
     } catch (error) {
         res.status(400).json({ error: error.message });
