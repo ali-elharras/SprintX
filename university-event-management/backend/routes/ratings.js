@@ -246,6 +246,55 @@ module.exports = router;
  *       the userId ownership check and uses role-based authorization instead.
  */
 
+// @route   GET /api/ratings/admin/events-with-ratings
+// @desc    Admin: Get all events that have ratings/comments
+// @access  Public (no auth per user request)
+router.get("/admin/events-with-ratings", async (req, res) => {
+  try {
+    // Get all unique eventIds that have ratings
+    const eventIdsWithRatings = await EventRating.distinct("eventId");
+    
+    if (eventIdsWithRatings.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+      });
+    }
+
+    // Fetch event details for these eventIds
+    const events = await Event.find({ _id: { $in: eventIdsWithRatings } }).lean();
+
+    // For each event, get rating count and average
+    const eventsWithStats = await Promise.all(
+      events.map(async (event) => {
+        const ratings = await EventRating.find({ eventId: event._id }).lean();
+        const totalRatings = ratings.length;
+        const averageRating = totalRatings > 0
+          ? ratings.reduce((sum, r) => sum + r.rating, 0) / totalRatings
+          : 0;
+
+        return {
+          ...event,
+          ratingsCount: totalRatings,
+          averageRating: Math.round(averageRating * 10) / 10,
+        };
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      data: eventsWithStats,
+    });
+  } catch (error) {
+    console.error("Error fetching events with ratings:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch events with ratings",
+      error: error.message,
+    });
+  }
+});
+
 // @route   GET /api/ratings/admin/all
 // @desc    Admin: Get all ratings/comments with optional filters & pagination
 // @access  Private (Admin only)
