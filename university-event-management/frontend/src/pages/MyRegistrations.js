@@ -205,10 +205,30 @@ const MyRegistrations = () => {
     });
 
     const now = new Date();
-    const upcoming = items.filter(
-      (item) => new Date(item.event.startDate) > now
-    );
-    const past = items.filter((item) => new Date(item.event.startDate) <= now);
+    const upcoming = items.filter((item) => {
+      const startDate = new Date(item.event.startDate);
+      const endDate = new Date(item.event.endDate);
+      
+      // For gym sessions (recurring/weekly), check if we're within the date range
+      if (item.isGymSession) {
+        return endDate >= now;
+      }
+      
+      // For other events, use startDate
+      return startDate > now;
+    });
+    const past = items.filter((item) => {
+      const startDate = new Date(item.event.startDate);
+      const endDate = new Date(item.event.endDate);
+      
+      // For gym sessions (recurring/weekly), check if the session has ended
+      if (item.isGymSession) {
+        return endDate < now;
+      }
+      
+      // For other events, use startDate
+      return startDate <= now;
+    });
 
     setDisplayedItems({ upcoming, past });
 
@@ -514,6 +534,7 @@ const MyRegistrations = () => {
                   registration={item}
                   onCancel={(regId) => handleCancelRegistration(regId, item.isGymSession, item.isCourtReservation)}
                   isPastEvent={activeTab === "past"}
+                   
                 />
             )}
           </div>

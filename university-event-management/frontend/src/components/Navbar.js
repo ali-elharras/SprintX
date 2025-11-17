@@ -319,6 +319,41 @@ const Navbar = () => {
             </button>
 
             <button
+              onClick={() => navigate("/loyalty-program")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color:
+                  location.pathname === "/loyalty-program"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom:
+                  location.pathname === "/loyalty-program"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/loyalty-program") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/loyalty-program") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+            Loyalty Program
+            </button>
+
+            <button
               onClick={() => navigate("/gym-schedule")}
               style={{
                 background: "none",
@@ -526,6 +561,42 @@ const Navbar = () => {
             >
               Events
             </button>
+
+            <button
+              onClick={() => navigate("/loyalty-program")}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.medium,
+                color:
+                  location.pathname === "/loyalty-program"
+                    ? theme.colors.primary.main
+                    : theme.colors.text.secondary,
+                cursor: "pointer",
+                padding: theme.spacing[2],
+                textDecoration: "none",
+                borderBottom:
+                  location.pathname === "/loyalty-program"
+                    ? `2px solid ${theme.colors.primary.main}`
+                    : "2px solid transparent",
+                transition: "all 0.2s ease",
+                fontFamily: theme.typography.fontFamily.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (location.pathname !== "/loyalty-program") {
+                  e.target.style.color = theme.colors.primary.main;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (location.pathname !== "/loyalty-program") {
+                  e.target.style.color = theme.colors.text.secondary;
+                }
+              }}
+            >
+              Loyalty Program
+            </button>
+
             <button
               onClick={() => navigate("/admin-dashboard")}
               style={{
@@ -1025,8 +1096,13 @@ const Navbar = () => {
 
       {/* Account Section */}
       <div style={accountSectionStyles}>
-        {/* Notification Center for Professors/Staff */}
-        {(user?.role === "professor" || user?.role === "staff") && (
+        {/* Notification Center for all stakeholder roles */}
+        {(user?.role === "professor" || 
+          user?.role === "staff" || 
+          user?.role === "events_office" || 
+          user?.role === "student" || 
+          user?.role === "ta" ||
+          user?.role === "admin") && (
           <div style={{ marginRight: theme.spacing[4] }}>
             <NotificationCenter />
           </div>

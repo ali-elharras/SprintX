@@ -5,7 +5,7 @@ import theme from '../theme';
 import { useAuth } from '../context/AuthContext';
 
 const BoothPollVoting = () => {
-  const { auth } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [polls, setPolls] = useState([]);
   const [loading, setLoading] = useState(false);
   const [votingStates, setVotingStates] = useState({});
@@ -37,8 +37,14 @@ const BoothPollVoting = () => {
   };
 
   const handleVote = async (pollId, vendorIndex) => {
-    if (!auth?.user) {
+    if (!isAuthenticated || !user) {
       toast.error('Please log in to vote');
+      return;
+    }
+
+    // Prevent Events Office from voting
+    if (user.role === 'events_office' || user.role === 'admin') {
+      toast.error('Events Office and Admin users cannot vote on polls');
       return;
     }
 
@@ -53,7 +59,9 @@ const BoothPollVoting = () => {
       fetchPolls();
     } catch (error) {
       console.error('Voting error:', error);
-      toast.error(error.response?.data?.message || 'Failed to record vote');
+      console.error('Error response:', error.response?.data);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to record vote';
+      toast.error(errorMessage);
     }
   };
 

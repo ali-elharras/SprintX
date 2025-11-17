@@ -10,11 +10,10 @@ const BoothPollManager = () => {
     description: '',
     location: 'GUC Cairo',
     startDate: '',
-    endDate: '',
     durationWeeks: 1,
     boothSize: '2x2',
     pollEndDate: '',
-    vendors: [{ vendorId: '', companyName: '', description: '' }],
+    vendors: [{ companyName: '', description: '' }],
   });
 
   const handleInputChange = (e) => {
@@ -37,7 +36,7 @@ const BoothPollManager = () => {
   const addVendorOption = () => {
     setFormData((prev) => ({
       ...prev,
-      vendors: [...prev.vendors, { vendorId: '', companyName: '', description: '' }],
+      vendors: [...prev.vendors, { companyName: '', description: '' }],
     }));
   };
 
@@ -72,18 +71,34 @@ const BoothPollManager = () => {
       return;
     }
     
-    if (!formData.startDate || !formData.endDate || !formData.pollEndDate) {
-      toast.error('All dates are required');
+    if (!formData.startDate || !formData.pollEndDate) {
+      toast.error('Start date and poll end date are required');
       return;
     }
-    if (new Date(formData.endDate) <= new Date(formData.startDate)) {
-      toast.error('End date must be after start date');
+    
+    // Calculate end date from start date and duration
+    const startDate = new Date(formData.startDate);
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + (formData.durationWeeks * 7));
+    
+    if (new Date(formData.pollEndDate) >= endDate) {
+      toast.error('Poll end date must be before the booth period ends');
       return;
     }
 
     setIsCreating(true);
     try {
-      const response = await boothPollAPI.createPoll(formData);
+      // Calculate end date before sending
+      const startDate = new Date(formData.startDate);
+      const endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + (formData.durationWeeks * 7));
+      
+      const pollDataToSubmit = {
+        ...formData,
+        endDate: endDate.toISOString(),
+      };
+      
+      const response = await boothPollAPI.createPoll(pollDataToSubmit);
       toast.success('Booth poll created successfully!');
       // Reset form
       setFormData({
@@ -91,11 +106,10 @@ const BoothPollManager = () => {
         description: '',
         location: 'GUC Cairo',
         startDate: '',
-        endDate: '',
         durationWeeks: 1,
         boothSize: '2x2',
         pollEndDate: '',
-        vendors: [{ vendorId: '', companyName: '', description: '' }],
+        vendors: [{ companyName: '', description: '' }],
       });
     } catch (error) {
       console.error('Poll creation error:', error);
@@ -228,21 +242,28 @@ const BoothPollManager = () => {
 
           <div>
             <label style={{ fontWeight: 600, color: theme.colors.text.primary, marginBottom: theme.spacing[2], display: 'block' }}>
-              End Date *
+               End Date
             </label>
-            <input
-              type="datetime-local"
-              name="endDate"
-              value={formData.endDate}
-              onChange={handleInputChange}
-              style={{
-                width: '100%',
-                padding: theme.spacing[2],
-                border: `1px solid ${theme.colors.border.light}`,
-                borderRadius: theme.borderRadius.sm,
-                fontSize: '1rem',
-              }}
-            />
+            <div style={{
+              padding: theme.spacing[2],
+              border: `1px solid ${theme.colors.border.light}`,
+              borderRadius: theme.borderRadius.sm,
+              fontSize: '1rem',
+              backgroundColor: '#f9fafb',
+              color: theme.colors.text.secondary,
+            }}>
+              {formData.startDate && formData.durationWeeks ? 
+                new Date(new Date(formData.startDate).getTime() + (formData.durationWeeks * 7 * 24 * 60 * 60 * 1000))
+                  .toLocaleString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  })
+                : 'Select start date and duration'
+              }
+            </div>
           </div>
         </div>
 
@@ -317,44 +338,23 @@ const BoothPollManager = () => {
                 )}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing[2], marginBottom: theme.spacing[2] }}>
-                <div>
-                  <label style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem', display: 'block' }}>
-                    Vendor ID *
-                  </label>
-                  <input
-                    type="text"
-                    value={vendor.vendorId}
-                    onChange={(e) => handleVendorChange(index, 'vendorId', e.target.value)}
-                    placeholder="Vendor ID or Email"
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      border: `1px solid ${theme.colors.border.light}`,
-                      borderRadius: theme.borderRadius.sm,
-                      fontSize: '0.875rem',
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem', display: 'block' }}>
-                    Company Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={vendor.companyName}
-                    onChange={(e) => handleVendorChange(index, 'companyName', e.target.value)}
-                    placeholder="Company Name"
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      border: `1px solid ${theme.colors.border.light}`,
-                      borderRadius: theme.borderRadius.sm,
-                      fontSize: '0.875rem',
-                    }}
-                  />
-                </div>
+              <div style={{ marginBottom: theme.spacing[2] }}>
+                <label style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem', display: 'block' }}>
+                  Company Name *
+                </label>
+                <input
+                  type="text"
+                  value={vendor.companyName}
+                  onChange={(e) => handleVendorChange(index, 'companyName', e.target.value)}
+                  placeholder="Company Name"
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: `1px solid ${theme.colors.border.light}`,
+                    borderRadius: theme.borderRadius.sm,
+                    fontSize: '0.875rem',
+                  }}
+                />
               </div>
 
               <div>

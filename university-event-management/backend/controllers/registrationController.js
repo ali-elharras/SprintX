@@ -421,10 +421,20 @@ const getEventRegistrations = async (req, res) => {
       }
     } else {
       // For regular events, check organizer and roles
-      if (
-        event.organizer.toString() !== req.user.id &&
-        !["admin", "events_office"].includes(req.user.role)
-      ) {
+      let isAuthorized = 
+        event.organizer.toString() === req.user.id ||
+        ["admin", "events_office"].includes(req.user.role);
+      
+      // If not authorized yet, check if this event is a published workshop created by the user
+      if (!isAuthorized && event.type === 'workshop') {
+        const Workshop = require('../models/Workshop');
+        const workshop = await Workshop.findOne({ publishedEventId: eventId });
+        if (workshop && workshop.createdBy && workshop.createdBy.toString() === req.user.id) {
+          isAuthorized = true;
+        }
+      }
+      
+      if (!isAuthorized) {
         return res.status(403).json({
           success: false,
           message: "Not authorized to view event registrations",

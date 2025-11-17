@@ -18,6 +18,7 @@ import VerificationEmailSelection from "./pages/VerificationEmailSelection";
 import VerificationSuccess from "./pages/VerificationSuccess";
 import VerificationPending from "./pages/VerificationPending";
 import EmailVerified from "./pages/EmailVerified";
+import EmailVerificationSent from "./pages/EmailVerificationSent";
 import VendorSignup from "./pages/VendorSignup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -33,12 +34,13 @@ import Workshops from "./pages/Workshops";
 import AdminUserManagement from "./pages/AdminUserManagement";
 import ReportsPage from "./pages/ReportsPage";
 import PaymentSuccess from "./pages/PaymentSuccess";
-import EventsRatings from './pages/EventsRatings';
-import AdminComments from './pages/AdminComments';
+import EventsRatings from "./pages/EventsRatings";
+import AdminComments from "./pages/AdminComments";
 import FavoritesPage from "./pages/FavoritesPage";
 import EventDetailsPage from "./pages/EventDetailsPage";
 import LoyaltyProgram from "./pages/LoyaltyProgram";
 import WalletPage from "./pages/WalletPage";
+import RoleRoute from "./components/RoleRoute";
 // ---------------------------
 // Protected Route Components
 // ---------------------------
@@ -217,6 +219,14 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: "/email-verification-sent",
+    element: (
+      <PublicRoute>
+        <EmailVerificationSent />
+      </PublicRoute>
+    ),
+  },
+  {
     path: "/verification-pending",
     element: (
       <PublicRoute>
@@ -374,7 +384,9 @@ const router = createBrowserRouter([
     path: "/loyalty-program",
     element: (
       <ProtectedRoute>
-        <LoyaltyProgram />
+        <RoleRoute allowedRoles={["student","staff","ta","professor","events_office","admin"]}>
+          <LoyaltyProgram />
+        </RoleRoute>
       </ProtectedRoute>
     ),
   },

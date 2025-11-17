@@ -1,14 +1,10 @@
 const mongoose = require('mongoose');
 
 const pollVendorOptionSchema = new mongoose.Schema({
-  vendor: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Vendor',
-    required: false,
-  },
   companyName: {
     type: String,
     required: true,
+    trim: true,
   },
   description: {
     type: String,
@@ -92,10 +88,6 @@ const boothPollSchema = new mongoose.Schema(
     ],
     // Winner info (set when poll is closed)
     winner: {
-      vendorId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Vendor',
-      },
       vendorIndex: Number,
       companyName: String,
       voteCount: Number,
