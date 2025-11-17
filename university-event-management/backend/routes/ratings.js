@@ -1,16 +1,19 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const EventRating = require('../models/EventRating');
+const EventRating = require("../models/EventRating");
+const User = require("../models/User");
+const Event = require("../models/Event");
+const emailService = require("../services/emailService");
 // Auth middleware still used for regular user actions; admin endpoints will be public per request
-const { protect } = require('../middleware/auth');
+const { protect } = require("../middleware/auth");
 
 // Middleware to check if user can rate events
 const canRate = (req, res, next) => {
-  const allowedRoles = ['student', 'staff', 'ta', 'professor'];
+  const allowedRoles = ["student", "staff", "ta", "professor"];
   if (!allowedRoles.includes(req.user.role.toLowerCase())) {
     return res.status(403).json({
       success: false,
-      message: 'Only students, staff, TAs, and professors can rate events'
+      message: "Only students, staff, TAs, and professors can rate events",
     });
   }
   next();
@@ -18,11 +21,18 @@ const canRate = (req, res, next) => {
 
 // Middleware to check if user can view ratings
 const canViewRatings = (req, res, next) => {
-  const allowedRoles = ['student', 'staff', 'ta', 'professor', 'events_office', 'admin'];
+  const allowedRoles = [
+    "student",
+    "staff",
+    "ta",
+    "professor",
+    "events_office",
+    "admin",
+  ];
   if (!allowedRoles.includes(req.user.role.toLowerCase())) {
     return res.status(403).json({
       success: false,
-      message: 'You do not have permission to view ratings'
+      message: "You do not have permission to view ratings",
     });
   }
   next();
@@ -31,7 +41,7 @@ const canViewRatings = (req, res, next) => {
 // @route   POST /api/ratings
 // @desc    Create or update a rating for an event
 // @access  Private (Student, Staff, TA, Professor only)
-router.post('/', protect, canRate, async (req, res) => {
+router.post("/", protect, canRate, async (req, res) => {
   try {
     const { eventId, eventType, rating, comment } = req.body;
 
@@ -39,40 +49,41 @@ router.post('/', protect, canRate, async (req, res) => {
     if (!eventId || !eventType || !rating || !comment) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide eventId, eventType, rating, and comment'
+        message: "Please provide eventId, eventType, rating, and comment",
       });
     }
 
     if (rating < 1 || rating > 5) {
       return res.status(400).json({
         success: false,
-        message: 'Rating must be between 1 and 5'
+        message: "Rating must be between 1 and 5",
       });
     }
 
     if (comment.trim().length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Comment cannot be empty'
+        message: "Comment cannot be empty",
       });
     }
 
     // ✅ FIX: Get userName from multiple possible fields
-    const userName = req.user.name || req.user.username || req.user.email || 'Anonymous User';
-    
+    const userName =
+      req.user.name || req.user.username || req.user.email || "Anonymous User";
+
     // Debug log to see what's available
-    console.log('User object:', {
+    console.log("User object:", {
       id: req.user._id,
       name: req.user.name,
       username: req.user.username,
       email: req.user.email,
-      role: req.user.role
+      role: req.user.role,
     });
 
     // Check if user already rated this event
     const existingRating = await EventRating.findOne({
       eventId,
-      userId: req.user._id
+      userId: req.user._id,
     });
 
     let savedRating;
@@ -93,22 +104,24 @@ router.post('/', protect, canRate, async (req, res) => {
         userRole: req.user.role.toLowerCase(),
         userName: userName, // ✅ Use the fallback value
         rating,
-        comment
+        comment,
       });
       savedRating = await newRating.save();
     }
 
     res.status(201).json({
       success: true,
-      message: existingRating ? 'Rating updated successfully' : 'Rating submitted successfully',
-      data: savedRating
+      message: existingRating
+        ? "Rating updated successfully"
+        : "Rating submitted successfully",
+      data: savedRating,
     });
   } catch (error) {
-    console.error('Error creating/updating rating:', error);
+    console.error("Error creating/updating rating:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to submit rating',
-      error: error.message
+      message: "Failed to submit rating",
+      error: error.message,
     });
   }
 });
@@ -116,7 +129,7 @@ router.post('/', protect, canRate, async (req, res) => {
 // @route   GET /api/ratings/event/:eventId
 // @desc    Get all ratings for a specific event
 // @access  Private (Student, Staff, TA, Professor, Events Office, Admin)
-router.get('/event/:eventId', protect, canViewRatings, async (req, res) => {
+router.get("/event/:eventId", protect, canViewRatings, async (req, res) => {
   try {
     const { eventId } = req.params;
 
@@ -126,16 +139,17 @@ router.get('/event/:eventId', protect, canViewRatings, async (req, res) => {
 
     // Calculate statistics
     const totalRatings = ratings.length;
-    const averageRating = totalRatings > 0
-      ? ratings.reduce((sum, r) => sum + r.rating, 0) / totalRatings
-      : 0;
+    const averageRating =
+      totalRatings > 0
+        ? ratings.reduce((sum, r) => sum + r.rating, 0) / totalRatings
+        : 0;
 
     const ratingDistribution = {
-      5: ratings.filter(r => r.rating === 5).length,
-      4: ratings.filter(r => r.rating === 4).length,
-      3: ratings.filter(r => r.rating === 3).length,
-      2: ratings.filter(r => r.rating === 2).length,
-      1: ratings.filter(r => r.rating === 1).length,
+      5: ratings.filter((r) => r.rating === 5).length,
+      4: ratings.filter((r) => r.rating === 4).length,
+      3: ratings.filter((r) => r.rating === 3).length,
+      2: ratings.filter((r) => r.rating === 2).length,
+      1: ratings.filter((r) => r.rating === 1).length,
     };
 
     res.status(200).json({
@@ -145,16 +159,16 @@ router.get('/event/:eventId', protect, canViewRatings, async (req, res) => {
         statistics: {
           totalRatings,
           averageRating: Math.round(averageRating * 10) / 10,
-          ratingDistribution
-        }
-      }
+          ratingDistribution,
+        },
+      },
     });
   } catch (error) {
-    console.error('Error fetching ratings:', error);
+    console.error("Error fetching ratings:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch ratings',
-      error: error.message
+      message: "Failed to fetch ratings",
+      error: error.message,
     });
   }
 });
@@ -162,25 +176,25 @@ router.get('/event/:eventId', protect, canViewRatings, async (req, res) => {
 // @route   GET /api/ratings/my-rating/:eventId
 // @desc    Get current user's rating for a specific event
 // @access  Private (Student, Staff, TA, Professor)
-router.get('/my-rating/:eventId', protect, canRate, async (req, res) => {
+router.get("/my-rating/:eventId", protect, canRate, async (req, res) => {
   try {
     const { eventId } = req.params;
 
     const rating = await EventRating.findOne({
       eventId,
-      userId: req.user._id
+      userId: req.user._id,
     }).lean();
 
     res.status(200).json({
       success: true,
-      data: rating
+      data: rating,
     });
   } catch (error) {
-    console.error('Error fetching user rating:', error);
+    console.error("Error fetching user rating:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch your rating',
-      error: error.message
+      message: "Failed to fetch your rating",
+      error: error.message,
     });
   }
 });
@@ -188,19 +202,19 @@ router.get('/my-rating/:eventId', protect, canRate, async (req, res) => {
 // @route   DELETE /api/ratings/:ratingId
 // @desc    Delete a rating (only by the user who created it)
 // @access  Private (Student, Staff, TA, Professor)
-router.delete('/:ratingId', protect, canRate, async (req, res) => {
+router.delete("/:ratingId", protect, canRate, async (req, res) => {
   try {
     const { ratingId } = req.params;
 
     const rating = await EventRating.findOne({
       _id: ratingId,
-      userId: req.user._id
+      userId: req.user._id,
     });
 
     if (!rating) {
       return res.status(404).json({
         success: false,
-        message: 'Rating not found or you do not have permission to delete it'
+        message: "Rating not found or you do not have permission to delete it",
       });
     }
 
@@ -208,14 +222,14 @@ router.delete('/:ratingId', protect, canRate, async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Rating deleted successfully'
+      message: "Rating deleted successfully",
     });
   } catch (error) {
-    console.error('Error deleting rating:', error);
+    console.error("Error deleting rating:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete rating',
-      error: error.message
+      message: "Failed to delete rating",
+      error: error.message,
     });
   }
 });
@@ -232,20 +246,69 @@ module.exports = router;
  *       the userId ownership check and uses role-based authorization instead.
  */
 
+// @route   GET /api/ratings/admin/events-with-ratings
+// @desc    Admin: Get all events that have ratings/comments
+// @access  Public (no auth per user request)
+router.get("/admin/events-with-ratings", async (req, res) => {
+  try {
+    // Get all unique eventIds that have ratings
+    const eventIdsWithRatings = await EventRating.distinct("eventId");
+    
+    if (eventIdsWithRatings.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+      });
+    }
+
+    // Fetch event details for these eventIds
+    const events = await Event.find({ _id: { $in: eventIdsWithRatings } }).lean();
+
+    // For each event, get rating count and average
+    const eventsWithStats = await Promise.all(
+      events.map(async (event) => {
+        const ratings = await EventRating.find({ eventId: event._id }).lean();
+        const totalRatings = ratings.length;
+        const averageRating = totalRatings > 0
+          ? ratings.reduce((sum, r) => sum + r.rating, 0) / totalRatings
+          : 0;
+
+        return {
+          ...event,
+          ratingsCount: totalRatings,
+          averageRating: Math.round(averageRating * 10) / 10,
+        };
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      data: eventsWithStats,
+    });
+  } catch (error) {
+    console.error("Error fetching events with ratings:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch events with ratings",
+      error: error.message,
+    });
+  }
+});
+
 // @route   GET /api/ratings/admin/all
 // @desc    Admin: Get all ratings/comments with optional filters & pagination
 // @access  Private (Admin only)
-router.get('/admin/all', async (req, res) => {
+router.get("/admin/all", async (req, res) => {
   try {
     const {
       page = 1,
       limit = 20,
-      search = '',
+      search = "",
       eventType,
       userRole,
       eventId,
-      sort = 'createdAt',
-      order = 'desc'
+      sort = "createdAt",
+      order = "desc",
     } = req.query;
 
     const numericPage = Math.max(parseInt(page, 10), 1);
@@ -258,21 +321,21 @@ router.get('/admin/all', async (req, res) => {
     if (search && search.trim().length > 0) {
       // Text search on comment or userName
       query.$or = [
-        { comment: { $regex: search.trim(), $options: 'i' } },
-        { userName: { $regex: search.trim(), $options: 'i' } }
+        { comment: { $regex: search.trim(), $options: "i" } },
+        { userName: { $regex: search.trim(), $options: "i" } },
       ];
     }
 
-    const sortDirection = order === 'asc' ? 1 : -1;
+    const sortDirection = order === "asc" ? 1 : -1;
     const sortSpec = { [sort]: sortDirection };
 
-    const [ total, ratings ] = await Promise.all([
+    const [total, ratings] = await Promise.all([
       EventRating.countDocuments(query),
       EventRating.find(query)
         .sort(sortSpec)
         .skip((numericPage - 1) * numericLimit)
         .limit(numericLimit)
-        .lean()
+        .lean(),
     ]);
 
     res.status(200).json({
@@ -282,41 +345,88 @@ router.get('/admin/all', async (req, res) => {
         total,
         page: numericPage,
         limit: numericLimit,
-        totalPages: Math.ceil(total / numericLimit)
-      }
+        totalPages: Math.ceil(total / numericLimit),
+      },
     });
   } catch (error) {
-    console.error('Error fetching all ratings (admin):', error);
+    console.error("Error fetching all ratings (admin):", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch ratings',
-      error: error.message
+      message: "Failed to fetch ratings",
+      error: error.message,
     });
   }
 });
 
 // @route   DELETE /api/ratings/admin/:ratingId
-// @desc    Admin: Delete any rating/comment
+// @desc    Admin: Delete any rating/comment and send warning email
 // @access  Private (Admin only)
-router.delete('/admin/:ratingId', async (req, res) => {
+router.delete("/admin/:ratingId", async (req, res) => {
   try {
     const { ratingId } = req.params;
+    const { reason } = req.body; // Optional reason for deletion
+
     const rating = await EventRating.findById(ratingId);
     if (!rating) {
       return res.status(404).json({
         success: false,
-        message: 'Rating not found'
+        message: "Rating not found",
       });
     }
 
+    // Get user information to send warning email
+    const user = await User.findById(rating.userId);
+
+    // Get event information for context
+    let eventName = "Unknown Event";
+    try {
+      const event = await Event.findById(rating.eventId);
+      if (event) {
+        eventName = event.title || event.name || "Unknown Event";
+      }
+    } catch (eventError) {
+      console.error("Error fetching event details:", eventError);
+      // Continue with deletion even if event lookup fails
+    }
+
+    // Store comment before deletion
+    const deletedComment = rating.comment;
+
+    // Delete the rating
     await rating.deleteOne();
-    res.status(200).json({ success: true, message: 'Rating deleted successfully' });
+
+    // Send warning email to the user (if user exists)
+    if (user) {
+      try {
+        await emailService.sendCommentDeletionWarning(
+          user,
+          eventName,
+          deletedComment,
+          reason || "inappropriate content"
+        );
+        console.log(
+          `✅ Warning email sent to user ${user.email} for deleted comment`
+        );
+      } catch (emailError) {
+        console.error("Error sending warning email:", emailError);
+        // Don't fail the deletion if email fails - just log it
+      }
+    } else {
+      console.warn(
+        `⚠️ User not found for rating ${ratingId}, skipping warning email`
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Rating deleted successfully and warning email sent to user",
+    });
   } catch (error) {
-    console.error('Error admin deleting rating:', error);
+    console.error("Error admin deleting rating:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete rating',
-      error: error.message
+      message: "Failed to delete rating",
+      error: error.message,
     });
   }
 });

@@ -3,9 +3,10 @@ const router = express.Router();
 const notificationController = require('../controllers/notificationController');
 const { protect, authorize } = require('../middleware/auth');
 
-// All routes require authentication and professor role
+// All routes require authentication
+// Accessible by: professor, staff, events_office, student, ta, admin
 router.use(protect);
-router.use(authorize('professor', 'staff')); // Include staff temporarily for testing
+router.use(authorize('professor', 'staff', 'events_office', 'student', 'ta', 'admin'));
 
 // Get all notifications for logged-in professor
 router.get('/', notificationController.getNotifications);

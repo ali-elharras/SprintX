@@ -89,8 +89,15 @@ const VerificationEmailSelection = () => {
           localStorage.setItem("userType", "user");
         }
 
-        // Navigate to success page instead of showing toast
-        navigate("/verification-success");
+        // Route based on user role
+        // Students go to email verification sent page (need to verify before login)
+        // Staff/TA/Professor go to verification success page (admin approval flow)
+        const userRole = userData?.requestedRole || userData?.role;
+        if (userRole === "student") {
+          navigate("/email-verification-sent");
+        } else {
+          navigate("/verification-success");
+        }
       } else {
         toast.error(
           responseData.message || "Registration failed. Please try again."

@@ -6,6 +6,7 @@ import theme from '../../theme';
 import Button from '../Button';
 import Card from '../Card';
 import LoyaltyEnrollmentModal from './LoyaltyEnrollmentModal';
+import api from '../../services/api';
 
 const LoyaltyProgram = () => {
   const { vendor } = useAuth();
@@ -15,14 +16,18 @@ const LoyaltyProgram = () => {
 
   useEffect(() => {
     fetchLoyaltyPrograms();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchLoyaltyPrograms = async () => {
     try {
-      const data = await api.get('/loyalty');
-      setPrograms(data.data || data);
+      setLoading(true);
+      const res = await api.get('/loyalty');
+      setPrograms(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
-      toast.error('Failed to fetch loyalty programs');
+      // axios error shape handling
+      const msg = error?.response?.data?.error || error?.message || 'Failed to fetch loyalty programs';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -30,25 +35,26 @@ const LoyaltyProgram = () => {
 
   const handleCreateProgram = async (formData) => {
     try {
-      const response = await api.post('/loyalty', formData);
+      const res = await api.post('/loyalty', formData);
       toast.success('Successfully created loyalty program');
-      fetchLoyaltyPrograms();
-      return response.data;
+      await fetchLoyaltyPrograms();
+      return res.data;
     } catch (error) {
-      toast.error(error.message || 'Failed to create loyalty program');
+      const msg = error?.response?.data?.error || error?.message || 'Failed to create loyalty program';
+      toast.error(msg);
       throw error;
     }
   };
 
   const handleCancelProgram = async (programId) => {
-    if (window.confirm('Are you sure you want to cancel this loyalty program?')) {
-      try {
-        await api.delete(`/loyalty/${programId}`);
-        toast.success('Successfully cancelled loyalty program');
-        fetchLoyaltyPrograms();
-      } catch (error) {
-        toast.error(error.message || 'Failed to cancel program');
-      }
+    if (!window.confirm('Are you sure you want to cancel this loyalty program?')) return;
+    try {
+      await api.delete(`/loyalty/${programId}`);
+      toast.success('Successfully cancelled loyalty program');
+      fetchLoyaltyPrograms();
+    } catch (error) {
+      const msg = error?.response?.data?.error || error?.message || 'Failed to cancel program';
+      toast.error(msg);
     }
   };
 

@@ -4,9 +4,13 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
+const cron = require("node-cron");
 require("dotenv").config();
 
 const { errorHandler } = require("./middleware/errorHandler");
+const {
+  checkAndSendEventReminders,
+} = require("./services/eventReminderService");
 
 // ===== Route Imports =====
 const authRoutes = require("./routes/auth");
@@ -27,7 +31,6 @@ const LoyaltyRoutes = require("./routes/LoyaltyRoutes");
 //const eventReviewRoutes = require("./routes/eventReviews");
 const favoritesRoutes = require("./routes/favorites");
 
-
 const app = express();
 
 // ===== Security & Performance Middleware =====
@@ -46,10 +49,11 @@ app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:3000",
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    exposedHeaders: ['Authorization']
-}));
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+    exposedHeaders: ["Authorization"],
+  })
+);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
@@ -60,7 +64,7 @@ mongoose
     useUnifiedTopology: true,
     // Connection pool settings for better stability
     maxPoolSize: 50, // Maximum number of connections in the connection pool
-    minPoolSize: 5,  // Minimum number of connections in the connection pool
+    minPoolSize: 5, // Minimum number of connections in the connection pool
     maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
     serverSelectionTimeoutMS: 10000, // How long to try to connect before timing out
     socketTimeoutMS: 45000, // How long a send or receive on a socket can take before timing out
@@ -72,35 +76,35 @@ mongoose
   });
 
 // Connection event handlers for better monitoring
-mongoose.connection.on('connected', async () => {
-  console.log('📦 Mongoose connected to MongoDB');
-  
+mongoose.connection.on("connected", async () => {
+  console.log("📦 Mongoose connected to MongoDB");
+
   // Fix Workshop model indexes on connection
   try {
-    const Workshop = require('./models/Workshop');
+    const Workshop = require("./models/Workshop");
     await Workshop.syncIndexes();
-    console.log('✅ Workshop indexes synced successfully');
+    console.log("✅ Workshop indexes synced successfully");
   } catch (indexError) {
-    console.warn('⚠️ Warning syncing Workshop indexes:', indexError.message);
+    console.warn("⚠️ Warning syncing Workshop indexes:", indexError.message);
   }
 });
 
-mongoose.connection.on('error', (err) => {
-  console.error('❌ Mongoose connection error:', err);
+mongoose.connection.on("error", (err) => {
+  console.error("❌ Mongoose connection error:", err);
 });
 
-mongoose.connection.on('disconnected', () => {
-  console.log('📦 Mongoose disconnected from MongoDB');
+mongoose.connection.on("disconnected", () => {
+  console.log("📦 Mongoose disconnected from MongoDB");
 });
 
 // Graceful shutdown handling
-process.on('SIGINT', async () => {
+process.on("SIGINT", async () => {
   try {
     await mongoose.connection.close();
-    console.log('📦 Mongoose connection closed due to app termination');
+    console.log("📦 Mongoose connection closed due to app termination");
     process.exit(0);
   } catch (err) {
-    console.error('Error during graceful shutdown:', err);
+    console.error("Error during graceful shutdown:", err);
     process.exit(1);
   }
 });
@@ -121,7 +125,7 @@ app.use("/api/gym", gymRoutes);
 app.use("/api/conferences", conferenceRoutes);
 app.use("/api/bazaars", bazaarRoutes);
 app.use("/api/loyalty", LoyaltyRoutes);
-app.use('/api/ratings', require('./routes/ratings'));
+app.use("/api/ratings", require("./routes/ratings"));
 app.use("/api/favorites", favoritesRoutes);
 app.use("/api/booth-polls", require('./routes/boothPolls'));
 
@@ -153,7 +157,7 @@ app.get("/api/health", (req, res) => {
 // ===== Feature Flags =====
 app.get("/api/feature-flags", (req, res) => {
   res.json({
-    gpt5Enabled: process.env.FEATURE_GPT5_ENABLED === 'true',
+    gpt5Enabled: process.env.FEATURE_GPT5_ENABLED === "true",
   });
 });
 
@@ -174,4 +178,15 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT} - RESTARTED WITH FIXES`);
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
   console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
+
+  // ===== Event Reminder Scheduler =====
+  // Run every hour to check for upcoming events and send reminders
+  cron.schedule("0 * * * *", () => {
+    console.log("⏰ Running scheduled event reminder check...");
+    checkAndSendEventReminders();
+  });
+
+  // Run once on startup to catch any immediate reminders
+  console.log("🔔 Running initial event reminder check...");
+  checkAndSendEventReminders();
 });

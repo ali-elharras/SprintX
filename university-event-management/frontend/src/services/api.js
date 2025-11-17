@@ -600,6 +600,12 @@ export const ratingAPI = {
     api.delete(`/ratings/${ratingId}`),
   
   // ================= ADMIN COMMENT MANAGEMENT =================
+  // Admin get events with ratings
+  getEventsWithRatings: (cancelToken = null) => 
+    api.get('/ratings/admin/events-with-ratings', {
+      ...(cancelToken && { cancelToken: cancelToken.token }),
+    }),
+
   // Admin fetch all ratings/comments with filters
   getAllRatingsAdmin: (params = {}, cancelToken = null) => {
     const queryString = new URLSearchParams(params).toString();

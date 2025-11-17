@@ -1,7 +1,7 @@
 const Workshop = require('../models/Workshop');
 const Event = require('../models/Event');
 const User = require('../models/User');
-const { createNotification } = require('./notificationController');
+const { createNotification, notifyAllUsersAboutNewEvent } = require('./notificationController');
 
 // GET /api/workshops - Fetch all workshops (READ)
 // Optional query: ?status=pending|published
@@ -117,6 +117,34 @@ exports.createWorkshop = async (req, res) => {
             }
         }
         
+        // Create notification for Events Office: "Professor [NAME] uploaded a workshop and it is waiting for approval."
+        if (req.user && populatedWorkshop.createdBy) {
+            try {
+                // Find all Events Office users
+                const eventsOfficeUsers = await User.find({ role: 'events_office' });
+                const professorName = `${populatedWorkshop.createdBy.firstName} ${populatedWorkshop.createdBy.lastName}`;
+                
+                // Create notification for each Events Office user
+                for (const eventsOfficeUser of eventsOfficeUsers) {
+                    await createNotification(
+                        eventsOfficeUser._id,
+                        `Professor ${professorName} uploaded a workshop and it is waiting for approval.`,
+                        'professor_workshop_submitted',
+                        savedWorkshop._id,
+                        savedWorkshop.workshopName,
+                        { 
+                            professorName,
+                            professorId: populatedWorkshop.createdBy._id,
+                            status: 'pending' 
+                        }
+                    );
+                }
+            } catch (notifError) {
+                console.error('Error creating Events Office notification:', notifError);
+                // Don't fail the request if notification fails
+            }
+        }
+        
         res.status(201).json(populatedWorkshop);
     } catch (error) {
         // Handle validation errors (e.g., required fields missing)
@@ -217,16 +245,36 @@ exports.updateWorkshop = async (req, res) => {
         }
         
         // Create resubmission notification (workshop waiting for approval again)
-        if (isBeingResubmitted && workshop.createdBy && workshop.createdBy._id) {
+        if (isBeingResubmitted && updatedWorkshop.createdBy && updatedWorkshop.createdBy._id) {
             try {
+                // Notification for professor
                 await createNotification(
-                    workshop.createdBy._id,
-                    `Workshop "${workshop.workshopName}" resubmitted and waiting for approval.`,
+                    updatedWorkshop.createdBy._id,
+                    `Workshop "${updatedWorkshop.workshopName}" resubmitted and waiting for approval.`,
                     'workshop_submitted',
-                    workshop._id,
-                    workshop.workshopName,
+                    updatedWorkshop._id,
+                    updatedWorkshop.workshopName,
                     { status: 'pending', isResubmission: true }
                 );
+                
+                // Notification for Events Office: "Professor [NAME] edited the workshop based on your requested changes."
+                const eventsOfficeUsers = await User.find({ role: 'events_office' });
+                const professorName = `${updatedWorkshop.createdBy.firstName} ${updatedWorkshop.createdBy.lastName}`;
+                
+                for (const eventsOfficeUser of eventsOfficeUsers) {
+                    await createNotification(
+                        eventsOfficeUser._id,
+                        `Professor ${professorName} edited the workshop based on your requested changes.`,
+                        'professor_workshop_edited',
+                        updatedWorkshop._id,
+                        updatedWorkshop.workshopName,
+                        { 
+                            professorName,
+                            professorId: updatedWorkshop.createdBy._id,
+                            isResubmission: true 
+                        }
+                    );
+                }
             } catch (notifError) {
                 console.error('Error creating resubmission notification:', notifError);
             }
@@ -587,6 +635,13 @@ exports.publishWorkshop = async (req, res) => {
             } catch (notifError) {
                 console.error('Error creating notification:', notifError);
             }
+        }
+        
+        // Notify all users about the new event
+        try {
+            await notifyAllUsersAboutNewEvent(workshop.workshopName, createdEvent._id);
+        } catch (notifError) {
+            console.error('Error notifying users about new event:', notifError);
         }
 
         // Populate organizer for the returned object and convert to plain object including virtuals

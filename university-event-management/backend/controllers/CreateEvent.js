@@ -1,4 +1,5 @@
 const Event = require("../models/Event");
+const { notifyAllUsersAboutNewEvent } = require("./notificationController");
 
 // @desc    Create a new event
 // @route   POST /api/events
@@ -28,6 +29,13 @@ exports.createEvent = async (req, res) => {
       location,
       registrationDeadline,
     });
+
+    // Notify all users about the new event
+    try {
+      await notifyAllUsersAboutNewEvent(newEvent.name, newEvent._id);
+    } catch (notifError) {
+      console.error('Error notifying users about new event:', notifError);
+    }
 
     res.status(201).json({
       success: true,

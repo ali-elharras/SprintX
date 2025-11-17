@@ -1,4 +1,5 @@
 const LoyaltyProgram = require('../models/LoyaltyProgram');
+const { notifyAllUsersAboutLoyaltyPartner } = require('./notificationController');
 
 // Get all loyalty programs with vendor details
 exports.getAllLoyaltyPrograms = async (req, res) => {
@@ -17,6 +18,21 @@ exports.createLoyaltyProgram = async (req, res) => {
         const { discountRate, promoCode, termsAndConditions } = req.body;
         const newProgram = new LoyaltyProgram({ discountRate, promoCode, termsAndConditions, Vendor: vendorId });
         await newProgram.save();
+        
+        // Get vendor details for notification
+        const Vendor = require('../models/Vendor');
+        const vendor = await Vendor.findById(vendorId);
+        
+        // Notify all students, staff, TAs, and professors about the new loyalty partner
+        if (vendor && vendor.companyName) {
+            try {
+                await notifyAllUsersAboutLoyaltyPartner(vendor.companyName, promoCode, discountRate);
+            } catch (notifError) {
+                console.error('Error sending loyalty partner notifications:', notifError);
+                // Don't fail the loyalty program creation if notifications fail
+            }
+        }
+        
         res.status(201).json(newProgram);
     } catch (error) {
         res.status(400).json({ error: error.message });

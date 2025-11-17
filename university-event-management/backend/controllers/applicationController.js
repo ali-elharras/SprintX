@@ -3,6 +3,7 @@ const BoothApplication = require("../models/BoothApplication");
 const Event = require("../models/Event");
 const { uploadImage } = require("../utils/imageKitUploader"); // Import ImageKit uploader
 const emailService = require("../services/emailService");
+const { notifyAdminAndEventsOfficeAboutVendorApplication } = require("./notificationController");
 
 // @desc    Apply to a bazaar
 // @route   POST /api/applications/bazaar/:bazaarId
@@ -64,6 +65,26 @@ const applyToBazaar = async (req, res, next) => {
         attendees,
         boothSize,
       });
+
+      // Get vendor details for notification
+      const Vendor = require('../models/Vendor');
+      const vendor = await Vendor.findById(vendorId);
+      
+      // Notify admin and events office about the vendor application
+      if (vendor && vendor.companyName && bazaar && bazaar.title) {
+        try {
+          await notifyAdminAndEventsOfficeAboutVendorApplication(
+            vendor.companyName,
+            'bazaar',
+            bazaar.title,
+            vendorId,
+            application._id
+          );
+        } catch (notifError) {
+          console.error('Error sending bazaar application notifications:', notifError);
+          // Don't fail the application if notifications fail
+        }
+      }
 
       return res.status(201).json({
         success: true,
@@ -133,6 +154,27 @@ const applyForBooth = async (req, res, next) => {
       location,
       boothSize,
     });
+
+    // Get vendor details for notification
+    const Vendor = require('../models/Vendor');
+    const vendor = await Vendor.findById(vendorId);
+    
+    // Notify admin and events office about the booth application
+    if (vendor && vendor.companyName) {
+      try {
+        const eventName = `Standalone Booth at ${location}`;
+        await notifyAdminAndEventsOfficeAboutVendorApplication(
+          vendor.companyName,
+          'booth',
+          eventName,
+          vendorId,
+          application._id
+        );
+      } catch (notifError) {
+        console.error('Error sending booth application notifications:', notifError);
+        // Don't fail the application if notifications fail
+      }
+    }
 
     res.status(201).json({
       success: true,
