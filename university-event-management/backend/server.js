@@ -11,6 +11,9 @@ const { errorHandler } = require("./middleware/errorHandler");
 const {
   checkAndSendEventReminders,
 } = require("./services/eventReminderService");
+const {
+  initializeWorkshopCertificateScheduler,
+} = require("./services/workshopCertificateScheduler");
 
 // ===== Route Imports =====
 const authRoutes = require("./routes/auth");
@@ -129,7 +132,7 @@ app.use("/api/bazaars", bazaarRoutes);
 app.use("/api/loyalty", LoyaltyRoutes);
 app.use("/api/ratings", require("./routes/ratings"));
 app.use("/api/favorites", favoritesRoutes);
-app.use("/api/booth-polls", require('./routes/boothPolls'));
+app.use("/api/booth-polls", require("./routes/boothPolls"));
 
 // Workshop routes (professors create -> saved as pending, Events Office can publish)
 app.use("/api/workshops", workshopRoutes);
@@ -195,4 +198,8 @@ app.listen(PORT, () => {
   // Run once on startup to catch any immediate reminders
   console.log("🔔 Running initial event reminder check...");
   checkAndSendEventReminders();
+
+  // ===== Workshop Certificate Scheduler =====
+  // Initialize workshop certificate scheduler (runs every 1 minute)
+  initializeWorkshopCertificateScheduler();
 });
