@@ -20,38 +20,38 @@ const theme = {
       dark: "#5a3780",
     },
 
-    // Event Type Colors
-    eventTypes: {
-      bazaar: {
-        main: "#10b981",
-        light: "#34d399",
-        dark: "#059669",
-        bg: "#d1fae5",
-      },
-      trip: {
-        main: "#f59e0b",
-        light: "#fbbf24",
-        dark: "#d97706",
-        bg: "#fef3c7",
-      },
-      workshop: {
-        main: "#8b5cf6",
-        light: "#a78bfa",
-        dark: "#7c3aed",
-        bg: "#ede9fe",
-      },
-      competition: {
-        main: "#3b82f6",
-        light: "#60a5fa",
-        dark: "#2563eb",
-        bg: "#dbeafe",
-      },
-      conference: {
-        main: "#ec4899",
-        light: "#f472b6",
-        dark: "#db2777",
-        bg: "#fce7f3",
-      },
+    // Refined Event Type Colors - Professional & Comfortable
+eventTypes: {
+  bazaar: {
+    main: "#059669",      // Deeper emerald (was too bright green)
+    light: "#6ee7b7",     // Softer mint
+    dark: "#047857",      // Rich forest
+    bg: "#ecfdf5",        // Subtle pale mint
+  },
+  trip: {
+    main: "#d97706",      // Warmer amber (less orange)
+    light: "#fbbf24",     // Kept but used sparingly
+    dark: "#b45309",      // Deep bronze
+    bg: "#fffbeb",        // Cream instead of yellow
+  },
+  workshop: {
+    main: "#7c3aed",      // Deeper violet (less bright)
+    light: "#c4b5fd",     // Soft lavender
+    dark: "#6d28d9",      // Royal purple
+    bg: "#faf5ff",        // Very pale lilac
+  },
+  competition: {
+    main: "#2563eb",      // Rich blue (less electric)
+    light: "#93c5fd",     // Sky blue
+    dark: "#1e40af",      // Navy
+    bg: "#eff6ff",        // Soft blue tint
+  },
+  conference: {
+    main: "#db2777",      // Deeper rose (less hot pink)
+    light: "#f9a8d4",     // Soft pink
+    dark: "#be185d",      // Wine
+    bg: "#fdf2f8",        // Blush
+  },
     },
 
     // Neutral Colors

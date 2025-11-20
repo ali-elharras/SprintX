@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import theme from "./theme";
 
 // Pages (combined from both branches)
+import LandingPage from "./pages/LandingPage";
 import UserTypeSelection from "./components/UserTypeSelection";
 import Login from "./pages/Login";
 import VendorLogin from "./pages/VendorLogin";
@@ -160,11 +161,7 @@ const VendorRoute = ({ children }) => {
 const router = createBrowserRouter([
   {
     path: "/",
-    element: (
-      <PublicRoute>
-        <Login />
-      </PublicRoute>
-    ),
+    element: <LandingPage />,
   },
   {
     path: "/login",
