@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
+import { ChevronDown } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
 import theme, { getRoleColor } from "../theme";
@@ -11,12 +12,34 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, isUser, isVendor, user, vendor } = useAuth();
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const dropdownRefs = useRef({});
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (activeDropdown && dropdownRefs.current[activeDropdown]) {
+        if (!dropdownRefs.current[activeDropdown].contains(event.target)) {
+          setActiveDropdown(null);
+        }
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [activeDropdown]);
+
+  const toggleDropdown = (dropdownName) => {
+    setActiveDropdown(activeDropdown === dropdownName ? null : dropdownName);
+  };
 
   const handleLogout = async () => {
     try {
       await logout();
       toast.success("Logged out successfully");
-      navigate("/");
+      navigate("/login");
     } catch (error) {
       console.error("Logout error:", error);
       toast.error("Logout failed. Please try again.");
@@ -89,6 +112,909 @@ const Navbar = () => {
     : theme.colors.primary.main;
 
   const statusBadge = getStatusBadge();
+
+  // Student Navigation Groups
+  const studentNavGroups = {
+    events: {
+      label: "Events & Activities",
+      items: [
+        { label: "Browse Events", path: "/events" },
+        { label: "Saved Events", path: "/favorites" },
+        { label: "Booth Polls", path: "/booth-polls" },
+        { label: "Loyalty Programs", path: "/loyalty-program" },
+      ],
+    },
+    sports: {
+      label: "Sports & Fitness",
+      items: [
+        { label: "Book Courts", path: "/courts", badge: "Student Only" },
+        { label: "Gym Schedule", path: "/gym-schedule" },
+      ],
+    },
+    account: {
+      label: "My Account",
+      items: [
+        { label: "My Registrations", path: "/my-registrations" },
+        { label: "Wallet", path: "/wallet" },
+      ],
+    },
+  };
+
+  // Staff/TA/Professor Navigation Groups
+  const staffNavGroups = {
+    events: {
+      label: "Events & Activities",
+      items: [
+        { label: "Browse Events", path: "/events" },
+        { label: "Saved Events", path: "/favorites" },
+        { label: "Booth Polls", path: "/booth-polls" },
+        { label: "Loyalty Programs", path: "/loyalty-program" },
+      ],
+    },
+    activities: {
+      label: "Campus Activities",
+      items: [
+        { label: "Gym Schedule", path: "/gym-schedule" },
+      ],
+    },
+    account: {
+      label: "My Account",
+      items: [
+        { label: "My Registrations", path: "/my-registrations" },
+        { label: "Wallet", path: "/wallet" },
+      ],
+    },
+  };
+
+  // Professor-specific Navigation Groups
+  const professorNavGroups = {
+    events: {
+      label: "Events & Activities",
+      items: [
+        { label: "Browse Events", path: "/events" },
+        { label: "My Workshops", path: "/my-workshops" },
+        { label: "Saved Events", path: "/favorites" },
+        { label: "Booth Polls", path: "/booth-polls" },
+        { label: "Loyalty Programs", path: "/loyalty-program" },
+      ],
+    },
+    activities: {
+      label: "Campus Activities",
+      items: [
+        { label: "Gym Schedule", path: "/gym-schedule" },
+      ],
+    },
+    account: {
+      label: "My Account",
+      items: [
+        { label: "My Registrations", path: "/my-registrations" },
+        { label: "Wallet", path: "/wallet" },
+      ],
+    },
+  };
+
+  // Events Office Navigation Groups
+  const eventsOfficeNavGroups = {
+    management: {
+      label: "Management",
+      items: [
+        { label: "Admin Dashboard", path: "/admin-dashboard" },
+        { label: "Reports", path: "/reports" },
+        { label: "Event Ratings", path: "/events-ratings" },
+      ],
+    },
+    events: {
+      label: "Events & Activities",
+      items: [
+        { label: "Browse Events", path: "/events" },
+        { label: "Saved Events", path: "/favorites" },
+        { label: "Booth Polls", path: "/booth-polls" },
+        { label: "Loyalty Programs", path: "/loyalty-program" },
+      ],
+    },
+    activities: {
+      label: "Campus Activities",
+      items: [
+        { label: "Gym Schedule", path: "/gym-schedule" },
+      ],
+    },
+    account: {
+      label: "My Account",
+      items: [
+        { label: "Wallet", path: "/wallet" },
+      ],
+    },
+  };
+
+  const isPathInGroup = (groupItems) => {
+    return groupItems.some(item => location.pathname === item.path);
+  };
+
+  const renderStudentNav = () => {
+    return (
+      <div style={navLinkContainerStyles}>
+        {/* Dashboard - Always visible */}
+        <button
+          onClick={() => navigate("/dashboard")}
+          style={{
+            ...navLinkStyles,
+            color: location.pathname === "/dashboard"
+              ? theme.colors.primary.main
+              : theme.colors.text.secondary,
+            borderBottom: location.pathname === "/dashboard"
+              ? `2px solid ${theme.colors.primary.main}`
+              : "2px solid transparent",
+          }}
+          onMouseEnter={(e) => {
+            if (location.pathname !== "/dashboard") {
+              e.target.style.color = theme.colors.primary.main;
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (location.pathname !== "/dashboard") {
+              e.target.style.color = theme.colors.text.secondary;
+            }
+          }}
+        >
+          Dashboard
+        </button>
+
+        {/* Events & Activities Dropdown */}
+        <div
+          ref={(el) => (dropdownRefs.current["events"] = el)}
+          style={dropdownContainerStyles}
+        >
+          <button
+            onClick={() => toggleDropdown("events")}
+            style={{
+              ...navLinkStyles,
+              color: isPathInGroup(studentNavGroups.events.items)
+                ? theme.colors.primary.main
+                : theme.colors.text.secondary,
+              borderBottom: isPathInGroup(studentNavGroups.events.items)
+                ? `2px solid ${theme.colors.primary.main}`
+                : "2px solid transparent",
+              display: "flex",
+              alignItems: "center",
+              gap: theme.spacing[1],
+            }}
+          >
+            {studentNavGroups.events.label}
+            <ChevronDown size={16} style={{
+              transform: activeDropdown === "events" ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s ease",
+            }} />
+          </button>
+          {activeDropdown === "events" && (
+            <div style={dropdownMenuStyles}>
+              {studentNavGroups.events.items.map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    navigate(item.path);
+                    setActiveDropdown(null);
+                  }}
+                  style={{
+                    ...dropdownItemStyles,
+                    background: location.pathname === item.path
+                      ? `${theme.colors.primary.main}10`
+                      : "transparent",
+                    color: location.pathname === item.path
+                      ? theme.colors.primary.main
+                      : theme.colors.text.primary,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = theme.colors.neutral.gray50;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = "transparent";
+                    }
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Sports & Fitness Dropdown */}
+        <div
+          ref={(el) => (dropdownRefs.current["sports"] = el)}
+          style={dropdownContainerStyles}
+        >
+          <button
+            onClick={() => toggleDropdown("sports")}
+            style={{
+              ...navLinkStyles,
+              color: isPathInGroup(studentNavGroups.sports.items)
+                ? theme.colors.primary.main
+                : theme.colors.text.secondary,
+              borderBottom: isPathInGroup(studentNavGroups.sports.items)
+                ? `2px solid ${theme.colors.primary.main}`
+                : "2px solid transparent",
+              display: "flex",
+              alignItems: "center",
+              gap: theme.spacing[1],
+            }}
+          >
+            {studentNavGroups.sports.label}
+            <ChevronDown size={16} style={{
+              transform: activeDropdown === "sports" ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s ease",
+            }} />
+          </button>
+          {activeDropdown === "sports" && (
+            <div style={dropdownMenuStyles}>
+              {studentNavGroups.sports.items.map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    navigate(item.path);
+                    setActiveDropdown(null);
+                  }}
+                  style={{
+                    ...dropdownItemStyles,
+                    background: location.pathname === item.path
+                      ? `${theme.colors.primary.main}10`
+                      : "transparent",
+                    color: location.pathname === item.path
+                      ? theme.colors.primary.main
+                      : theme.colors.text.primary,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = theme.colors.neutral.gray50;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = "transparent";
+                    }
+                  }}
+                >
+                  {item.label}
+                  {item.badge && (
+                    <span style={exclusiveBadgeStyles}>{item.badge}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* My Account Dropdown */}
+        <div
+          ref={(el) => (dropdownRefs.current["account"] = el)}
+          style={dropdownContainerStyles}
+        >
+          <button
+            onClick={() => toggleDropdown("account")}
+            style={{
+              ...navLinkStyles,
+              color: isPathInGroup(studentNavGroups.account.items)
+                ? theme.colors.primary.main
+                : theme.colors.text.secondary,
+              borderBottom: isPathInGroup(studentNavGroups.account.items)
+                ? `2px solid ${theme.colors.primary.main}`
+                : "2px solid transparent",
+              display: "flex",
+              alignItems: "center",
+              gap: theme.spacing[1],
+            }}
+          >
+            {studentNavGroups.account.label}
+            <ChevronDown size={16} style={{
+              transform: activeDropdown === "account" ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s ease",
+            }} />
+          </button>
+          {activeDropdown === "account" && (
+            <div style={dropdownMenuStyles}>
+              {studentNavGroups.account.items.map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    navigate(item.path);
+                    setActiveDropdown(null);
+                  }}
+                  style={{
+                    ...dropdownItemStyles,
+                    background: location.pathname === item.path
+                      ? `${theme.colors.primary.main}10`
+                      : "transparent",
+                    color: location.pathname === item.path
+                      ? theme.colors.primary.main
+                      : theme.colors.text.primary,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = theme.colors.neutral.gray50;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = "transparent";
+                    }
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderStaffNav = () => {
+    // Use professor-specific navigation if user is a professor
+    const navGroups = user?.role === "professor" ? professorNavGroups : staffNavGroups;
+    
+    return (
+      <div style={navLinkContainerStyles}>
+        {/* Dashboard - Always visible */}
+        <button
+          onClick={() => navigate("/dashboard")}
+          style={{
+            ...navLinkStyles,
+            color: location.pathname === "/dashboard"
+              ? theme.colors.primary.main
+              : theme.colors.text.secondary,
+            borderBottom: location.pathname === "/dashboard"
+              ? `2px solid ${theme.colors.primary.main}`
+              : "2px solid transparent",
+          }}
+          onMouseEnter={(e) => {
+            if (location.pathname !== "/dashboard") {
+              e.target.style.color = theme.colors.primary.main;
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (location.pathname !== "/dashboard") {
+              e.target.style.color = theme.colors.text.secondary;
+            }
+          }}
+        >
+          Dashboard
+        </button>
+
+        {/* Events & Activities Dropdown */}
+        <div
+          ref={(el) => (dropdownRefs.current["events"] = el)}
+          style={dropdownContainerStyles}
+        >
+          <button
+            onClick={() => toggleDropdown("events")}
+            style={{
+              ...navLinkStyles,
+              color: isPathInGroup(navGroups.events.items)
+                ? theme.colors.primary.main
+                : theme.colors.text.secondary,
+              borderBottom: isPathInGroup(navGroups.events.items)
+                ? `2px solid ${theme.colors.primary.main}`
+                : "2px solid transparent",
+              display: "flex",
+              alignItems: "center",
+              gap: theme.spacing[1],
+            }}
+          >
+            {navGroups.events.label}
+            <ChevronDown size={16} style={{
+              transform: activeDropdown === "events" ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s ease",
+            }} />
+          </button>
+          {activeDropdown === "events" && (
+            <div style={dropdownMenuStyles}>
+              {navGroups.events.items.map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    navigate(item.path);
+                    setActiveDropdown(null);
+                  }}
+                  style={{
+                    ...dropdownItemStyles,
+                    background: location.pathname === item.path
+                      ? `${theme.colors.primary.main}10`
+                      : "transparent",
+                    color: location.pathname === item.path
+                      ? theme.colors.primary.main
+                      : theme.colors.text.primary,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = theme.colors.neutral.gray50;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = "transparent";
+                    }
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Campus Activities Dropdown */}
+        <div
+          ref={(el) => (dropdownRefs.current["activities"] = el)}
+          style={dropdownContainerStyles}
+        >
+          <button
+            onClick={() => toggleDropdown("activities")}
+            style={{
+              ...navLinkStyles,
+              color: isPathInGroup(navGroups.activities.items)
+                ? theme.colors.primary.main
+                : theme.colors.text.secondary,
+              borderBottom: isPathInGroup(navGroups.activities.items)
+                ? `2px solid ${theme.colors.primary.main}`
+                : "2px solid transparent",
+              display: "flex",
+              alignItems: "center",
+              gap: theme.spacing[1],
+            }}
+          >
+            {navGroups.activities.label}
+            <ChevronDown size={16} style={{
+              transform: activeDropdown === "activities" ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s ease",
+            }} />
+          </button>
+          {activeDropdown === "activities" && (
+            <div style={dropdownMenuStyles}>
+              {navGroups.activities.items.map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    navigate(item.path);
+                    setActiveDropdown(null);
+                  }}
+                  style={{
+                    ...dropdownItemStyles,
+                    background: location.pathname === item.path
+                      ? `${theme.colors.primary.main}10`
+                      : "transparent",
+                    color: location.pathname === item.path
+                      ? theme.colors.primary.main
+                      : theme.colors.text.primary,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = theme.colors.neutral.gray50;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = "transparent";
+                    }
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* My Account Dropdown */}
+        <div
+          ref={(el) => (dropdownRefs.current["account"] = el)}
+          style={dropdownContainerStyles}
+        >
+          <button
+            onClick={() => toggleDropdown("account")}
+            style={{
+              ...navLinkStyles,
+              color: isPathInGroup(navGroups.account.items)
+                ? theme.colors.primary.main
+                : theme.colors.text.secondary,
+              borderBottom: isPathInGroup(navGroups.account.items)
+                ? `2px solid ${theme.colors.primary.main}`
+                : "2px solid transparent",
+              display: "flex",
+              alignItems: "center",
+              gap: theme.spacing[1],
+            }}
+          >
+            {navGroups.account.label}
+            <ChevronDown size={16} style={{
+              transform: activeDropdown === "account" ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s ease",
+            }} />
+          </button>
+          {activeDropdown === "account" && (
+            <div style={dropdownMenuStyles}>
+              {navGroups.account.items.map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    navigate(item.path);
+                    setActiveDropdown(null);
+                  }}
+                  style={{
+                    ...dropdownItemStyles,
+                    background: location.pathname === item.path
+                      ? `${theme.colors.primary.main}10`
+                      : "transparent",
+                    color: location.pathname === item.path
+                      ? theme.colors.primary.main
+                      : theme.colors.text.primary,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = theme.colors.neutral.gray50;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = "transparent";
+                    }
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderEventsOfficeNav = () => {
+    return (
+      <div style={navLinkContainerStyles}>
+        {/* Dashboard - Always visible */}
+        <button
+          onClick={() => navigate("/dashboard")}
+          style={{
+            ...navLinkStyles,
+            color: location.pathname === "/dashboard"
+              ? theme.colors.primary.main
+              : theme.colors.text.secondary,
+            borderBottom: location.pathname === "/dashboard"
+              ? `2px solid ${theme.colors.primary.main}`
+              : "2px solid transparent",
+          }}
+          onMouseEnter={(e) => {
+            if (location.pathname !== "/dashboard") {
+              e.target.style.color = theme.colors.primary.main;
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (location.pathname !== "/dashboard") {
+              e.target.style.color = theme.colors.text.secondary;
+            }
+          }}
+        >
+          Dashboard
+        </button>
+
+        {/* Management Dropdown */}
+        <div
+          ref={(el) => (dropdownRefs.current["management"] = el)}
+          style={dropdownContainerStyles}
+        >
+          <button
+            onClick={() => toggleDropdown("management")}
+            style={{
+              ...navLinkStyles,
+              color: isPathInGroup(eventsOfficeNavGroups.management.items)
+                ? theme.colors.primary.main
+                : theme.colors.text.secondary,
+              borderBottom: isPathInGroup(eventsOfficeNavGroups.management.items)
+                ? `2px solid ${theme.colors.primary.main}`
+                : "2px solid transparent",
+              display: "flex",
+              alignItems: "center",
+              gap: theme.spacing[1],
+            }}
+          >
+            {eventsOfficeNavGroups.management.label}
+            <ChevronDown size={16} style={{
+              transform: activeDropdown === "management" ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s ease",
+            }} />
+          </button>
+          {activeDropdown === "management" && (
+            <div style={dropdownMenuStyles}>
+              {eventsOfficeNavGroups.management.items.map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    navigate(item.path);
+                    setActiveDropdown(null);
+                  }}
+                  style={{
+                    ...dropdownItemStyles,
+                    background: location.pathname === item.path
+                      ? `${theme.colors.primary.main}10`
+                      : "transparent",
+                    color: location.pathname === item.path
+                      ? theme.colors.primary.main
+                      : theme.colors.text.primary,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = theme.colors.neutral.gray50;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = "transparent";
+                    }
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Events & Activities Dropdown */}
+        <div
+          ref={(el) => (dropdownRefs.current["events"] = el)}
+          style={dropdownContainerStyles}
+        >
+          <button
+            onClick={() => toggleDropdown("events")}
+            style={{
+              ...navLinkStyles,
+              color: isPathInGroup(eventsOfficeNavGroups.events.items)
+                ? theme.colors.primary.main
+                : theme.colors.text.secondary,
+              borderBottom: isPathInGroup(eventsOfficeNavGroups.events.items)
+                ? `2px solid ${theme.colors.primary.main}`
+                : "2px solid transparent",
+              display: "flex",
+              alignItems: "center",
+              gap: theme.spacing[1],
+            }}
+          >
+            {eventsOfficeNavGroups.events.label}
+            <ChevronDown size={16} style={{
+              transform: activeDropdown === "events" ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s ease",
+            }} />
+          </button>
+          {activeDropdown === "events" && (
+            <div style={dropdownMenuStyles}>
+              {eventsOfficeNavGroups.events.items.map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    navigate(item.path);
+                    setActiveDropdown(null);
+                  }}
+                  style={{
+                    ...dropdownItemStyles,
+                    background: location.pathname === item.path
+                      ? `${theme.colors.primary.main}10`
+                      : "transparent",
+                    color: location.pathname === item.path
+                      ? theme.colors.primary.main
+                      : theme.colors.text.primary,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = theme.colors.neutral.gray50;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = "transparent";
+                    }
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Campus Activities Dropdown */}
+        <div
+          ref={(el) => (dropdownRefs.current["activities"] = el)}
+          style={dropdownContainerStyles}
+        >
+          <button
+            onClick={() => toggleDropdown("activities")}
+            style={{
+              ...navLinkStyles,
+              color: isPathInGroup(eventsOfficeNavGroups.activities.items)
+                ? theme.colors.primary.main
+                : theme.colors.text.secondary,
+              borderBottom: isPathInGroup(eventsOfficeNavGroups.activities.items)
+                ? `2px solid ${theme.colors.primary.main}`
+                : "2px solid transparent",
+              display: "flex",
+              alignItems: "center",
+              gap: theme.spacing[1],
+            }}
+          >
+            {eventsOfficeNavGroups.activities.label}
+            <ChevronDown size={16} style={{
+              transform: activeDropdown === "activities" ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s ease",
+            }} />
+          </button>
+          {activeDropdown === "activities" && (
+            <div style={dropdownMenuStyles}>
+              {eventsOfficeNavGroups.activities.items.map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    navigate(item.path);
+                    setActiveDropdown(null);
+                  }}
+                  style={{
+                    ...dropdownItemStyles,
+                    background: location.pathname === item.path
+                      ? `${theme.colors.primary.main}10`
+                      : "transparent",
+                    color: location.pathname === item.path
+                      ? theme.colors.primary.main
+                      : theme.colors.text.primary,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = theme.colors.neutral.gray50;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = "transparent";
+                    }
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* My Account Dropdown */}
+        <div
+          ref={(el) => (dropdownRefs.current["account"] = el)}
+          style={dropdownContainerStyles}
+        >
+          <button
+            onClick={() => toggleDropdown("account")}
+            style={{
+              ...navLinkStyles,
+              color: isPathInGroup(eventsOfficeNavGroups.account.items)
+                ? theme.colors.primary.main
+                : theme.colors.text.secondary,
+              borderBottom: isPathInGroup(eventsOfficeNavGroups.account.items)
+                ? `2px solid ${theme.colors.primary.main}`
+                : "2px solid transparent",
+              display: "flex",
+              alignItems: "center",
+              gap: theme.spacing[1],
+            }}
+          >
+            {eventsOfficeNavGroups.account.label}
+            <ChevronDown size={16} style={{
+              transform: activeDropdown === "account" ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s ease",
+            }} />
+          </button>
+          {activeDropdown === "account" && (
+            <div style={dropdownMenuStyles}>
+              {eventsOfficeNavGroups.account.items.map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    navigate(item.path);
+                    setActiveDropdown(null);
+                  }}
+                  style={{
+                    ...dropdownItemStyles,
+                    background: location.pathname === item.path
+                      ? `${theme.colors.primary.main}10`
+                      : "transparent",
+                    color: location.pathname === item.path
+                      ? theme.colors.primary.main
+                      : theme.colors.text.primary,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = theme.colors.neutral.gray50;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (location.pathname !== item.path) {
+                      e.target.style.background = "transparent";
+                    }
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const navLinkContainerStyles = {
+    display: "flex",
+    gap: theme.spacing[6],
+    alignItems: "center",
+  };
+
+  const navLinkStyles = {
+    background: "none",
+    border: "none",
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    cursor: "pointer",
+    padding: theme.spacing[2],
+    textDecoration: "none",
+    transition: "all 0.2s ease",
+    fontFamily: theme.typography.fontFamily.primary,
+  };
+
+  const dropdownContainerStyles = {
+    position: "relative",
+  };
+
+  const dropdownMenuStyles = {
+    position: "absolute",
+    top: "100%",
+    left: "0",
+    marginTop: theme.spacing[2],
+    background: theme.colors.neutral.white,
+    borderRadius: "12px",
+    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+    padding: theme.spacing[2],
+    minWidth: "200px",
+    zIndex: 1000,
+    border: `1px solid ${theme.colors.border.light}`,
+  };
+
+  const dropdownItemStyles = {
+    width: "100%",
+    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.medium,
+    textAlign: "left",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    fontFamily: theme.typography.fontFamily.primary,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: theme.spacing[2],
+  };
+
+  const exclusiveBadgeStyles = {
+    fontSize: theme.typography.fontSize.xs,
+    padding: "2px 6px",
+    borderRadius: "4px",
+    background: `${theme.colors.eventTypes.competition.main}20`,
+    color: theme.colors.eventTypes.competition.main,
+    fontWeight: theme.typography.fontWeight.bold,
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+  };
 
   const navbarStyles = {
     ...theme.components.navbar,
@@ -178,285 +1104,7 @@ const Navbar = () => {
       {/* Navigation Links */}
       <div style={{ display: "flex", gap: theme.spacing[6] }}>
         {user && user.role === "events_office" ? (
-          <>
-            <button
-              onClick={() => navigate("/admin-dashboard")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/admin-dashboard"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/admin-dashboard"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/admin-dashboard") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/admin-dashboard") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Dashboard
-            </button>
-            
-            <button
-              onClick={() => navigate("/events")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/events"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/events"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/events") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/events") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Events
-            </button>
-            <button
-              onClick={() => navigate("/favorites")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/favorites"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/favorites"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/favorites") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/favorites") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Favorites
-            </button>
-
-            <button
-              onClick={() => navigate("/wallet")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/wallet"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/wallet"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/wallet") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/wallet") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-            Wallet
-            </button>
-
-            <button
-              onClick={() => navigate("/loyalty-program")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/loyalty-program"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/loyalty-program"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/loyalty-program") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/loyalty-program") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-            Loyalty Program
-            </button>
-
-            <button
-              onClick={() => navigate("/gym-schedule")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/gym-schedule"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/gym-schedule"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/gym-schedule") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/gym-schedule") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Gym Schedule
-            </button>
-
-            <button
-              onClick={() => navigate("/reports")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/reports"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/reports"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/reports") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/reports") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Reports
-            </button>
-            <button
-              onClick={() => navigate("/events-ratings")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/events-ratings"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/events-ratings"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/events-ratings") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/events-ratings") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Events Ratings
-            </button>
-          </>
+          renderEventsOfficeNav()
         ) : user && user.role === "admin" ? (
           <>
             <button
@@ -806,291 +1454,13 @@ const Navbar = () => {
               Vendor Dashboard
             </button>
           </>
+        ) : user && user.role === "student" ? (
+          renderStudentNav()
+        ) : isUser ? (
+          // Staff, TA, Professor - use grouped navigation
+          renderStaffNav()
         ) : (
-          <>
-            <button
-              onClick={() => navigate("/events")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/events"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/events"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/events") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/events") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Events
-            </button>
-
-            <button
-              onClick={() => navigate("/favorites")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/favorites"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/favorites"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/favorites") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/favorites") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Favorites
-            </button>
-
-            <button
-              onClick={() => navigate("/wallet")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/wallet"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/wallet"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/wallet") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/wallet") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-             Wallet
-            </button>
-
-            {user.role == "student" && (
-              <button
-                onClick={() => navigate("/courts")}
-                style={{
-                  background: "none",
-                  border: "none",
-                  fontSize: theme.typography.fontSize.base,
-                  fontWeight: theme.typography.fontWeight.medium,
-                  color:
-                    location.pathname === "/courts"
-                      ? theme.colors.primary.main
-                      : theme.colors.text.secondary,
-                  cursor: "pointer",
-                  padding: theme.spacing[2],
-                  textDecoration: "none",
-                  borderBottom:
-                    location.pathname === "/courts"
-                      ? `2px solid ${theme.colors.primary.main}`
-                      : "2px solid transparent",
-                  transition: "all 0.2s ease",
-                  fontFamily: theme.typography.fontFamily.primary,
-                }}
-                onMouseEnter={(e) => {
-                  if (location.pathname !== "/courts") {
-                    e.target.style.color = theme.colors.primary.main;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (location.pathname !== "/courts") {
-                    e.target.style.color = theme.colors.text.secondary;
-                  }
-                }}
-              >
-                Courts
-              </button>
-            )}
-<button
-              onClick={() => navigate("/loyalty-program")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/loyalty-program"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/loyalty-program"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/loyalty-program") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/loyalty-program") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Loyalty Program
-            </button>
-            <button
-              onClick={() => navigate("/gym-schedule")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/gym-schedule"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/gym-schedule"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/gym-schedule") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/gym-schedule") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Gym Schedule
-            </button>
-             
-
-            {isUser && user.role !== "events_office" && (
-              <button
-                onClick={() => navigate("/my-registrations")}
-                style={{
-                  background: "none",
-                  border: "none",
-                  fontSize: theme.typography.fontSize.base,
-                  fontWeight: theme.typography.fontWeight.medium,
-                  color:
-                    location.pathname === "/my-registrations"
-                      ? theme.colors.primary.main
-                      : theme.colors.text.secondary,
-                  cursor: "pointer",
-                  padding: theme.spacing[2],
-                  textDecoration: "none",
-                  borderBottom:
-                    location.pathname === "/my-registrations"
-                      ? `2px solid ${theme.colors.primary.main}`
-                      : "2px solid transparent",
-                  transition: "all 0.2s ease",
-                  fontFamily: theme.typography.fontFamily.primary,
-                }}
-                onMouseEnter={(e) => {
-                  if (location.pathname !== "/my-registrations") {
-                    e.target.style.color = theme.colors.primary.main;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (location.pathname !== "/my-registrations") {
-                    e.target.style.color = theme.colors.text.secondary;
-                  }
-                }}
-              >
-                My Registrations
-              </button>
-            )}
-
-            <button
-              onClick={() => navigate("/dashboard")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/dashboard"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/dashboard"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/dashboard") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/dashboard") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Dashboard
-            </button>
-          </>
+          <></>
         )}
       </div>
 

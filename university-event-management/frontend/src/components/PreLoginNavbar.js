@@ -1,9 +1,14 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import theme from "../theme";
 
 const PreLoginNavbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleLogoClick = () => {
+    navigate("/");
+  };
 
   const navbarStyles = {
     position: "fixed",
@@ -31,7 +36,7 @@ const PreLoginNavbar = () => {
 
   return (
     <nav style={navbarStyles}>
-      <div style={logoStyles} onClick={() => navigate("/")}>
+      <div style={logoStyles} onClick={handleLogoClick}>
         <img
           src={require("../assets/images/SprintXLogoWhite.png")}
           alt="SprintX"

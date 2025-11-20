@@ -1,8 +1,21 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import theme, { getEventTypeColor, getRoleColor } from "../theme";
 import Card from "../components/Card";
 import Navbar from "../components/Navbar";
+import axios from "axios";
+import { 
+  Calendar, 
+  CreditCard, 
+  Dumbbell, 
+  Heart, 
+  Trophy, 
+  Wallet as WalletIcon,
+  ArrowRight,
+  Bell,
+  TrendingUp
+} from "lucide-react";
 
 const styles = {
   container: {
@@ -276,6 +289,171 @@ const styles = {
     lineHeight: theme.typography.lineHeight.relaxed,
     paddingLeft: "44px",
   },
+  quickActionsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: theme.spacing[6],
+    marginBottom: theme.spacing[8],
+  },
+  actionCard: (color) => ({
+    background: theme.colors.neutral.white,
+    borderRadius: "20px",
+    padding: theme.spacing[6],
+    boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+    transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+    border: `2px solid ${theme.colors.border.light}`,
+    cursor: "pointer",
+    position: "relative",
+    overflow: "hidden",
+    display: "flex",
+    alignItems: "center",
+    gap: theme.spacing[4],
+  }),
+  actionIcon: (color) => ({
+    width: "60px",
+    height: "60px",
+    borderRadius: "16px",
+    background: `${color}15`,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: color,
+    flexShrink: 0,
+    transition: "all 0.3s ease",
+  }),
+  actionContent: {
+    flex: 1,
+  },
+  actionTitle: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
+    margin: 0,
+    marginBottom: theme.spacing[1],
+    display: "flex",
+    alignItems: "center",
+    gap: theme.spacing[2],
+  },
+  actionDescription: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    margin: 0,
+  },
+  actionArrow: {
+    color: theme.colors.text.tertiary,
+    flexShrink: 0,
+    transition: "all 0.3s ease",
+  },
+  exclusiveBadge: {
+    fontSize: theme.typography.fontSize.xs,
+    padding: "4px 8px",
+    borderRadius: "6px",
+    background: `${theme.colors.eventTypes.competition.main}20`,
+    color: theme.colors.eventTypes.competition.main,
+    fontWeight: theme.typography.fontWeight.semibold,
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+  },
+  widgetsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+    gap: theme.spacing[6],
+    marginBottom: theme.spacing[8],
+  },
+  widgetCard: {
+    background: theme.colors.neutral.white,
+    borderRadius: "20px",
+    padding: theme.spacing[6],
+    boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+    border: `1px solid ${theme.colors.border.light}`,
+    transition: "all 0.3s ease",
+  },
+  widgetHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: theme.spacing[3],
+    marginBottom: theme.spacing[5],
+  },
+  widgetIconWrapper: (color) => ({
+    width: "48px",
+    height: "48px",
+    borderRadius: "12px",
+    background: `${color}15`,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: color,
+  }),
+  widgetTitle: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
+    margin: 0,
+  },
+  widgetBody: {
+    display: "flex",
+    flexDirection: "column",
+    gap: theme.spacing[4],
+  },
+  widgetValue: {
+    fontSize: "2.5rem",
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
+    lineHeight: 1,
+  },
+  widgetLoading: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.secondary,
+    padding: theme.spacing[4],
+    textAlign: "center",
+  },
+  widgetEmpty: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.secondary,
+    padding: theme.spacing[2],
+  },
+  widgetDescription: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    lineHeight: theme.typography.lineHeight.relaxed,
+  },
+  widgetButton: (color) => ({
+    background: color,
+    color: theme.colors.neutral.white,
+    border: "none",
+    borderRadius: "12px",
+    padding: `${theme.spacing[3]} ${theme.spacing[5]}`,
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+    fontFamily: theme.typography.fontFamily.primary,
+    textAlign: "center",
+  }),
+  widgetList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: theme.spacing[2],
+  },
+  widgetListItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: theme.spacing[2],
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.primary,
+  },
+  widgetEventDot: (color) => ({
+    width: "8px",
+    height: "8px",
+    borderRadius: "50%",
+    backgroundColor: color,
+    flexShrink: 0,
+  }),
+  widgetEventName: {
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
 };
 
 const cssKeyframes = `
@@ -310,6 +488,27 @@ const cssKeyframes = `
   transform: translateX(8px);
 }
 
+.action-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.15) !important;
+}
+
+.action-card:hover .action-arrow {
+  transform: translateX(4px);
+  color: ${theme.colors.primary.main} !important;
+}
+
+.widget-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.1) !important;
+}
+
+.widget-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  opacity: 0.9;
+}
+
 .welcome-card {
   animation: fadeIn 0.6s ease-out;
 }
@@ -327,7 +526,52 @@ const cssKeyframes = `
 `;
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { user, vendor, isUser, isVendor, getCurrentAccount } = useAuth();
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [upcomingRegistrations, setUpcomingRegistrations] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  useEffect(() => {
+    if (isUser && user?.role === "student") {
+      fetchStudentData();
+    } else {
+      setLoadingData(false);
+    }
+  }, [isUser, user]);
+
+  const fetchStudentData = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+
+      // Fetch wallet balance
+      const walletRes = await axios.get(
+        "http://localhost:5000/api/wallet",
+        config
+      );
+      setWalletBalance(walletRes.data.balance || 0);
+
+      // Fetch registrations
+      const regRes = await axios.get(
+        "http://localhost:5000/api/registrations/user",
+        config
+      );
+      
+      // Filter upcoming registrations
+      const now = new Date();
+      const upcoming = regRes.data.filter(reg => {
+        const eventDate = new Date(reg.event?.date);
+        return eventDate > now && reg.status === "confirmed";
+      }).slice(0, 3);
+      
+      setUpcomingRegistrations(upcoming);
+    } catch (error) {
+      console.error("Error fetching student data:", error);
+    } finally {
+      setLoadingData(false);
+    }
+  };
 
   const getUserWelcomeMessage = () => {
     if (isVendor && vendor) {
@@ -522,6 +766,211 @@ const Dashboard = () => {
                 </div>
               ))}
             </div>
+          )}
+
+          {/* Quick Actions - Student Only */}
+          {isUser && user?.role === "student" && (
+            <>
+              <div style={styles.sectionHeader}>
+                <h2 style={styles.sectionTitle}>Quick Actions</h2>
+                <p style={styles.sectionSubtitle}>
+                  Jump right into what you need to do
+                </p>
+              </div>
+
+              <div style={styles.quickActionsGrid}>
+                <div
+                  className="action-card"
+                  style={styles.actionCard(theme.colors.primary.main)}
+                  onClick={() => navigate("/events")}
+                >
+                  <div style={styles.actionIcon(theme.colors.primary.main)}>
+                    <Calendar size={28} />
+                  </div>
+                  <div style={styles.actionContent}>
+                    <h3 style={styles.actionTitle}>Browse Events</h3>
+                    <p style={styles.actionDescription}>
+                      Find workshops, trips, and activities
+                    </p>
+                  </div>
+                  <ArrowRight
+                    size={20}
+                    style={styles.actionArrow}
+                    className="action-arrow"
+                  />
+                </div>
+
+                <div
+                  className="action-card"
+                  style={styles.actionCard(theme.colors.eventTypes.competition.main)}
+                  onClick={() => navigate("/courts")}
+                >
+                  <div style={styles.actionIcon(theme.colors.eventTypes.competition.main)}>
+                    <Trophy size={28} />
+                  </div>
+                  <div style={styles.actionContent}>
+                    <h3 style={styles.actionTitle}>
+                      Book a Court{" "}
+                      <span style={styles.exclusiveBadge}>Student Only</span>
+                    </h3>
+                    <p style={styles.actionDescription}>
+                      Reserve tennis, basketball & more
+                    </p>
+                  </div>
+                  <ArrowRight
+                    size={20}
+                    style={styles.actionArrow}
+                    className="action-arrow"
+                  />
+                </div>
+
+                <div
+                  className="action-card"
+                  style={styles.actionCard(theme.colors.eventTypes.workshop.main)}
+                  onClick={() => navigate("/gym-schedule")}
+                >
+                  <div style={styles.actionIcon(theme.colors.eventTypes.workshop.main)}>
+                    <Dumbbell size={28} />
+                  </div>
+                  <div style={styles.actionContent}>
+                    <h3 style={styles.actionTitle}>Gym Schedule</h3>
+                    <p style={styles.actionDescription}>
+                      View fitness classes & sessions
+                    </p>
+                  </div>
+                  <ArrowRight
+                    size={20}
+                    style={styles.actionArrow}
+                    className="action-arrow"
+                  />
+                </div>
+
+                <div
+                  className="action-card"
+                  style={styles.actionCard(theme.colors.secondary.main)}
+                  onClick={() => navigate("/my-registrations")}
+                >
+                  <div style={styles.actionIcon(theme.colors.secondary.main)}>
+                    <Bell size={28} />
+                  </div>
+                  <div style={styles.actionContent}>
+                    <h3 style={styles.actionTitle}>My Registrations</h3>
+                    <p style={styles.actionDescription}>
+                      View all your bookings & events
+                    </p>
+                  </div>
+                  <ArrowRight
+                    size={20}
+                    style={styles.actionArrow}
+                    className="action-arrow"
+                  />
+                </div>
+              </div>
+
+              {/* Student Widgets */}
+              <div style={styles.widgetsGrid}>
+                {/* Wallet Widget */}
+                <div style={styles.widgetCard} className="widget-card">
+                  <div style={styles.widgetHeader}>
+                    <div style={styles.widgetIconWrapper(theme.colors.success.main)}>
+                      <WalletIcon size={24} />
+                    </div>
+                    <h3 style={styles.widgetTitle}>Wallet Balance</h3>
+                  </div>
+                  <div style={styles.widgetBody}>
+                    {loadingData ? (
+                      <div style={styles.widgetLoading}>Loading...</div>
+                    ) : (
+                      <>
+                        <div style={styles.widgetValue}>
+                          ${walletBalance.toFixed(2)}
+                        </div>
+                        <button
+                          onClick={() => navigate("/wallet")}
+                          style={styles.widgetButton(theme.colors.success.main)}
+                          className="widget-button"
+                        >
+                          Manage Wallet
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Upcoming Events Widget */}
+                <div style={styles.widgetCard} className="widget-card">
+                  <div style={styles.widgetHeader}>
+                    <div style={styles.widgetIconWrapper(theme.colors.primary.main)}>
+                      <Calendar size={24} />
+                    </div>
+                    <h3 style={styles.widgetTitle}>Upcoming Events</h3>
+                  </div>
+                  <div style={styles.widgetBody}>
+                    {loadingData ? (
+                      <div style={styles.widgetLoading}>Loading...</div>
+                    ) : upcomingRegistrations.length > 0 ? (
+                      <>
+                        <div style={styles.widgetValue}>
+                          {upcomingRegistrations.length}
+                        </div>
+                        <div style={styles.widgetList}>
+                          {upcomingRegistrations.map((reg, idx) => (
+                            <div key={idx} style={styles.widgetListItem}>
+                              <span style={styles.widgetEventDot(
+                                getEventTypeColor(reg.event?.type)
+                              )}></span>
+                              <span style={styles.widgetEventName}>
+                                {reg.event?.title || "Event"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => navigate("/my-registrations")}
+                          style={styles.widgetButton(theme.colors.primary.main)}
+                          className="widget-button"
+                        >
+                          View All
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div style={styles.widgetEmpty}>No upcoming events</div>
+                        <button
+                          onClick={() => navigate("/events")}
+                          style={styles.widgetButton(theme.colors.primary.main)}
+                          className="widget-button"
+                        >
+                          Browse Events
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Favorites Widget */}
+                <div style={styles.widgetCard} className="widget-card">
+                  <div style={styles.widgetHeader}>
+                    <div style={styles.widgetIconWrapper(theme.colors.error.main)}>
+                      <Heart size={24} />
+                    </div>
+                    <h3 style={styles.widgetTitle}>Saved Events</h3>
+                  </div>
+                  <div style={styles.widgetBody}>
+                    <div style={styles.widgetDescription}>
+                      Keep track of events you're interested in
+                    </div>
+                    <button
+                      onClick={() => navigate("/favorites")}
+                      style={styles.widgetButton(theme.colors.error.main)}
+                      className="widget-button"
+                    >
+                      View Favorites
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
 
           {/* Event Types Section */}

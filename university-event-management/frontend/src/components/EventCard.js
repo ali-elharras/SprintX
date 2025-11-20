@@ -10,7 +10,7 @@ import { applicationServices } from "../services/api";
 import { favoritesAPI } from "../services/api";
 import toast from "react-hot-toast";
 
-const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit, onEditTrip, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive, onExportRegistrations, onRestrict }) => {
+const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit, onEditTrip, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive, onExportRegistrations, onRestrict, onViewDetails, isFavorited = false, onFavoriteToggle }) => {
   // Normalize event/conference object for consistent display
   const normalizedEvent = {
     ...event,
@@ -31,8 +31,13 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [participatingVendors, setParticipatingVendors] = useState([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(isFavorited);
   const navigate = useNavigate();
   const { isEventsOffice, user, isAdmin } = useAuth();
+
+  useEffect(() => {
+    setIsFavorite(isFavorited);
+  }, [isFavorited]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -263,30 +268,34 @@ const handleDeleteWorkshop = async (e) => {
         }
       `}</style>
       <div
+        onClick={() => onViewDetails && onViewDetails(normalizedEvent)}
         style={{
           background: theme.colors.background.paper,
-          borderRadius: theme.borderRadius.card,
-          boxShadow: theme.shadows.card,
+          borderRadius: theme.borderRadius.lg,
+          border: `1px solid ${theme.colors.border}`,
           overflow: "hidden",
-          transition: "all 0.3s ease",
+          transition: "all 0.2s ease",
           cursor: "pointer",
           display: "flex",
           flexDirection: "column",
           height: "100%",
+          minHeight: "420px",
         }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-5px)";
-        e.currentTarget.style.boxShadow = theme.shadows.cardHover;
+        e.currentTarget.style.transform = "translateY(-4px)";
+        e.currentTarget.style.boxShadow = theme.shadows.lg;
+        e.currentTarget.style.borderColor = theme.colors.primary.main;
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = theme.shadows.card;
+        e.currentTarget.style.boxShadow = "none";
+        e.currentTarget.style.borderColor = theme.colors.border;
       }}
     >
       {/* Event Header */}
       <div
         style={{
-          background: `linear-gradient(135deg, ${getEventTypeColor(normalizedEvent.type)} 0%, ${getEventTypeColor(normalizedEvent.type)}dd 100%)`,
+          background: getEventTypeColor(normalizedEvent.type),
           padding: theme.spacing[4],
           color: theme.colors.text.white,
         }}
@@ -314,28 +323,40 @@ const handleDeleteWorkshop = async (e) => {
           </div>
           <div style={{ display: "flex", gap: theme.spacing[2], alignItems: "center" }}>
             <button
-              title="Add to favorites"
+              title={isFavorite ? "Remove from favorites" : "Add to favorites"}
               onClick={async (e) => {
                 e.stopPropagation();
                 try {
-                  await favoritesAPI.addFavorite(normalizedEvent._id);
-                  toast.success("Added to favorites");
+                  if (isFavorite) {
+                    await favoritesAPI.removeFavorite(normalizedEvent._id);
+                    setIsFavorite(false);
+                    toast.success("Removed from favorites");
+                  } else {
+                    await favoritesAPI.addFavorite(normalizedEvent._id);
+                    setIsFavorite(true);
+                    toast.success("Added to favorites");
+                  }
+                  // Notify parent to refresh favorites list
+                  if (onFavoriteToggle) {
+                    onFavoriteToggle();
+                  }
                 } catch (err) {
-                  toast.error(err.message || "Failed to add to favorites");
+                  toast.error(err.message || "Failed to update favorites");
                 }
               }}
               style={{
-                background: "rgba(255,255,255,0.2)",
-                color: "#fff",
+                background: isFavorite ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.2)",
+                color: isFavorite ? "#ef4444" : "#fff",
                 border: "none",
                 padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
                 borderRadius: theme.borderRadius.full,
                 cursor: "pointer",
                 fontWeight: theme.typography.fontWeight.semibold,
                 fontSize: theme.typography.fontSize.lg,
+                transition: "all 0.2s ease",
               }}
             >
-              ♥
+              {isFavorite ? "❤️" : "♥"}
             </button>
             <div
               style={{
@@ -365,50 +386,29 @@ const handleDeleteWorkshop = async (e) => {
 
       {/* Event Content */}
       <div style={{ padding: theme.spacing[5], display: "flex", flexDirection: "column", flexGrow: 1 }}>
-        {/* Event Details */}
-        <div style={{ marginBottom: theme.spacing[4] }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: theme.spacing[2],
-              marginBottom: theme.spacing[2],
-              fontSize: theme.typography.fontSize.sm,
-              color: theme.colors.text.secondary,
-            }}
-          >
-            <span>📅</span>
-            <span>
-              {formatDate(normalizedEvent.startDate)}
-              {normalizedEvent.startDate !== normalizedEvent.endDate && ` - ${formatDate(normalizedEvent.endDate)}`}
-            </span>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: theme.spacing[2],
-              marginBottom: theme.spacing[2],
-              fontSize: theme.typography.fontSize.sm,
-              color: theme.colors.text.secondary,
-            }}
-          >
-            <span>🕐</span>
-            <span>{formatTime(normalizedEvent.startDate)}</span>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: theme.spacing[2],
-              marginBottom: theme.spacing[3],
-              fontSize: theme.typography.fontSize.sm,
-              color: theme.colors.text.secondary,
-            }}
-          >
-            <span>📍</span>
-            <span>{normalizedEvent.location}</span>
-          </div>
+        {/* Event Details - Condensed Single Line */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: theme.spacing[3],
+            marginBottom: theme.spacing[3],
+            fontSize: theme.typography.fontSize.xs,
+            color: theme.colors.text.secondary,
+            flexWrap: "wrap",
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: theme.spacing[1] }}>
+            📅 {formatDate(normalizedEvent.startDate)}
+          </span>
+          <span>•</span>
+          <span style={{ display: "flex", alignItems: "center", gap: theme.spacing[1] }}>
+            🕐 {formatTime(normalizedEvent.startDate)}
+          </span>
+          <span>•</span>
+          <span style={{ display: "flex", alignItems: "center", gap: theme.spacing[1] }}>
+            📍 {normalizedEvent.location}
+          </span>
         </div>
 
         {/* Description */}
@@ -416,10 +416,11 @@ const handleDeleteWorkshop = async (e) => {
           style={{
             fontSize: theme.typography.fontSize.sm,
             color: theme.colors.text.secondary,
-            lineHeight: theme.typography.lineHeight.relaxed,
-            marginBottom: theme.spacing[4],
+            lineHeight: theme.typography.lineHeight.normal,
+            marginBottom: theme.spacing[3],
+            margin: 0,
             display: "-webkit-box",
-            WebkitLineClamp: 3,
+            WebkitLineClamp: 2,
             WebkitBoxOrient: "vertical",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -427,6 +428,27 @@ const handleDeleteWorkshop = async (e) => {
         >
           {normalizedEvent.description}
         </p>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onViewDetails && onViewDetails(normalizedEvent);
+          }}
+          style={{
+            background: "none",
+            border: "none",
+            color: theme.colors.primary.main,
+            fontSize: theme.typography.fontSize.xs,
+            fontWeight: theme.typography.fontWeight.medium,
+            cursor: "pointer",
+            padding: 0,
+            marginBottom: theme.spacing[4],
+            textDecoration: "none",
+          }}
+          onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
+          onMouseLeave={(e) => e.target.style.textDecoration = "none"}
+        >
+          Read more →
+        </button>
 
         {/* Participating Vendors Section - Only for Bazaars */}
         {normalizedEvent.type === 'bazaar' && (

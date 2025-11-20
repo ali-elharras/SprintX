@@ -39,6 +39,7 @@ import EventsRatings from "./pages/EventsRatings";
 import AdminComments from "./pages/AdminComments";
 import FavoritesPage from "./pages/FavoritesPage";
 import EventDetailsPage from "./pages/EventDetailsPage";
+import BoothPolls from "./pages/BoothPolls";
 import LoyaltyProgram from "./pages/LoyaltyProgram";
 import WalletPage from "./pages/WalletPage";
 import RoleRoute from "./components/RoleRoute";
@@ -354,6 +355,14 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: "/booth-polls",
+    element: (
+      <ProtectedRoute>
+        <BoothPolls />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/wallet",
     element: (
       <ProtectedRoute>
@@ -392,6 +401,16 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <CreateWorkshop />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/my-workshops",
+    element: (
+      <ProtectedRoute>
+        <RoleRoute allowedRoles={["professor"]}>
+          <Workshops />
+        </RoleRoute>
       </ProtectedRoute>
     ),
   },

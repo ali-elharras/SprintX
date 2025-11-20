@@ -86,7 +86,15 @@ const seedBazaar = async (req, res, next) => {
 // @access  Public
 const getEvents = async (req, res) => {
   try {
-    const { type, status = ["approved", "accepted", "published"], upcoming = false, includeArchived = false } = req.query;
+    let { type, status, upcoming = false, includeArchived = false } = req.query;
+
+    // Handle status parameter - default to these statuses if not provided
+    if (!status) {
+      status = ["approved", "accepted", "published"];
+    } else if (typeof status === 'string') {
+      // If status is a string, split it into an array
+      status = status.split(',');
+    }
 
     let eventQuery = { status };
     let boothQuery = { status };

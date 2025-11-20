@@ -40,11 +40,15 @@ const AdminComments = () => {
     try {
       const response = await ratingAPI.getEventsWithRatings();
       const data = response.data;
+      console.log('Events with ratings response:', data);
+      console.log('First event:', data.data?.[0]);
       setEvents(data.data || []);
     } catch (err) {
       console.error('Failed fetching events with ratings:', err);
-      setError(err.message || 'Failed to load events');
-      toast.error('Failed to load events with ratings');
+      console.error('Error response:', err.response?.data);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to load events';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -55,11 +59,19 @@ const AdminComments = () => {
   }, [fetchEventsWithRatings]);
 
   const handleViewRatings = async (event) => {
+    // Ensure we have a valid event ID
+    const eventId = event._id || event.id;
+    if (!eventId) {
+      console.error('Event has no valid ID:', event);
+      toast.error('Unable to load ratings: Invalid event');
+      return;
+    }
+
     setSelectedEvent(event);
     setShowModal(true);
     setLoadingRatings(true);
     try {
-      const response = await ratingAPI.getEventRatings(event._id);
+      const response = await ratingAPI.getEventRatings(eventId);
       setEventRatings(response.data?.data?.ratings || []);
     } catch (err) {
       console.error('Failed loading ratings:', err);
@@ -275,55 +287,58 @@ const AdminComments = () => {
           </Card>
         ) : (
           <div style={gridStyles}>
-            {filteredEvents.map(event => (
-              <Card key={event._id} style={eventCardStyles} hover>
-                <div style={eventTypeStyles}>{event.type}</div>
-                <h3 style={eventTitleStyles}>{event.title || event.name}</h3>
+            {filteredEvents.map(event => {
+              const eventId = event._id || event.id;
+              return (
+                <Card key={eventId} style={eventCardStyles} hover>
+                  <div style={eventTypeStyles}>{event.type}</div>
+                  <h3 style={eventTitleStyles}>{event.title || event.name}</h3>
 
-                <div style={eventDetailStyles}>
-                  <span style={{ marginRight: theme.spacing[2] }}>📅</span>
-                  <span>{formatDate(event.startDate)}</span>
-                </div>
-
-                <div style={eventDetailStyles}>
-                  <span style={{ marginRight: theme.spacing[2] }}>📍</span>
-                  <span>{event.location}</span>
-                </div>
-
-                {event.description && (
-                  <p style={{
-                    fontSize: theme.typography.fontSize.sm,
-                    color: theme.colors.text.secondary,
-                    marginTop: theme.spacing[2],
-                    marginBottom: theme.spacing[3],
-                    lineHeight: theme.typography.lineHeight.relaxed,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                  }}>
-                    {event.description}
-                  </p>
-                )}
-
-                <div style={{ marginTop: theme.spacing[3], marginBottom: theme.spacing[3] }}>
-                  <div style={ratingBadgeStyles}>
-                    ⭐ {event.averageRating.toFixed(1)} • {event.ratingsCount} comment{event.ratingsCount !== 1 ? 's' : ''}
+                  <div style={eventDetailStyles}>
+                    <span style={{ marginRight: theme.spacing[2] }}>📅</span>
+                    <span>{formatDate(event.startDate)}</span>
                   </div>
-                </div>
 
-                <div style={{ paddingTop: theme.spacing[3], borderTop: `1px solid ${theme.colors.border.light}` }}>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => handleViewRatings(event)}
-                    style={{ width: '100%' }}
-                  >
-                    View & Manage Comments
-                  </Button>
-                </div>
-              </Card>
-            ))}
+                  <div style={eventDetailStyles}>
+                    <span style={{ marginRight: theme.spacing[2] }}>📍</span>
+                    <span>{event.location}</span>
+                  </div>
+
+                  {event.description && (
+                    <p style={{
+                      fontSize: theme.typography.fontSize.sm,
+                      color: theme.colors.text.secondary,
+                      marginTop: theme.spacing[2],
+                      marginBottom: theme.spacing[3],
+                      lineHeight: theme.typography.lineHeight.relaxed,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}>
+                      {event.description}
+                    </p>
+                  )}
+
+                  <div style={{ marginTop: theme.spacing[3], marginBottom: theme.spacing[3] }}>
+                    <div style={ratingBadgeStyles}>
+                      ⭐ {event.averageRating.toFixed(1)} • {event.ratingsCount} comment{event.ratingsCount !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+
+                  <div style={{ paddingTop: theme.spacing[3], borderTop: `1px solid ${theme.colors.border.light}` }}>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleViewRatings(event)}
+                      style={{ width: '100%' }}
+                    >
+                      View & Manage Comments
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
