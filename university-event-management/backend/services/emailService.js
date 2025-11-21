@@ -2265,6 +2265,13 @@ class EmailService {
       throw new Error("No email addresses found for user");
     }
 
+    const eventDate = new Date(eventDetails.date).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
     const mailOptions = {
       from: `"SprintX" <${process.env.EMAIL_USER}>`,
       to: emailsToSend.join(", "),
@@ -2281,12 +2288,7 @@ class EmailService {
         Type: ${
           eventDetails.type.charAt(0).toUpperCase() + eventDetails.type.slice(1)
         }
-        Date: ${new Date(eventDetails.startDate).toLocaleDateString("en-US", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })}
+        Date: ${eventDate}
         Location: ${eventDetails.location}
 
         PAYMENT DETAILS
@@ -2317,15 +2319,12 @@ class EmailService {
 
   getPaymentReceiptTemplate(user, eventDetails, paymentDetails) {
     const currentYear = new Date().getFullYear();
-    const eventDate = new Date(eventDetails.startDate).toLocaleDateString(
-      "en-US",
-      {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }
-    );
+    const eventDate = new Date(eventDetails.date).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
     const paymentDate = new Date(paymentDetails.date).toLocaleString("en-US");
 
     return `
@@ -2396,8 +2395,10 @@ class EmailService {
           .detail-row {
             display: flex;
             justify-content: space-between;
-            padding: 10px 0;
+            align-items: flex-start;
+            padding: 12px 0;
             border-bottom: 1px solid #e5e7eb;
+            gap: 15px;
           }
           .detail-row:last-child {
             border-bottom: none;
@@ -2405,12 +2406,16 @@ class EmailService {
           .detail-label {
             color: #6b7280;
             font-size: 14px;
+            flex-shrink: 0;
+            min-width: 120px;
           }
           .detail-value {
             color: #1f2937;
             font-weight: 600;
             font-size: 14px;
             text-align: right;
+            word-break: break-word;
+            max-width: 60%;
           }
           .amount-section {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
