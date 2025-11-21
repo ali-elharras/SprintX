@@ -5,9 +5,6 @@ const Registration = require("../models/Registration");
 const User = require("../models/User");
 const emailService = require("./emailService");
 
-// Track workshops that have already sent certificates to avoid duplicates
-const processedWorkshops = new Set();
-
 /**
  * Check for workshops that have ended and send certificates to attendees
  */
@@ -15,38 +12,53 @@ async function checkCompletedWorkshops() {
   try {
     const now = new Date();
 
-    // Find workshops that have ended (endDate has passed) and are published
+    // Find workshops that have ended, are published, and haven't sent certificates yet
     const completedWorkshops = await Workshop.find({
       endDate: { $lt: now },
-      status: "published", // Only published workshops
+      status: "published",
+      certificatesSent: { $ne: true }, // Only workshops that haven't sent certificates
     }).lean();
+
+    console.log(
+      `[Certificate Scheduler] Found ${completedWorkshops.length} completed workshops`
+    );
 
     if (completedWorkshops.length === 0) {
       return;
     }
 
-    console.log(
-      `📧 Found ${completedWorkshops.length} completed workshop(s) to process certificates.`
-    );
-
     for (const workshop of completedWorkshops) {
-      // Skip if we've already processed this workshop
-      const workshopKey = workshop._id.toString();
-      if (processedWorkshops.has(workshopKey)) {
-        continue;
-      }
+      console.log(
+        `[Certificate Scheduler] Processing: ${workshop.workshopName}`
+      );
 
       try {
-        // Find the associated published Event
-        const event = await Event.findOne({
-          title: workshop.workshopName,
-          category: "workshop",
-          isPublished: true,
-        });
+        // Find the associated published Event using publishedEventId
+        let event = null;
+
+        if (workshop.publishedEventId) {
+          event = await Event.findById(workshop.publishedEventId);
+        }
+
+        // Fallback: try to find by name if publishedEventId doesn't work
+        if (!event) {
+          event = await Event.findOne({
+            title: workshop.workshopName,
+            category: "workshop",
+            isPublished: true,
+          });
+        }
 
         if (!event) {
+          console.log(
+            `[Certificate Scheduler] No event found for: ${workshop.workshopName} (publishedEventId: ${workshop.publishedEventId}) - skipping`
+          );
           continue;
         }
+
+        console.log(
+          `[Certificate Scheduler] Event found: ${event.title} (ID: ${event._id})`
+        );
 
         // Find all confirmed/attended registrations for this event
         const registrations = await Registration.find({
@@ -54,64 +66,100 @@ async function checkCompletedWorkshops() {
           status: { $in: ["confirmed", "attended"] },
         }).lean();
 
+        console.log(
+          `[Certificate Scheduler] Found ${registrations.length} registrations`
+        );
+
         if (registrations.length === 0) {
-          // Mark as processed even if no attendees
-          processedWorkshops.add(workshopKey);
+          console.log(`[Certificate Scheduler] No registrations - skipping`);
           continue;
         }
 
-        let successCount = 0;
-        let errorCount = 0;
-
         // Send certificate to each attendee
+        let emailsSent = 0;
+
         for (const registration of registrations) {
           try {
-            // Get user details
-            const user = await User.findById(registration.user);
+            // Use the email from registration (entered when applying)
+            const registrationEmail = registration.email;
+            const fullName = `${registration.firstName} ${registration.lastName}`;
 
-            if (!user) {
-              errorCount++;
+            if (!registrationEmail) {
+              console.log(
+                `[Certificate Scheduler] Skipping registration - no email`
+              );
               continue;
             }
 
-            // Only send to student/staff/ta/professor (not admin or events_office who don't attend)
-            const eligibleRoles = ["student", "staff", "ta", "professor"];
-            if (!eligibleRoles.includes(user.role.toLowerCase())) {
-              continue;
+            // Collect all emails to send to
+            const emailsToSend = [registrationEmail];
+
+            // If user is linked, also send to their account emails
+            if (registration.user) {
+              const user = await User.findById(registration.user);
+              if (user) {
+                // Add account email if different from registration email
+                if (user.email && user.email !== registrationEmail) {
+                  emailsToSend.push(user.email);
+                }
+                // Add verification email if different from both
+                if (
+                  user.verificationEmail &&
+                  user.verificationEmail !== registrationEmail &&
+                  user.verificationEmail !== user.email
+                ) {
+                  emailsToSend.push(user.verificationEmail);
+                }
+              }
             }
 
-            // Send certificate email
+            console.log(
+              `[Certificate Scheduler] Sending to: ${emailsToSend.join(", ")}`
+            );
+
+            // Send certificate email to all emails
             await emailService.sendWorkshopCertificate(
-              user,
+              emailsToSend,
+              fullName,
               workshop.workshopName,
               workshop.startDate,
               workshop.location
             );
 
-            successCount++;
+            console.log(`✅ Certificate sent to ${emailsToSend.join(", ")}`);
+            emailsSent++;
           } catch (emailError) {
             console.error(
-              `Error sending certificate to user ${registration.user}:`,
-              emailError
+              `[Certificate Scheduler] Email error for ${registration.email}:`,
+              emailError.message
             );
-            errorCount++;
           }
         }
 
-        // Mark this workshop as processed
-        processedWorkshops.add(workshopKey);
+        // Only mark as processed if at least one email was sent
+        if (emailsSent > 0) {
+          await Workshop.findByIdAndUpdate(workshop._id, {
+            certificatesSent: true,
+            certificatesSentAt: new Date(),
+          });
 
-        if (successCount > 0) {
           console.log(
-            `✅ Workshop "${workshop.workshopName}": ${successCount} certificate(s) sent`
+            `[Certificate Scheduler] Marked ${workshop.workshopName} as processed (${emailsSent} emails sent)`
+          );
+        } else {
+          console.log(
+            `[Certificate Scheduler] No emails sent for ${workshop.workshopName} - will retry next time`
           );
         }
       } catch (workshopError) {
-        // Silently continue on errors
+        console.error(
+          `[Certificate Scheduler] Error processing ${workshop.workshopName}:`,
+          workshopError.message
+        );
       }
     }
   } catch (error) {
-    console.error("Error in checkCompletedWorkshops:", error);
+    console.error("[Certificate Scheduler] Fatal error:", error);
   }
 }
 
@@ -167,25 +215,22 @@ async function sendCertificatesForWorkshop(workshopId) {
     );
 
     for (const registration of registrations) {
-      const user = await User.findById(registration.user);
+      const registrationEmail = registration.email;
+      const fullName = `${registration.firstName} ${registration.lastName}`;
 
-      if (!user) {
-        continue;
-      }
-
-      const eligibleRoles = ["student", "staff", "ta", "professor"];
-      if (!eligibleRoles.includes(user.role.toLowerCase())) {
+      if (!registrationEmail) {
         continue;
       }
 
       await emailService.sendWorkshopCertificate(
-        user,
+        registrationEmail,
+        fullName,
         workshop.workshopName,
         workshop.startDate,
         workshop.location
       );
 
-      console.log(`✅ Certificate sent to ${user.email}`);
+      console.log(`✅ Certificate sent to ${registrationEmail}`);
     }
 
     return { success: true, count: registrations.length };

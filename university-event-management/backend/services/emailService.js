@@ -1052,31 +1052,24 @@ class EmailService {
   }
 
   // Send workshop certificate of attendance email
-  async sendWorkshopCertificate(user, workshopName, workshopDate, location) {
-    console.log(
-      `📧 sendWorkshopCertificate called for user: ${user.firstName} ${user.lastName}`
-    );
-    console.log(
-      `User emails - email: ${user.email}, verificationEmail: ${user.verificationEmail}`
-    );
-
-    const fullName = `${user.firstName} ${user.lastName}`;
-    const emailsToSend = [];
-
-    // Determine which email(s) to send to
-    if (user.verificationEmail) {
-      emailsToSend.push(user.verificationEmail);
+  async sendWorkshopCertificate(
+    emailOrEmails,
+    fullName,
+    workshopName,
+    workshopDate,
+    location
+  ) {
+    if (
+      !emailOrEmails ||
+      (Array.isArray(emailOrEmails) && emailOrEmails.length === 0)
+    ) {
+      throw new Error("No email address provided");
     }
 
-    // Also send to primary email if different
-    if (user.email && user.email !== user.verificationEmail) {
-      emailsToSend.push(user.email);
-    }
-
-    if (emailsToSend.length === 0) {
-      console.error("No email addresses found for user");
-      throw new Error("User has no email address");
-    }
+    // Convert to array if single email string
+    const emails = Array.isArray(emailOrEmails)
+      ? emailOrEmails
+      : [emailOrEmails];
 
     const formattedDate = new Date(workshopDate).toLocaleDateString("en-US", {
       weekday: "long",
@@ -1087,7 +1080,7 @@ class EmailService {
 
     const mailOptions = {
       from: `"SprintX" <${process.env.EMAIL_USER}>`,
-      to: emailsToSend.join(", "),
+      to: emails.join(", "),
       subject: `Certificate of Attendance - ${workshopName}`,
       html: this.getWorkshopCertificateTemplate(
         fullName,
@@ -1115,15 +1108,8 @@ class EmailService {
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      console.log(
-        `✅ Workshop certificate email sent successfully to: ${emailsToSend.join(
-          ", "
-        )}`
-      );
-      console.log("Message ID:", info.messageId);
       return info;
     } catch (error) {
-      console.error("❌ Error sending workshop certificate email:", error);
       throw new Error(
         `Failed to send workshop certificate email: ${error.message}`
       );
@@ -2249,6 +2235,303 @@ class EmailService {
             <p>Questions? Contact us at <a href="mailto:support@campusevents.edu">support@campusevents.edu</a></p>
             <p style="margin-top: 15px; font-size: 12px; color: #9ca3af;">
               © ${new Date().getFullYear()} SprintX. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  // Send payment receipt email for workshop/trip registration
+  async sendPaymentReceipt(user, eventDetails, paymentDetails) {
+    if (!user || !user.email) {
+      throw new Error("User email is required");
+    }
+
+    const emailsToSend = [];
+
+    // Send to user's account email
+    if (user.email) {
+      emailsToSend.push(user.email);
+    }
+
+    // Also send to verification email if different
+    if (user.verificationEmail && user.verificationEmail !== user.email) {
+      emailsToSend.push(user.verificationEmail);
+    }
+
+    if (emailsToSend.length === 0) {
+      throw new Error("No email addresses found for user");
+    }
+
+    const mailOptions = {
+      from: `"SprintX" <${process.env.EMAIL_USER}>`,
+      to: emailsToSend.join(", "),
+      subject: `Payment Receipt - ${eventDetails.title}`,
+      html: this.getPaymentReceiptTemplate(user, eventDetails, paymentDetails),
+      text: `
+        Dear ${user.firstName} ${user.lastName},
+
+        Thank you for your payment!
+
+        PAYMENT RECEIPT
+        ===============
+        Event: ${eventDetails.title}
+        Type: ${
+          eventDetails.type.charAt(0).toUpperCase() + eventDetails.type.slice(1)
+        }
+        Date: ${new Date(eventDetails.startDate).toLocaleDateString("en-US", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })}
+        Location: ${eventDetails.location}
+
+        PAYMENT DETAILS
+        ===============
+        Amount Paid: $${paymentDetails.amount.toFixed(2)}
+        Payment Method: ${paymentDetails.method}
+        Transaction Date: ${new Date(paymentDetails.date).toLocaleString(
+          "en-US"
+        )}
+        Transaction ID: ${paymentDetails.transactionId}
+
+        Your registration is now confirmed!
+
+        Best regards,
+        The SprintX Team
+      `,
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log(`✅ Payment receipt sent to: ${emailsToSend.join(", ")}`);
+      return info;
+    } catch (error) {
+      console.error("❌ Error sending payment receipt email:", error);
+      throw new Error(`Failed to send payment receipt email: ${error.message}`);
+    }
+  }
+
+  getPaymentReceiptTemplate(user, eventDetails, paymentDetails) {
+    const currentYear = new Date().getFullYear();
+    const eventDate = new Date(eventDetails.startDate).toLocaleDateString(
+      "en-US",
+      {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }
+    );
+    const paymentDate = new Date(paymentDetails.date).toLocaleString("en-US");
+
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Receipt - SprintX</title>
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 40px 20px;
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+          }
+          .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+          }
+          .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 32px;
+            font-weight: bold;
+          }
+          .header p {
+            margin: 0;
+            font-size: 16px;
+            opacity: 0.9;
+          }
+          .icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+          }
+          .content {
+            padding: 40px 30px;
+          }
+          .greeting {
+            font-size: 18px;
+            color: #1f2937;
+            margin-bottom: 20px;
+          }
+          .section {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+          }
+          .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          .detail-row:last-child {
+            border-bottom: none;
+          }
+          .detail-label {
+            color: #6b7280;
+            font-size: 14px;
+          }
+          .detail-value {
+            color: #1f2937;
+            font-weight: 600;
+            font-size: 14px;
+            text-align: right;
+          }
+          .amount-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            margin: 30px 0;
+          }
+          .amount-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+          }
+          .amount-value {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 10px 0;
+          }
+          .status-badge {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 10px;
+          }
+          .footer {
+            background: #f9fafb;
+            padding: 30px;
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+            border-top: 1px solid #e5e7eb;
+          }
+          .footer p {
+            margin: 5px 0;
+          }
+          .footer a {
+            color: #667eea;
+            text-decoration: none;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="icon">🧾</div>
+            <h1>Payment Receipt</h1>
+            <p>Your payment has been successfully processed</p>
+          </div>
+          
+          <div class="content">
+            <p class="greeting">Dear ${user.firstName} ${user.lastName},</p>
+            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 30px;">
+              Thank you for your payment! Your registration for <strong>${
+                eventDetails.title
+              }</strong> has been confirmed.
+            </p>
+
+            <div class="amount-section">
+              <div class="amount-label">Amount Paid</div>
+              <div class="amount-value">$${paymentDetails.amount.toFixed(
+                2
+              )}</div>
+              <div class="status-badge">✓ PAID</div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">📅 Event Details</div>
+              <div class="detail-row">
+                <span class="detail-label">Event Name</span>
+                <span class="detail-value">${eventDetails.title}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Type</span>
+                <span class="detail-value">${
+                  eventDetails.type.charAt(0).toUpperCase() +
+                  eventDetails.type.slice(1)
+                }</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Date</span>
+                <span class="detail-value">${eventDate}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Location</span>
+                <span class="detail-value">${eventDetails.location}</span>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">💳 Payment Information</div>
+              <div class="detail-row">
+                <span class="detail-label">Payment Method</span>
+                <span class="detail-value">${paymentDetails.method}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Transaction Date</span>
+                <span class="detail-value">${paymentDate}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Transaction ID</span>
+                <span class="detail-value">${
+                  paymentDetails.transactionId
+                }</span>
+              </div>
+            </div>
+
+            <p style="color: #4b5563; line-height: 1.6; margin-top: 30px; padding: 20px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+              <strong>📌 Important:</strong> Please keep this receipt for your records. If you have any questions about your payment, please contact us.
+            </p>
+          </div>
+          
+          <div class="footer">
+            <p><strong>SprintX - University Event Management</strong></p>
+            <p>Questions? Contact us at <a href="mailto:support@campusevents.edu">support@campusevents.edu</a></p>
+            <p style="margin-top: 15px; font-size: 12px; color: #9ca3af;">
+              © ${currentYear} SprintX. All rights reserved.
             </p>
           </div>
         </div>

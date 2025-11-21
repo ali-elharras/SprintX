@@ -52,11 +52,11 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
-    
-    console.log('Submitting registration for event:', event); // Debug
-    console.log('Event cost:', event?.cost); // Debug
-    console.log('Is paid event:', isPaidEvent); // Debug
-    
+
+    console.log("Submitting registration for event:", event); // Debug
+    console.log("Event cost:", event?.cost); // Debug
+    console.log("Is paid event:", isPaidEvent); // Debug
+
     try {
       // Prepare registration data
       const regData = {
@@ -69,33 +69,40 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
       };
 
       const response = await registrationAPI.registerForEvent(regData);
-      
-      console.log('Full registration response:', response); // Debug log
-      console.log('Response data:', response.data); // Debug log
-      
+
+      console.log("Full registration response:", response); // Debug log
+      console.log("Response data:", response.data); // Debug log
+
       // The response structure is: response.data = { success, message, data, requiresPayment }
       const requiresPayment = response.data.requiresPayment;
       const registrationRecord = response.data.data;
-      
-      console.log('Requires payment?', requiresPayment); // Debug log
-      console.log('Registration record:', registrationRecord); // Debug log
-      
+
+      console.log("Requires payment?", requiresPayment); // Debug log
+      console.log("Registration record:", registrationRecord); // Debug log
+
       // Check if payment is required
       if (requiresPayment) {
         // For paid events, backend returns registrationData (not a DB record)
         // Store this data to pass to payment
-        const regDataForPayment = response.data.registrationData || registrationRecord;
+        const regDataForPayment =
+          response.data.registrationData || registrationRecord;
         setRegistrationData(regDataForPayment);
         setShowPaymentModal(true);
-        toast.info("Please complete payment to confirm your registration");
+        toast("Please complete payment to confirm your registration", {
+          icon: "💳",
+          duration: 4000,
+        });
         // Don't reset isSubmitting here - keep it true until payment is complete
       } else {
         // Free event - registration complete
         toast.success("Registration successful!");
         // Notify other tabs/windows that a registration occurred so they can refresh
         try {
-          const payload = JSON.stringify({ eventId: event._id, ts: Date.now() });
-          localStorage.setItem('registration_made', payload);
+          const payload = JSON.stringify({
+            eventId: event._id,
+            ts: Date.now(),
+          });
+          localStorage.setItem("registration_made", payload);
         } catch (err) {
           // Ignore storage errors (e.g., quota)
         }
@@ -112,13 +119,13 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
   const handlePaymentComplete = (success) => {
     setShowPaymentModal(false);
     setIsSubmitting(false);
-    
+
     if (success) {
       toast.success("Registration and payment successful!");
       // Notify other tabs/windows that a registration occurred so they can refresh
       try {
         const payload = JSON.stringify({ eventId: event._id, ts: Date.now() });
-        localStorage.setItem('registration_made', payload);
+        localStorage.setItem("registration_made", payload);
       } catch (err) {
         // Ignore storage errors (e.g., quota)
       }
@@ -168,7 +175,7 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
             style={{
               background: theme.colors.primary.light,
               padding: theme.spacing[3],
-              borderRadius: '8px',
+              borderRadius: "8px",
               textAlign: "center",
               marginTop: theme.spacing[3],
               border: `1px solid ${theme.colors.primary.main}`,
@@ -281,7 +288,11 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
               minWidth: "140px",
             }}
           >
-            {isSubmitting ? "Registering..." : isPaidEvent ? "Register & Pay" : "Register"}
+            {isSubmitting
+              ? "Registering..."
+              : isPaidEvent
+              ? "Register & Pay"
+              : "Register"}
           </Button>
         </div>
       </form>

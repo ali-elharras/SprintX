@@ -19,7 +19,7 @@ const workshopSchema = new mongoose.Schema(
       enum: ["GUC Cairo", "GUC Berlin"],
       required: [true, "Location (GUC Cairo or GUC Berlin) is required"],
     },
-    
+
     // Schedule and Duration
     startDate: {
       type: Date,
@@ -68,7 +68,10 @@ const workshopSchema = new mongoose.Schema(
     },
     extraRequiredResources: {
       type: String,
-      maxlength: [500, "Extra resources description cannot exceed 500 characters"],
+      maxlength: [
+        500,
+        "Extra resources description cannot exceed 500 characters",
+      ],
       default: "",
     },
 
@@ -96,22 +99,30 @@ workshopSchema.index({ registrationDeadline: 1 });
 // NOT at schema level, to avoid validation issues during updates
 
 // Cleanup: Drop any existing unique index on workshopName on schema initialization
-workshopSchema.post('syncIndexes', async function() {
+workshopSchema.post("syncIndexes", async function () {
   try {
     const collection = this.collection;
     const indexes = await collection.getIndexes();
-    
+
     for (const [indexName, indexSpec] of Object.entries(indexes)) {
       // Find and remove any unique index on workshopName
-      if (indexSpec.unique === true && indexSpec.key && indexSpec.key.workshopName === 1) {
+      if (
+        indexSpec.unique === true &&
+        indexSpec.key &&
+        indexSpec.key.workshopName === 1
+      ) {
         await collection.dropIndex(indexName);
-        console.log(`✅ Dropped problematic workshopName unique index: ${indexName}`);
+        console.log(
+          `✅ Dropped problematic workshopName unique index: ${indexName}`
+        );
       }
     }
   } catch (error) {
     // Silently ignore errors in index cleanup
-    if (error.message && !error.message.includes('no index found')) {
-      console.warn('⚠️ Note: Database index cleanup may be needed, but not critical');
+    if (error.message && !error.message.includes("no index found")) {
+      console.warn(
+        "⚠️ Note: Database index cleanup may be needed, but not critical"
+      );
     }
   }
 });
@@ -132,6 +143,14 @@ workshopSchema.add({
   publishedEventId: {
     type: String,
   },
+  // Track if completion certificates have been sent
+  certificatesSent: {
+    type: Boolean,
+    default: false,
+  },
+  certificatesSentAt: {
+    type: Date,
+  },
   // Reference to the professor who created this workshop
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -144,11 +163,19 @@ workshopSchema.add({
       {
         message: { type: String, required: true },
         requestedBy: {
-          id: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false },
+          id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: false,
+          },
           name: { type: String },
         },
         requestedAt: { type: Date, default: Date.now },
-        status: { type: String, enum: ["needs_revision"], default: "needs_revision" },
+        status: {
+          type: String,
+          enum: ["needs_revision"],
+          default: "needs_revision",
+        },
       },
     ],
     default: [],

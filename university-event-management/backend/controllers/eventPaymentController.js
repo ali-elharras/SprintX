@@ -13,27 +13,28 @@ const createEventPayment = async (req, res) => {
   try {
     const { registrationId } = req.params;
     const { paymentMethod } = req.body; // 'stripe' or 'wallet'
-    
+
     // Validate payment method (Stripe-only for now)
     if (!["stripe"].includes(paymentMethod)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid payment method. Only 'stripe' is supported at the moment",
+        message:
+          "Invalid payment method. Only 'stripe' is supported at the moment",
       });
     }
-    
+
     // Find registration
     const registration = await Registration.findById(registrationId)
       .populate("event")
       .populate("user");
-    
+
     if (!registration) {
       return res.status(404).json({
         success: false,
         message: "Registration not found",
       });
     }
-    
+
     // Verify ownership
     if (registration.user._id.toString() !== req.user.id) {
       return res.status(403).json({
@@ -41,7 +42,7 @@ const createEventPayment = async (req, res) => {
         message: "You can only pay for your own registrations",
       });
     }
-    
+
     // Check if event has cost
     const eventCost = registration.event.cost || 0;
     if (eventCost === 0) {
@@ -50,13 +51,13 @@ const createEventPayment = async (req, res) => {
         message: "This event is free, no payment required",
       });
     }
-    
+
     // Check if payment already exists
     const existingPayment = await EventPayment.findOne({
       registration: registrationId,
       status: { $in: ["pending", "processing", "completed"] },
     });
-    
+
     if (existingPayment) {
       return res.status(400).json({
         success: false,
@@ -64,10 +65,11 @@ const createEventPayment = async (req, res) => {
         data: existingPayment,
       });
     }
-    
+
     // Calculate processing fee (2.9% + $0.30 for Stripe)
-    const processingFee = paymentMethod === "stripe" ? (eventCost * 0.029) + 0.30 : 0;
-    
+    const processingFee =
+      paymentMethod === "stripe" ? eventCost * 0.029 + 0.3 : 0;
+
     // Create payment record
     const payment = await EventPayment.create({
       user: req.user.id,
@@ -79,7 +81,7 @@ const createEventPayment = async (req, res) => {
       description: `Payment for ${registration.event.title}`,
       dueDate: registration.event.startDate,
     });
-    
+
     if (paymentMethod === "stripe") {
       // Complete registration BEFORE Stripe redirect
       try {
@@ -87,7 +89,7 @@ const createEventPayment = async (req, res) => {
         payment.status = "completed";
         payment.completedAt = new Date();
         await payment.save();
-        
+
         // Update registration to confirmed
         registration.paymentStatus = "completed";
         registration.paymentAmount = eventCost;
@@ -95,7 +97,7 @@ const createEventPayment = async (req, res) => {
         registration.paymentDate = new Date();
         registration.status = "confirmed";
         await registration.save();
-        
+
         // Record external payment transaction in wallet (doesn't affect balance)
         const wallet = await Wallet.findOrCreateForUser(req.user.id);
         await wallet.recordExternalPayment(
@@ -106,7 +108,7 @@ const createEventPayment = async (req, res) => {
             entityId: payment._id,
           }
         );
-        
+
         // Create Stripe checkout session for payment processing
         const session = await stripe.checkout.sessions.create({
           payment_method_types: ["card"],
@@ -124,7 +126,9 @@ const createEventPayment = async (req, res) => {
             },
           ],
           mode: "payment",
-          success_url: `${process.env.FRONTEND_URL}/events`,
+          success_url: `${
+            process.env.FRONTEND_URL
+          }/events?session_id={CHECKOUT_SESSION_ID}&payment_id=${payment._id.toString()}`,
           cancel_url: `${process.env.FRONTEND_URL}/events`,
           metadata: {
             paymentId: payment._id.toString(),
@@ -133,11 +137,11 @@ const createEventPayment = async (req, res) => {
             eventId: registration.event._id.toString(),
           },
         });
-        
+
         // Update payment with Stripe session details
         payment.stripeSessionId = session.id;
         await payment.save();
-        
+
         res.status(200).json({
           success: true,
           message: "Registration confirmed! Redirecting to payment...",
@@ -147,11 +151,10 @@ const createEventPayment = async (req, res) => {
             sessionId: session.id,
           },
         });
-        
       } catch (stripeError) {
         payment.status = "failed";
         await payment.save();
-        
+
         console.error("Stripe error:", stripeError);
         res.status(500).json({
           success: false,
@@ -159,7 +162,7 @@ const createEventPayment = async (req, res) => {
           error: stripeError.message,
         });
       }
-  }
+    }
   } catch (error) {
     console.error("Error creating event payment:", error);
     res.status(500).json({
@@ -176,26 +179,26 @@ const createEventPayment = async (req, res) => {
 const verifyStripePayment = async (req, res) => {
   try {
     const { sessionId, paymentId } = req.body;
-    
+
     if (!sessionId || !paymentId) {
       return res.status(400).json({
         success: false,
         message: "Session ID and Payment ID are required",
       });
     }
-    
+
     // Find payment
     const payment = await EventPayment.findById(paymentId)
       .populate("registration")
       .populate("event");
-    
+
     if (!payment) {
       return res.status(404).json({
         success: false,
         message: "Payment not found",
       });
     }
-    
+
     // Verify ownership
     if (payment.user.toString() !== req.user.id) {
       return res.status(403).json({
@@ -203,20 +206,20 @@ const verifyStripePayment = async (req, res) => {
         message: "Unauthorized access to payment",
       });
     }
-    
+
     // Assume payment successful after Stripe redirect (no verification needed)
     // Mark payment as completed
-    await payment.markCompleted({ 
-      stripePaymentIntentId: sessionId // Use session ID as reference
+    await payment.markCompleted({
+      stripePaymentIntentId: sessionId, // Use session ID as reference
     });
-    
+
     // Update registration payment and confirmation status
     const registration = await Registration.findById(payment.registration._id);
     registration.paymentStatus = "completed";
     registration.paymentAmount = payment.amount;
     registration.status = "confirmed"; // Confirm the registration
     await registration.save();
-    
+
     // Record external payment transaction in wallet (doesn't affect balance)
     const wallet = await Wallet.findOrCreateForUser(req.user.id);
     await wallet.recordExternalPayment(
@@ -227,7 +230,53 @@ const verifyStripePayment = async (req, res) => {
         entityId: payment._id,
       }
     );
-    
+
+    // Send payment receipt email
+    try {
+      const User = require("../models/User");
+      const emailService = require("../services/emailService");
+
+      console.log("[Payment Receipt] Starting to send receipt email...");
+      const user = await User.findById(req.user.id);
+      console.log(
+        "[Payment Receipt] User found:",
+        user ? `${user.firstName} ${user.lastName}` : "No user"
+      );
+
+      if (user) {
+        console.log(
+          "[Payment Receipt] Sending to:",
+          user.email,
+          user.verificationEmail
+        );
+        await emailService.sendPaymentReceipt(
+          user,
+          {
+            title: payment.event.title,
+            type: payment.event.type || "event",
+            startDate: payment.event.startDate,
+            location: payment.event.location,
+          },
+          {
+            amount: payment.amount,
+            method: payment.paymentMethod || "Stripe",
+            date: payment.paidAt || new Date(),
+            transactionId: payment._id.toString(),
+          }
+        );
+        console.log("[Payment Receipt] ✅ Email sent successfully");
+      } else {
+        console.log("[Payment Receipt] ❌ User not found");
+      }
+    } catch (emailError) {
+      console.error(
+        "[Payment Receipt] ❌ Error sending payment receipt email:",
+        emailError
+      );
+      console.error("[Payment Receipt] Error stack:", emailError.stack);
+      // Don't fail the payment if email fails
+    }
+
     res.status(200).json({
       success: true,
       message: "Payment completed successfully",
@@ -250,20 +299,20 @@ const processEventRefund = async (req, res) => {
   try {
     const { paymentId } = req.params;
     const { reason } = req.body;
-    
+
     // Find payment
     const payment = await EventPayment.findById(paymentId)
       .populate("registration")
       .populate("event")
       .populate("user");
-    
+
     if (!payment) {
       return res.status(404).json({
         success: false,
         message: "Payment not found",
       });
     }
-    
+
     // Verify ownership
     if (payment.user._id.toString() !== req.user.id) {
       return res.status(403).json({
@@ -271,7 +320,7 @@ const processEventRefund = async (req, res) => {
         message: "You can only request refunds for your own payments",
       });
     }
-    
+
     // Check if payment is completed
     if (payment.status !== "completed") {
       return res.status(400).json({
@@ -279,7 +328,7 @@ const processEventRefund = async (req, res) => {
         message: "Only completed payments can be refunded",
       });
     }
-    
+
     // Check if already refunded
     if (payment.status === "refunded") {
       return res.status(400).json({
@@ -287,27 +336,28 @@ const processEventRefund = async (req, res) => {
         message: "Payment has already been refunded",
       });
     }
-    
+
     // Check refund policy (e.g., must be 24 hours before event)
     const eventDate = new Date(payment.event.startDate);
     const now = new Date();
     const hoursUntilEvent = (eventDate - now) / (1000 * 60 * 60);
-    
+
     if (hoursUntilEvent < 24) {
       return res.status(400).json({
         success: false,
-        message: "Refunds are not allowed within 24 hours of the event start time",
+        message:
+          "Refunds are not allowed within 24 hours of the event start time",
         hoursUntilEvent: Math.round(hoursUntilEvent),
       });
     }
-    
+
     // Calculate refund amount (full amount minus any applicable fees)
     const refundAmount = payment.amount; // Full refund for now
-    
+
     try {
       // Process refund to wallet (always refund to wallet for simplicity)
       const wallet = await Wallet.findOrCreateForUser(payment.user._id);
-      
+
       await wallet.processRefund(
         refundAmount,
         `Refund for cancelled registration: ${payment.event.title}`,
@@ -316,15 +366,15 @@ const processEventRefund = async (req, res) => {
           entityId: payment._id,
         }
       );
-      
+
       // Update payment record
       await payment.processRefund(refundAmount, reason, "wallet");
-      
+
       // Delete the registration completely
       // Note: The post-remove middleware in Registration model will automatically
       // decrement currentParticipants, so we don't do it manually here
       await Registration.findByIdAndDelete(payment.registration._id);
-      
+
       res.status(200).json({
         success: true,
         message: "Refund processed successfully to your wallet",
@@ -334,7 +384,6 @@ const processEventRefund = async (req, res) => {
           paymentStatus: payment.status,
         },
       });
-      
     } catch (refundError) {
       console.error("Refund processing error:", refundError);
       res.status(500).json({
@@ -359,15 +408,18 @@ const processEventRefund = async (req, res) => {
 const getMyEventPayments = async (req, res) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
-    
+
     const options = { limit: parseInt(limit) };
     if (status) options.status = status;
-    
-    const payments = await EventPayment.findByUser(req.user.id, options)
-      .skip((parseInt(page) - 1) * parseInt(limit));
-    
-    const totalPayments = await EventPayment.countDocuments({ user: req.user.id });
-    
+
+    const payments = await EventPayment.findByUser(req.user.id, options).skip(
+      (parseInt(page) - 1) * parseInt(limit)
+    );
+
+    const totalPayments = await EventPayment.countDocuments({
+      user: req.user.id,
+    });
+
     res.status(200).json({
       success: true,
       data: {
@@ -396,27 +448,30 @@ const getMyEventPayments = async (req, res) => {
 const getEventPaymentDetails = async (req, res) => {
   try {
     const { paymentId } = req.params;
-    
+
     const payment = await EventPayment.findById(paymentId)
       .populate("event", "title type startDate location cost")
       .populate("registration", "status registrationDate")
       .populate("user", "firstName lastName email");
-    
+
     if (!payment) {
       return res.status(404).json({
         success: false,
         message: "Payment not found",
       });
     }
-    
+
     // Verify ownership (users can only see their own payments)
-    if (payment.user._id.toString() !== req.user.id && !["admin", "events_office"].includes(req.user.role)) {
+    if (
+      payment.user._id.toString() !== req.user.id &&
+      !["admin", "events_office"].includes(req.user.role)
+    ) {
       return res.status(403).json({
         success: false,
         message: "Unauthorized access to payment details",
       });
     }
-    
+
     res.status(200).json({
       success: true,
       data: payment,
