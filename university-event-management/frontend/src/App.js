@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import theme from "./theme";
 
 // Pages (combined from both branches)
+import LandingPage from "./pages/LandingPage";
 import UserTypeSelection from "./components/UserTypeSelection";
 import Login from "./pages/Login";
 import VendorLogin from "./pages/VendorLogin";
@@ -38,6 +39,7 @@ import EventsRatings from "./pages/EventsRatings";
 import AdminComments from "./pages/AdminComments";
 import FavoritesPage from "./pages/FavoritesPage";
 import EventDetailsPage from "./pages/EventDetailsPage";
+import BoothPolls from "./pages/BoothPolls";
 import LoyaltyProgram from "./pages/LoyaltyProgram";
 import WalletPage from "./pages/WalletPage";
 import RoleRoute from "./components/RoleRoute";
@@ -160,11 +162,7 @@ const VendorRoute = ({ children }) => {
 const router = createBrowserRouter([
   {
     path: "/",
-    element: (
-      <PublicRoute>
-        <Login />
-      </PublicRoute>
-    ),
+    element: <LandingPage />,
   },
   {
     path: "/login",
@@ -357,6 +355,14 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: "/booth-polls",
+    element: (
+      <ProtectedRoute>
+        <BoothPolls />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/wallet",
     element: (
       <ProtectedRoute>
@@ -395,6 +401,16 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <CreateWorkshop />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/my-workshops",
+    element: (
+      <ProtectedRoute>
+        <RoleRoute allowedRoles={["professor"]}>
+          <Workshops />
+        </RoleRoute>
       </ProtectedRoute>
     ),
   },

@@ -9,16 +9,15 @@ import Select from "../components/Select";
 import Navbar from "../components/Navbar";
 import ConferenceModal from "./ConferenceModal";
 import EventEditModal from "../components/EventEditModal";
-import LoadingScreen from "../components/LoadingScreen";
-import api, { eventAPI, workshopAPI, registrationAPI, createCancelTokenSource, applicationServices, boothPollAPI } from "../services/api";
+import api, { eventAPI, workshopAPI, registrationAPI, createCancelTokenSource, applicationServices, favoritesAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 import CreateDropdownButton from '../components/CreateDropdownButton';
 import CreateTripModal from '../components/CreateTripModal';
 import { exportRegistrationsToXLSX } from '../services/exportService';
-import BoothPollManager from '../components/BoothPollManager';
-import BoothPollVoting from '../components/BoothPollVoting';
 import RestrictEventModal from "../components/RestrictEventModal";
+import EventsFilterBar from "../components/EventsFilterBar";
+import EventDetailsModal from "../components/EventDetailsModal";
 
 // Helper function to get tomorrow's date string in local time (not UTC)
 const getTomorrowDateTimeString = () => {
@@ -1023,15 +1022,18 @@ const EventsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [userRegistrations, setUserRegistrations] = useState([]);
+  const [userFavorites, setUserFavorites] = useState([]);
   const [showConferenceModal, setShowConferenceModal] = useState(false);
   const [editingConference, setEditingConference] = useState(null);
+  const [selectedEventDetails, setSelectedEventDetails] = useState(null);
+  const [showEventDetailsModal, setShowEventDetailsModal] = useState(false);
   const [filters, setFilters] = useState({
     type: "",
     search: "",
     view: "upcoming", // all, upcoming, past, archived
     dateFrom: "",
     dateTo: "",
-   // sortOrder: "asc", // asc or desc
+    sortOrder: "asc", // asc or desc
   });
 
   const cancelTokenRef = useRef(null);
@@ -1090,12 +1092,6 @@ const EventsPage = () => {
   const [deleteEventCandidate, setDeleteEventCandidate] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Booth Poll states
-  const [boothPollsTab, setBoothPollsTab] = useState('manage'); // 'manage' or 'vote'
-  const [pollsManagerOpen, setPollsManagerOpen] = useState(false);
-  const [eventsOfficePolls, setEventsOfficePolls] = useState([]);
-  const [pollsLoading, setPollsLoading] = useState(false);
-
   // Event restriction modal state
   const [restrictEvent, setRestrictEvent] = useState(null);
   const [isRestrictModalOpen, setIsRestrictModalOpen] = useState(false);
@@ -1141,6 +1137,18 @@ const EventsPage = () => {
           if (!err.isCancelled && err.name !== 'CanceledError') {
             console.warn('Could not fetch user registrations', err);
             setUserRegistrations([]);
+          }
+        }
+
+        // Fetch user favorites
+        try {
+          const favorites = await favoritesAPI.getMyFavorites();
+          console.log('EventsPage - Fetched favorites:', favorites);
+          setUserFavorites(favorites || []);
+        } catch (err) {
+          if (!err.isCancelled && err.name !== 'CanceledError') {
+            console.warn('Could not fetch user favorites', err);
+            setUserFavorites([]);
           }
         }
       } else {
@@ -1207,28 +1215,7 @@ const EventsPage = () => {
         }
       }
 
-      // Fetch workshops for Professors (their own workshops with all statuses)
-      if (auth?.user?.role === 'professor') {
-        try {
-          const workshopsResponse = await api.get('/workshops', {
-            cancelToken: currentCancelToken.token
-          });
-          
-          const allWorkshops = workshopsResponse.data || [];
-          // Filter to show only workshops created by this professor
-          const myWorkshops = allWorkshops.filter(workshop => {
-            const isOwner = (typeof workshop.createdBy === "object" && workshop.createdBy?._id === auth.user?.id) || 
-                           (typeof workshop.createdBy === "string" && workshop.createdBy === auth.user?.id);
-            return isOwner;
-          });
-          
-          setProfessorWorkshops(myWorkshops);
-        } catch (err) {
-          if (!err.isCancelled && err.name !== 'CanceledError') {
-            console.warn('Could not fetch professor workshops', err);
-          }
-        }
-      }
+      // Professor workshops section removed - no longer fetching them
       
       setEvents(allEvents);
 
@@ -1238,8 +1225,12 @@ const EventsPage = () => {
       }
       
       console.error("Fetch error:", err);
+      console.error("Error response:", err.response?.data);
+      console.error("Error status:", err.response?.status);
+      
+      const errorMessage = err.response?.data?.message || err.message || "Failed to load events. Please try again.";
       setError(err);
-      toast.error("Failed to load events. Please try again.");
+      toast.error(errorMessage);
     } finally {
       setTimeout(() => setLoading(false), 1000);
     }
@@ -1287,20 +1278,6 @@ const EventsPage = () => {
         if (e.key === 'registration_made' && e.newValue) {
           console.log('Registration made in another tab, refreshing events/workshops...');
           fetchEvents();
-          // Also refresh professor workshops specifically
-          if (auth?.user?.role === 'professor') {
-            // re-fetch professor workshops
-            (async () => {
-              try {
-                const resp = await api.get('/workshops');
-                const allWorkshops = resp.data || [];
-                const myWorkshops = allWorkshops.filter(w => (typeof w.createdBy === 'object' ? w.createdBy?._id === auth.user?.id : w.createdBy === auth.user?.id));
-                setProfessorWorkshops(myWorkshops);
-              } catch (err) {
-                console.warn('Could not refresh professor workshops after registration', err);
-              }
-            })();
-          }
           // remove the key to avoid repeated refresh
           localStorage.removeItem('registration_made');
         }
@@ -1725,7 +1702,27 @@ if (fromDate || toDate) {
   if (loading) return (
     <div style={{ minHeight: "100vh", background: theme.colors.background.default }}>
       <Navbar />
-      <LoadingScreen type="events" />
+      <div style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "60vh",
+      }}>
+        <div style={{
+          width: "60px",
+          height: "60px",
+          border: `4px solid ${theme.colors.neutral.gray200}`,
+          borderTop: `4px solid ${theme.colors.primary.main}`,
+          borderRadius: "50%",
+          animation: "spin 1s linear infinite",
+        }} />
+      </div>
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 
@@ -1924,6 +1921,16 @@ if (fromDate || toDate) {
         event={restrictEvent}
         onSuccess={handleRestrictionSuccess}
       />
+      {showEventDetailsModal && selectedEventDetails && (
+        <EventDetailsModal
+          eventId={selectedEventDetails._id || selectedEventDetails.id}
+          initialEvent={selectedEventDetails}
+          onClose={() => {
+            setShowEventDetailsModal(false);
+            setSelectedEventDetails(null);
+          }}
+        />
+      )}
       <div
         style={{
           minHeight: "100vh",
@@ -1933,100 +1940,35 @@ if (fromDate || toDate) {
       >
         <div
           style={{
-            maxWidth: "1200px",
+            maxWidth: "1400px",
             margin: "0 auto",
           }}
         >
-          <div style={{ marginBottom: theme.spacing[8] }}>
+          <div style={{ marginBottom: theme.spacing[10] }}>
             <h1
               style={{
-                fontSize: theme.typography.fontSize["3xl"],
+                fontSize: theme.typography.fontSize["4xl"],
                 fontWeight: theme.typography.fontWeight.bold,
                 color: theme.colors.text.primary,
-                marginBottom: theme.spacing[2],
-                textAlign: "center",
+                marginBottom: theme.spacing[3],
+                margin: 0,
               }}
             >
-              University Events
+              Browse Events
             </h1>
             <p
               style={{
-                fontSize: theme.typography.fontSize.lg,
+                fontSize: theme.typography.fontSize.base,
                 color: theme.colors.text.secondary,
-                textAlign: "center",
-                maxWidth: "600px",
-                margin: "0 auto",
+                maxWidth: "700px",
+                margin: 0,
               }}
             >
-              Discover and register for workshops, trips, and other exciting events
-              happening at our university.
+              Discover workshops, trips, conferences, and other exciting activities happening on campus
             </p>
           </div>
 
-          {/* Professor's Own Workshops Dashboard */}
-          {auth?.user?.role === 'professor' && professorWorkshops.length > 0 && (
-            <div style={{ marginBottom: theme.spacing[6], backgroundColor: '#f9fafb', padding: theme.spacing[5], borderRadius: theme.borderRadius.lg }}>
-              <div style={{ maxWidth: '80rem', marginLeft: 'auto', marginRight: 'auto', marginBottom: theme.spacing[6] }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing[4] }}>
-                  <h2 style={{ fontSize: '1.875rem', fontWeight: 800, color: themeColors.gray900, margin: 0 }}>
-                    My Workshops
-                  </h2>
-                </div>
-
-                <div style={{ marginTop: theme.spacing[4], marginBottom: theme.spacing[5] }}>
-                  <input
-                    type="text"
-                    placeholder="Search workshops by title, description, location, or faculty..."
-                    value={workshopSearchTerm}
-                    onChange={(e) => setWorkshopSearchTerm(e.target.value)}
-                    style={{ 
-                      width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', 
-                      borderRadius: '0.75rem', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', 
-                      transition: 'border-color 0.15s, box-shadow 0.15s', fontSize: '1rem',
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ maxWidth: '80rem', marginLeft: 'auto', marginRight: 'auto' }}>
-                {workshopsLoading && (
-                  <div style={{ textAlign: 'center', padding: '3rem 0', backgroundColor: 'white', borderRadius: '0.75rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', border: '1px solid #f3f4f6' }}>
-                    <p style={{ fontSize: '1.125rem', color: '#4b5563' }}>Loading workshops from database... ⏳</p>
-                  </div>
-                )}
-
-                {workshopsError && (
-                  <div style={{ textAlign: 'center', padding: '1.5rem', backgroundColor: themeColors.red50, borderRadius: '0.75rem', border: `1px solid ${themeColors.red600}` }}>
-                    <p style={{ fontSize: '1rem', fontWeight: 600, color: themeColors.red600 }}>Error: {workshopsError}</p>
-                  </div>
-                )}
-
-                {!workshopsLoading && !workshopsError && filteredProfessorWorkshops.length === 0 && workshopSearchTerm === '' ? (
-                  <div style={{ textAlign: 'center', padding: '3rem 0', backgroundColor: 'white', borderRadius: '0.75rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', border: '1px solid #f3f4f6' }}>
-                    <p style={{ fontSize: '1.125rem', color: '#4b5563' }}>
-                      No workshops found. Start by creating a new one!
-                    </p>
-                  </div>
-                ) : (
-                  <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
-                    gap: '1.5rem', 
-                  }}>
-                    {filteredProfessorWorkshops.map((workshop) => (
-                      <WorkshopCard 
-                        key={workshop._id || workshop.id} 
-                        workshop={workshop} 
-                        onEdit={handleEditWorkshop}
-                        onDelete={handleDeleteWorkshop}
-                        isEventsOffice={auth.isEventsOffice}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          {/* My Workshops section removed as per user request */}
 
           {auth.isEventsOffice && pendingWorkshops.length > 0 && (
             <div
@@ -2034,8 +1976,9 @@ if (fromDate || toDate) {
                 background: theme.colors.background.paper,
                 padding: theme.spacing[5],
                 borderRadius: theme.borderRadius.lg,
-                boxShadow: theme.shadows.md,
-                marginBottom: theme.spacing[6],
+                boxShadow: theme.shadows.sm,
+                border: `1px solid ${theme.colors.border}`,
+                marginBottom: theme.spacing[12],
               }}
             >
               <h2
@@ -2225,154 +2168,26 @@ if (fromDate || toDate) {
             </div>
           )}
 
-          {/* Booth Polls Section (Events Office Only) */}
-          {isEventsOffice && (
-            <div
-              style={{
-                background: theme.colors.background.paper,
-                padding: theme.spacing[5],
-                borderRadius: theme.borderRadius.lg,
-                boxShadow: theme.shadows.md,
-                marginBottom: theme.spacing[6],
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: theme.spacing[4] }}>
-                <h2
-                  style={{
-                    margin: 0,
-                    color: theme.colors.text.primary,
-                  }}
-                >
-                  Booth Vendor Polls
-                </h2>
-                <Button
-                  variant="primary"
-                  onClick={() => setPollsManagerOpen(true)}
-                >
-                  + Create New Poll
-                </Button>
-              </div>
-              
-              {pollsManagerOpen && (
-                <div style={{ marginBottom: theme.spacing[4], padding: theme.spacing[4], backgroundColor: theme.colors.background.default, borderRadius: theme.borderRadius.base }}>
-                  <BoothPollManager
-                    onPollCreated={() => {
-                      setPollsManagerOpen(false);
-                      toast.success("Booth poll created successfully!");
-                      // Could refresh polls list here if needed
-                    }}
-                    onCancel={() => setPollsManagerOpen(false)}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Booth Polls Voting Section (All Users) */}
-          <div style={{ marginBottom: theme.spacing[6] }}>
-            <BoothPollVoting />
-          </div>
-         
-        <div
-  style={{
-    background: theme.colors.background.paper,
-    padding: theme.spacing[5],
-    borderRadius: theme.borderRadius.lg,
-    boxShadow: theme.shadows.md,
-    marginBottom: theme.spacing[6],
-  }}
->
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-      gap: theme.spacing[4],
-      alignItems: "end",
-      marginBottom: theme.spacing[4],
-    }}
-  >
-    <Input
-      label="Search Events"
-      placeholder="Search by title, description, or location..."
-      value={filters.search}
-      onChange={(e) => handleFilterChange("search", e.target.value)}
-    />
-    <Select
-      label="Event Type"
-      options={eventTypeOptions}
-      value={filters.type}
-      onChange={(e) => handleFilterChange("type", e.target.value)}
-    />
-    <Select
-      label="Event Status"
-      options={viewOptions}
-      value={filters.view}
-      onChange={(e) => handleFilterChange("view", e.target.value)}
-    />
-    <Input
-      label="From Date"
-      type="date"
-      value={filters.dateFrom}
-      onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
-    />
-    <Input
-      label="To Date"
-      type="date"
-      value={filters.dateTo}
-      min={filters.dateFrom}
-      onChange={(e) => handleFilterChange("dateTo", e.target.value)}
-    />
-  </div>
-  <div style={{ display: "flex", gap: "0.75rem", marginTop: "1rem", marginBottom: "1rem" }}>
-  <Button
-    variant={filters.sortOrder === "asc" ? "primary" : "outline"}
-    onClick={() => handleFilterChange("sortOrder", "asc")}
-  >
-    Sort Ascending (🡑 Earliest First)
-  </Button>
-
-  <Button
-    variant={filters.sortOrder === "desc" ? "primary" : "outline"}
-    onClick={() => handleFilterChange("sortOrder", "desc")}
-  >
-    Sort Descending (🡓 Latest First)
-  </Button>
-</div>
-
-  <div
-    style={{
-      display: "flex",
-      gap: theme.spacing[3],
-      alignItems: "center",
-      flexWrap: "wrap",
-    }}
-  >
-    <Button variant="outline" onClick={fetchEvents}>
-      Refresh
-    </Button>
-    <Button
-      variant="outline"
-      onClick={() => {
-        setFilters({ 
-          type: "", 
-          search: "", 
-          view: "all",
-          dateFrom: "",
-          dateTo: ""
-        });
-      }}
-    >
-      Clear Filters
-    </Button>
-    {!auth.isAdmin && (
-      <CreateDropdownButton 
-        onConferenceModalOpen={() => setShowConferenceModal(true)} 
-        onBazaarModalOpen={() => setCreateBazaarOpen(true)} 
-        onTripCreate={() => setCreateTripOpen(true)}
-      />
-    )}
-  </div>
-</div>
+        {/* Sticky Filter Bar */}
+        <EventsFilterBar
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          totalEvents={events.length}
+          filteredCount={filteredEvents.length}
+          onClearFilters={() => {
+            setFilters({
+              search: "",
+              type: "all",
+              view: "all",
+              sortOrder: "asc",
+              dateFrom: "",
+              dateTo: "",
+            });
+          }}
+          onRefresh={fetchEvents}
+          eventTypeOptions={eventTypeOptions}
+          viewOptions={viewOptions}
+        />
            
 
           {/* Create Trip modal wired to the Create dropdown */}
@@ -2383,14 +2198,34 @@ if (fromDate || toDate) {
             currentUser={auth.user}
           />
 
+          {/* Responsive Grid with proper breakpoints */}
+          <style>{`
+            .events-grid {
+              display: grid;
+              gap: ${theme.spacing[5]};
+            }
+            
+            @media (max-width: 640px) {
+              .events-grid {
+                grid-template-columns: 1fr;
+              }
+            }
+            
+            @media (min-width: 641px) and (max-width: 1024px) {
+              .events-grid {
+                grid-template-columns: repeat(2, 1fr);
+              }
+            }
+            
+            @media (min-width: 1025px) {
+              .events-grid {
+                grid-template-columns: repeat(3, 1fr);
+              }
+            }
+          `}</style>
+
           {filteredEvents.length > 0 ? (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))",
-                gap: theme.spacing[6],
-              }}
-            >
+            <div className="events-grid">
               {filteredEvents.map((event) => {
                 const isOwner = (typeof event.organizer === "object" && event.organizer?._id === auth.user?.id) || (typeof event.organizer === "string" && event.organizer === auth.user?.id);
                 if (event.type === 'bazaar' && auth.isEventsOffice && isOwner) {
@@ -2407,6 +2242,10 @@ if (fromDate || toDate) {
                             onUnarchive={() => handleArchive(event._id, false)}
                             onExportRegistrations={handleExportRegistrations}
                             onRestrict={isEventsOffice ? () => handleOpenRestrictModal(event) : null}
+                            onViewDetails={(evt) => {
+                              setSelectedEventDetails(evt);
+                              setShowEventDetailsModal(true);
+                            }}
                           />
                         );
                   
@@ -2434,58 +2273,87 @@ if (fromDate || toDate) {
                     onExportRegistrations={isEventsOffice ? () => handleExportRegistrations(event) : null}
                     onRestrict={isEventsOffice ? () => handleOpenRestrictModal(event) : null}
                     userRegistrations={userRegistrations}
+                    onViewDetails={(evt) => {
+                      setSelectedEventDetails(evt);
+                      setShowEventDetailsModal(true);
+                    }}
+                    isFavorited={userFavorites.some(fav => fav.eventId === event._id || fav._id === event._id)}
+                    onFavoriteToggle={async () => {
+                      try {
+                        const favorites = await favoritesAPI.getMyFavorites();
+                        setUserFavorites(favorites || []);
+                      } catch (err) {
+                        console.warn('Could not refresh favorites', err);
+                      }
+                    }}
                   />
                 );
 
               })}
             </div>
-          ) : (
+          ) : loading ? null : (
             <div
               style={{
                 background: theme.colors.background.paper,
                 padding: theme.spacing[12],
                 borderRadius: theme.borderRadius.lg,
-                boxShadow: theme.shadows.md,
+                border: `2px dashed ${theme.colors.border}`,
                 textAlign: "center",
+                maxWidth: "600px",
+                margin: "0 auto",
               }}
             >
               <div
                 style={{
-                  fontSize: theme.typography.fontSize["4xl"],
+                  fontSize: "64px",
                   marginBottom: theme.spacing[4],
+                  opacity: 0.5,
                 }}
               >
-                📅
+                {filters.search || filters.type !== "all" || filters.view !== "all" || filters.dateFrom || filters.dateTo ? "🔍" : "📅"}
               </div>
               <h3
                 style={{
-                  fontSize: theme.typography.fontSize.xl,
-                  fontWeight: theme.typography.fontWeight.semibold,
-                  color: theme.colors.text.primary,
+                  margin: 0,
                   marginBottom: theme.spacing[2],
+                  fontSize: theme.typography.fontSize["2xl"],
+                  fontWeight: theme.typography.fontWeight.bold,
+                  color: theme.colors.text.primary,
                 }}
               >
-                No Events Found
+                {filters.search || filters.type !== "all" || filters.view !== "all" || filters.dateFrom || filters.dateTo
+                  ? "No Events Match Your Filters"
+                  : "No Events Available"}
               </h3>
               <p
                 style={{
-                  fontSize: theme.typography.fontSize.base,
+                  margin: 0,
                   color: theme.colors.text.secondary,
+                  fontSize: theme.typography.fontSize.base,
                   marginBottom: theme.spacing[4],
                 }}
               >
-                {filters.search || filters.type
-                  ? "Try adjusting your filters to see more events."
-                  : "There are no events at the moment."}
+                {filters.search || filters.type !== "all" || filters.view !== "all" || filters.dateFrom || filters.dateTo
+                  ? "Try adjusting your search or filter criteria to find what you're looking for."
+                  : "Check back later for upcoming events and activities."}
               </p>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  setFilters({ type: "", search: "", upcoming: false })
-                }
-              >
-                Clear Filters
-              </Button>
+              {(filters.search || filters.type !== "all" || filters.view !== "all" || filters.dateFrom || filters.dateTo) && (
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    setFilters({
+                      search: "",
+                      type: "all",
+                      view: "all",
+                      sortOrder: "asc",
+                      dateFrom: "",
+                      dateTo: "",
+                    });
+                  }}
+                >
+                  Clear All Filters
+                </Button>
+              )}
             </div>
           )}
 
@@ -2542,7 +2410,7 @@ if (fromDate || toDate) {
                   marginBottom: theme.spacing[4],
                 }}
               >
-                {error.message || "There was an error loading events. Please try again."}
+                {error.response?.data?.message || error.message || "There was an error loading events. Please try again."}
               </p>
               <Button variant="primary" onClick={fetchEvents}>
                 Retry

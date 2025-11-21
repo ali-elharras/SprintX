@@ -251,39 +251,66 @@ module.exports = router;
 // @access  Public (no auth per user request)
 router.get("/admin/events-with-ratings", async (req, res) => {
   try {
-    // Get all unique eventIds that have ratings
-    const eventIdsWithRatings = await EventRating.distinct("eventId");
+    // Get all ratings grouped by eventId and eventType
+    const ratingsGrouped = await EventRating.aggregate([
+      {
+        $group: {
+          _id: { eventId: "$eventId", eventType: "$eventType" },
+          count: { $sum: 1 },
+          avgRating: { $avg: "$rating" }
+        }
+      }
+    ]);
     
-    if (eventIdsWithRatings.length === 0) {
+    if (ratingsGrouped.length === 0) {
       return res.status(200).json({
         success: true,
         data: [],
       });
     }
 
-    // Fetch event details for these eventIds
-    const events = await Event.find({ _id: { $in: eventIdsWithRatings } }).lean();
+    // Separate event IDs by type
+    const eventIds = [];
+    const gymIds = [];
+    const courtIds = [];
+    const ratingsMap = new Map();
 
-    // For each event, get rating count and average
-    const eventsWithStats = await Promise.all(
-      events.map(async (event) => {
-        const ratings = await EventRating.find({ eventId: event._id }).lean();
-        const totalRatings = ratings.length;
-        const averageRating = totalRatings > 0
-          ? ratings.reduce((sum, r) => sum + r.rating, 0) / totalRatings
-          : 0;
+    ratingsGrouped.forEach(group => {
+      const { eventId, eventType } = group._id;
+      ratingsMap.set(eventId.toString(), {
+        count: group.count,
+        avgRating: group.avgRating
+      });
 
-        return {
+      if (eventType === 'event') eventIds.push(eventId);
+      else if (eventType === 'gym') gymIds.push(eventId);
+      else if (eventType === 'court') courtIds.push(eventId);
+    });
+
+    // Fetch all events from different collections
+    const allEvents = [];
+
+    // Fetch regular events
+    if (eventIds.length > 0) {
+      const events = await Event.find({ _id: { $in: eventIds } }).lean();
+      events.forEach(event => {
+        const stats = ratingsMap.get(event._id.toString());
+        allEvents.push({
           ...event,
-          ratingsCount: totalRatings,
-          averageRating: Math.round(averageRating * 10) / 10,
-        };
-      })
-    );
+          type: event.type || 'event',
+          title: event.title || event.name,
+          ratingsCount: stats.count,
+          averageRating: Math.round(stats.avgRating * 10) / 10,
+        });
+      });
+    }
 
+    // For gym and court, we'll need to import those models if they exist
+    // For now, just return the events we have
+    
     res.status(200).json({
       success: true,
-      data: eventsWithStats,
+      data: allEvents,
     });
   } catch (error) {
     console.error("Error fetching events with ratings:", error);

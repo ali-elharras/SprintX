@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 import toast from "react-hot-toast";
+import { X, ArrowLeft } from "lucide-react";
 
 // Helper functions to get tomorrow's date in local time (not UTC)
 const getTomorrowDateTimeString = () => {
@@ -519,7 +520,49 @@ const CreateWorkshop = () => {
       <Navbar />
       <div style={pageStyles}>
         <div style={containerStyles}>
-          <h1 style={headerStyles}>Create New Workshop</h1>
+          {/* Header with Back Button */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: theme.spacing[6],
+            }}
+          >
+            <h1 style={headerStyles}>Create New Workshop</h1>
+            <button
+              type="button"
+              onClick={() => navigate("/my-workshops")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: theme.spacing[2],
+                padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+                background: "transparent",
+                border: `2px solid ${theme.colors.border}`,
+                borderRadius: theme.borderRadius,
+                color: theme.colors.text.secondary,
+                fontSize: theme.typography.fontSize.base,
+                fontWeight: theme.typography.fontWeight.semibold,
+                cursor: "pointer",
+                transition: "all 0.2s",
+                fontFamily: theme.typography.fontFamily,
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.borderColor = theme.colors.primary;
+                e.target.style.color = theme.colors.primary;
+                e.target.style.background = `${theme.colors.primary}10`;
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.borderColor = theme.colors.border;
+                e.target.style.color = theme.colors.text.secondary;
+                e.target.style.background = "transparent";
+              }}
+            >
+              <ArrowLeft size={20} />
+              Back to My Workshops
+            </button>
+          </div>
           <div style={formContainerStyles} id="form-top">
             {submissionError && (
               <div style={errorStyles}>{submissionError}</div>
