@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { applicationServices } from "../services/api";
 import theme from "../theme";
@@ -141,95 +142,102 @@ const styles = {
     gap: theme.spacing[6],
     marginBottom: theme.spacing[8],
   },
-  applicationCard: {
+  applicationCard: (isHovered, statusColor) => ({
     background: theme.colors.neutral.white,
     borderRadius: "20px",
-    padding: theme.spacing[6],
-    boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
-    border: `1px solid ${theme.colors.border.light}`,
-    transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+    padding: theme.spacing[5],
+    boxShadow: isHovered
+      ? "0 20px 40px rgba(0, 0, 0, 0.15)"
+      : "0 10px 30px rgba(0, 0, 0, 0.08)",
+    border: `2px solid ${isHovered ? statusColor : theme.colors.border.light}`,
+    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
     position: "relative",
     overflow: "hidden",
-  },
-  cardTopBar: (color) => ({
+  }),
+  cardVerticalStrip: (color) => ({
     position: "absolute",
-    top: 0,
     left: 0,
-    right: 0,
-    height: "6px",
-    background: `linear-gradient(90deg, ${color} 0%, ${color}80 100%)`,
+    top: 0,
+    bottom: 0,
+    width: "8px",
+    background: `linear-gradient(to bottom, ${color}, ${color}dd)`,
+    borderTopLeftRadius: "18px",
+    borderBottomLeftRadius: "18px",
+    zIndex: 1,
   }),
   cardHeader: {
-    marginBottom: theme.spacing[4],
-    paddingTop: theme.spacing[2],
+    marginBottom: theme.spacing[3],
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
   },
   companyName: {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing[2],
+    marginBottom: theme.spacing[1],
+    lineHeight: theme.typography.lineHeight.tight,
   },
   bazaarTitle: {
-    fontSize: theme.typography.fontSize.base,
+    fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.secondary,
-    marginBottom: theme.spacing[3],
+    marginBottom: theme.spacing[2],
   },
   badgeContainer: {
     display: "flex",
     gap: theme.spacing[2],
     flexWrap: "wrap",
-    marginBottom: theme.spacing[4],
+    marginBottom: theme.spacing[2],
   },
   statusBadge: (status) => {
     const statusColors = {
-      pending: { bg: "#FEF3C7", color: "#92400E", border: "#FCD34D" },
-      approved: { bg: "#D1FAE5", color: "#065F46", border: "#34D399" },
-      rejected: { bg: "#FEE2E2", color: "#991B1B", border: "#FCA5A5" },
+      pending: { bg: "#FEF3C7", color: "#92400E" },
+      approved: { bg: "#D1FAE5", color: "#065F46" },
+      rejected: { bg: "#FEE2E2", color: "#991B1B" },
     };
-    const colors = statusColors[status?.toLowerCase()] || { bg: "#F3F4F6", color: "#374151", border: "#D1D5DB" };
+    const colors = statusColors[status?.toLowerCase()] || { bg: "#F3F4F6", color: "#374151" };
     
     return {
-      padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
-      borderRadius: "12px",
-      fontSize: theme.typography.fontSize.xs,
-      fontWeight: theme.typography.fontWeight.semibold,
+      display: "inline-flex",
+      alignItems: "center",
+      padding: `${theme.spacing[1]} ${theme.spacing[3]}`,
+      borderRadius: theme.borderRadius.md,
+      fontSize: theme.typography.fontSize.sm,
+      fontWeight: theme.typography.fontWeight.medium,
       textTransform: "capitalize",
       backgroundColor: colors.bg,
       color: colors.color,
-      border: `2px solid ${colors.border}`,
-      display: "inline-block",
     };
   },
   typeBadge: (type) => ({
-    padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
-    borderRadius: "12px",
-    fontSize: theme.typography.fontSize.xs,
-    fontWeight: theme.typography.fontWeight.semibold,
+    display: "inline-flex",
+    alignItems: "center",
+    padding: `${theme.spacing[1]} ${theme.spacing[3]}`,
+    borderRadius: theme.borderRadius.md,
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.medium,
     textTransform: "capitalize",
     backgroundColor: type === 'bazaar' ? "#EDE9FE" : "#DBEAFE",
     color: type === 'bazaar' ? "#5B21B6" : "#1E40AF",
-    border: `2px solid ${type === 'bazaar' ? "#C4B5FD" : "#93C5FD"}`,
-    display: "inline-block",
   }),
   cardDetails: {
+    display: "grid",
+    gap: theme.spacing[2],
     marginBottom: theme.spacing[4],
   },
   detailRow: {
     display: "flex",
-    justifyContent: "space-between",
-    padding: `${theme.spacing[2]} 0`,
-    borderBottom: `1px solid ${theme.colors.border.light}`,
-  },
-  detailLabel: {
+    alignItems: "center",
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.secondary,
+  },
+  detailLabel: {
     fontWeight: theme.typography.fontWeight.medium,
+    minWidth: "120px",
+    color: theme.colors.text.primary,
   },
   detailValue: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.primary,
-    fontWeight: theme.typography.fontWeight.semibold,
-    textAlign: "right",
+    color: theme.colors.text.secondary,
   },
   attendeesSection: {
     marginTop: theme.spacing[3],
@@ -249,9 +257,11 @@ const styles = {
     padding: `${theme.spacing[1]} 0`,
   },
   cardActions: {
-    display: "flex",
-    gap: theme.spacing[3],
-    marginTop: theme.spacing[4],
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+    gap: theme.spacing[2],
+    paddingTop: theme.spacing[3],
+    borderTop: `1px solid ${theme.colors.border.light}`,
   },
   actionButton: (variant) => {
     const variants = {
@@ -378,6 +388,116 @@ const cssKeyframes = `
   transform: translateY(-2px);
 }
 `;
+
+// Separate ApplicationCard component to use hooks properly
+const ApplicationCard = ({ app, onUpdateStatus, getStatusColor }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const statusColor = getStatusColor(app.status);
+
+  return (
+    <motion.div 
+      className="application-card" 
+      style={styles.applicationCard(isHovered, statusColor)}
+      whileHover={{ y: -8 }}
+      transition={{ duration: 0.2 }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Vertical Color Strip */}
+      <div style={styles.cardVerticalStrip(statusColor)}></div>
+      
+      <div style={styles.cardHeader}>
+        <div style={{ flex: 1 }}>
+          <div style={styles.companyName}>
+            {app.vendor?.companyName || "N/A"}
+          </div>
+          <div style={styles.bazaarTitle}>
+            {app.applicationType === 'bazaar' 
+              ? app.bazaar?.title || app.bazaar?.startDate?.substring(0, 10) || "N/A" 
+              : "Standalone Booth"}
+          </div>
+        </div>
+        <div style={styles.badgeContainer}>
+          <span style={styles.statusBadge(app.status)}>
+            {app.status}
+          </span>
+          <span style={styles.typeBadge(app.applicationType)}>
+            {app.applicationType}
+          </span>
+        </div>
+      </div>
+
+      <div style={styles.cardDetails}>
+        <div style={styles.detailRow}>
+          <span style={styles.detailLabel}>📦 Booth Size:</span>
+          <span style={styles.detailValue}>{app.boothSize || 'N/A'}</span>
+        </div>
+        {app.applicationType === 'booth' && app.startDate && (
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>📅 Start Date:</span>
+            <span style={styles.detailValue}>{new Date(app.startDate).toLocaleDateString()}</span>
+          </div>
+        )}
+        {app.applicationType === 'booth' && app.endDate && (
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>🏁 End Date:</span>
+            <span style={styles.detailValue}>{new Date(app.endDate).toLocaleDateString()}</span>
+          </div>
+        )}
+        {app.applicationType === 'booth' && app.durationWeeks && (
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>⏱️ Duration:</span>
+            <span style={styles.detailValue}>{app.durationWeeks} week(s)</span>
+          </div>
+        )}
+        {app.applicationType === 'booth' && app.location && (
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>📍 Location:</span>
+            <span style={styles.detailValue}>{app.location}</span>
+          </div>
+        )}
+        
+        {app.attendees?.length > 0 && (
+          <div style={styles.attendeesSection}>
+            <div style={styles.attendeesTitle}>
+              👥 Attendees ({app.attendees.length})
+            </div>
+            {app.attendees.map((attendee, idx) => (
+              <div key={idx} style={styles.attendeeItem}>
+                • {attendee.name} ({attendee.email})
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={styles.cardActions}>
+        {app.status === "pending" ? (
+          <>
+            <button
+              className="action-button"
+              style={styles.actionButton("approve")}
+              onClick={() => onUpdateStatus(app.applicationType, app._id, "approved")}
+            >
+              ✓ Approve
+            </button>
+            <button
+              className="action-button"
+              style={styles.actionButton("reject")}
+              onClick={() => onUpdateStatus(app.applicationType, app._id, "rejected")}
+            >
+              ✕ Reject
+            </button>
+          </>
+        ) : (
+          <div style={styles.statusIndicator(app.status)}>
+            {app.status === "approved" ? "✓ Approved" : "✕ Rejected"}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+};
 
 const AdminDashboard = () => {
   const { user, isAdmin, isEventsOffice, isAuthenticated, userType } = useAuth();
@@ -599,97 +719,12 @@ const AdminDashboard = () => {
           {filteredApplications.length > 0 ? (
             <div style={styles.cardsGrid}>
               {filteredApplications.map((app) => (
-                <div key={app._id} className="application-card" style={styles.applicationCard}>
-                  <div style={styles.cardTopBar(getStatusColor(app.status))}></div>
-                  
-                  <div style={styles.cardHeader}>
-                    <div style={styles.companyName}>
-                      {app.vendor?.companyName || "N/A"}
-                    </div>
-                    <div style={styles.bazaarTitle}>
-                      {app.applicationType === 'bazaar' 
-                        ? app.bazaar?.title || app.bazaar?.startDate?.substring(0, 10) || "N/A" 
-                        : "Standalone Booth"}
-                    </div>
-                    <div style={styles.badgeContainer}>
-                      <span style={styles.statusBadge(app.status)}>
-                        {app.status}
-                      </span>
-                      <span style={styles.typeBadge(app.applicationType)}>
-                        {app.applicationType}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={styles.cardDetails}>
-                    <div style={styles.detailRow}>
-                      <span style={styles.detailLabel}>Booth Size</span>
-                      <span style={styles.detailValue}>{app.boothSize || 'N/A'}</span>
-                    </div>
-                    {app.applicationType === 'booth' && app.startDate && (
-                      <div style={styles.detailRow}>
-                        <span style={styles.detailLabel}>Start Date</span>
-                        <span style={styles.detailValue}>{new Date(app.startDate).toLocaleDateString()}</span>
-                      </div>
-                    )}
-                    {app.applicationType === 'booth' && app.endDate && (
-                      <div style={styles.detailRow}>
-                        <span style={styles.detailLabel}>End Date</span>
-                        <span style={styles.detailValue}>{new Date(app.endDate).toLocaleDateString()}</span>
-                      </div>
-                    )}
-                    {app.applicationType === 'booth' && app.durationWeeks && (
-                      <div style={styles.detailRow}>
-                        <span style={styles.detailLabel}>Duration</span>
-                        <span style={styles.detailValue}>{app.durationWeeks} week(s)</span>
-                      </div>
-                    )}
-                    {app.applicationType === 'booth' && app.location && (
-                      <div style={styles.detailRow}>
-                        <span style={styles.detailLabel}>Location</span>
-                        <span style={styles.detailValue}>{app.location}</span>
-                      </div>
-                    )}
-                    
-                    {app.attendees?.length > 0 && (
-                      <div style={styles.attendeesSection}>
-                        <div style={styles.attendeesTitle}>
-                          Attendees ({app.attendees.length})
-                        </div>
-                        {app.attendees.map((attendee, idx) => (
-                          <div key={idx} style={styles.attendeeItem}>
-                            • {attendee.name} ({attendee.email})
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={styles.cardActions}>
-                    {app.status === "pending" ? (
-                      <>
-                        <button
-                          className="action-button"
-                          style={styles.actionButton("approve")}
-                          onClick={() => handleUpdateStatus(app.applicationType, app._id, "approved")}
-                        >
-                          ✓ Approve
-                        </button>
-                        <button
-                          className="action-button"
-                          style={styles.actionButton("reject")}
-                          onClick={() => handleUpdateStatus(app.applicationType, app._id, "rejected")}
-                        >
-                          ✕ Reject
-                        </button>
-                      </>
-                    ) : (
-                      <div style={styles.statusIndicator(app.status)}>
-                        {app.status === "approved" ? "✓ Approved" : "✕ Rejected"}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <ApplicationCard
+                  key={app._id}
+                  app={app}
+                  onUpdateStatus={handleUpdateStatus}
+                  getStatusColor={getStatusColor}
+                />
               ))}
             </div>
           ) : (

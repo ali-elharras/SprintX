@@ -3,6 +3,7 @@ import theme from '../theme';
 import Input from './Input';
 import Select from './Select';
 import Button from './Button';
+import CreateDropdownButton from './CreateDropdownButton';
 
 const EventsFilterBar = ({
   filters,
@@ -13,6 +14,10 @@ const EventsFilterBar = ({
   onRefresh,
   eventTypeOptions,
   viewOptions,
+  showCreateButton,
+  onConferenceModalOpen,
+  onBazaarModalOpen,
+  onTripCreate,
 }) => {
   return (
     <div
@@ -112,7 +117,14 @@ const EventsFilterBar = ({
           >
             Showing <strong style={{ color: theme.colors.primary.main }}>{filteredCount}</strong> of <strong>{totalEvents}</strong> events
           </span>
-          <div style={{ display: "flex", gap: theme.spacing[2], alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: theme.spacing[2], alignItems: "center", flexWrap: "nowrap" }}>
+            {showCreateButton && (
+              <CreateDropdownButton
+                onConferenceModalOpen={onConferenceModalOpen}
+                onBazaarModalOpen={onBazaarModalOpen}
+                onTripCreate={onTripCreate}
+              />
+            )}
             <Button
               variant="outline"
               onClick={onClearFilters}

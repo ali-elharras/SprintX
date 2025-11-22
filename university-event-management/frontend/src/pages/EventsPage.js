@@ -3368,6 +3368,10 @@ const EventsPage = () => {
             onRefresh={fetchEvents}
             eventTypeOptions={eventTypeOptions}
             viewOptions={viewOptions}
+            showCreateButton={isEventsOffice}
+            onConferenceModalOpen={() => setShowConferenceModal(true)}
+            onBazaarModalOpen={() => setCreateBazaarOpen(true)}
+            onTripCreate={() => setCreateTripOpen(true)}
           />
 
           {/* Create Trip modal wired to the Create dropdown */}

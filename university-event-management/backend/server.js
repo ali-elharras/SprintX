@@ -36,6 +36,7 @@ const walletRoutes = require("./routes/wallet");
 const LoyaltyRoutes = require("./routes/LoyaltyRoutes");
 //const eventReviewRoutes = require("./routes/eventReviews");
 const favoritesRoutes = require("./routes/favorites");
+const VendorRouter = require("./routes/VendorRouter");
 
 const app = express();
 
@@ -134,6 +135,8 @@ app.use("/api/loyalty", LoyaltyRoutes);
 app.use("/api/ratings", require("./routes/ratings"));
 app.use("/api/favorites", favoritesRoutes);
 app.use("/api/booth-polls", require("./routes/boothPolls"));
+
+app.use("/api/vendors", VendorRouter);
 
 // Workshop routes (professors create -> saved as pending, Events Office can publish)
 app.use("/api/workshops", workshopRoutes);
