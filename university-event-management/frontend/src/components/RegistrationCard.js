@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import theme, { getEventTypeColor } from "../theme";
-import Card from "./Card";
 import Button from "./Button";
 import RatingModal from "./RatingModal";
 import ViewRatingsModal from "./ViewRatingsModal";
@@ -11,6 +11,7 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false }) => {
   const { user } = useAuth();
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showViewRatingsModal, setShowViewRatingsModal] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   if (!registration || !registration.event) {
     return null;
@@ -119,9 +120,15 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false }) => {
 
   const cardStyles = {
     position: "relative",
-    transition: "all 0.2s ease",
     opacity: registration.status === "cancelled" ? 0.7 : 1,
-    borderLeft: `4px solid ${getEventTypeColor(event.type)}`,
+    background: theme.colors.background.paper,
+    borderRadius: "20px",
+    border: `2px solid ${isHovered ? getEventTypeColor(event.type) : '#e5e7eb'}`,
+    boxShadow: isHovered
+      ? "0 20px 40px rgba(0, 0, 0, 0.15)"
+      : "0 10px 30px rgba(0, 0, 0, 0.08)",
+    overflow: "hidden",
+    padding: theme.spacing[5],
   };
 
   const headerStyles = {
@@ -199,14 +206,34 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false }) => {
   };
 
   const buttonGroupStyles = {
-    display: "flex",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
     gap: theme.spacing[2],
-    flexWrap: "wrap",
   };
 
   return (
     <>
-      <Card style={cardStyles} hover>
+      <motion.div
+        style={cardStyles}
+        whileHover={{ y: -8 }}
+        transition={{ duration: 0.2 }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {/* Vertical Color Strip */}
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: "8px",
+            background: `linear-gradient(to bottom, ${getEventTypeColor(event.type)}, ${getEventTypeColor(event.type)}dd)`,
+            borderTopLeftRadius: "18px",
+            borderBottomLeftRadius: "18px",
+            zIndex: 1,
+          }}
+        />
         {/* Header */}
         <div style={headerStyles}>
           <div style={{ flex: 1 }}>
@@ -441,7 +468,7 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false }) => {
             )}
           </div>
         )}
-      </Card>
+      </motion.div>
 
       {/* Rating Modal - only for regular events */}
       {showRatingsAndComments && (

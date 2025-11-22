@@ -340,6 +340,18 @@ const BazaarCard = ({ bazaar, onApply, application }) => {
 
   return (
     <div className="card-hover" style={styles.card}>
+      {/* Vertical Color Strip */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: "8px",
+          background: `linear-gradient(to bottom, ${theme.colors.primary.main}, ${theme.colors.primary.dark})`,
+          zIndex: 1,
+        }}
+      />
       <div className="card-gradient" style={styles.cardGradient}></div>
       <div>
         <h3 style={styles.bazaarTitle}>{bazaar.name || bazaar.title}</h3>
