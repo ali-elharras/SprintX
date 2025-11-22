@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
-import theme from "../theme";
+import { motion } from "framer-motion";
+import theme, { getEventTypeColor } from "../theme";
 import Button from "./Button";
 import { courtAPI } from "../services/api";
 
 const CourtCard = ({ court, showBooking = true, onBookingClick }) => {
   const [todayAvailability, setTodayAvailability] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     if (court && court._id) {
@@ -100,36 +102,45 @@ const CourtCard = ({ court, showBooking = true, onBookingClick }) => {
   const statusInfo = getStatusInfo();
 
   return (
-    <div
+    <motion.div
       style={{
+        position: "relative",
         background: theme.colors.background.paper,
-        borderRadius: theme.borderRadius.card,
-        boxShadow: theme.shadows.card,
+        borderRadius: "20px",
+        border: `2px solid ${isHovered ? getEventTypeColor(court.type) : '#e5e7eb'}`,
+        boxShadow: isHovered
+          ? "0 20px 40px rgba(0, 0, 0, 0.15)"
+          : "0 10px 30px rgba(0, 0, 0, 0.08)",
         overflow: "hidden",
-        transition: "all 0.3s ease",
         cursor: court.status === "active" ? "pointer" : "default",
         height: "100%",
         display: "flex",
         flexDirection: "column",
       }}
+      whileHover={{ y: -8 }}
+      transition={{ duration: 0.2 }}
       onClick={() => {
         if (court.status === "active" && onBookingClick) {
           onBookingClick(court);
         }
       }}
-      onMouseEnter={(e) => {
-        if (court.status === "active") {
-          e.currentTarget.style.transform = "translateY(-5px)";
-          e.currentTarget.style.boxShadow = theme.shadows.cardHover;
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (court.status === "active") {
-          e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = theme.shadows.card;
-        }
-      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Vertical Color Strip */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: "8px",
+          background: `linear-gradient(to bottom, ${getCourtTypeColor(court.type)}, ${getCourtTypeColor(court.type)}dd)`,
+          borderTopLeftRadius: "18px",
+          borderBottomLeftRadius: "18px",
+          zIndex: 1,
+        }}
+      />
       {/* Court Header */}
       <div
         style={{
@@ -561,7 +572,7 @@ const CourtCard = ({ court, showBooking = true, onBookingClick }) => {
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

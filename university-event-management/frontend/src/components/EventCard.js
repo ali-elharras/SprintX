@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import theme, { getEventTypeColor } from "../theme";
 import Button from "./Button";
 import RegistrationForm from "./RegistrationForm";
@@ -32,6 +33,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   const [participatingVendors, setParticipatingVendors] = useState([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
   const [isFavorite, setIsFavorite] = useState(isFavorited);
+  const [isHovered, setIsHovered] = useState(false);
   const navigate = useNavigate();
   const { isEventsOffice, user, isAdmin } = useAuth();
 
@@ -186,6 +188,7 @@ const handleDeleteWorkshop = async (e) => {
   };
 
   const statusInfo = getStatusInfo();
+  const participationPercentage = (normalizedEvent.currentParticipants / normalizedEvent.maxParticipants) * 100;
 
   // Fetch participating vendors for bazaar events
   useEffect(() => {
@@ -247,57 +250,50 @@ const handleDeleteWorkshop = async (e) => {
 
   return (
     <>
-      <style>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-        @keyframes slideUp {
-          from {
-            transform: translateY(20px);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
-        }
-      `}</style>
-      <div
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.3 }}
+        whileHover={{ y: -8 }}
         onClick={() => onViewDetails && onViewDetails(normalizedEvent)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         style={{
-          background: theme.colors.background.paper,
-          borderRadius: theme.borderRadius.lg,
-          border: `1px solid ${theme.colors.border}`,
+          background: '#ffffff',
+          borderRadius: "20px",
+          border: `2px solid ${isHovered ? getEventTypeColor(normalizedEvent.type) : '#e5e7eb'}`,
           overflow: "hidden",
-          transition: "all 0.2s ease",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
           cursor: "pointer",
           display: "flex",
           flexDirection: "column",
           height: "100%",
-          minHeight: "420px",
+          minHeight: "480px",
+          boxShadow: isHovered ? "0 20px 40px rgba(0,0,0,0.12)" : "0 4px 12px rgba(0,0,0,0.05)",
+          position: "relative",
         }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-4px)";
-        e.currentTarget.style.boxShadow = theme.shadows.lg;
-        e.currentTarget.style.borderColor = theme.colors.primary.main;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "none";
-        e.currentTarget.style.borderColor = theme.colors.border;
-      }}
-    >
+      >
+        {/* Vertical color strip on the left */}
+        <div style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: "8px",
+          background: `linear-gradient(180deg, ${getEventTypeColor(normalizedEvent.type)}, ${getEventTypeColor(normalizedEvent.type)}dd)`,
+          transition: "width 0.3s ease",
+          borderTopLeftRadius: "20px",
+          borderBottomLeftRadius: "20px",
+        }} />
       {/* Event Header */}
       <div
         style={{
-          background: getEventTypeColor(normalizedEvent.type),
-          padding: theme.spacing[4],
-          color: theme.colors.text.white,
+          background: '#ffffff',
+          padding: '1.25rem',
+          paddingLeft: '1.75rem',
+          color: '#111827',
+          position: "relative",
         }}
       >
         <div
@@ -305,24 +301,32 @@ const handleDeleteWorkshop = async (e) => {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "flex-start",
-            marginBottom: theme.spacing[2],
+            marginBottom: '0.75rem',
+            position: "relative",
+            zIndex: 1,
           }}
         >
-          <div
+          <motion.div
+            animate={{ scale: isHovered ? 1.05 : 1 }}
+            transition={{ duration: 0.2 }}
             style={{
-              background: "rgba(255, 255, 255, 0.2)",
-              padding: `${theme.spacing[1]} ${theme.spacing[3]}`,
-              borderRadius: theme.borderRadius.full,
-              fontSize: theme.typography.fontSize.xs,
-              fontWeight: theme.typography.fontWeight.semibold,
+              background: `${getEventTypeColor(normalizedEvent.type)}15`,
+              padding: '0.5rem 1rem',
+              borderRadius: "30px",
+              fontSize: '0.75rem',
+              fontWeight: 700,
               textTransform: "uppercase",
-              letterSpacing: "0.05em",
+              letterSpacing: "0.1em",
+              color: getEventTypeColor(normalizedEvent.type),
             }}
           >
             {getEventTypeLabel(normalizedEvent.type)}
-          </div>
-          <div style={{ display: "flex", gap: theme.spacing[2], alignItems: "center" }}>
-            <button
+          </motion.div>
+          
+          <div style={{ display: "flex", gap: '0.5rem', alignItems: "center" }}>
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
               title={isFavorite ? "Remove from favorites" : "Add to favorites"}
               onClick={async (e) => {
                 e.stopPropagation();
@@ -345,82 +349,124 @@ const handleDeleteWorkshop = async (e) => {
                 }
               }}
               style={{
-                background: isFavorite ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.2)",
-                color: isFavorite ? "#ef4444" : "#fff",
-                border: "none",
-                padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
-                borderRadius: theme.borderRadius.full,
+                background: isFavorite ? "#fef2f2" : "#f9fafb",
+                color: isFavorite ? "#ef4444" : "#6b7280",
+                border: `2px solid ${isFavorite ? "#ef4444" : "#e5e7eb"}`,
+                padding: '0.5rem',
+                borderRadius: "50%",
                 cursor: "pointer",
-                fontWeight: theme.typography.fontWeight.semibold,
-                fontSize: theme.typography.fontSize.lg,
+                fontSize: "1.2rem",
                 transition: "all 0.2s ease",
+                width: "40px",
+                height: "40px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
               {isFavorite ? "❤️" : "♥"}
-            </button>
-            <div
+            </motion.button>
+            
+            <motion.div
+              animate={{ scale: isHovered ? 1.05 : 1 }}
               style={{
                 background: statusInfo.color,
-                color: theme.colors.text.white,
-                padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
-                borderRadius: theme.borderRadius.sm,
-                fontSize: theme.typography.fontSize.xs,
-                fontWeight: theme.typography.fontWeight.medium,
+                color: '#ffffff',
+                padding: '0.5rem 0.75rem',
+                borderRadius: "30px",
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: '0.25rem',
               }}
             >
+              <span>✓</span>
               {statusInfo.status}
-            </div>
+            </motion.div>
           </div>
         </div>
-        <h3
+        
+        <motion.h3
+          animate={{ x: isHovered ? 4 : 0 }}
+          transition={{ duration: 0.2 }}
           style={{
-            fontSize: theme.typography.fontSize.xl,
-            fontWeight: theme.typography.fontWeight.bold,
-            lineHeight: theme.typography.lineHeight.tight,
+            fontSize: '1.5rem',
+            fontWeight: 700,
+            lineHeight: 1.2,
             margin: 0,
+            position: "relative",
+            zIndex: 1,
           }}
         >
           {normalizedEvent.title}
-        </h3>
+        </motion.h3>
       </div>
 
       {/* Event Content */}
-      <div style={{ padding: theme.spacing[5], display: "flex", flexDirection: "column", flexGrow: 1 }}>
-        {/* Event Details - Condensed Single Line */}
+      <div style={{ padding: '1.25rem', display: "flex", flexDirection: "column", flexGrow: 1 }}>
+        {/* Event Details with Icons */}
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            gap: theme.spacing[3],
-            marginBottom: theme.spacing[3],
-            fontSize: theme.typography.fontSize.xs,
-            color: theme.colors.text.secondary,
-            flexWrap: "wrap",
+            flexDirection: "column",
+            gap: '0.5rem',
+            marginBottom: '1rem',
           }}
         >
-          <span style={{ display: "flex", alignItems: "center", gap: theme.spacing[1] }}>
-            📅 {formatDate(normalizedEvent.startDate)}
-          </span>
-          <span>•</span>
-          <span style={{ display: "flex", alignItems: "center", gap: theme.spacing[1] }}>
-            🕐 {formatTime(normalizedEvent.startDate)}
-          </span>
-          <span>•</span>
-          <span style={{ display: "flex", alignItems: "center", gap: theme.spacing[1] }}>
-            📍 {normalizedEvent.location}
-          </span>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: '0.5rem',
+            padding: '0.5rem',
+            background: '#f9fafb',
+            borderRadius: '0.5rem',
+            fontSize: '0.875rem',
+            color: '#111827',
+          }}>
+            <span style={{ fontSize: "1.2rem" }}>📅</span>
+            <span style={{ fontWeight: 500 }}>{formatDate(normalizedEvent.startDate)}</span>
+          </div>
+          
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: '0.5rem',
+            padding: '0.5rem',
+            background: '#f9fafb',
+            borderRadius: '0.5rem',
+            fontSize: '0.875rem',
+            color: '#111827',
+          }}>
+            <span style={{ fontSize: "1.2rem" }}>🕐</span>
+            <span style={{ fontWeight: 500 }}>{formatTime(normalizedEvent.startDate)}</span>
+          </div>
+          
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: '0.5rem',
+            padding: '0.5rem',
+            background: '#f9fafb',
+            borderRadius: '0.5rem',
+            fontSize: '0.875rem',
+            color: '#111827',
+          }}>
+            <span style={{ fontSize: "1.2rem" }}>📍</span>
+            <span style={{ fontWeight: 500 }}>{normalizedEvent.location}</span>
+          </div>
         </div>
 
         {/* Description */}
         <p
           style={{
-            fontSize: theme.typography.fontSize.sm,
-            color: theme.colors.text.secondary,
-            lineHeight: theme.typography.lineHeight.normal,
-            marginBottom: theme.spacing[3],
+            fontSize: '0.875rem',
+            color: '#6b7280',
+            lineHeight: 1.6,
+            marginBottom: '0.75rem',
             margin: 0,
             display: "-webkit-box",
-            WebkitLineClamp: 2,
+            WebkitLineClamp: 3,
             WebkitBoxOrient: "vertical",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -428,7 +474,9 @@ const handleDeleteWorkshop = async (e) => {
         >
           {normalizedEvent.description}
         </p>
-        <button
+
+        <motion.button
+          whileHover={{ x: 4 }}
           onClick={(e) => {
             e.stopPropagation();
             onViewDetails && onViewDetails(normalizedEvent);
@@ -436,46 +484,47 @@ const handleDeleteWorkshop = async (e) => {
           style={{
             background: "none",
             border: "none",
-            color: theme.colors.primary.main,
-            fontSize: theme.typography.fontSize.xs,
-            fontWeight: theme.typography.fontWeight.medium,
+            color: getEventTypeColor(normalizedEvent.type),
+            fontSize: '0.875rem',
+            fontWeight: 600,
             cursor: "pointer",
             padding: 0,
-            marginBottom: theme.spacing[4],
+            marginBottom: '1rem',
             textDecoration: "none",
+            display: "flex",
+            alignItems: "center",
+            gap: '0.25rem',
           }}
-          onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
-          onMouseLeave={(e) => e.target.style.textDecoration = "none"}
         >
-          Read more →
-        </button>
+          Read more <span>→</span>
+        </motion.button>
 
         {/* Participating Vendors Section - Only for Bazaars */}
         {normalizedEvent.type === 'bazaar' && (
           <div
             style={{
-              background: theme.colors.neutral.gray50,
-              padding: theme.spacing[4],
-              borderRadius: theme.borderRadius.base,
-              marginBottom: theme.spacing[4],
-              border: `1px solid ${theme.colors.border}`,
+              background: '#f9fafb',
+              padding: '1rem',
+              borderRadius: '0.75rem',
+              marginBottom: '1rem',
+              border: '2px solid #e5e7eb',
             }}
           >
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: theme.spacing[2],
-                marginBottom: theme.spacing[3],
+                gap: '0.5rem',
+                marginBottom: '0.75rem',
               }}
             >
-              <span style={{ fontSize: theme.typography.fontSize.lg }}>🏪</span>
+              <span style={{ fontSize: '1rem' }}>🏪</span>
               <h4
                 style={{
                   margin: 0,
-                  fontSize: theme.typography.fontSize.base,
-                  fontWeight: theme.typography.fontWeight.semibold,
-                  color: theme.colors.text.primary,
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  color: '#111827',
                 }}
               >
                 Participating Vendors ({participatingVendors.length})
@@ -483,8 +532,8 @@ const handleDeleteWorkshop = async (e) => {
             </div>
             {vendorsLoading ? (
               <p style={{ 
-                fontSize: theme.typography.fontSize.sm, 
-                color: theme.colors.text.secondary,
+                fontSize: '0.875rem', 
+                color: '#6b7280',
                 margin: 0 
               }}>
                 Loading vendors...
@@ -494,23 +543,23 @@ const handleDeleteWorkshop = async (e) => {
                 style={{
                   display: "flex",
                   flexWrap: "wrap",
-                  gap: theme.spacing[2],
+                  gap: '0.5rem',
                 }}
               >
                 {participatingVendors.slice(0, 5).map((vendor) => (
                   <div
                     key={vendor._id}
                     style={{
-                      background: theme.colors.background.paper,
-                      border: `1px solid ${theme.colors.border}`,
-                      borderRadius: theme.borderRadius.sm,
-                      padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
-                      fontSize: theme.typography.fontSize.sm,
-                      fontWeight: theme.typography.fontWeight.medium,
-                      color: theme.colors.text.primary,
+                      background: '#ffffff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '0.5rem',
+                      padding: '0.375rem 0.75rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      color: '#111827',
                       display: "flex",
                       alignItems: "center",
-                      gap: theme.spacing[1],
+                      gap: '0.25rem',
                     }}
                   >
                     <span style={{ fontSize: "0.9em" }}>🏢</span>
@@ -520,13 +569,13 @@ const handleDeleteWorkshop = async (e) => {
                 {participatingVendors.length > 5 && (
                   <div
                     style={{
-                      background: theme.colors.primary.main,
-                      color: theme.colors.text.white,
-                      border: `1px solid ${theme.colors.primary.dark}`,
-                      borderRadius: theme.borderRadius.sm,
-                      padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
-                      fontSize: theme.typography.fontSize.sm,
-                      fontWeight: theme.typography.fontWeight.semibold,
+                      background: getEventTypeColor(normalizedEvent.type),
+                      color: '#ffffff',
+                      border: '1px solid transparent',
+                      borderRadius: '0.5rem',
+                      padding: '0.375rem 0.75rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
                       display: "flex",
                       alignItems: "center",
                     }}
@@ -537,8 +586,8 @@ const handleDeleteWorkshop = async (e) => {
               </div>
             ) : (
               <p style={{ 
-                fontSize: theme.typography.fontSize.sm, 
-                color: theme.colors.text.secondary,
+                fontSize: '0.875rem', 
+                color: '#6b7280',
                 margin: 0,
                 fontStyle: 'italic'
               }}>
@@ -549,31 +598,32 @@ const handleDeleteWorkshop = async (e) => {
         )}
 
         {/* Loading state for vendors */}
-        {event.type === 'bazaar' && vendorsLoading && (
+        {normalizedEvent.type === 'bazaar' && vendorsLoading && (
           <div
             style={{
-              background: theme.colors.neutral.gray50,
-              padding: theme.spacing[4],
-              borderRadius: theme.borderRadius.base,
-              marginBottom: theme.spacing[4],
-              border: `1px solid ${theme.colors.border}`,
+              background: '#f9fafb',
+              padding: '1rem',
+              borderRadius: '0.75rem',
+              marginBottom: '1rem',
+              border: '2px solid #e5e7eb',
               textAlign: 'center',
             }}
           >
-            <p style={{ margin: 0, fontSize: theme.typography.fontSize.sm, color: theme.colors.text.secondary }}>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
               Loading vendors...
             </p>
           </div>
         )}
 
-        {/* Registration Info */}
+        {/* Registration Info with Progress Bar */}
         {(normalizedEvent.registrationRequired || normalizedEvent.type === 'bazaar') && (
           <div
             style={{
-              background: theme.colors.neutral.gray50,
-              padding: theme.spacing[3],
-              borderRadius: theme.borderRadius.base,
-              marginBottom: theme.spacing[4],
+              background: 'linear-gradient(135deg, #f9fafb, #ffffff)',
+              padding: '1rem',
+              borderRadius: '0.75rem',
+              marginBottom: '1rem',
+              border: '2px solid #e5e7eb',
             }}
           >
             <div
@@ -581,48 +631,74 @@ const handleDeleteWorkshop = async (e) => {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                marginBottom: theme.spacing[2],
+                marginBottom: '0.75rem',
               }}
             >
               <span
                 style={{
-                  fontSize: theme.typography.fontSize.sm,
-                  color: theme.colors.text.secondary,
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  color: '#6b7280',
                 }}
               >
-                {normalizedEvent.type === 'bazaar' ? 'Vendors' : 'Participants'}
+                👥 {normalizedEvent.type === 'bazaar' ? 'Vendors' : 'Participants'}
               </span>
               <span
                 style={{
-                  fontSize: theme.typography.fontSize.sm,
-                  fontWeight: theme.typography.fontWeight.semibold,
-                  color: theme.colors.text.primary,
+                  fontSize: '1.125rem',
+                  fontWeight: 700,
+                  color: getEventTypeColor(normalizedEvent.type),
                 }}
               >
                 {normalizedEvent.currentParticipants} / {normalizedEvent.maxParticipants}
               </span>
             </div>
+            
+            {/* Progress Bar */}
+            <div style={{
+              width: "100%",
+              height: "8px",
+              background: '#e5e7eb',
+              borderRadius: "999px",
+              overflow: "hidden",
+              marginBottom: '0.5rem',
+            }}>
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${participationPercentage}%` }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                style={{
+                  height: "100%",
+                  background: `linear-gradient(90deg, ${getEventTypeColor(normalizedEvent.type)}, ${getEventTypeColor(normalizedEvent.type)}dd)`,
+                  borderRadius: "999px",
+                }}
+              />
+            </div>
+            
             {normalizedEvent.registrationDeadline && (
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
+                  paddingTop: '0.5rem',
+                  borderTop: '1px solid #e5e7eb',
+                  marginTop: '0.5rem',
                 }}
               >
                 <span
                   style={{
-                    fontSize: theme.typography.fontSize.sm,
-                    color: theme.colors.text.secondary,
+                    fontSize: '0.875rem',
+                    color: '#6b7280',
                   }}
                 >
                   Registration Deadline
                 </span>
                 <span
                   style={{
-                    fontSize: theme.typography.fontSize.sm,
-                    fontWeight: theme.typography.fontWeight.semibold,
-                    color: theme.colors.text.primary,
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    color: '#111827',
                   }}
                 >
                   {formatDate(normalizedEvent.registrationDeadline)}
@@ -635,21 +711,24 @@ const handleDeleteWorkshop = async (e) => {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
+                  paddingTop: '0.5rem',
+                  borderTop: '1px solid #e5e7eb',
+                  marginTop: '0.5rem',
                 }}
               >
                 <span
                   style={{
-                    fontSize: theme.typography.fontSize.sm,
-                    color: theme.colors.text.secondary,
+                    fontSize: '0.875rem',
+                    color: '#6b7280',
                   }}
                 >
-                  Cost
+                  💰 Cost
                 </span>
                 <span
                   style={{
-                    fontSize: theme.typography.fontSize.sm,
-                    fontWeight: theme.typography.fontWeight.bold,
-                    color: theme.colors.primary.main,
+                    fontSize: '1.125rem',
+                    fontWeight: 700,
+                    color: getEventTypeColor(normalizedEvent.type),
                   }}
                 >
                   ${normalizedEvent.cost}
@@ -661,25 +740,34 @@ const handleDeleteWorkshop = async (e) => {
 
         {/* Additional Info for specific event types */}
         {normalizedEvent.type === "workshop" && normalizedEvent.instructor && (
-          <div style={{ marginBottom: theme.spacing[4] }}>
+          <div
+            style={{
+              background: '#f9fafb',
+              padding: '0.75rem',
+              borderRadius: '0.5rem',
+              marginBottom: '1rem',
+            }}
+          >
             <p
               style={{
-                fontSize: theme.typography.fontSize.sm,
-                color: theme.colors.text.secondary,
-                marginBottom: theme.spacing[1],
+                fontSize: '0.875rem',
+                color: '#6b7280',
+                marginBottom: '0.25rem',
+                margin: 0,
               }}
             >
-              <strong>Instructor:</strong> {normalizedEvent.instructor}
+              <strong style={{ color: '#111827' }}>Instructor:</strong> {normalizedEvent.instructor}
             </p>
             {normalizedEvent.duration && (
               <p
                 style={{
-                  fontSize: theme.typography.fontSize.sm,
-                  color: theme.colors.text.secondary,
+                  fontSize: '0.875rem',
+                  color: '#6b7280',
                   margin: 0,
+                  marginTop: '0.25rem',
                 }}
               >
-                <strong>Duration:</strong> {normalizedEvent.duration} hours
+                <strong style={{ color: '#111827' }}>Duration:</strong> {normalizedEvent.duration} hours
               </p>
             )}
           </div>
@@ -691,11 +779,11 @@ const handleDeleteWorkshop = async (e) => {
         {/* Action Buttons */}
           <div
             style={{
-              display: "flex",
-              gap: theme.spacing[3],
-              alignItems: "stretch",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+              gap: '0.75rem',
               marginTop: "auto",
-              paddingTop: theme.spacing[4]
+              paddingTop: '1rem'
             }}
           >
             {isAdmin ? (
@@ -707,10 +795,10 @@ const handleDeleteWorkshop = async (e) => {
                     onClick={handleDeleteEvent}
                     title="Delete event (only if no registrations)"
                     style={{
-                      width: "100%",
-                      minHeight: "44px",
-                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      minHeight: "48px",
+                      padding: '0.75rem 0.5rem',
                       whiteSpace: "nowrap",
+                      fontSize: '0.875rem',
                     }}
                   >
                     Delete Event
@@ -725,10 +813,10 @@ const handleDeleteWorkshop = async (e) => {
                     variant="primary"
                     onClick={handleEditClick}
                     style={{
-                      width: "100%",
-                      minHeight: "44px",
-                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      minHeight: "48px",
+                      padding: '0.75rem 0.5rem',
                       whiteSpace: "nowrap",
+                      fontSize: '0.875rem',
                     }}
                   >
                     Edit
@@ -741,11 +829,10 @@ const handleDeleteWorkshop = async (e) => {
                     variant="danger"
                     onClick={handleDeleteEvent}
                     style={{
-                      width: "100%",
-                      minHeight: "44px",
-                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      minHeight: "48px",
+                      padding: '0.75rem 0.5rem',
                       whiteSpace: "nowrap",
-                      gridColumn: isOwner && !hasStarted && normalizedEvent.type !== 'workshop' ? "auto" : "1 / -1",
+                      fontSize: '0.875rem',
                     }}
                   >
                     Delete
@@ -756,10 +843,10 @@ const handleDeleteWorkshop = async (e) => {
                     variant="outline"
                     onClick={onArchive}
                     style={{
-                      width: "100%",
-                      minHeight: "44px",
-                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      minHeight: "48px",
+                      padding: '0.75rem 0.5rem',
                       whiteSpace: "nowrap",
+                      fontSize: '0.875rem',
                     }}
                   >
                     Archive
@@ -770,10 +857,10 @@ const handleDeleteWorkshop = async (e) => {
                     variant="outline"
                     onClick={onUnarchive}
                     style={{
-                      width: "100%",
-                      minHeight: "44px",
-                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      minHeight: "48px",
+                      padding: '0.75rem 0.5rem',
                       whiteSpace: "nowrap",
+                      fontSize: '0.875rem',
                     }}
                   >
                     Unarchive
@@ -784,13 +871,13 @@ const handleDeleteWorkshop = async (e) => {
                     variant="outline"
                     onClick={() => onExportRegistrations(normalizedEvent)}
                     style={{
-                      width: "100%",
-                      minHeight: "44px",
-                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      minHeight: "48px",
+                      padding: '0.75rem 0.5rem',
                       whiteSpace: "nowrap",
+                      fontSize: '0.8rem',
                     }}
                   >
-                    Export Registrations
+                    Export
                   </Button>
                 )}
                 {isEventsOffice && !hasEnded && onRestrict && (
@@ -798,38 +885,48 @@ const handleDeleteWorkshop = async (e) => {
                     variant="secondary"
                     onClick={() => onRestrict(normalizedEvent)}
                     style={{
-                      width: "100%",
-                      minHeight: "44px",
-                      padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+                      minHeight: "48px",
+                      padding: '0.75rem 0.5rem',
                       whiteSpace: "nowrap",
+                      fontSize: '0.875rem',
                     }}
                   >
-                    Restrict Event
+                    Restrict
                   </Button>
                 )}
               </>
             ) : (
               // Regular users: keep Register Now as-is
               !isEventsOffice && !isAdmin && showRegistration && canRegister() && (
-                <Button
-                  variant="primary"
-                  onClick={() => setShowRegistrationForm(true)}
-                  style={{
-                    width: "100%",
-                    minHeight: "44px",
-                    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-                    whiteSpace: "nowrap",
-                    gridColumn: "1 / -1",
-                  }}
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  style={{ gridColumn: "1 / -1" }}
                 >
-                  Register Now
-                </Button>
+                  <Button
+                    variant="primary"
+                    onClick={() => setShowRegistrationForm(true)}
+                    style={{
+                      width: "100%",
+                      minHeight: "52px",
+                      borderRadius: '0.75rem',
+                      fontWeight: 700,
+                      fontSize: '1rem',
+                      background: `linear-gradient(135deg, ${getEventTypeColor(normalizedEvent.type)}, ${getEventTypeColor(normalizedEvent.type)}dd)`,
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                      border: 'none',
+                      color: '#ffffff',
+                    }}
+                  >
+                    ✨ Register Now
+                  </Button>
+                </motion.div>
               )
             )}
           </div>
       </div>
 
-    </div>
+    </motion.div>
     </>
   );
 };

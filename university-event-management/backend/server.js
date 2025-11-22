@@ -6,6 +6,7 @@ const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const cron = require("node-cron");
 require("dotenv").config();
+console.log('🔍 Stripe Key loaded:', process.env.STRIPE_SECRET_KEY ? 'YES ✓' : 'NO ✗');
 
 const { errorHandler } = require("./middleware/errorHandler");
 const {
