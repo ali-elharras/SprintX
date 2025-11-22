@@ -29,13 +29,6 @@ const PRICING = {
       "2x2": 150, // Base price per week for 2x2 booth
       "4x4": 300, // Base price per week for 4x4 booth
     },
-    locationMultiplier: {
-      "Building A": 1.5,
-      "Building B": 1.3,
-      "Building C": 1.2,
-      "Building D": 1.0,
-      default: 1.0,
-    },
   },
 };
 

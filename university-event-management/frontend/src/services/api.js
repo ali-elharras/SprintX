@@ -156,6 +156,22 @@ export const eventServices = {
   },
 };
 
+
+export const paymentSum = {
+  getPendingPaymentsSum: async (cancelToken = null) => {
+    try {
+      return await retryRequest(async () => {
+        const response = await api.get("/vendors/payments/pending/sum", {
+          ...(cancelToken && { cancelToken: cancelToken.token }),
+        });
+        return response.data;
+      });
+    } catch (error) {
+      throw error;
+    }
+  },
+};
+
 export const applicationServices = {
   applyToBazaar: async (bazaarId, applicationData) => {
     try {
