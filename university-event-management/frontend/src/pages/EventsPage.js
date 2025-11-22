@@ -6,6 +6,7 @@ import React, {
   useMemo,
 } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import theme, { getEventTypeColor } from "../theme";
 import EventCard from "../components/EventCard";
@@ -386,19 +387,21 @@ const WorkshopCard = ({
   const cardBaseStyle = {
     backgroundColor: isRejected ? "#fef2f2" : "white",
     padding: "1.5rem",
-    borderRadius: "1rem",
+    borderRadius: "20px",
     boxShadow: isHovered
-      ? "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)"
-      : "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05)",
-    border: isRejected ? "2px solid #ef4444" : "1px solid #e5e7eb",
-    transition: "box-shadow 0.3s, transform 0.3s",
-    transform: isHovered ? "translateY(-2px)" : "translateY(0)",
+      ? "0 20px 40px rgba(0,0,0,0.12)"
+      : "0 4px 12px rgba(0,0,0,0.05)",
+    border: isRejected ? `2px solid #ef4444` : `2px solid ${isHovered ? themeColors.indigo600 : '#e5e7eb'}`,
+    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+    transform: isHovered ? "translateY(-8px)" : "translateY(0)",
     display: "flex",
     flexDirection: "column",
-    borderTopWidth: isRejected ? "6px" : "6px",
+    borderTopWidth: isRejected ? "0px" : "0px",
     borderTopStyle: "solid",
     borderTopColor: isRejected ? "#dc2626" : "#9ca3af",
     cursor: "default",
+    position: "relative",
+    overflow: "hidden",
   };
 
   const professorsList = Array.isArray(workshop.professorsParticipating)
@@ -411,6 +414,19 @@ const WorkshopCard = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Vertical color strip on the left - only for non-rejected */}
+      {!isRejected && (
+        <div style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: "8px",
+          background: `linear-gradient(180deg, ${themeColors.indigo600}, ${themeColors.indigo600}dd)`,
+          transition: "width 0.3s ease",
+          borderRadius: "20px 0 0 20px",
+        }} />
+      )}
       <div
         style={{
           display: "flex",
@@ -723,168 +739,173 @@ const WorkshopCard = ({
           marginTop: "1rem",
           paddingTop: "1rem",
           borderTop: "1px solid #e5e7eb",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",
           gap: "0.75rem",
         }}
       >
         <button
           style={{
             ...workshopStyleSheet["card-btn-view-toggle-default"],
-            padding: "0.5rem 1rem",
+            padding: "0.75rem 0.5rem",
             fontSize: "0.875rem",
             fontWeight: 600,
-            borderRadius: "0.5rem",
+            borderRadius: "0.75rem",
             transition: "all 0.15s",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
+            justifyContent: "center",
             border: "none",
             backgroundColor: isToggleHovered
               ? themeColors.indigo600
               : themeColors.indigo50,
             color: isToggleHovered ? "white" : themeColors.indigo600,
+            minHeight: "48px",
+            whiteSpace: "nowrap",
           }}
           onMouseEnter={() => setIsToggleHovered(true)}
           onMouseLeave={() => setIsToggleHovered(false)}
           onClick={() => setIsExpanded(!isExpanded)}
         >
-          {isExpanded ? "Hide Details" : "View Details"}
-          <span style={{ marginLeft: "0.5rem", width: "16px", height: "16px" }}>
+          {isExpanded ? "Hide" : "View"}
+          <span style={{ marginLeft: "0.25rem", width: "16px", height: "16px" }}>
             {isExpanded
               ? WorkshopIconMap.ChevronUp
               : WorkshopIconMap.ChevronDown}
           </span>
         </button>
 
-        <div style={{ display: "flex", gap: "0.75rem" }}>
-          {/* Participants button - opens modal with list of registrations (available for professors and events office) */}
-          <div>
-            <button
-              disabled={!workshop.publishedEventId}
-              title={
-                !workshop.publishedEventId
-                  ? "No participants yet"
-                  : "View participants and remaining spots"
-              }
-              style={{
-                ...workshopStyleSheet["card-btn-view-toggle-default"],
-                padding: "0.35rem 0.75rem",
-                fontSize: "0.8rem",
-                fontWeight: 500,
-                borderRadius: "0.5rem",
-                transition: "all 0.15s",
-                cursor: workshop.publishedEventId ? "pointer" : "not-allowed",
-                border: "none",
-              }}
-              onClick={async () => {
-                if (!workshop.publishedEventId) return;
-                setParticipantsModalOpen(true);
-                setParticipantsLoading(true);
-                try {
-                  const resp = await registrationAPI.getEventRegistrations(
-                    workshop.publishedEventId
-                  );
-                  const regs = resp.data?.data || [];
-                  setParticipants(regs);
-                } catch (err) {
-                  console.error(
-                    "Failed to fetch participants for workshop",
-                    err
-                  );
-                  setParticipants([]);
-                } finally {
-                  setParticipantsLoading(false);
-                }
-              }}
-            >
-              Participants
-            </button>
-          </div>
-          <div style={{ position: "relative" }}>
-            <button
-              disabled={!canEdit}
-              title={
-                !canEdit ? "Cannot edit a published workshop" : "Edit workshop"
-              }
-              style={{
-                ...workshopStyleSheet["card-btn-edit-default"],
-                padding: "0.35rem 1rem",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                borderRadius: "0.5rem",
-                transition: "all 0.15s",
-                cursor: canEdit ? "pointer" : "not-allowed",
-                border: `1px solid ${
-                  canEdit ? themeColors.indigo600 : "#d1d5db"
-                }`,
-                backgroundColor: !canEdit
-                  ? "#f3f4f6"
-                  : isEditHovered
-                  ? themeColors.indigo600
-                  : "transparent",
-                color: !canEdit
-                  ? "#9ca3af"
-                  : isEditHovered
-                  ? "white"
-                  : themeColors.indigo600,
-                opacity: !canEdit ? 0.6 : 1,
-              }}
-              onMouseEnter={() => canEdit && setIsEditHovered(true)}
-              onMouseLeave={() => setIsEditHovered(false)}
-              onClick={() => canEdit && onEdit(uniqueId, workshop.workshopName)}
-            >
-              Edit
-            </button>
-          </div>
+        {/* Participants button - opens modal with list of registrations (available for professors and events office) */}
+        <button
+          disabled={!workshop.publishedEventId}
+          title={
+            !workshop.publishedEventId
+              ? "No participants yet"
+              : "View participants and remaining spots"
+          }
+          style={{
+            ...workshopStyleSheet["card-btn-view-toggle-default"],
+            padding: "0.75rem 0.5rem",
+            fontSize: "0.875rem",
+            fontWeight: 500,
+            borderRadius: "0.75rem",
+            transition: "all 0.15s",
+            cursor: workshop.publishedEventId ? "pointer" : "not-allowed",
+            border: "none",
+            minHeight: "48px",
+            whiteSpace: "nowrap",
+            opacity: workshop.publishedEventId ? 1 : 0.5,
+          }}
+          onClick={async () => {
+            if (!workshop.publishedEventId) return;
+            setParticipantsModalOpen(true);
+            setParticipantsLoading(true);
+            try {
+              const resp = await registrationAPI.getEventRegistrations(
+                workshop.publishedEventId
+              );
+              const regs = resp.data?.data || [];
+              setParticipants(regs);
+            } catch (err) {
+              console.error(
+                "Failed to fetch participants for workshop",
+                err
+              );
+              setParticipants([]);
+            } finally {
+              setParticipantsLoading(false);
+            }
+          }}
+        >
+          People
+        </button>
 
-          {/* Delete button - Only visible to Events Office for published workshops with no attendees */}
-          {isEventsOffice && isPublished && (
-            <button
-              disabled={!canDelete}
-              title={
-                hasAttendees
-                  ? "Cannot delete - students are registered"
-                  : "Delete workshop"
-              }
-              style={{
-                ...workshopStyleSheet["card-btn-delete-default"],
-                padding: "0.35rem 1rem",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                borderRadius: "0.5rem",
-                transition: "all 0.15s",
-                cursor: canDelete ? "pointer" : "not-allowed",
-                border: `1px solid ${
-                  canDelete ? themeColors.red600 : "#d1d5db"
-                }`,
-                backgroundColor: !canDelete
-                  ? "#f3f4f6"
-                  : isDeleteHovered
-                  ? themeColors.red600
-                  : "transparent",
-                color: !canDelete
-                  ? "#9ca3af"
-                  : isDeleteHovered
-                  ? "white"
-                  : themeColors.red600,
-                display: "flex",
-                alignItems: "center",
-                gap: "0.25rem",
-                opacity: !canDelete ? 0.6 : 1,
-              }}
-              onMouseEnter={() => canDelete && setIsDeleteHovered(true)}
-              onMouseLeave={() => setIsDeleteHovered(false)}
-              onClick={() =>
-                canDelete && onDelete(uniqueId, workshop.workshopName)
-              }
-            >
-              {WorkshopIconMap.Trash}
-              Delete
-            </button>
-          )}
-        </div>
+        <button
+          disabled={!canEdit}
+          title={
+            !canEdit ? "Cannot edit a published workshop" : "Edit workshop"
+          }
+          style={{
+            ...workshopStyleSheet["card-btn-edit-default"],
+            padding: "0.75rem 0.5rem",
+            fontSize: "0.875rem",
+            fontWeight: 500,
+            borderRadius: "0.75rem",
+            transition: "all 0.15s",
+            cursor: canEdit ? "pointer" : "not-allowed",
+            border: `2px solid ${
+              canEdit ? themeColors.indigo600 : "#d1d5db"
+            }`,
+            backgroundColor: !canEdit
+              ? "#f3f4f6"
+              : isEditHovered
+              ? themeColors.indigo600
+              : "transparent",
+            color: !canEdit
+              ? "#9ca3af"
+              : isEditHovered
+              ? "white"
+              : themeColors.indigo600,
+            opacity: !canEdit ? 0.6 : 1,
+            minHeight: "48px",
+            whiteSpace: "nowrap",
+          }}
+          onMouseEnter={() => canEdit && setIsEditHovered(true)}
+          onMouseLeave={() => setIsEditHovered(false)}
+          onClick={() => canEdit && onEdit(uniqueId, workshop.workshopName)}
+        >
+          Edit
+        </button>
+
+        {/* Delete button - Only visible to Events Office for published workshops with no attendees */}
+        {isEventsOffice && isPublished && (
+          <button
+            disabled={!canDelete}
+            title={
+              hasAttendees
+                ? "Cannot delete - students are registered"
+                : "Delete workshop"
+            }
+            style={{
+              ...workshopStyleSheet["card-btn-delete-default"],
+              padding: "0.75rem 0.5rem",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+              borderRadius: "0.75rem",
+              transition: "all 0.15s",
+              cursor: canDelete ? "pointer" : "not-allowed",
+              border: `2px solid ${
+                canDelete ? themeColors.red600 : "#d1d5db"
+              }`,
+              backgroundColor: !canDelete
+                ? "#f3f4f6"
+                : isDeleteHovered
+                ? themeColors.red600
+                : "transparent",
+              color: !canDelete
+                ? "#9ca3af"
+                : isDeleteHovered
+                ? "white"
+                : themeColors.red600,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.25rem",
+              opacity: !canDelete ? 0.6 : 1,
+              minHeight: "48px",
+              whiteSpace: "nowrap",
+            }}
+            onMouseEnter={() => canDelete && setIsDeleteHovered(true)}
+            onMouseLeave={() => setIsDeleteHovered(false)}
+            onClick={() =>
+              canDelete && onDelete(uniqueId, workshop.workshopName)
+            }
+          >
+            {WorkshopIconMap.Trash}
+            Delete
+          </button>
+        )}
       </div>
       {/* Participants Modal (per-workshop) */}
       <Modal
@@ -1473,6 +1494,7 @@ const BazaarManagementCard = ({
 }) => {
   const [participatingVendors, setParticipatingVendors] = useState([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   // Fetch participating vendors
   useEffect(() => {
@@ -1497,239 +1519,371 @@ const BazaarManagementCard = ({
     fetchVendors();
   }, [bazaar._id]);
 
-  const cardStyle = {
-    background: theme.colors.background.paper,
-    borderRadius: theme.borderRadius.card,
-    boxShadow: theme.shadows.card,
-    overflow: "hidden",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "space-between",
-    height: "100%",
-  };
-
-  const headerStyle = {
-    background: `linear-gradient(135deg, ${getEventTypeColor(
-      "bazaar"
-    )} 0%, ${getEventTypeColor("bazaar")}dd 100%)`,
-    padding: theme.spacing[4],
-    color: theme.colors.text.white,
-  };
-
-  const labelStyle = {
-    background: "rgba(255, 255, 255, 0.2)",
-    padding: `${theme.spacing[1]} ${theme.spacing[3]}`,
-    borderRadius: theme.borderRadius.full,
-    fontSize: theme.typography.fontSize.xs,
-    fontWeight: theme.typography.fontWeight.semibold,
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-    display: "inline-block",
-  };
-
-  const titleStyle = {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
-    lineHeight: theme.typography.lineHeight.tight,
-    margin: 0,
-    marginTop: theme.spacing[2],
-  };
-
   const now = new Date();
   const hasStarted = new Date(bazaar.startDate) <= now;
   const hasEnded = new Date(bazaar.endDate) < now;
+  const participationPercentage = (bazaar.currentParticipants / bazaar.maxParticipants) * 100;
 
   return (
-    <div style={cardStyle}>
-      <div>
-        <div style={headerStyle}>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.3 }}
+      whileHover={{ y: -8 }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        background: '#ffffff',
+        borderRadius: "20px",
+        border: `2px solid ${isHovered ? getEventTypeColor('bazaar') : '#e5e7eb'}`,
+        overflow: "hidden",
+        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        cursor: "pointer",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        minHeight: "480px",
+        boxShadow: isHovered ? "0 20px 40px rgba(0,0,0,0.12)" : "0 4px 12px rgba(0,0,0,0.05)",
+        position: "relative",
+      }}
+    >
+      {/* Vertical color strip on the left */}
+      <div style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        bottom: 0,
+        width: "8px",
+        background: `linear-gradient(180deg, ${getEventTypeColor('bazaar')}, ${getEventTypeColor('bazaar')}dd)`,
+        transition: "width 0.3s ease",
+        borderRadius: "20px 0 0 20px",
+      }} />
+      {/* Event Header */}
+      <div
+        style={{
+          background: '#ffffff',
+          padding: '1.25rem',
+          paddingLeft: '1.75rem',
+          color: '#111827',
+          position: "relative",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            marginBottom: '0.75rem',
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
+          <motion.div
+            animate={{ scale: isHovered ? 1.05 : 1 }}
+            transition={{ duration: 0.2 }}
+            style={{
+              background: `${getEventTypeColor('bazaar')}15`,
+              padding: '0.5rem 1rem',
+              borderRadius: "30px",
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              color: getEventTypeColor('bazaar'),
+            }}
+          >
+            Bazaar
+          </motion.div>
+          
+          <motion.div
+            animate={{ scale: isHovered ? 1.05 : 1 }}
+            style={{
+              background: hasEnded ? theme.colors.neutral.gray500 : theme.colors.success.main,
+              color: '#ffffff',
+              padding: '0.5rem 0.75rem',
+              borderRadius: "30px",
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              display: "flex",
+              alignItems: "center",
+              gap: '0.25rem',
+            }}
+          >
+            <span>✓</span>
+            {hasEnded ? 'Event Ended' : 'Published'}
+          </motion.div>
+        </div>
+        
+        <motion.h3
+          animate={{ x: isHovered ? 4 : 0 }}
+          transition={{ duration: 0.2 }}
+          style={{
+            fontSize: '1.5rem',
+            fontWeight: 700,
+            lineHeight: 1.2,
+            margin: 0,
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
+          {bazaar.title || bazaar.name}
+        </motion.h3>
+      </div>
+
+      {/* Event Content */}
+      <div style={{ padding: '1.25rem', display: "flex", flexDirection: "column", flexGrow: 1 }}>
+        {/* Event Details with Icons */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: '0.5rem',
+            marginBottom: '1rem',
+          }}
+        >
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: '0.5rem',
+            padding: '0.5rem',
+            background: '#f9fafb',
+            borderRadius: '0.5rem',
+            fontSize: '0.875rem',
+            color: '#111827',
+          }}>
+            <span style={{ fontSize: "1.2rem" }}>📅</span>
+            <span style={{ fontWeight: 500 }}>{new Date(bazaar.startDate).toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" })}</span>
+          </div>
+          
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: '0.5rem',
+            padding: '0.5rem',
+            background: '#f9fafb',
+            borderRadius: '0.5rem',
+            fontSize: '0.875rem',
+            color: '#111827',
+          }}>
+            <span style={{ fontSize: "1.2rem" }}>🕐</span>
+            <span style={{ fontWeight: 500 }}>{new Date(bazaar.startDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</span>
+          </div>
+          
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: '0.5rem',
+            padding: '0.5rem',
+            background: '#f9fafb',
+            borderRadius: '0.5rem',
+            fontSize: '0.875rem',
+            color: '#111827',
+          }}>
+            <span style={{ fontSize: "1.2rem" }}>📍</span>
+            <span style={{ fontWeight: 500 }}>{bazaar.location}</span>
+          </div>
+        </div>
+
+        {/* Description */}
+        <p
+          style={{
+            fontSize: '0.875rem',
+            color: '#6b7280',
+            lineHeight: 1.6,
+            marginBottom: '0.75rem',
+            margin: 0,
+            display: "-webkit-box",
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {bazaar.description}
+        </p>
+
+        {/* Participating Vendors Section */}
+        <div
+          style={{
+            background: '#f9fafb',
+            padding: '1rem',
+            borderRadius: '0.75rem',
+            marginBottom: '1rem',
+            marginTop: '1rem',
+            border: '2px solid #e5e7eb',
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: '0.5rem',
+              marginBottom: '0.75rem',
+            }}
+          >
+            <span style={{ fontSize: '1rem' }}>🏪</span>
+            <h4
+              style={{
+                margin: 0,
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: '#111827',
+              }}
+            >
+              Participating Vendors ({participatingVendors.length})
+            </h4>
+          </div>
+          {vendorsLoading ? (
+            <p style={{ 
+              fontSize: '0.875rem', 
+              color: '#6b7280',
+              margin: 0 
+            }}>
+              Loading vendors...
+            </p>
+          ) : participatingVendors.length > 0 ? (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: '0.5rem',
+              }}
+            >
+              {participatingVendors.slice(0, 5).map((vendor) => (
+                <div
+                  key={vendor._id}
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '0.5rem',
+                    padding: '0.375rem 0.75rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    color: '#111827',
+                    display: "flex",
+                    alignItems: "center",
+                    gap: '0.25rem',
+                  }}
+                >
+                  <span style={{ fontSize: "0.9em" }}>🏢</span>
+                  {vendor.companyName}
+                </div>
+              ))}
+              {participatingVendors.length > 5 && (
+                <div
+                  style={{
+                    background: getEventTypeColor('bazaar'),
+                    color: '#ffffff',
+                    border: '1px solid transparent',
+                    borderRadius: '0.5rem',
+                    padding: '0.375rem 0.75rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  +{participatingVendors.length - 5} more
+                </div>
+              )}
+            </div>
+          ) : (
+            <p style={{ 
+              fontSize: '0.875rem', 
+              color: '#6b7280',
+              margin: 0,
+              fontStyle: 'italic'
+            }}>
+              No vendors have been approved yet
+            </p>
+          )}
+        </div>
+
+        {/* Registration Info with Progress Bar */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #f9fafb, #ffffff)',
+            padding: '1rem',
+            borderRadius: '0.75rem',
+            marginBottom: '1rem',
+            border: '2px solid #e5e7eb',
+          }}
+        >
           <div
             style={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              marginBottom: '0.75rem',
             }}
           >
-            <div style={labelStyle}>Bazaar</div>
-            {hasEnded && (
-              <div
-                style={{
-                  background: "rgba(0,0,0,0.2)",
-                  color: theme.colors.text.white,
-                  padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
-                  borderRadius: theme.borderRadius.sm,
-                  fontSize: theme.typography.fontSize.xs,
-                  fontWeight: theme.typography.fontWeight.medium,
-                }}
-              >
-                Event Ended
-              </div>
-            )}
-          </div>
-          <h3 style={titleStyle}>{bazaar.title || bazaar.name}</h3>
-        </div>
-
-        <div style={{ padding: theme.spacing[5] }}>
-          <p
-            style={{
-              color: theme.colors.text.secondary,
-              margin: 0,
-              fontSize: theme.typography.fontSize.sm,
-            }}
-          >
-            {new Date(bazaar.startDate).toLocaleString("en-US", {
-              dateStyle: "medium",
-              timeStyle: "short",
-            })}
-          </p>
-          <p
-            style={{
-              color: theme.colors.text.secondary,
-              margin: `${theme.spacing[1]} 0`,
-              fontSize: theme.typography.fontSize.sm,
-            }}
-          >
-            📍 {bazaar.location}
-          </p>
-          <p
-            style={{
-              color: theme.colors.text.primary,
-              marginTop: theme.spacing[4],
-              fontSize: theme.typography.fontSize.base,
-              maxHeight: "100px",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {bazaar.description}
-          </p>
-
-          {/* Participating Vendors Section */}
-          <div
-            style={{
-              background: theme.colors.neutral.gray50,
-              padding: theme.spacing[3],
-              borderRadius: theme.borderRadius.base,
-              marginTop: theme.spacing[4],
-              border: `1px solid ${theme.colors.border}`,
-            }}
-          >
-            <div
+            <span
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: theme.spacing[2],
-                marginBottom: theme.spacing[2],
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: '#6b7280',
               }}
             >
-              <span style={{ fontSize: theme.typography.fontSize.base }}>
-                🏪
-              </span>
-              <h4
-                style={{
-                  margin: 0,
-                  fontSize: theme.typography.fontSize.sm,
-                  fontWeight: theme.typography.fontWeight.semibold,
-                  color: theme.colors.text.primary,
-                }}
-              >
-                Participating Vendors ({participatingVendors.length})
-              </h4>
-            </div>
-            {vendorsLoading ? (
-              <p
-                style={{
-                  fontSize: theme.typography.fontSize.xs,
-                  color: theme.colors.text.secondary,
-                  margin: 0,
-                }}
-              >
-                Loading vendors...
-              </p>
-            ) : participatingVendors.length > 0 ? (
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: theme.spacing[2],
-                }}
-              >
-                {participatingVendors.slice(0, 5).map((vendor) => (
-                  <div
-                    key={vendor._id}
-                    style={{
-                      background: theme.colors.background.paper,
-                      border: `1px solid ${theme.colors.border}`,
-                      borderRadius: theme.borderRadius.sm,
-                      padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
-                      fontSize: theme.typography.fontSize.xs,
-                      fontWeight: theme.typography.fontWeight.medium,
-                      color: theme.colors.text.primary,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: theme.spacing[1],
-                    }}
-                  >
-                    <span style={{ fontSize: "0.8em" }}>🏢</span>
-                    {vendor.companyName}
-                  </div>
-                ))}
-                {participatingVendors.length > 5 && (
-                  <div
-                    style={{
-                      background: theme.colors.primary.main,
-                      color: theme.colors.text.white,
-                      borderRadius: theme.borderRadius.sm,
-                      padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
-                      fontSize: theme.typography.fontSize.xs,
-                      fontWeight: theme.typography.fontWeight.semibold,
-                    }}
-                  >
-                    +{participatingVendors.length - 5} more
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p
-                style={{
-                  fontSize: theme.typography.fontSize.xs,
-                  color: theme.colors.text.secondary,
-                  margin: 0,
-                  fontStyle: "italic",
-                }}
-              >
-                No vendors have been approved yet
-              </p>
-            )}
+              👥 Vendors
+            </span>
+            <span
+              style={{
+                fontSize: '1.125rem',
+                fontWeight: 700,
+                color: getEventTypeColor('bazaar'),
+              }}
+            >
+              {bazaar.currentParticipants} / {bazaar.maxParticipants}
+            </span>
+          </div>
+          
+          {/* Progress Bar */}
+          <div style={{
+            width: "100%",
+            height: "8px",
+            background: '#e5e7eb',
+            borderRadius: "999px",
+            overflow: "hidden",
+            marginBottom: '0.5rem',
+          }}>
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${participationPercentage}%` }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              style={{
+                height: "100%",
+                background: `linear-gradient(90deg, ${getEventTypeColor('bazaar')}, ${getEventTypeColor('bazaar')}dd)`,
+                borderRadius: "999px",
+              }}
+            />
           </div>
         </div>
-      </div>
 
-      <div style={{ padding: `0 ${theme.spacing[5]} ${theme.spacing[5]}` }}>
+        {/* Spacer to push buttons to bottom */}
+        <div style={{ flexGrow: 1 }}></div>
+        
+        {/* Action Buttons */}
         <div
           style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            color: theme.colors.text.secondary,
-            fontSize: theme.typography.fontSize.sm,
-            marginBottom: theme.spacing[4],
-            borderTop: `1px solid ${theme.colors.border}`,
-            paddingTop: theme.spacing[4],
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+            gap: '0.75rem',
+            marginTop: "auto",
+            paddingTop: '1rem'
           }}
         >
-          <span>Vendors</span>
-          <span style={{ fontWeight: "bold" }}>
-            {bazaar.currentParticipants} / {bazaar.maxParticipants}
-          </span>
-        </div>
-        <div style={{ display: "flex", gap: theme.spacing[2], width: "100%" }}>
           {!hasStarted && (
             <>
               <Button
                 variant="primary"
                 onClick={() => onEdit(bazaar)}
-                style={{ flex: 1 }}
+                style={{
+                  minHeight: "48px",
+                  padding: '0.75rem 0.5rem',
+                  whiteSpace: "nowrap",
+                  fontSize: '0.875rem',
+                }}
               >
                 Edit
               </Button>
@@ -1737,7 +1891,12 @@ const BazaarManagementCard = ({
                 <Button
                   variant="danger"
                   onClick={() => onDelete(bazaar._id)}
-                  style={{ flex: 1 }}
+                  style={{
+                    minHeight: "48px",
+                    padding: '0.75rem 0.5rem',
+                    whiteSpace: "nowrap",
+                    fontSize: '0.875rem',
+                  }}
                 >
                   Delete
                 </Button>
@@ -1745,12 +1904,22 @@ const BazaarManagementCard = ({
             </>
           )}
           {showArchiveButton && (
-            <Button variant="outline" onClick={onArchive} style={{ flex: 1 }}>
+            <Button variant="outline" onClick={onArchive} style={{
+              minHeight: "48px",
+              padding: '0.75rem 0.5rem',
+              whiteSpace: "nowrap",
+              fontSize: '0.875rem',
+            }}>
               Archive
             </Button>
           )}
           {showUnarchiveButton && (
-            <Button variant="outline" onClick={onUnarchive} style={{ flex: 1 }}>
+            <Button variant="outline" onClick={onUnarchive} style={{
+              minHeight: "48px",
+              padding: '0.75rem 0.5rem',
+              whiteSpace: "nowrap",
+              fontSize: '0.875rem',
+            }}>
               Unarchive
             </Button>
           )}
@@ -1758,23 +1927,33 @@ const BazaarManagementCard = ({
             <Button
               variant="outline"
               onClick={() => onExportRegistrations(bazaar)}
-              style={{ flex: 1 }}
+              style={{
+                minHeight: "48px",
+                padding: '0.75rem 0.5rem',
+                whiteSpace: "nowrap",
+                fontSize: '0.8rem',
+              }}
             >
-              Export Registrations
+              Export
             </Button>
           )}
           {!hasEnded && onRestrict && (
             <Button
               variant="secondary"
               onClick={() => onRestrict(bazaar)}
-              style={{ flex: 1 }}
+              style={{
+                minHeight: "48px",
+                padding: '0.75rem 0.5rem',
+                whiteSpace: "nowrap",
+                fontSize: '0.875rem',
+              }}
             >
-              Restrict Event
+              Restrict
             </Button>
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

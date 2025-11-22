@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { gymAPI } from "../services/api";
@@ -15,6 +16,7 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
   const [registering, setRegistering] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [gymRegistrationData, setGymRegistrationData] = useState(null);
+  const [isHovered, setIsHovered] = useState(false);
 
   const getSessionTypeColor = (type) => {
     const colors = {
@@ -129,17 +131,15 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
 
   const styles = {
     card: {
+      position: "relative",
       backgroundColor: theme.colors.background.paper,
-      borderRadius: theme.borderRadius.xl,
-      boxShadow: theme.shadows.card,
+      borderRadius: "20px",
+      border: `2px solid ${isHovered ? getSessionTypeColor(session.type) : '#e5e7eb'}`,
+      boxShadow: isHovered
+        ? "0 20px 40px rgba(0, 0, 0, 0.15)"
+        : "0 10px 30px rgba(0, 0, 0, 0.08)",
       overflow: "hidden",
-      transition: "all 0.3s ease",
       cursor: "pointer",
-      border: `2px solid transparent`,
-      ":hover": {
-        transform: "translateY(-5px)",
-        boxShadow: theme.shadows.cardHover,
-      },
     },
     header: {
       padding: theme.spacing[4],
@@ -344,7 +344,27 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
   };
 
   return (
-    <div style={styles.card}>
+    <motion.div
+      style={styles.card}
+      whileHover={{ y: -8 }}
+      transition={{ duration: 0.2 }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Vertical Color Strip */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: "8px",
+          background: `linear-gradient(to bottom, ${getSessionTypeColor(session.type)}, ${getSessionTypeColor(session.type)}dd)`,
+          borderTopLeftRadius: "18px",
+          borderBottomLeftRadius: "18px",
+          zIndex: 1,
+        }}
+      />
       <div style={styles.header}>
         <div style={styles.typeTag}>{session.type.replace("_", " ")}</div>
         <h3 style={styles.title}>{session.title}</h3>
@@ -381,9 +401,25 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
           </div>
         </div>
 
-        <div style={styles.buttons}>
+        <div
+          style={{
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e5e7eb",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",
+            gap: "0.75rem",
+          }}
+        >
           <button
-            style={getRegisterButtonStyle()}
+            style={{
+              ...getRegisterButtonStyle(),
+              minHeight: "48px",
+              fontSize: "0.875rem",
+              fontWeight: 600,
+              borderRadius: "0.75rem",
+              whiteSpace: "nowrap",
+            }}
             onClick={() => handleRegister()}
             disabled={!canUserRegister() || registering}
           >
@@ -391,10 +427,35 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
           </button>
 
           {(auth.isAdmin || auth.isEventsOffice) && (
-            <button style={{ ...styles.detailsButton, backgroundColor: theme.colors.background.paper }} onClick={() => setIsEditOpen(true)}>Edit</button>
+            <button
+              style={{
+                ...styles.detailsButton,
+                backgroundColor: theme.colors.background.paper,
+                minHeight: "48px",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+                borderRadius: "0.75rem",
+                whiteSpace: "nowrap",
+              }}
+              onClick={() => setIsEditOpen(true)}
+            >
+              Edit
+            </button>
           )}
 
-          <button style={styles.detailsButton} onClick={() => setIsDetailsOpen(true)}>Details</button>
+          <button
+            style={{
+              ...styles.detailsButton,
+              minHeight: "48px",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+              borderRadius: "0.75rem",
+              whiteSpace: "nowrap",
+            }}
+            onClick={() => setIsDetailsOpen(true)}
+          >
+            Details
+          </button>
         </div>
 
         {/* Edit modal */}
@@ -422,7 +483,7 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
           />
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

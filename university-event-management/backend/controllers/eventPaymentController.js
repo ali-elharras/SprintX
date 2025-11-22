@@ -1,4 +1,10 @@
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? require("stripe")(process.env.STRIPE_SECRET_KEY)
+  : null;
+
+if (!stripe) {
+  console.error('❌ Stripe not initialized - STRIPE_SECRET_KEY is missing');
+}
 const EventPayment = require("../models/EventPayment");
 const Registration = require("../models/Registration");
 const Event = require("../models/Event");

@@ -1,5 +1,10 @@
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-const BazaarApplication = require("../models/BazaarApplication");
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? require("stripe")(process.env.STRIPE_SECRET_KEY)
+  : null;
+
+if (!stripe) {
+  console.error('❌ Stripe not initialized - STRIPE_SECRET_KEY is missing');
+}
 const BoothApplication = require("../models/BoothApplication");
 const Event = require("../models/Event");
 const Conference = require("../models/Conference");

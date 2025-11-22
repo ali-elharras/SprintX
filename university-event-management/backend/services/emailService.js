@@ -1590,6 +1590,255 @@ class EmailService {
     `;
   }
 
+  async sendApplicationRejectionEmail(
+    to,
+    vendorName,
+    applicationType,
+    eventName,
+    rejectionReason = null
+  ) {
+    const mailOptions = {
+      from: `"SprintX" <${
+        process.env.EMAIL_USER || "no-reply@campusevents.test"
+      }>`,
+      to: to,
+      subject: `Application Status Update - SprintX`,
+      html: this.getApplicationRejectionEmailTemplate({
+        vendorName,
+        applicationType,
+        eventName,
+        rejectionReason,
+      }),
+      text: `
+        Dear ${vendorName},
+
+        We regret to inform you that your ${applicationType} application for ${eventName} has not been approved at this time.
+
+        ${
+          rejectionReason ? `Reason: ${rejectionReason}\n\n` : ""
+        }We appreciate your interest and encourage you to apply for future opportunities.
+
+        If you have any questions, please contact our support team.
+
+        Best regards,
+        SprintX Team
+      `,
+    };
+
+    try {
+      if (!this.transporter) {
+        console.log(
+          "⚠️ No transporter available - falling back to console mode"
+        );
+        console.log("📧 Application Rejection Email (Console Mode):");
+        console.log("   To:", to);
+        console.log("   Subject:", mailOptions.subject);
+        return { success: true, messageId: "console-log" };
+      }
+
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log("✅ Application rejection email sent to:", to);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error(
+        "❌ Failed to send application rejection email:",
+        error.message
+      );
+      throw new Error(
+        `Failed to send application rejection email: ${error.message}`
+      );
+    }
+  }
+
+  getApplicationRejectionEmailTemplate({
+    vendorName,
+    applicationType,
+    eventName,
+    rejectionReason,
+  }) {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Application Status Update - SprintX</title>
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+          }
+          .email-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            text-align: center;
+            color: white;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+          }
+          .content {
+            background: white;
+            padding: 40px 30px;
+          }
+          .content h2 {
+            color: #667eea;
+            margin-top: 0;
+            font-size: 24px;
+          }
+          .content p {
+            margin-bottom: 15px;
+          }
+          .info-box {
+            background: #f9fafb;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 5px;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          .info-row:last-child {
+            border-bottom: none;
+          }
+          .info-label {
+            font-weight: 600;
+            color: #6b7280;
+          }
+          .info-value {
+            color: #1f2937;
+            font-weight: 600;
+          }
+          .status-badge {
+            background: #f3f4f6;
+            padding: 25px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 25px 0;
+            border: 2px solid #e5e7eb;
+          }
+          .status-badge h3 {
+            margin: 0 0 10px 0;
+            color: #6b7280;
+            font-size: 22px;
+          }
+          .status-badge p {
+            margin: 0;
+            color: #4b5563;
+            font-size: 16px;
+          }
+          .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 35px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            transition: transform 0.2s;
+          }
+          .cta-button:hover {
+            transform: translateY(-2px);
+          }
+          .footer {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+          }
+          .footer a {
+            color: white;
+            text-decoration: underline;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <h1>📋 Application Status Update</h1>
+          </div>
+          
+          <div class="content">
+            <h2>Hello ${vendorName},</h2>
+            
+            <p>Thank you for your interest in participating with SprintX.</p>
+            
+            <div class="status-badge">
+              <h3>Application Status</h3>
+              <p>Unfortunately, your ${applicationType} application was not approved at this time.</p>
+            </div>
+            
+            <div class="info-box">
+              <div class="info-row">
+                <span class="info-label">Application Type:</span>
+                <span class="info-value">${
+                  applicationType.charAt(0).toUpperCase() +
+                  applicationType.slice(1)
+                }</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Event:</span>
+                <span class="info-value">${eventName || "Booth Request"}</span>
+              </div>
+              ${
+                rejectionReason
+                  ? `
+              <div class="info-row">
+                <span class="info-label">Note:</span>
+                <span class="info-value">${rejectionReason}</span>
+              </div>
+              `
+                  : ""
+              }
+            </div>
+            
+            <p>We appreciate your interest and encourage you to:</p>
+            <ul>
+              <li>Review and improve your application for future opportunities</li>
+              <li>Contact us if you have questions about the decision</li>
+              <li>Apply for other upcoming events that may be a better fit</li>
+            </ul>
+            
+            <p style="text-align: center; margin: 30px 0;">
+              <a href="${
+                process.env.FRONTEND_URL
+              }/vendor/dashboard" class="cta-button">View Dashboard</a>
+            </p>
+            
+            <p>If you have any questions or would like more feedback, please don't hesitate to contact our support team.</p>
+            
+            <p>Best regards,<br>The SprintX Team</p>
+          </div>
+          
+          <div class="footer">
+            <p>This email was sent from SprintX<br>
+            If you have questions, contact us at <a href="mailto:support@campusevents.edu">support@campusevents.edu</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
   // Send payment receipt email
   async sendPaymentReceiptEmail(
     to,
