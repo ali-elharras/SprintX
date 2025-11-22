@@ -51,12 +51,19 @@ const AdminReports = () => {
 
   useEffect(() => { load(); }, [tab]); // initial & tab switch
 
+  // Real-time filtering - trigger load whenever filters change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      load();
+    }, 300); // Debounce for 300ms to avoid too many requests while typing
+    
+    return () => clearTimeout(timer);
+  }, [filters, tab]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFilters(f => ({ ...f, [name]: value }));
   };
-
-  const applyFilters = () => load();
 
   return (
     <Card style={{ padding: '1.5rem', marginTop: '1rem' }}>
@@ -69,11 +76,22 @@ const AdminReports = () => {
       </div>
 
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', alignItems: 'center' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: tab === 'attendees' ? 'repeat(4,1fr)' : 'repeat(3,1fr)', gap: '0.75rem', flex: 1 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: tab === 'attendees' ? 'repeat(4,1fr)' : 'repeat(4,1fr)', gap: '0.75rem', flex: 1 }}>
           {tab === 'attendees' && (
             <Input name="eventName" placeholder="Event Name" value={filters.eventName} onChange={handleChange} />
           )}
-          <Input name="eventType" placeholder="Event Type" value={filters.eventType} onChange={handleChange} />
+          <Select 
+            name="eventType" 
+            value={filters.eventType} 
+            onChange={handleChange} 
+            options={[
+              { value: '', label: 'All Event Types' },
+              { value: 'conference', label: 'Conference' },
+              { value: 'trip', label: 'Trip' },
+              { value: 'bazaar', label: 'Bazaar' },
+              { value: 'workshop', label: 'Workshop' }
+            ]} 
+          />
           <Input type="date" name="startDate" value={filters.startDate} onChange={handleChange} />
           <Input type="date" name="endDate" value={filters.endDate} onChange={handleChange} />
           {tab === 'sales' && (
@@ -83,7 +101,6 @@ const AdminReports = () => {
             ]} />
           )}
         </div>
-        <Button onClick={applyFilters} style={{ width: '155px', height: '50px', alignSelf: 'flex-start' }}>Apply Filters</Button>
       </div>
 
       {loading && <LoadingScreen />}

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import ReactDOM from 'react-dom';
+import { motion } from 'framer-motion';
 import Navbar from '../components/Navbar';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -20,11 +21,27 @@ const themeColors = {
     indigo50: '#eef2ff',
     orange600: '#ea580c',
     fuchsia600: '#c026d3',
+    green600: '#16a34a',
+    cyan600: '#0ea5e9',
+    amber600: '#f59e42',
     gray100: '#f3f4f6',
     gray900: '#111827',
     gray500: '#6b7280',
-    red600: '#dc2626', // New color for delete button
-    red50: '#fef2f2', // New color for delete button
+    red600: '#dc2626',
+    red50: '#fef2f2',
+};
+
+// Helper function to get faculty colors (similar to getEventTypeColor)
+const getFacultyColor = (faculty) => {
+    const facultyColors = {
+        MET: themeColors.indigo600,
+        IET: themeColors.orange600,
+        MGT: themeColors.green600,
+        PHAR: themeColors.cyan600,
+        ARCH: themeColors.amber600,
+        ART: themeColors.fuchsia600,
+    };
+    return facultyColors[faculty] || themeColors.gray500;
 };
 
 const styleSheet = {
@@ -203,243 +220,496 @@ const DetailSectionHeader = ({ title, icon }) => (
 );
 
 
-// --- REVISED WorkshopCard with Delete Button ---
-const WorkshopCard = ({ workshop, onEdit, onDelete }) => { // Added onDelete prop
+// --- REVISED WorkshopCard with EventCard-inspired UI ---
+const WorkshopCard = ({ workshop, onEdit, onDelete }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
-    const [isToggleHovered, setIsToggleHovered] = useState(false);
-    const [isEditHovered, setIsEditHovered] = useState(false);
-    const [isDeleteHovered, setIsDeleteHovered] = useState(false); // New hover state
-
-    const getBorderClassKey = (faculty) => {
-        switch (faculty) {
-            case 'MET': return 'card-border-MET';
-            case 'IET': return 'card-border-IET';
-            case 'MGT': return 'card-border-MGT';
-            case 'PHAR': return 'card-border-PHAR';
-            case 'ARCH': return 'card-border-ARCH';
-            case 'ART': return 'card-border-ART';
-            case 'Other': return 'card-border-Other';
-            default: return 'card-border-Other';
-        }
-    };
-    const borderStyle = styleSheet[getBorderClassKey(workshop.facultyResponsible)] || {};
+    
     const uniqueId = workshop._id || workshop.id;
-    
-    // Determine if workshop is rejected
     const isRejected = workshop.status === 'rejected';
-    
-    // Base styles for card elements
-    const cardBaseStyle = {
-        backgroundColor: isRejected ? '#fef2f2' : 'white', // Light red background for rejected
-        padding: '1.5rem',
-        borderRadius: '1rem',
-        // Hover simulation: Change box shadow and scale slightly on hover
-        boxShadow: isHovered 
-            ? '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
-            : '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05)',
-        border: isRejected ? '2px solid #ef4444' : '1px solid #e5e7eb', // Red border for rejected
-        transition: 'box-shadow 0.3s, transform 0.3s',
-        transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
-        display: 'flex',
-        flexDirection: 'column',
-        borderTopWidth: isRejected ? '6px' : '6px', 
-        borderTopStyle: 'solid',
-        borderTopColor: isRejected ? '#dc2626' : '#9ca3af', // Dark red top border for rejected
-        cursor: 'default'
+    const facultyColor = getFacultyColor(workshop.facultyResponsible);
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleDateString("en-US", {
+            weekday: "short",
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+        });
     };
 
     const professorsList = Array.isArray(workshop.professorsParticipating) 
                            ? workshop.professorsParticipating 
                            : (workshop.professors || []); 
 
+    const participationPercentage = workshop.capacity > 0 
+        ? ((workshop.attendees || 0) / workshop.capacity) * 100 
+        : 0;
+
     return (
-        <div 
-            style={{ 
-                ...cardBaseStyle, 
-                // Only apply faculty borderStyle if not rejected
-                ...(isRejected ? {} : borderStyle)
-            }}
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            whileHover={{ y: -8 }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
+            style={{
+                background: '#ffffff',
+                borderRadius: "20px",
+                border: `2px solid ${isHovered ? facultyColor : '#e5e7eb'}`,
+                overflow: "hidden",
+                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                cursor: "pointer",
+                display: "flex",
+                flexDirection: "column",
+                height: "100%",
+                minHeight: "480px",
+                boxShadow: isHovered ? "0 20px 40px rgba(0,0,0,0.12)" : "0 4px 12px rgba(0,0,0,0.05)",
+                position: "relative",
+            }}
         >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: themeColors.gray900, lineHeight: 1.4, marginRight: '0.5rem' }}>
-                        {workshop.workshopName}
-                    </h3>
-                    {workshop.status && <StatusBadge status={workshop.status} />}
-                </div>
-                <FacultyBadge faculty={workshop.facultyResponsible} />
-            </div>
-            <p style={{ fontSize: '0.875rem', color: '#4b5563', marginBottom: '1rem' }}>
-                {workshop.shortDescription}
-            </p>
-            
-            {/* Edit Requests Section - Only show if there are edit requests */}
-            {workshop.editRequests && workshop.editRequests.length > 0 && workshop.status === 'needs_revision' && (
-                <div style={{ 
-                    backgroundColor: '#fef3c7', 
-                    border: '1px solid #fbbf24', 
-                    borderRadius: '0.5rem', 
-                    padding: '0.75rem', 
-                    marginBottom: '1rem' 
-                }}>
-                    <h4 style={{ 
-                        fontSize: '0.875rem', 
-                        fontWeight: 600, 
-                        color: '#92400e', 
-                        marginBottom: '0.5rem',
-                        display: 'flex',
-                        alignItems: 'center'
-                    }}>
-                        ✏️ Edit Request
-                    </h4>
-                    {workshop.editRequests.map((editReq, index) => (
-                        <div key={index} style={{ marginBottom: index < workshop.editRequests.length - 1 ? '0.5rem' : 0 }}>
-                            <p style={{ fontSize: '0.875rem', color: '#78350f', marginBottom: '0.25rem' }}>
-                                <strong>Message:</strong> {editReq.message}
-                            </p>
-                            {editReq.requestedBy && editReq.requestedBy.name && (
-                                <p style={{ fontSize: '0.75rem', color: '#92400e' }}>
-                                    Requested by: {editReq.requestedBy.name}
-                                </p>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            )}
-            
-            <div style={{ flexGrow: 1 }}> 
-                
-                {/* FACULTY & LOGISTICS (ALWAYS VISIBLE - GROUP 1) */}
-                <div style={{ paddingTop: '0.75rem', paddingBottom: '0.75rem', marginTop: '0.25rem' }}>
-                    <DetailSectionHeader title="Faculty & Logistics" icon={IconMap.People} />
-                    <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
-                        <strong style={{ color: '#1f2937', fontWeight: 600 }}>Responsible Faculty:</strong> {workshop.facultyResponsible}
-                    </p>
-                    <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
-                        <strong style={{ color: '#1f2937', fontWeight: 600 }}>Professors:</strong> {professorsList.join(', ')}
-                    </p>
-                    <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
-                        <strong style={{ color: '#1f2937', fontWeight: 600 }}>Capacity:</strong> {workshop.attendees || 0} / {workshop.capacity}
-                    </p>
-                    <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
-                        <strong style={{ color: '#1f2937', fontWeight: 600 }}>Required Resources:</strong> {workshop.extraRequiredResources}
-                    </p>
-                </div>
+            {/* Vertical color strip on the left */}
+            <div style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                bottom: 0,
+                width: "8px",
+                background: `linear-gradient(180deg, ${facultyColor}, ${facultyColor}dd)`,
+                transition: "width 0.3s ease",
+                borderTopLeftRadius: "20px",
+                borderBottomLeftRadius: "20px",
+            }} />
 
-                {/* HIDDEN DETAILS (LOCATION, AGENDA, FINANCE) - Visible when expanded */}
-                {isExpanded && (
-                    <>
-                        {/* LOCATION & DATES */}
-                        <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '0.75rem', paddingBottom: '0.75rem', marginTop: '0.25rem' }}>
-                            <DetailSectionHeader title="Location & Dates" icon={IconMap.Location} />
-                            <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
-                                <strong style={{ color: '#1f2937', fontWeight: 600 }}>Campus:</strong> {workshop.location}
-                            </p>
-                            <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
-                                <strong style={{ color: '#1f2937', fontWeight: 600 }}>Start:</strong> {workshop.startDate} @ {workshop.startTime}
-                            </p>
-                            <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
-                                <strong style={{ color: '#1f2937', fontWeight: 600 }}>End:</strong> {workshop.endDate} @ {workshop.endTime}
-                            </p>
-                            <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
-                                <strong style={{ color: '#1f2937', fontWeight: 600 }}>Duration:</strong> {workshop.duration}
-                            </p>
-                            <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
-                                <strong style={{ color: '#1f2937', fontWeight: 600 }}>Reg. Deadline:</strong> {workshop.registrationDeadline}
-                            </p>
-                        </div>
-                        
-                        {/* AGENDA */}
-                        <div style={{ borderTop: '1px solid solid #f3f4f6', paddingTop: '0.75rem', paddingBottom: '0.75rem', marginTop: '0.25rem' }}>
-                            <DetailSectionHeader title="Agenda Summary" icon={IconMap.Agenda} />
-                            <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>{workshop.fullAgenda}</p>
-                        </div>
-
-                        {/* FINANCE */}
-                        <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '0.75rem', paddingBottom: '0.75rem', marginTop: '0.25rem' }}>
-                            <DetailSectionHeader title="Finance" icon={IconMap.Finance} />
-                            <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
-                                <strong style={{ color: '#1f2937', fontWeight: 600 }}>Required Budget:</strong> {workshop.requiredBudget}
-                            </p>
-                            <p style={{ fontSize: '0.875rem', lineHeight: 1.4, color: '#374151', marginBottom: '0.25rem' }}>
-                                <strong style={{ color: '#1f2937', fontWeight: 600 }}>Funding Source:</strong> {workshop.fundingSource}
-                            </p>
-                        </div>
-                    </>
-                )}
-            </div>
-
-            {/* Card Actions (Toggle Button and Action buttons) */}
-            <div style={{ 
-                marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb', 
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' 
-            }}>
-                
-                {/* Toggle Button */}
-                <button 
-                    style={{ 
-                        ...styleSheet['card-btn-view-toggle-default'], 
-                        padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: 600, 
-                        borderRadius: '0.5rem', transition: 'all 0.15s', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', border: 'none',
-                        // Hover simulation
-                        backgroundColor: isToggleHovered ? themeColors.indigo600 : themeColors.indigo50,
-                        color: isToggleHovered ? 'white' : themeColors.indigo600,
+            {/* Workshop Header */}
+            <div
+                style={{
+                    background: '#ffffff',
+                    padding: '1.25rem',
+                    paddingLeft: '1.75rem',
+                    color: '#111827',
+                    position: "relative",
+                }}
+            >
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        marginBottom: '0.75rem',
+                        position: "relative",
+                        zIndex: 1,
                     }}
-                    onMouseEnter={() => setIsToggleHovered(true)}
-                    onMouseLeave={() => setIsToggleHovered(false)}
-                    onClick={() => setIsExpanded(!isExpanded)}
                 >
-                    {isExpanded ? 'Hide Details' : 'View Details'}
-                    <span style={{ marginLeft: '0.5rem', width: '16px', height: '16px' }}>
-                        {isExpanded ? IconMap.ChevronUp : IconMap.ChevronDown}
-                    </span>
-                </button>
-
-                {/* Edit and Delete Buttons */}
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    
-                    {/* Edit Button */}
-                    <button 
-                        style={{ 
-                            ...styleSheet['card-btn-edit-default'],
-                            padding: '0.35rem 1rem', fontSize: '0.875rem', fontWeight: 500, 
-                            borderRadius: '0.5rem', transition: 'all 0.15s', cursor: 'pointer',
-                            border: `1px solid ${themeColors.indigo600}`, 
-                            backgroundColor: isEditHovered ? themeColors.indigo600 : 'transparent',
-                            color: isEditHovered ? 'white' : themeColors.indigo600,
+                    <motion.div
+                        animate={{ scale: isHovered ? 1.05 : 1 }}
+                        transition={{ duration: 0.2 }}
+                        style={{
+                            background: `${facultyColor}15`,
+                            padding: '0.5rem 1rem',
+                            borderRadius: "30px",
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.1em",
+                            color: facultyColor,
                         }}
-                        onMouseEnter={() => setIsEditHovered(true)}
-                        onMouseLeave={() => setIsEditHovered(false)}
-                        onClick={() => onEdit(uniqueId, workshop.workshopName)} 
+                    >
+                        {workshop.facultyResponsible}
+                    </motion.div>
+
+                    <div style={{ display: "flex", gap: '0.5rem', alignItems: "center" }}>
+                        {workshop.status && <StatusBadge status={workshop.status} />}
+                    </div>
+                </div>
+
+                <motion.h3
+                    animate={{ x: isHovered ? 4 : 0 }}
+                    transition={{ duration: 0.2 }}
+                    style={{
+                        fontSize: '1.5rem',
+                        fontWeight: 700,
+                        lineHeight: 1.2,
+                        margin: 0,
+                        position: "relative",
+                        zIndex: 1,
+                    }}
+                >
+                    {workshop.workshopName}
+                </motion.h3>
+            </div>
+
+            {/* Workshop Content */}
+            <div style={{ padding: '1.25rem', display: "flex", flexDirection: "column", flexGrow: 1 }}>
+                {/* Edit Requests Section */}
+                {workshop.editRequests && workshop.editRequests.length > 0 && workshop.status === 'needs_revision' && (
+                    <div style={{ 
+                        backgroundColor: '#fef3c7', 
+                        border: '1px solid #fbbf24', 
+                        borderRadius: '0.5rem', 
+                        padding: '0.75rem', 
+                        marginBottom: '1rem' 
+                    }}>
+                        <h4 style={{ 
+                            fontSize: '0.875rem', 
+                            fontWeight: 600, 
+                            color: '#92400e', 
+                            marginBottom: '0.5rem',
+                            display: 'flex',
+                            alignItems: 'center'
+                        }}>
+                            ✏️ Edit Request
+                        </h4>
+                        {workshop.editRequests.map((editReq, index) => (
+                            <div key={index} style={{ marginBottom: index < workshop.editRequests.length - 1 ? '0.5rem' : 0 }}>
+                                <p style={{ fontSize: '0.875rem', color: '#78350f', marginBottom: '0.25rem' }}>
+                                    <strong>Message:</strong> {editReq.message}
+                                </p>
+                                {editReq.requestedBy && editReq.requestedBy.name && (
+                                    <p style={{ fontSize: '0.75rem', color: '#92400e' }}>
+                                        Requested by: {editReq.requestedBy.name}
+                                    </p>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Workshop Details with Icons */}
+                <div
+                    style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: '0.5rem',
+                        marginBottom: '1rem',
+                    }}
+                >
+                    <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: '0.5rem',
+                        padding: '0.5rem',
+                        background: '#f9fafb',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.875rem',
+                        color: '#111827',
+                    }}>
+                        <span style={{ fontSize: "1.2rem" }}>📅</span>
+                        <span style={{ fontWeight: 500 }}>{formatDate(workshop.startDate)}</span>
+                    </div>
+
+                    <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: '0.5rem',
+                        padding: '0.5rem',
+                        background: '#f9fafb',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.875rem',
+                        color: '#111827',
+                    }}>
+                        <span style={{ fontSize: "1.2rem" }}>🕐</span>
+                        <span style={{ fontWeight: 500 }}>{workshop.startTime || 'N/A'}</span>
+                    </div>
+
+                    <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: '0.5rem',
+                        padding: '0.5rem',
+                        background: '#f9fafb',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.875rem',
+                        color: '#111827',
+                    }}>
+                        <span style={{ fontSize: "1.2rem" }}>📍</span>
+                        <span style={{ fontWeight: 500 }}>{workshop.location}</span>
+                    </div>
+                </div>
+
+                {/* Description */}
+                <p
+                    style={{
+                        fontSize: '0.875rem',
+                        color: '#6b7280',
+                        lineHeight: 1.6,
+                        marginBottom: '0.75rem',
+                        margin: 0,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                    }}
+                >
+                    {workshop.shortDescription}
+                </p>
+
+                <motion.button
+                    whileHover={{ x: 4 }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsExpanded(!isExpanded);
+                    }}
+                    style={{
+                        background: "none",
+                        border: "none",
+                        color: facultyColor,
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        padding: 0,
+                        marginBottom: '1rem',
+                        textDecoration: "none",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: '0.25rem',
+                    }}
+                >
+                    {isExpanded ? 'Show less' : 'Read more'} <span>→</span>
+                </motion.button>
+
+                {/* Expanded Details */}
+                {isExpanded && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        style={{
+                            background: '#f9fafb',
+                            padding: '1rem',
+                            borderRadius: '0.75rem',
+                            marginBottom: '1rem',
+                            border: '2px solid #e5e7eb',
+                        }}
+                    >
+                        <div style={{ marginBottom: '0.75rem' }}>
+                            <h4 style={{ 
+                                fontSize: '0.875rem', 
+                                fontWeight: 600, 
+                                color: facultyColor, 
+                                marginBottom: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}>
+                                <span style={{ marginRight: '0.5rem' }}>{IconMap.Agenda}</span>
+                                Full Agenda
+                            </h4>
+                            <p style={{ fontSize: '0.875rem', color: '#374151', lineHeight: 1.6, margin: 0 }}>
+                                {workshop.fullAgenda}
+                            </p>
+                        </div>
+
+                        <div style={{ marginBottom: '0.75rem' }}>
+                            <h4 style={{ 
+                                fontSize: '0.875rem', 
+                                fontWeight: 600, 
+                                color: facultyColor, 
+                                marginBottom: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}>
+                                <span style={{ marginRight: '0.5rem' }}>{IconMap.People}</span>
+                                Professors
+                            </h4>
+                            <p style={{ fontSize: '0.875rem', color: '#374151', margin: 0 }}>
+                                {professorsList.join(', ')}
+                            </p>
+                        </div>
+
+                        <div style={{ marginBottom: '0.75rem' }}>
+                            <h4 style={{ 
+                                fontSize: '0.875rem', 
+                                fontWeight: 600, 
+                                color: facultyColor, 
+                                marginBottom: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}>
+                                <span style={{ marginRight: '0.5rem' }}>{IconMap.Finance}</span>
+                                Finance
+                            </h4>
+                            <p style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.25rem' }}>
+                                <strong>Budget:</strong> {workshop.requiredBudget}
+                            </p>
+                            <p style={{ fontSize: '0.875rem', color: '#374151', margin: 0 }}>
+                                <strong>Funding Source:</strong> {workshop.fundingSource}
+                            </p>
+                        </div>
+
+                        <div>
+                            <h4 style={{ 
+                                fontSize: '0.875rem', 
+                                fontWeight: 600, 
+                                color: facultyColor, 
+                                marginBottom: '0.5rem'
+                            }}>
+                                Required Resources
+                            </h4>
+                            <p style={{ fontSize: '0.875rem', color: '#374151', margin: 0 }}>
+                                {workshop.extraRequiredResources}
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* Participation Info with Progress Bar */}
+                <div
+                    style={{
+                        background: 'linear-gradient(135deg, #f9fafb, #ffffff)',
+                        padding: '1rem',
+                        borderRadius: '0.75rem',
+                        marginBottom: '1rem',
+                        border: '2px solid #e5e7eb',
+                    }}
+                >
+                    <div
+                        style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: '0.75rem',
+                        }}
+                    >
+                        <span
+                            style={{
+                                fontSize: '0.875rem',
+                                fontWeight: 600,
+                                color: '#6b7280',
+                            }}
+                        >
+                            👥 Participants
+                        </span>
+                        <span
+                            style={{
+                                fontSize: '1.125rem',
+                                fontWeight: 700,
+                                color: facultyColor,
+                            }}
+                        >
+                            {workshop.attendees || 0} / {workshop.capacity}
+                        </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div style={{
+                        width: "100%",
+                        height: "8px",
+                        background: '#e5e7eb',
+                        borderRadius: "999px",
+                        overflow: "hidden",
+                        marginBottom: '0.5rem',
+                    }}>
+                        <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${participationPercentage}%` }}
+                            transition={{ duration: 0.8, ease: "easeOut" }}
+                            style={{
+                                height: "100%",
+                                background: `linear-gradient(90deg, ${facultyColor}, ${facultyColor}dd)`,
+                                borderRadius: "999px",
+                            }}
+                        />
+                    </div>
+
+                    {workshop.registrationDeadline && (
+                        <div
+                            style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                paddingTop: '0.5rem',
+                                borderTop: '1px solid #e5e7eb',
+                                marginTop: '0.5rem',
+                            }}
+                        >
+                            <span
+                                style={{
+                                    fontSize: '0.875rem',
+                                    color: '#6b7280',
+                                }}
+                            >
+                                Registration Deadline
+                            </span>
+                            <span
+                                style={{
+                                    fontSize: '0.875rem',
+                                    fontWeight: 600,
+                                    color: '#111827',
+                                }}
+                            >
+                                {formatDate(workshop.registrationDeadline)}
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Spacer to push buttons to bottom */}
+                <div style={{ flexGrow: 1 }}></div>
+
+                {/* Action Buttons */}
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: '0.75rem',
+                        marginTop: "auto",
+                        paddingTop: '1rem'
+                    }}
+                >
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(uniqueId, workshop.workshopName);
+                        }}
+                        style={{
+                            background: `linear-gradient(135deg, ${facultyColor}, ${facultyColor}dd)`,
+                            color: '#ffffff',
+                            padding: '0.75rem 1rem',
+                            borderRadius: '0.75rem',
+                            fontWeight: 700,
+                            fontSize: '0.875rem',
+                            border: 'none',
+                            cursor: 'pointer',
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                            transition: "all 0.2s ease",
+                        }}
                     >
                         Edit
-                    </button>
-                    
-                    {/* DELETE Button (NEW) */}
-                    <button 
-                        style={{ 
-                            ...styleSheet['card-btn-delete-default'],
-                            padding: '0.35rem 1rem', fontSize: '0.875rem', fontWeight: 500, 
-                            borderRadius: '0.5rem', transition: 'all 0.15s', cursor: 'pointer',
-                            border: `1px solid ${themeColors.red600}`, 
-                            backgroundColor: isDeleteHovered ? themeColors.red600 : 'transparent',
-                            color: isDeleteHovered ? 'white' : themeColors.red600,
-                            display: 'flex', alignItems: 'center', gap: '0.25rem'
+                    </motion.button>
+
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(uniqueId, workshop.workshopName);
                         }}
-                        onMouseEnter={() => setIsDeleteHovered(true)}
-                        onMouseLeave={() => setIsDeleteHovered(false)}
-                        onClick={() => onDelete(uniqueId, workshop.workshopName)} 
+                        style={{
+                            background: '#ffffff',
+                            color: themeColors.red600,
+                            padding: '0.75rem 1rem',
+                            borderRadius: '0.75rem',
+                            fontWeight: 700,
+                            fontSize: '0.875rem',
+                            border: `2px solid ${themeColors.red600}`,
+                            cursor: 'pointer',
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                            transition: "all 0.2s ease",
+                        }}
                     >
-                        {IconMap.Trash}
                         Delete
-                    </button>
+                    </motion.button>
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 };
 
@@ -934,7 +1204,7 @@ const Workshops = () => {
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.5rem' }}>
                                 <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
                             </svg>
-                            Create New Workshop
+                            Create Workshop
                         </button>
                     </div>
 
