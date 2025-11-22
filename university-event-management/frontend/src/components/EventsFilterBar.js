@@ -17,9 +17,6 @@ const EventsFilterBar = ({
   return (
     <div
       style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 50,
         background: theme.colors.background.default,
         paddingTop: theme.spacing[4],
         paddingBottom: theme.spacing[4],

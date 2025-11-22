@@ -1590,6 +1590,255 @@ class EmailService {
     `;
   }
 
+  async sendApplicationRejectionEmail(
+    to,
+    vendorName,
+    applicationType,
+    eventName,
+    rejectionReason = null
+  ) {
+    const mailOptions = {
+      from: `"SprintX" <${
+        process.env.EMAIL_USER || "no-reply@campusevents.test"
+      }>`,
+      to: to,
+      subject: `Application Status Update - SprintX`,
+      html: this.getApplicationRejectionEmailTemplate({
+        vendorName,
+        applicationType,
+        eventName,
+        rejectionReason,
+      }),
+      text: `
+        Dear ${vendorName},
+
+        We regret to inform you that your ${applicationType} application for ${eventName} has not been approved at this time.
+
+        ${
+          rejectionReason ? `Reason: ${rejectionReason}\n\n` : ""
+        }We appreciate your interest and encourage you to apply for future opportunities.
+
+        If you have any questions, please contact our support team.
+
+        Best regards,
+        SprintX Team
+      `,
+    };
+
+    try {
+      if (!this.transporter) {
+        console.log(
+          "⚠️ No transporter available - falling back to console mode"
+        );
+        console.log("📧 Application Rejection Email (Console Mode):");
+        console.log("   To:", to);
+        console.log("   Subject:", mailOptions.subject);
+        return { success: true, messageId: "console-log" };
+      }
+
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log("✅ Application rejection email sent to:", to);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error(
+        "❌ Failed to send application rejection email:",
+        error.message
+      );
+      throw new Error(
+        `Failed to send application rejection email: ${error.message}`
+      );
+    }
+  }
+
+  getApplicationRejectionEmailTemplate({
+    vendorName,
+    applicationType,
+    eventName,
+    rejectionReason,
+  }) {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Application Status Update - SprintX</title>
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+          }
+          .email-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            text-align: center;
+            color: white;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+          }
+          .content {
+            background: white;
+            padding: 40px 30px;
+          }
+          .content h2 {
+            color: #667eea;
+            margin-top: 0;
+            font-size: 24px;
+          }
+          .content p {
+            margin-bottom: 15px;
+          }
+          .info-box {
+            background: #f9fafb;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 5px;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          .info-row:last-child {
+            border-bottom: none;
+          }
+          .info-label {
+            font-weight: 600;
+            color: #6b7280;
+          }
+          .info-value {
+            color: #1f2937;
+            font-weight: 600;
+          }
+          .status-badge {
+            background: #f3f4f6;
+            padding: 25px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 25px 0;
+            border: 2px solid #e5e7eb;
+          }
+          .status-badge h3 {
+            margin: 0 0 10px 0;
+            color: #6b7280;
+            font-size: 22px;
+          }
+          .status-badge p {
+            margin: 0;
+            color: #4b5563;
+            font-size: 16px;
+          }
+          .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 35px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            transition: transform 0.2s;
+          }
+          .cta-button:hover {
+            transform: translateY(-2px);
+          }
+          .footer {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+          }
+          .footer a {
+            color: white;
+            text-decoration: underline;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <h1>📋 Application Status Update</h1>
+          </div>
+          
+          <div class="content">
+            <h2>Hello ${vendorName},</h2>
+            
+            <p>Thank you for your interest in participating with SprintX.</p>
+            
+            <div class="status-badge">
+              <h3>Application Status</h3>
+              <p>Unfortunately, your ${applicationType} application was not approved at this time.</p>
+            </div>
+            
+            <div class="info-box">
+              <div class="info-row">
+                <span class="info-label">Application Type:</span>
+                <span class="info-value">${
+                  applicationType.charAt(0).toUpperCase() +
+                  applicationType.slice(1)
+                }</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Event:</span>
+                <span class="info-value">${eventName || "Booth Request"}</span>
+              </div>
+              ${
+                rejectionReason
+                  ? `
+              <div class="info-row">
+                <span class="info-label">Note:</span>
+                <span class="info-value">${rejectionReason}</span>
+              </div>
+              `
+                  : ""
+              }
+            </div>
+            
+            <p>We appreciate your interest and encourage you to:</p>
+            <ul>
+              <li>Review and improve your application for future opportunities</li>
+              <li>Contact us if you have questions about the decision</li>
+              <li>Apply for other upcoming events that may be a better fit</li>
+            </ul>
+            
+            <p style="text-align: center; margin: 30px 0;">
+              <a href="${
+                process.env.FRONTEND_URL
+              }/vendor/dashboard" class="cta-button">View Dashboard</a>
+            </p>
+            
+            <p>If you have any questions or would like more feedback, please don't hesitate to contact our support team.</p>
+            
+            <p>Best regards,<br>The SprintX Team</p>
+          </div>
+          
+          <div class="footer">
+            <p>This email was sent from SprintX<br>
+            If you have questions, contact us at <a href="mailto:support@campusevents.edu">support@campusevents.edu</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
   // Send payment receipt email
   async sendPaymentReceiptEmail(
     to,
@@ -2538,6 +2787,622 @@ class EmailService {
             <p style="margin-top: 15px; font-size: 12px; color: #9ca3af;">
               © ${currentYear} SprintX. All rights reserved.
             </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  // Gym Session Cancellation Email
+  async sendGymSessionCancellationEmail(
+    to,
+    userName,
+    sessionTitle,
+    sessionType,
+    sessionDate,
+    sessionTime,
+    reason
+  ) {
+    const mailOptions = {
+      from: `"SprintX" <${
+        process.env.EMAIL_USER || "no-reply@campusevents.test"
+      }>`,
+      to: to,
+      subject: `Gym Session Cancelled - ${sessionTitle} - SprintX`,
+      html: this.getGymSessionCancellationEmailTemplate({
+        userName,
+        sessionTitle,
+        sessionType,
+        sessionDate,
+        sessionTime,
+        reason,
+      }),
+      text: `
+        Gym Session Cancellation Notice
+        
+        Dear ${userName},
+
+        We regret to inform you that the gym session you registered for has been cancelled.
+
+        Session: ${sessionTitle}
+        Type: ${sessionType}
+        Date: ${sessionDate}
+        Time: ${sessionTime}
+        ${reason ? `Reason: ${reason}` : ""}
+
+        We apologize for any inconvenience this may cause. Please check our gym schedule for alternative sessions.
+
+        Best regards,
+        SprintX Team
+      `,
+    };
+
+    try {
+      if (!this.transporter) {
+        console.log(
+          "⚠️ No transporter available - falling back to console mode"
+        );
+        console.log("📧 Gym Session Cancellation Email (Console Mode):");
+        console.log("   To:", to);
+        console.log("   Subject:", mailOptions.subject);
+        return { success: true, messageId: "console-log" };
+      }
+
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log("✅ Gym session cancellation email sent to:", to);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error(
+        "❌ Failed to send gym session cancellation email:",
+        error.message
+      );
+      throw new Error(
+        `Failed to send gym session cancellation email: ${error.message}`
+      );
+    }
+  }
+
+  getGymSessionCancellationEmailTemplate({
+    userName,
+    sessionTitle,
+    sessionType,
+    sessionDate,
+    sessionTime,
+    reason,
+  }) {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Gym Session Cancelled - SprintX</title>
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+          }
+          .email-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            text-align: center;
+            color: white;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+          }
+          .content {
+            background: white;
+            padding: 40px 30px;
+          }
+          .content h2 {
+            color: #667eea;
+            margin-top: 0;
+            font-size: 24px;
+          }
+          .content p {
+            margin-bottom: 15px;
+          }
+          .alert-box {
+            background: #fef2f2;
+            border-left: 4px solid #ef4444;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 5px;
+          }
+          .alert-box h3 {
+            margin: 0 0 10px 0;
+            color: #dc2626;
+            font-size: 18px;
+          }
+          .info-box {
+            background: #f9fafb;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 5px;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          .info-row:last-child {
+            border-bottom: none;
+          }
+          .info-label {
+            font-weight: 600;
+            color: #6b7280;
+            min-width: 120px;
+          }
+          .info-value {
+            color: #1f2937;
+            font-weight: 600;
+            word-break: break-word;
+            max-width: 60%;
+          }
+          .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 35px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            transition: transform 0.2s;
+          }
+          .cta-button:hover {
+            transform: translateY(-2px);
+          }
+          .footer {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+          }
+          .footer a {
+            color: white;
+            text-decoration: underline;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <h1>🏋️ Gym Session Cancelled</h1>
+          </div>
+          
+          <div class="content">
+            <h2>Hello ${userName},</h2>
+            
+            <p>We regret to inform you that a gym session you registered for has been cancelled.</p>
+            
+            <div class="alert-box">
+              <h3>⚠️ Session Cancellation Notice</h3>
+              <p style="margin: 0;">The following gym session will not take place as scheduled.</p>
+            </div>
+            
+            <div class="info-box">
+              <div class="info-row">
+                <span class="info-label">Session:</span>
+                <span class="info-value">${sessionTitle}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Type:</span>
+                <span class="info-value">${sessionType}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Date:</span>
+                <span class="info-value">${sessionDate}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Time:</span>
+                <span class="info-value">${sessionTime}</span>
+              </div>
+              ${
+                reason
+                  ? `
+              <div class="info-row">
+                <span class="info-label">Reason:</span>
+                <span class="info-value">${reason}</span>
+              </div>
+              `
+                  : ""
+              }
+            </div>
+            
+            <p>We apologize for any inconvenience this may cause. Here are your next steps:</p>
+            <ul>
+              <li>Your registration has been automatically cancelled</li>
+              <li>No cancellation fee has been charged</li>
+              <li>Browse our gym schedule for alternative sessions</li>
+            </ul>
+            
+            <p style="text-align: center; margin: 30px 0;">
+              <a href="${
+                process.env.FRONTEND_URL || "http://localhost:3000"
+              }/gym-schedule" class="cta-button" style="color: black;">View Gym Schedule</a>
+            </p>
+            
+            <p>If you have any questions or concerns, please don't hesitate to contact our gym support team.</p>
+            
+            <p>Best regards,<br>The SprintX Fitness Team</p>
+          </div>
+          
+          <div class="footer">
+            <p>This email was sent from SprintX<br>
+            If you have questions, contact us at <a href="mailto:support@campusevents.edu">support@campusevents.edu</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  // Gym Session Update Email
+  async sendGymSessionUpdateEmail(
+    to,
+    userName,
+    sessionTitle,
+    sessionType,
+    oldDetails,
+    newDetails
+  ) {
+    const mailOptions = {
+      from: `"SprintX" <${
+        process.env.EMAIL_USER || "no-reply@campusevents.test"
+      }>`,
+      to: to,
+      subject: `Gym Session Rescheduled - ${sessionTitle} - SprintX`,
+      html: this.getGymSessionUpdateEmailTemplate({
+        userName,
+        sessionTitle,
+        sessionType,
+        oldDetails,
+        newDetails,
+      }),
+      text: `
+        Gym Session Update Notice
+        
+        Dear ${userName},
+
+        The gym session you registered for has been rescheduled.
+
+        Session: ${sessionTitle}
+        Type: ${sessionType}
+
+        Previous Schedule:
+        Date: ${oldDetails.date}
+        Time: ${oldDetails.time}
+
+        New Schedule:
+        Date: ${newDetails.date}
+        Time: ${newDetails.time}
+
+        Please update your calendar accordingly. If the new schedule doesn't work for you, you can cancel your registration.
+
+        Best regards,
+        SprintX Team
+      `,
+    };
+
+    try {
+      if (!this.transporter) {
+        console.log(
+          "⚠️ No transporter available - falling back to console mode"
+        );
+        console.log("📧 Gym Session Update Email (Console Mode):");
+        console.log("   To:", to);
+        console.log("   Subject:", mailOptions.subject);
+        return { success: true, messageId: "console-log" };
+      }
+
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log("✅ Gym session update email sent to:", to);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error(
+        "❌ Failed to send gym session update email:",
+        error.message
+      );
+      throw new Error(
+        `Failed to send gym session update email: ${error.message}`
+      );
+    }
+  }
+
+  getGymSessionUpdateEmailTemplate({
+    userName,
+    sessionTitle,
+    sessionType,
+    oldDetails,
+    newDetails,
+  }) {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Gym Session Updated - SprintX</title>
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+          }
+          .email-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            text-align: center;
+            color: white;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+          }
+          .content {
+            background: white;
+            padding: 40px 30px;
+          }
+          .content h2 {
+            color: #667eea;
+            margin-top: 0;
+            font-size: 24px;
+          }
+          .content p {
+            margin-bottom: 15px;
+          }
+          .alert-box {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 5px;
+          }
+          .alert-box h3 {
+            margin: 0 0 10px 0;
+            color: #d97706;
+            font-size: 18px;
+          }
+          .info-box {
+            background: #f9fafb;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 5px;
+          }
+          .comparison-container {
+            display: flex;
+            gap: 20px;
+            margin: 25px 0;
+          }
+          .comparison-box {
+            flex: 1;
+            padding: 20px;
+            border-radius: 8px;
+          }
+          .old-details {
+            background: #fee2e2;
+            border-left: 4px solid #ef4444;
+          }
+          .new-details {
+            background: #dcfce7;
+            border-left: 4px solid #22c55e;
+          }
+          .comparison-box h4 {
+            margin: 0 0 15px 0;
+            font-size: 16px;
+          }
+          .old-details h4 {
+            color: #dc2626;
+          }
+          .new-details h4 {
+            color: #16a34a;
+          }
+          .detail-item {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+          }
+          .detail-item:last-child {
+            border-bottom: none;
+          }
+          .detail-label {
+            font-weight: 600;
+            color: #6b7280;
+            font-size: 14px;
+          }
+          .detail-value {
+            color: #1f2937;
+            font-weight: 600;
+            margin-top: 4px;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          .info-row:last-child {
+            border-bottom: none;
+          }
+          .info-label {
+            font-weight: 600;
+            color: #6b7280;
+            min-width: 120px;
+          }
+          .info-value {
+            color: #1f2937;
+            font-weight: 600;
+            word-break: break-word;
+            max-width: 60%;
+          }
+          .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 35px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            transition: transform 0.2s;
+          }
+          .cta-button:hover {
+            transform: translateY(-2px);
+          }
+          .footer {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+          }
+          .footer a {
+            color: white;
+            text-decoration: underline;
+          }
+          @media (max-width: 600px) {
+            .comparison-container {
+              flex-direction: column;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <h1>🏋️ Gym Session Rescheduled</h1>
+          </div>
+          
+          <div class="content">
+            <h2>Hello ${userName},</h2>
+            
+            <p>We wanted to inform you that a gym session you registered for has been rescheduled.</p>
+            
+            <div class="alert-box">
+              <h3>📅 Schedule Change Notice</h3>
+              <p style="margin: 0;">Please review the updated schedule details below and update your calendar accordingly.</p>
+            </div>
+            
+            <div class="info-box">
+              <div class="info-row">
+                <span class="info-label">Session:</span>
+                <span class="info-value">${sessionTitle}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Type:</span>
+                <span class="info-value">${sessionType}</span>
+              </div>
+            </div>
+            
+            <div class="comparison-container">
+              <div class="comparison-box old-details">
+                <h4>❌ Previous Schedule</h4>
+                <div class="detail-item">
+                  <div class="detail-label">Day of Week</div>
+                  <div class="detail-value">${oldDetails.date}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Start Time</div>
+                  <div class="detail-value">${oldDetails.time}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">End Time</div>
+                  <div class="detail-value">${oldDetails.endTime}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Duration</div>
+                  <div class="detail-value">${oldDetails.duration}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Start Date</div>
+                  <div class="detail-value">${oldDetails.startDate}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">End Date</div>
+                  <div class="detail-value">${oldDetails.endDate}</div>
+                </div>
+              </div>
+              
+              <div class="comparison-box new-details">
+                <h4>✅ New Schedule</h4>
+                <div class="detail-item">
+                  <div class="detail-label">Day of Week</div>
+                  <div class="detail-value">${newDetails.date}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Start Time</div>
+                  <div class="detail-value">${newDetails.time}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">End Time</div>
+                  <div class="detail-value">${newDetails.endTime}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Duration</div>
+                  <div class="detail-value">${newDetails.duration}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Start Date</div>
+                  <div class="detail-value">${newDetails.startDate}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">End Date</div>
+                  <div class="detail-value">${newDetails.endDate}</div>
+                </div>
+              </div>
+            </div>
+            
+            <p>Your registration remains active for the new schedule. Here's what you need to know:</p>
+            <ul>
+              <li>Your spot is automatically transferred to the new time slot</li>
+              <li>If the new schedule doesn't work for you, you can cancel your registration</li>
+              <li>No action is needed if you can attend at the new time</li>
+            </ul>
+            
+            <p style="text-align: center; margin: 30px 0;">
+              <a href="${
+                process.env.FRONTEND_URL || "http://localhost:3000"
+              }/gym-schedule" class="cta-button" style="color: black;">View My Gym Schedule</a>
+            </p>
+            
+            <p>We apologize for any inconvenience this may cause. If you have any questions, please contact our gym support team.</p>
+            
+            <p>Best regards,<br>The SprintX Fitness Team</p>
+          </div>
+          
+          <div class="footer">
+            <p>This email was sent from SprintX<br>
+            If you have questions, contact us at <a href="mailto:support@campusevents.edu">support@campusevents.edu</a></p>
           </div>
         </div>
       </body>
