@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Award,
   BarChart2,
+  ClipboardCheck,
 } from "lucide-react";
 import theme from "../theme";
 
@@ -20,9 +21,9 @@ const AdminSidebar = ({ isOpen }) => {
       title: "Administration",
       items: [
         {
-          label: "Admin Dashboard",
+          label: "Applications",
           path: "/admin-dashboard",
-          icon: <Shield size={20} />,
+          icon: <ClipboardCheck size={20} />,
         },
         {
           label: "User Management",
