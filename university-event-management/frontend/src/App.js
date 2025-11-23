@@ -1,15 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   createBrowserRouter,
   RouterProvider,
   Navigate,
+  Outlet,
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import theme from "./theme";
+import Navbar from "./components/Navbar";
+import AdminSidebar from "./components/AdminSidebar";
 
-// Pages (combined from both branches)
+// Pages
 import LandingPage from "./pages/LandingPage";
 import UserTypeSelection from "./components/UserTypeSelection";
 import Login from "./pages/Login";
@@ -43,505 +46,142 @@ import BoothPolls from "./pages/BoothPolls";
 import LoyaltyProgram from "./pages/LoyaltyProgram";
 import WalletPage from "./pages/WalletPage";
 import RoleRoute from "./components/RoleRoute";
-// ---------------------------
-// Protected Route Components
-// ---------------------------
+
+// --- Layout Components ---
+
+const AppLayout = () => {
+  const { user } = useAuth();
+  const isAdmin = user && user.role === "admin";
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
+
+  const handleToggleSidebar = () => {
+    setSidebarOpen(!isSidebarOpen);
+  };
+
+  return (
+    <div
+      style={{
+        backgroundColor: theme.colors.background.default,
+        minHeight: "100vh",
+      }}
+    >
+      {isAdmin && <AdminSidebar isOpen={isSidebarOpen} />}
+      <div
+        style={{
+          marginLeft: isAdmin && isSidebarOpen ? "260px" : "0",
+          transition: "margin-left 0.3s ease-in-out",
+        }}
+      >
+        <Navbar onMenuClick={isAdmin ? handleToggleSidebar : undefined} />
+        <main style={{ padding: `0 ${theme.spacing[8]} ${theme.spacing[8]}` }}>
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+};
+
+// --- Route Protection Components ---
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: theme.typography.fontFamily.primary,
-          fontSize: theme.typography.fontSize.lg,
-          color: theme.colors.text.secondary,
-        }}
-      >
-        Loading...
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
-  }
-
+  if (isLoading) return <div>Loading...</div>;
+  if (!isAuthenticated) return <Navigate to="/" replace />;
   return children;
 };
 
 const PublicRoute = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: theme.typography.fontFamily.primary,
-          fontSize: theme.typography.fontSize.lg,
-          color: theme.colors.text.secondary,
-        }}
-      >
-        Loading...
-      </div>
-    );
-  }
-
+  if (isLoading) return <div>Loading...</div>;
   return !isAuthenticated ? children : <Navigate to="/dashboard" replace />;
 };
 
 const AdminRoute = ({ children }) => {
   const { user, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: theme.typography.fontFamily.primary,
-          fontSize: theme.typography.fontSize.lg,
-          color: theme.colors.text.secondary,
-        }}
-      >
-        Loading...
-      </div>
-    );
-  }
-
+  if (isLoading) return <div>Loading...</div>;
   if (!user || (user.role !== "admin" && user.role !== "events_office")) {
     return <Navigate to="/dashboard" replace />;
   }
-
   return children;
 };
 
 const VendorRoute = ({ children }) => {
   const { isVendor, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: theme.typography.fontFamily.primary,
-          fontSize: theme.typography.fontSize.lg,
-          color: theme.colors.text.secondary,
-        }}
-      >
-        Loading...
-      </div>
-    );
-  }
-
-  if (!isVendor) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
+  if (isLoading) return <div>Loading...</div>;
+  if (!isVendor) return <Navigate to="/dashboard" replace />;
   return children;
 };
 
-// ---------------------------
-// Router Configuration (merged)
-// ---------------------------
+// --- Router Configuration ---
 
 const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <LandingPage />,
-  },
-  {
-    path: "/login",
-    element: (
-      <PublicRoute>
-        <Login />
-      </PublicRoute>
-    ),
-  },
-  {
-    path: "/signup",
-    element: <UserTypeSelection />,
-  },
-  {
-    path: "/vendor-login",
-    element: (
-      <PublicRoute>
-        <VendorLogin />
-      </PublicRoute>
-    ),
-  },
-  {
-    path: "/signup/user",
-    element: (
-      <PublicRoute>
-        <UserSignup />
-      </PublicRoute>
-    ),
-  },
-  {
-    path: "/signup/vendor",
-    element: (
-      <PublicRoute>
-        <VendorSignup />
-      </PublicRoute>
-    ),
-  },
-  {
-    path: "/verification-email-selection",
-    element: (
-      <PublicRoute>
-        <VerificationEmailSelection />
-      </PublicRoute>
-    ),
-  },
-  {
-    path: "/verification-success",
-    element: (
-      <PublicRoute>
-        <VerificationSuccess />
-      </PublicRoute>
-    ),
-  },
-  {
-    path: "/email-verification-sent",
-    element: (
-      <PublicRoute>
-        <EmailVerificationSent />
-      </PublicRoute>
-    ),
-  },
-  {
-    path: "/verification-pending",
-    element: (
-      <PublicRoute>
-        <VerificationPending />
-      </PublicRoute>
-    ),
-  },
-  {
-    path: "/email-verified",
-    element: <EmailVerified />,
-  },
-  {
-    path: "/forgot-password",
-    element: (
-      <PublicRoute>
-        <ForgotPassword />
-      </PublicRoute>
-    ),
-  },
-  {
-    path: "/events-ratings",
-    element: (
-      <ProtectedRoute>
-        <EventsRatings />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/reset-password/:token",
-    element: (
-      <PublicRoute>
-        <ResetPassword />
-      </PublicRoute>
-    ),
-  },
+  // Public Routes
+  { path: "/", element: <PublicRoute><LandingPage /></PublicRoute> },
+  { path: "/login", element: <PublicRoute><Login /></PublicRoute> },
+  { path: "/signup", element: <PublicRoute><UserTypeSelection /></PublicRoute> },
+  { path: "/vendor-login", element: <PublicRoute><VendorLogin /></PublicRoute> },
+  { path: "/signup/user", element: <PublicRoute><UserSignup /></PublicRoute> },
+  { path: "/signup/vendor", element: <PublicRoute><VendorSignup /></PublicRoute> },
+  { path: "/verification-email-selection", element: <PublicRoute><VerificationEmailSelection /></PublicRoute> },
+  { path: "/verification-success", element: <PublicRoute><VerificationSuccess /></PublicRoute> },
+  { path: "/email-verification-sent", element: <PublicRoute><EmailVerificationSent /></PublicRoute> },
+  { path: "/verification-pending", element: <PublicRoute><VerificationPending /></PublicRoute> },
+  { path: "/email-verified", element: <EmailVerified /> },
+  { path: "/forgot-password", element: <PublicRoute><ForgotPassword /></PublicRoute> },
+  { path: "/reset-password/:token", element: <PublicRoute><ResetPassword /></PublicRoute> },
 
-  // Protected Routes
+  // Protected Routes with Layout
   {
-    path: "/dashboard",
-    element: (
-      <ProtectedRoute>
-        <Dashboard />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/vendor-dashboard",
-    element: (
-      <ProtectedRoute>
-        <VendorRoute>
-          <VendorDashboard />
-        </VendorRoute>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/admin-dashboard",
-    element: (
-      <ProtectedRoute>
-        <AdminRoute>
-          <AdminDashboard />
-        </AdminRoute>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/admin-users",
-    element: (
-      <ProtectedRoute>
-        <AdminRoute>
-          <AdminUserManagement />
-        </AdminRoute>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/admin-comments",
-    element: (
-      <ProtectedRoute>
-        <AdminRoute>
-          <AdminComments />
-        </AdminRoute>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/reports",
-    element: (
-      <ProtectedRoute>
-        <AdminRoute>
-          <ReportsPage />
-        </AdminRoute>
-      </ProtectedRoute>
-    ),
-  },
-
-  // New pages from main branch
-  {
-    path: "/events",
-    element: (
-      <ProtectedRoute>
-        <EventsPage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/courts",
-    element: (
-      <ProtectedRoute>
-        <CourtsPage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/my-registrations",
-    element: (
-      <ProtectedRoute>
-        <MyRegistrations />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/favorites",
-    element: (
-      <ProtectedRoute>
-        <FavoritesPage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/booth-polls",
-    element: (
-      <ProtectedRoute>
-        <BoothPolls />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/wallet",
-    element: (
-      <ProtectedRoute>
-        <WalletPage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/events/:id",
-    element: (
-      <ProtectedRoute>
-        <EventDetailsPage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/gym-schedule",
-    element: (
-      <ProtectedRoute>
-        <GymSchedulePage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/loyalty-program",
-    element: (
-      <ProtectedRoute>
-        <RoleRoute allowedRoles={["student","staff","ta","professor","events_office","admin"]}>
-          <LoyaltyProgram />
-        </RoleRoute>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/create-workshop",
-    element: (
-      <ProtectedRoute>
-        <CreateWorkshop />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/my-workshops",
-    element: (
-      <ProtectedRoute>
-        <RoleRoute allowedRoles={["professor"]}>
-          <Workshops />
-        </RoleRoute>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/workshops",
-    element: <Navigate to="/events" replace />,
-  },
-  {
-    path: "/vendor/payment-success",
-    element: (
-      <ProtectedRoute>
-        <VendorRoute>
-          <PaymentSuccess />
-        </VendorRoute>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/vendor/dashboard",
-    element: (
-      <ProtectedRoute>
-        <VendorRoute>
-          <VendorDashboard />
-        </VendorRoute>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/vendor/my-participations",
-    element: (
-      <ProtectedRoute>
-        <VendorRoute>
-          <VendorDashboard />
-        </VendorRoute>
-      </ProtectedRoute>
-    ),
+    element: <ProtectedRoute><AppLayout /></ProtectedRoute>,
+    children: [
+      { path: "/dashboard", element: <Dashboard /> },
+      { path: "/events", element: <EventsPage /> },
+      { path: "/events/:id", element: <EventDetailsPage /> },
+      { path: "/my-registrations", element: <MyRegistrations /> },
+      { path: "/favorites", element: <FavoritesPage /> },
+      { path: "/courts", element: <CourtsPage /> },
+      { path: "/gym-schedule", element: <GymSchedulePage /> },
+      { path: "/booth-polls", element: <BoothPolls /> },
+      { path: "/wallet", element: <WalletPage /> },
+      { path: "/loyalty-program", element: <RoleRoute allowedRoles={["student", "staff", "ta", "professor", "events_office", "admin"]}><LoyaltyProgram /></RoleRoute> },
+      { path: "/create-workshop", element: <RoleRoute allowedRoles={["professor"]}><CreateWorkshop /></RoleRoute> },
+      { path: "/my-workshops", element: <RoleRoute allowedRoles={["professor"]}><Workshops /></RoleRoute> },
+      { path: "/workshops", element: <Navigate to="/events" replace /> },
+      { path: "/events-ratings", element: <AdminRoute><EventsRatings /></AdminRoute> },
+      { path: "/admin-dashboard", element: <AdminRoute><AdminDashboard /></AdminRoute> },
+      { path: "/admin-users", element: <AdminRoute><AdminUserManagement /></AdminRoute> },
+      { path: "/admin-comments", element: <AdminRoute><AdminComments /></AdminRoute> },
+      { path: "/reports", element: <AdminRoute><ReportsPage /></AdminRoute> },
+      { path: "/vendor-dashboard", element: <VendorRoute><VendorDashboard /></VendorRoute> },
+      { path: "/vendor/payment-success", element: <VendorRoute><PaymentSuccess /></VendorRoute> },
+      { path: "/vendor/my-participations", element: <VendorRoute><VendorDashboard /></VendorRoute> },
+    ],
   },
 
   // 404 Fallback
   {
     path: "*",
-    element: (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: theme.typography.fontFamily.primary,
-          textAlign: "center",
-          padding: theme.spacing[4],
-        }}
-      >
-        <h1
-          style={{
-            fontSize: theme.typography.fontSize["4xl"],
-            fontWeight: theme.typography.fontWeight.bold,
-            color: theme.colors.text.primary,
-            marginBottom: theme.spacing[4],
-          }}
-        >
-          404 - Page Not Found
-        </h1>
-        <p
-          style={{
-            fontSize: theme.typography.fontSize.lg,
-            color: theme.colors.text.secondary,
-            marginBottom: theme.spacing[6],
-          }}
-        >
-          The page you're looking for doesn't exist.
-        </p>
-        <a
-          href="/events"
-          style={{
-            ...theme.components.button.primary,
-            textDecoration: "none",
-            display: "inline-block",
-          }}
-        >
-          Browse Events
-        </a>
-      </div>
-    ),
+    element: <div>404 - Page Not Found</div>,
   },
 ]);
 
-// ---------------------------
-// Main App
-// ---------------------------
+// --- Main App Component ---
 
 const App = () => {
   return (
     <AuthProvider>
-      <div
-        style={{
-          fontFamily: theme.typography.fontFamily.primary,
-          minHeight: "100vh",
+      <RouterProvider router={router} />
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: theme.colors.background.paper,
+            color: theme.colors.text.primary,
+            border: `1px solid ${theme.colors.border.light}`,
+          },
         }}
-      >
-        <RouterProvider router={router} />
-        {/* Toast Notifications */}
-        <Toaster
-          position="bottom-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: theme.colors.background.paper,
-              color: theme.colors.text.primary,
-              border: `1px solid ${theme.colors.border.light}`,
-              borderRadius: theme.borderRadius.md,
-              fontSize: theme.typography.fontSize.sm,
-              fontFamily: theme.typography.fontFamily.primary,
-              boxShadow: theme.shadows.lg,
-            },
-            success: {
-              iconTheme: {
-                primary: theme.colors.success.main,
-                secondary: theme.colors.success.light,
-              },
-            },
-            error: {
-              iconTheme: {
-                primary: theme.colors.error.main,
-                secondary: theme.colors.error.light,
-              },
-            },
-          }}
-        />
-      </div>
+      />
     </AuthProvider>
   );
 };

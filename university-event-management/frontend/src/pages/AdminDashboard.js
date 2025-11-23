@@ -4,13 +4,11 @@ import { useAuth } from "../context/AuthContext";
 import { applicationServices } from "../services/api";
 import theme from "../theme";
 import toast from "react-hot-toast";
-import Navbar from "../components/Navbar";
 
 const styles = {
   container: {
     background: `linear-gradient(135deg, ${theme.colors.background.default} 0%, ${theme.colors.neutral.gray50} 100%)`,
     minHeight: "100vh",
-    padding: `${theme.spacing[8]} ${theme.spacing[6]}`,
     fontFamily: theme.typography.fontFamily.primary,
     position: "relative",
     overflow: "hidden",
@@ -619,7 +617,6 @@ const AdminDashboard = () => {
 
   return (
     <>
-      <Navbar />
       <style>{cssKeyframes}</style>
       <div style={styles.container}>
         <div style={styles.backgroundPattern}></div>

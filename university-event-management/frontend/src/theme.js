@@ -481,7 +481,6 @@ eventTypes: {
       background: "rgba(255, 255, 255, 0.95)",
       backdropFilter: "blur(10px)",
       boxShadow: "0 2px 20px rgba(0, 0, 0, 0.1)",
-      padding: "1rem 2rem",
       position: "sticky",
       top: 0,
       zIndex: 100,

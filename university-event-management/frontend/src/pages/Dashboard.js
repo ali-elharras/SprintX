@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import theme, { getEventTypeColor, getRoleColor } from "../theme";
 import Card from "../components/Card";
-import Navbar from "../components/Navbar";
+
 import axios from "axios";
 import { 
   Calendar, 
@@ -720,7 +720,7 @@ const Dashboard = () => {
       <style>{cssKeyframes}</style>
       <div style={styles.container}>
         <div style={styles.backgroundPattern}></div>
-        <Navbar />
+
 
         <div style={styles.content}>
           {/* Welcome Card */}

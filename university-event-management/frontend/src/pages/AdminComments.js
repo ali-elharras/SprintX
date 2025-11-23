@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import Navbar from '../components/Navbar';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -223,7 +222,6 @@ const AdminComments = () => {
   if (!isAdmin) {
     return (
       <div style={containerStyles}>
-        <Navbar />
         <div style={contentStyles}>
           <Card style={{ padding: theme.spacing[8], textAlign: 'center' }}>
             <h2 style={{ marginBottom: theme.spacing[4] }}>Access Denied</h2>
@@ -238,7 +236,6 @@ const AdminComments = () => {
 
   return (
     <div style={containerStyles}>
-      <Navbar />
       <div style={contentStyles}>
         <div style={headerStyles}>
           <h1 style={titleStyles}>Manage Comments & Ratings</h1>

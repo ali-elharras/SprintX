@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import toast from "react-hot-toast";
 import { adminAPI } from "../services/api";
 import theme from "../theme";
-import Navbar from "../components/Navbar";
 import axios from "axios";
 
 const initialForm = {
@@ -835,7 +834,6 @@ const AdminUserManagement = () => {
 
   return (
     <>
-      <Navbar />
       <div style={containerBg}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           {headerCard}

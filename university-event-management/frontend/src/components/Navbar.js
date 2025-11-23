@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Menu } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
 import theme, { getRoleColor } from "../theme";
 import Button from "../components/Button";
 import NotificationCenter from "../components/NotificationCenter";
 
-const Navbar = () => {
+const Navbar = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, isUser, isVendor, user, vendor } = useAuth();
@@ -1022,6 +1022,7 @@ const Navbar = () => {
     alignItems: "center",
     justifyContent: "space-between",
     fontFamily: theme.typography.fontFamily.primary,
+    padding: "0.5rem 2rem",
   };
 
   const logoStyles = {
@@ -1092,8 +1093,23 @@ const Navbar = () => {
 
   return (
     <nav style={navbarStyles}>
-      {/* Logo */}
-      <div style={logoStyles}>
+      {/* Logo & Admin Menu Toggle */}
+      <div style={{...logoStyles, display: 'flex', alignItems: 'center', gap: theme.spacing[4]}}>
+        {user && user.role === "admin" && (
+          <button
+            onClick={onMenuClick}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: theme.spacing[2],
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <Menu size={24} color={theme.colors.text.primary} />
+          </button>
+        )}
         <img
           src={require("../assets/images/SprintXLogo.png")}
           alt="SprintX"
@@ -1106,283 +1122,7 @@ const Navbar = () => {
         {user && user.role === "events_office" ? (
           renderEventsOfficeNav()
         ) : user && user.role === "admin" ? (
-          <>
-            <button
-              onClick={() => navigate("/dashboard")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/dashboard"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/dashboard"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/dashboard") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/dashboard") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => navigate("/admin-comments")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/admin-comments"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/admin-comments"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/admin-comments") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/admin-comments") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Comments
-            </button>
-            <button
-              onClick={() => navigate("/events")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/events"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/events"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/events") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/events") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Events
-            </button>
-
-            <button
-              onClick={() => navigate("/loyalty-program")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/loyalty-program"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/loyalty-program"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/loyalty-program") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/loyalty-program") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Loyalty Program
-            </button>
-
-            <button
-              onClick={() => navigate("/admin-dashboard")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/admin-dashboard"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/admin-dashboard"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/admin-dashboard") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/admin-dashboard") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Admin Dashboard
-            </button>
-            <button
-              onClick={() => navigate("/admin-users")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/admin-users"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/admin-users"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/admin-users") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/admin-users") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              User Management
-            </button>
-
-            <button
-              onClick={() => navigate("/reports")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/reports"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/reports"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/reports") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/reports") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Reports
-            </button>
-            <button
-              onClick={() => navigate("/events-ratings")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/events-ratings"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/events-ratings"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/events-ratings") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/events-ratings") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Events Ratings
-            </button>
-          </>
+          <></> // Admin nav is handled by the sidebar, so this is empty
         ) : isVendor ? (
           <>
             <button

@@ -3,7 +3,6 @@ import { useAuth } from "../context/AuthContext";
 import { eventAPI } from "../services/api";
 import theme from "../theme";
 import Card from "../components/Card";
-import Navbar from "../components/Navbar";
 import Button from "../components/Button";
 import Input from "../components/Input";
 import Select from "../components/Select";
@@ -271,7 +270,6 @@ const EventsRatings = () => {
   if (!isAuthenticated) {
     return (
       <div style={containerStyles}>
-        <Navbar />
         <div style={contentStyles}>
           <Card style={{ textAlign: "center", padding: theme.spacing[8] }}>
             <h2 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing[4] }}>
@@ -289,7 +287,6 @@ const EventsRatings = () => {
   if (!isAuthorized) {
     return (
       <div style={containerStyles}>
-        <Navbar />
         <div style={contentStyles}>
           <Card style={{ textAlign: "center", padding: theme.spacing[8] }}>
             <div style={{ fontSize: "64px", marginBottom: theme.spacing[4] }}>🚫</div>
@@ -310,7 +307,6 @@ const EventsRatings = () => {
 
   return (
     <div style={containerStyles}>
-      <Navbar />
       <div style={contentStyles}>
         {/* Header */}
         <div style={headerStyles}>
