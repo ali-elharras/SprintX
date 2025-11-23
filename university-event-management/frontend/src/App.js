@@ -79,10 +79,6 @@ const AppLayout = () => {
   );
 };
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return <div>Loading...</div>;
@@ -118,10 +114,8 @@ const router = createBrowserRouter([
   // Public Routes
   { path: "/", element: <PublicRoute><LandingPage /></PublicRoute> },
   { path: "/login", element: <PublicRoute><Login /></PublicRoute> },
-  { path: "/signup", element: <PublicRoute><UserTypeSelection /></PublicRoute> },
+  { path: "/signup", element: <PublicRoute><SignupPage /></PublicRoute> },
   { path: "/vendor-login", element: <PublicRoute><VendorLogin /></PublicRoute> },
-  { path: "/signup/user", element: <PublicRoute><UserSignup /></PublicRoute> },
-  { path: "/signup/vendor", element: <PublicRoute><VendorSignup /></PublicRoute> },
   { path: "/verification-email-selection", element: <PublicRoute><VerificationEmailSelection /></PublicRoute> },
   { path: "/verification-success", element: <PublicRoute><VerificationSuccess /></PublicRoute> },
   { path: "/email-verification-sent", element: <PublicRoute><EmailVerificationSent /></PublicRoute> },
