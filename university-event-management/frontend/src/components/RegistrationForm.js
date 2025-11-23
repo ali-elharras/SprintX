@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -8,6 +8,7 @@ import Button from "./Button";
 import Input from "./Input";
 import { registrationAPI } from "../services/api";
 import PaymentModal from "./PaymentModal";
+import { useAuth } from "../context/AuthContext";
 
 // Validation schema
 const registrationSchema = yup.object({
@@ -36,6 +37,7 @@ const registrationSchema = yup.object({
 });
 
 const RegistrationForm = ({ event, onSuccess, onCancel }) => {
+  const { user } = useAuth(); // Get authenticated user data
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [registrationData, setRegistrationData] = useState(null);
@@ -44,18 +46,38 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
+    reset,
   } = useForm({
     resolver: yupResolver(registrationSchema),
   });
 
   const isPaidEvent = event?.cost && event.cost > 0;
 
+  // Auto-fill form with user data when component mounts
+  useEffect(() => {
+    if (user) {
+      console.log("Auto-filling form with user data:", user);
+      
+      // Set form values with user data
+      setValue("firstName", user.firstName || "", { shouldValidate: false });
+      setValue("lastName", user.lastName || "", { shouldValidate: false });
+      setValue("email", user.email || "", { shouldValidate: false });
+      setValue("universityId", user.universityId || "", { shouldValidate: false });
+      
+      toast.success("Form auto-filled with your profile information", {
+        icon: "✨",
+        duration: 3000,
+      });
+    }
+  }, [user, setValue]);
+
   const onSubmit = async (data) => {
     setIsSubmitting(true);
 
-    console.log("Submitting registration for event:", event); // Debug
-    console.log("Event cost:", event?.cost); // Debug
-    console.log("Is paid event:", isPaidEvent); // Debug
+    console.log("Submitting registration for event:", event);
+    console.log("Event cost:", event?.cost);
+    console.log("Is paid event:", isPaidEvent);
 
     try {
       // Prepare registration data
@@ -65,25 +87,22 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
         lastName: data.lastName.trim(),
         email: data.email.toLowerCase().trim(),
         universityId: data.universityId.trim(),
-        role: "student", // Default role since we removed the role field
+        role: user?.role || "student", // Use authenticated user's role
       };
 
       const response = await registrationAPI.registerForEvent(regData);
 
-      console.log("Full registration response:", response); // Debug log
-      console.log("Response data:", response.data); // Debug log
+      console.log("Full registration response:", response);
+      console.log("Response data:", response.data);
 
-      // The response structure is: response.data = { success, message, data, requiresPayment }
       const requiresPayment = response.data.requiresPayment;
       const registrationRecord = response.data.data;
 
-      console.log("Requires payment?", requiresPayment); // Debug log
-      console.log("Registration record:", registrationRecord); // Debug log
+      console.log("Requires payment?", requiresPayment);
+      console.log("Registration record:", registrationRecord);
 
       // Check if payment is required
       if (requiresPayment) {
-        // For paid events, backend returns registrationData (not a DB record)
-        // Store this data to pass to payment
         const regDataForPayment =
           response.data.registrationData || registrationRecord;
         setRegistrationData(regDataForPayment);
@@ -92,11 +111,11 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
           icon: "💳",
           duration: 4000,
         });
-        // Don't reset isSubmitting here - keep it true until payment is complete
       } else {
         // Free event - registration complete
         toast.success("Registration successful!");
-        // Notify other tabs/windows that a registration occurred so they can refresh
+        
+        // Notify other tabs/windows
         try {
           const payload = JSON.stringify({
             eventId: event._id,
@@ -104,8 +123,9 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
           });
           localStorage.setItem("registration_made", payload);
         } catch (err) {
-          // Ignore storage errors (e.g., quota)
+          // Ignore storage errors
         }
+        
         setIsSubmitting(false);
         onSuccess && onSuccess(registrationRecord);
       }
@@ -122,18 +142,30 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
 
     if (success) {
       toast.success("Registration and payment successful!");
-      // Notify other tabs/windows that a registration occurred so they can refresh
+      
+      // Notify other tabs/windows
       try {
         const payload = JSON.stringify({ eventId: event._id, ts: Date.now() });
         localStorage.setItem("registration_made", payload);
       } catch (err) {
-        // Ignore storage errors (e.g., quota)
+        // Ignore storage errors
       }
+      
       onSuccess && onSuccess(registrationData);
     } else {
-      // Payment was cancelled - no registration was created
       toast.error("Payment cancelled. No registration was created.");
       onCancel && onCancel();
+    }
+  };
+
+  // Reset form to user's original data
+  const handleResetForm = () => {
+    if (user) {
+      setValue("firstName", user.firstName || "");
+      setValue("lastName", user.lastName || "");
+      setValue("email", user.email || "");
+      setValue("universityId", user.universityId || "");
+      toast.success("Form reset to your profile information");
     }
   };
 
@@ -167,8 +199,8 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
             textAlign: "center",
           }}
         >
-          {event.type.charAt(0).toUpperCase() + event.type.slice(1)} â€¢{" "}
-          {new Date(event.startDate).toLocaleDateString()} â€¢ {event.location}
+          {event.type.charAt(0).toUpperCase() + event.type.slice(1)} •{" "}
+          {new Date(event.startDate).toLocaleDateString()} • {event.location}
         </p>
         {isPaidEvent && (
           <div
@@ -201,6 +233,46 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
             >
               Payment required after registration to secure your spot
             </p>
+          </div>
+        )}
+        
+        {/* Auto-fill notification */}
+        {user && (
+          <div
+            style={{
+              background: theme.colors.success.light,
+              padding: theme.spacing[3],
+              borderRadius: "8px",
+              marginTop: theme.spacing[3],
+              border: `1px solid ${theme.colors.success.main}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: theme.spacing[2] }}>
+              <span style={{ fontSize: "1.2rem" }}>✨</span>
+              <p
+                style={{
+                  fontSize: theme.typography.fontSize.sm,
+                  color: theme.colors.success.dark,
+                  margin: 0,
+                }}
+              >
+                Form auto-filled with your profile data. You can edit if needed.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleResetForm}
+              style={{
+                fontSize: theme.typography.fontSize.xs,
+                padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+              }}
+            >
+              Reset
+            </Button>
           </div>
         )}
       </div>
@@ -302,8 +374,8 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
         <PaymentModal
           isOpen={showPaymentModal}
           onClose={handlePaymentComplete}
-          registrationId={registrationData._id} // Legacy: for old pending registrations
-          registrationData={registrationData._id ? null : registrationData} // New flow: pass data if no _id
+          registrationId={registrationData._id}
+          registrationData={registrationData._id ? null : registrationData}
           amount={event.cost || 0}
           title={`Registration for ${event.title}`}
           type="event"
