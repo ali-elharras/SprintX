@@ -21,37 +21,37 @@ const theme = {
     },
 
     // Refined Event Type Colors - Professional & Comfortable
-eventTypes: {
-  bazaar: {
-    main: "#059669",      // Deeper emerald (was too bright green)
-    light: "#6ee7b7",     // Softer mint
-    dark: "#047857",      // Rich forest
-    bg: "#ecfdf5",        // Subtle pale mint
-  },
-  trip: {
-    main: "#d97706",      // Warmer amber (less orange)
-    light: "#fbbf24",     // Kept but used sparingly
-    dark: "#b45309",      // Deep bronze
-    bg: "#fffbeb",        // Cream instead of yellow
-  },
-  workshop: {
-    main: "#7c3aed",      // Deeper violet (less bright)
-    light: "#c4b5fd",     // Soft lavender
-    dark: "#6d28d9",      // Royal purple
-    bg: "#faf5ff",        // Very pale lilac
-  },
-  competition: {
-    main: "#2563eb",      // Rich blue (less electric)
-    light: "#93c5fd",     // Sky blue
-    dark: "#1e40af",      // Navy
-    bg: "#eff6ff",        // Soft blue tint
-  },
-  conference: {
-    main: "#db2777",      // Deeper rose (less hot pink)
-    light: "#f9a8d4",     // Soft pink
-    dark: "#be185d",      // Wine
-    bg: "#fdf2f8",        // Blush
-  },
+    eventTypes: {
+      bazaar: {
+        main: "#059669", // Deeper emerald (was too bright green)
+        light: "#6ee7b7", // Softer mint
+        dark: "#047857", // Rich forest
+        bg: "#ecfdf5", // Subtle pale mint
+      },
+      trip: {
+        main: "#d97706", // Warmer amber (less orange)
+        light: "#fbbf24", // Kept but used sparingly
+        dark: "#b45309", // Deep bronze
+        bg: "#fffbeb", // Cream instead of yellow
+      },
+      workshop: {
+        main: "#7c3aed", // Deeper violet (less bright)
+        light: "#c4b5fd", // Soft lavender
+        dark: "#6d28d9", // Royal purple
+        bg: "#faf5ff", // Very pale lilac
+      },
+      competition: {
+        main: "#2563eb", // Rich blue (less electric)
+        light: "#93c5fd", // Sky blue
+        dark: "#1e40af", // Navy
+        bg: "#eff6ff", // Soft blue tint
+      },
+      conference: {
+        main: "#db2777", // Deeper rose (less hot pink)
+        light: "#f9a8d4", // Soft pink
+        dark: "#be185d", // Wine
+        bg: "#fdf2f8", // Blush
+      },
     },
 
     // Neutral Colors
@@ -190,6 +190,7 @@ eventTypes: {
     16: "4rem", // 64px
     20: "5rem", // 80px
     24: "6rem", // 96px
+    32: "8rem", // 128px
   },
 
   // ============================================

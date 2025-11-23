@@ -83,12 +83,23 @@ api.interceptors.response.use(
   (error) => {
     // Don't handle errors for cancelled requests
     if (axios.isCancel(error)) {
-      console.log('Request cancelled:', error.message);
+      console.log("Request cancelled:", error.message);
       return Promise.reject(error);
     }
 
     // Treat 401 Unauthorized and 403 Inactive/Forbidden similarly for forced logout cases
     if (error.response?.status === 401 || error.response?.status === 403) {
+      // Don't redirect if this is a login attempt (login endpoints should return 401 on wrong credentials)
+      const isLoginAttempt =
+        error.config?.url?.includes("/login") ||
+        window.location.pathname === "/login" ||
+        window.location.pathname === "/vendor-login";
+
+      if (isLoginAttempt) {
+        // Just pass through the error for login attempts
+        return Promise.reject(error);
+      }
+
       // If 403 but the message isn't about inactive account, we may decide to not force logout.
       const message = error.response?.data?.message || "";
       const shouldForceLogout =
@@ -96,33 +107,37 @@ api.interceptors.response.use(
         /inactive|blocked|access denied/i.test(message);
 
       if (shouldForceLogout) {
-      const wasVendor = localStorage.getItem("userType") === "vendor";
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      localStorage.removeItem("vendor");
-      localStorage.removeItem("userType");
+        const wasVendor = localStorage.getItem("userType") === "vendor";
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        localStorage.removeItem("vendor");
+        localStorage.removeItem("userType");
 
-      if (
-        window.location.pathname !== "/" &&
-        window.location.pathname !== "/vendor-login"
-      ) {
-        window.location.href = wasVendor ? "/vendor-login" : "/";
-      }
+        if (
+          window.location.pathname !== "/" &&
+          window.location.pathname !== "/vendor-login"
+        ) {
+          window.location.href = wasVendor ? "/vendor-login" : "/";
+        }
       }
     }
 
     // Handle server errors with user-friendly messages
     let errorMessage;
-    if (error.code === 'ECONNABORTED' || error.code === 'ENOTFOUND') {
-      errorMessage = "Connection timeout. Please check your internet connection.";
+    if (error.code === "ECONNABORTED" || error.code === "ENOTFOUND") {
+      errorMessage =
+        "Connection timeout. Please check your internet connection.";
     } else if (error.response?.status >= 500) {
       errorMessage = "Server error. Please try again in a moment.";
     } else if (error.response?.status === 429) {
-      errorMessage = "Too many requests. Please wait a moment before trying again.";
+      errorMessage =
+        "Too many requests. Please wait a moment before trying again.";
     } else if (error.response?.status === 0 || !error.response) {
-      errorMessage = "Network error. Please check your connection and try again.";
+      errorMessage =
+        "Network error. Please check your connection and try again.";
     } else {
-      errorMessage = error.response?.data?.message || error.message || "An error occurred";
+      errorMessage =
+        error.response?.data?.message || error.message || "An error occurred";
     }
 
     return Promise.reject({
@@ -156,7 +171,6 @@ export const eventServices = {
   },
 };
 
-
 export const paymentSum = {
   getPendingPaymentsSum: async (cancelToken = null) => {
     try {
@@ -175,7 +189,10 @@ export const paymentSum = {
 export const applicationServices = {
   applyToBazaar: async (bazaarId, applicationData) => {
     try {
-      const response = await api.post(`/applications/bazaar/${bazaarId}`, applicationData);
+      const response = await api.post(
+        `/applications/bazaar/${bazaarId}`,
+        applicationData
+      );
       return response.data;
     } catch (error) {
       throw error;
@@ -232,7 +249,9 @@ export const applicationServices = {
 
   getApprovedVendorsForBazaar: async (bazaarId) => {
     try {
-      const response = await api.get(`/applications/bazaar/${bazaarId}/approved-vendors`);
+      const response = await api.get(
+        `/applications/bazaar/${bazaarId}/approved-vendors`
+      );
       return response.data;
     } catch (error) {
       throw error;
@@ -241,7 +260,10 @@ export const applicationServices = {
 
   getBoothConflicts: async (conflictData) => {
     try {
-      const response = await api.post("/applications/booth-conflicts", conflictData);
+      const response = await api.post(
+        "/applications/booth-conflicts",
+        conflictData
+      );
       return response.data;
     } catch (error) {
       throw error;
@@ -250,7 +272,9 @@ export const applicationServices = {
 
   cancelApplication: async (applicationType, applicationId) => {
     try {
-      const response = await api.delete(`/applications/${applicationType}/${applicationId}`);
+      const response = await api.delete(
+        `/applications/${applicationType}/${applicationId}`
+      );
       return response.data;
     } catch (error) {
       throw error;
@@ -305,7 +329,8 @@ export const eventAPI = {
     api.put(`/events/${id}/status`, message ? { status, message } : { status }),
   deleteEvent: (id) => api.delete(`/events/${id}`),
 
-  toggleArchiveStatus: (id, isArchived) => api.patch(`/events/${id}/archive`, { isArchived }),
+  toggleArchiveStatus: (id, isArchived) =>
+    api.patch(`/events/${id}/archive`, { isArchived }),
 };
 
 // ============================================
@@ -321,13 +346,15 @@ export const workshopAPI = {
     );
   },
   createWorkshop: (workshopData) => api.post("/workshops", workshopData),
-  updateWorkshop: (id, workshopData) => api.patch(`/workshops/${id}`, workshopData),
+  updateWorkshop: (id, workshopData) =>
+    api.patch(`/workshops/${id}`, workshopData),
   deleteWorkshop: (id) => api.delete(`/workshops/${id}`),
-  deleteWorkshopByEventId: (eventId) => api.delete(`/workshops/by-event/${eventId}`),
+  deleteWorkshopByEventId: (eventId) =>
+    api.delete(`/workshops/by-event/${eventId}`),
   publishWorkshop: (id) => api.post(`/workshops/${id}/publish`),
-  rejectWorkshop: (id, reason = null) => 
+  rejectWorkshop: (id, reason = null) =>
     api.post(`/workshops/${id}/reject`, reason ? { reason } : {}),
-  requestEditWorkshop: (id, message) => 
+  requestEditWorkshop: (id, message) =>
     api.post(`/workshops/${id}/request-edit`, { message }),
 };
 
@@ -381,16 +408,16 @@ export const courtAPI = {
     });
   },
 
-  getCourt: (id, cancelToken = null) => 
+  getCourt: (id, cancelToken = null) =>
     api.get(`/courts/${id}`, {
       ...(cancelToken && { cancelToken: cancelToken.token }),
     }),
-    
-  getCourtsByType: (type, cancelToken = null) => 
+
+  getCourtsByType: (type, cancelToken = null) =>
     api.get(`/courts/type/${type}`, {
       ...(cancelToken && { cancelToken: cancelToken.token }),
     }),
-    
+
   getCourtAvailability: (courtId, date, cancelToken = null) =>
     api.get(`/courts/${courtId}/availability/${date}`, {
       ...(cancelToken && { cancelToken: cancelToken.token }),
@@ -403,27 +430,29 @@ export const courtAPI = {
     });
   },
 
-  getCourtStats: (cancelToken = null) => 
+  getCourtStats: (cancelToken = null) =>
     api.get("/courts/stats", {
       ...(cancelToken && { cancelToken: cancelToken.token }),
     }),
-    
+
   createCourt: (courtData) => api.post("/courts", courtData),
   updateCourt: (id, courtData) => api.put(`/courts/${id}`, courtData),
   deleteCourt: (id) => api.delete(`/courts/${id}`),
-  
+
   // Court Reservations
-  reserveCourt: (courtId, reservationData) => 
+  reserveCourt: (courtId, reservationData) =>
     api.post(`/courts/${courtId}/reserve`, reservationData),
-    
-  getMyReservations: (cancelToken = null) => 
+
+  getMyReservations: (cancelToken = null) =>
     api.get("/courts/my-reservations", {
       ...(cancelToken && { cancelToken: cancelToken.token }),
     }),
-    
+
   cancelReservation: (reservationId, reason) =>
-    api.delete(`/courts/my-reservations/${reservationId}`, { data: { reason } }),
-    
+    api.delete(`/courts/my-reservations/${reservationId}`, {
+      data: { reason },
+    }),
+
   getAvailableSlots: (courtId, date, cancelToken = null) =>
     api.get(`/courts/${courtId}/available-slots/${date}`, {
       ...(cancelToken && { cancelToken: cancelToken.token }),
@@ -453,17 +482,17 @@ export const gymAPI = {
     );
   },
 
-  getSessionsByDate: (date, cancelToken = null) => 
+  getSessionsByDate: (date, cancelToken = null) =>
     api.get(`/gym/sessions/date/${date}`, {
       ...(cancelToken && { cancelToken: cancelToken.token }),
     }),
-    
-  getSession: (id, cancelToken = null) => 
+
+  getSession: (id, cancelToken = null) =>
     api.get(`/gym/sessions/${id}`, {
       ...(cancelToken && { cancelToken: cancelToken.token }),
     }),
-    
-  getSessionTypes: (cancelToken = null) => 
+
+  getSessionTypes: (cancelToken = null) =>
     api.get("/gym/types", {
       ...(cancelToken && { cancelToken: cancelToken.token }),
     }),
@@ -479,14 +508,16 @@ export const gymAPI = {
     api.put(`/gym/sessions/${id}`, sessionData),
 
   // Admin / Events Office: cancel gym session
-  cancelSession: (id, data) =>
-    api.delete(`/gym/sessions/${id}`, { data }),
+  cancelSession: (id, data) => api.delete(`/gym/sessions/${id}`, { data }),
 
   getMyRegistrations: (params = {}, cancelToken = null) => {
     const queryString = new URLSearchParams(params).toString();
-    return api.get(`/gym/registrations${queryString ? `?${queryString}` : ""}`, {
-      ...(cancelToken && { cancelToken: cancelToken.token }),
-    });
+    return api.get(
+      `/gym/registrations${queryString ? `?${queryString}` : ""}`,
+      {
+        ...(cancelToken && { cancelToken: cancelToken.token }),
+      }
+    );
   },
 
   cancelRegistration: (registrationId, reason) =>
@@ -505,22 +536,23 @@ export const gymAPI = {
 // ============================================
 
 export const conferenceAPI = {
-    // Create new conference
-    createConference: (conferenceData) => api.post('/conferences', conferenceData),
-    
-    // Update conference
-    updateConference: (id, conferenceData) => api.put(`/conferences/${id}`, conferenceData),
-    
-    // Delete conference
-    deleteConference: (id) => api.delete(`/conferences/${id}`),
+  // Create new conference
+  createConference: (conferenceData) =>
+    api.post("/conferences", conferenceData),
 
-    getConference: (id) => api.get(`/conferences/${id}`),
+  // Update conference
+  updateConference: (id, conferenceData) =>
+    api.put(`/conferences/${id}`, conferenceData),
+
+  // Delete conference
+  deleteConference: (id) => api.delete(`/conferences/${id}`),
+
+  getConference: (id) => api.get(`/conferences/${id}`),
 };
 
 // ============================================
 // Admin API ENDPOINTS
 // ============================================
-
 
 export const adminAPI = {
   // ✅ Fetch all users
@@ -570,7 +602,9 @@ export const adminAPI = {
   // ✅ Approve an academic: assign role and verify
   approveAcademic: async (id, role) => {
     try {
-      const response = await api.patch(`/admin/approve-academic/${id}`, { role });
+      const response = await api.patch(`/admin/approve-academic/${id}`, {
+        role,
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -599,8 +633,7 @@ export const adminAPI = {
 };
 export const ratingAPI = {
   // Submit or update a rating
-  submitRating: (ratingData) => 
-    api.post('/ratings', ratingData),
+  submitRating: (ratingData) => api.post("/ratings", ratingData),
 
   // Get all ratings for an event
   getEventRatings: (eventId, cancelToken = null) =>
@@ -615,22 +648,24 @@ export const ratingAPI = {
     }),
 
   // Delete a rating
-  deleteRating: (ratingId) =>
-    api.delete(`/ratings/${ratingId}`),
-  
+  deleteRating: (ratingId) => api.delete(`/ratings/${ratingId}`),
+
   // ================= ADMIN COMMENT MANAGEMENT =================
   // Admin get events with ratings
-  getEventsWithRatings: (cancelToken = null) => 
-    api.get('/ratings/admin/events-with-ratings', {
+  getEventsWithRatings: (cancelToken = null) =>
+    api.get("/ratings/admin/events-with-ratings", {
       ...(cancelToken && { cancelToken: cancelToken.token }),
     }),
 
   // Admin fetch all ratings/comments with filters
   getAllRatingsAdmin: (params = {}, cancelToken = null) => {
     const queryString = new URLSearchParams(params).toString();
-    return api.get(`/ratings/admin/all${queryString ? `?${queryString}` : ''}`, {
-      ...(cancelToken && { cancelToken: cancelToken.token }),
-    });
+    return api.get(
+      `/ratings/admin/all${queryString ? `?${queryString}` : ""}`,
+      {
+        ...(cancelToken && { cancelToken: cancelToken.token }),
+      }
+    );
   },
 
   // Admin delete any rating by ID
@@ -676,9 +711,7 @@ export const boothPollAPI = {
     ),
 
   createPoll: (pollData) =>
-    retryRequest(async () =>
-      api.post('/booth-polls', pollData)
-    ),
+    retryRequest(async () => api.post("/booth-polls", pollData)),
 
   voteOnPoll: (pollId, vendorIndex) =>
     retryRequest(async () =>
@@ -686,12 +719,8 @@ export const boothPollAPI = {
     ),
 
   closePoll: (pollId) =>
-    retryRequest(async () =>
-      api.post(`/booth-polls/${pollId}/close`, {})
-    ),
+    retryRequest(async () => api.post(`/booth-polls/${pollId}/close`, {})),
 
   deletePoll: (pollId) =>
-    retryRequest(async () =>
-      api.delete(`/booth-polls/${pollId}`)
-    ),
+    retryRequest(async () => api.delete(`/booth-polls/${pollId}`)),
 };

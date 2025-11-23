@@ -9,7 +9,7 @@ const VerificationSuccess = () => {
   const navigate = useNavigate();
 
   const handleContinue = () => {
-    navigate("/");
+    navigate("/login");
   };
 
   const containerStyles = {

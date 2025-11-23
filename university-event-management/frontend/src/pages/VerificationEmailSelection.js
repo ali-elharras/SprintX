@@ -47,7 +47,7 @@ const VerificationEmailSelection = () => {
 
   // If no user data, redirect back to signup
   if (!userData || !originalEmail) {
-    navigate("/signup/user");
+    navigate("/signup");
     return null;
   }
 
@@ -275,7 +275,7 @@ const VerificationEmailSelection = () => {
             Need to go back?{" "}
             <button
               type="button"
-              onClick={() => navigate("/signup/user")}
+              onClick={() => navigate("/signup")}
               style={{
                 background: "none",
                 border: "none",
