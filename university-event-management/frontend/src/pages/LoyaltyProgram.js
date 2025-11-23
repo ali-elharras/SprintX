@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import api from "../services/api";
 import theme from "../theme";
-import Navbar from "../components/Navbar";
 import LoadingScreen from "../components/LoadingScreen";
 
 const LoyaltyProgram = () => {
@@ -174,7 +173,6 @@ const LoyaltyProgram = () => {
 
   return (
     <div style={pageStyles}>
-      <Navbar />
       <div style={containerStyles}>
         {/* Header */}
         <div style={headerStyles}>
