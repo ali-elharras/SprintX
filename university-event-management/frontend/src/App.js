@@ -11,16 +11,14 @@ import theme from "./theme";
 
 // Pages (combined from both branches)
 import LandingPage from "./pages/LandingPage";
-import UserTypeSelection from "./components/UserTypeSelection";
+import SignupPage from "./pages/SignupPage";
 import Login from "./pages/Login";
 import VendorLogin from "./pages/VendorLogin";
-import UserSignup from "./pages/UserSignup";
 import VerificationEmailSelection from "./pages/VerificationEmailSelection";
 import VerificationSuccess from "./pages/VerificationSuccess";
 import VerificationPending from "./pages/VerificationPending";
 import EmailVerified from "./pages/EmailVerified";
 import EmailVerificationSent from "./pages/EmailVerificationSent";
-import VendorSignup from "./pages/VendorSignup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
@@ -69,7 +67,7 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return children;
@@ -166,39 +164,19 @@ const router = createBrowserRouter([
   },
   {
     path: "/login",
-    element: (
-      <PublicRoute>
-        <Login />
-      </PublicRoute>
-    ),
+    element: <Login />,
   },
   {
     path: "/signup",
-    element: <UserTypeSelection />,
+    element: (
+      <PublicRoute>
+        <SignupPage />
+      </PublicRoute>
+    ),
   },
   {
     path: "/vendor-login",
-    element: (
-      <PublicRoute>
-        <VendorLogin />
-      </PublicRoute>
-    ),
-  },
-  {
-    path: "/signup/user",
-    element: (
-      <PublicRoute>
-        <UserSignup />
-      </PublicRoute>
-    ),
-  },
-  {
-    path: "/signup/vendor",
-    element: (
-      <PublicRoute>
-        <VendorSignup />
-      </PublicRoute>
-    ),
+    element: <VendorLogin />,
   },
   {
     path: "/verification-email-selection",
@@ -390,7 +368,16 @@ const router = createBrowserRouter([
     path: "/loyalty-program",
     element: (
       <ProtectedRoute>
-        <RoleRoute allowedRoles={["student","staff","ta","professor","events_office","admin"]}>
+        <RoleRoute
+          allowedRoles={[
+            "student",
+            "staff",
+            "ta",
+            "professor",
+            "events_office",
+            "admin",
+          ]}
+        >
           <LoyaltyProgram />
         </RoleRoute>
       </ProtectedRoute>

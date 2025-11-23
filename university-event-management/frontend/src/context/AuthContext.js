@@ -119,6 +119,9 @@ export const AuthProvider = ({ children }) => {
   // Login function for users
   const loginUser = async (loginData) => {
     console.log("=== LOGIN ATTEMPT STARTED ===", loginData);
+    console.log("=== STATE BEFORE LOGIN ===", {
+      isAuthenticated: state.isAuthenticated,
+    });
     try {
       dispatch({ type: AUTH_ACTIONS.LOADING, payload: true });
       dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
@@ -174,7 +177,9 @@ export const AuthProvider = ({ children }) => {
           };
         }
 
-        // Regular login failure
+        // Regular login failure - clear any existing auth
+        authStorage.clearAuth();
+        dispatch({ type: AUTH_ACTIONS.LOGOUT });
         dispatch({
           type: AUTH_ACTIONS.SET_ERROR,
           payload: response.message || "Login failed",
@@ -217,11 +222,16 @@ export const AuthProvider = ({ children }) => {
         return returnValue;
       }
 
+      // Clear any existing auth on error
+      authStorage.clearAuth();
+      dispatch({ type: AUTH_ACTIONS.LOGOUT });
+      const errorMessage =
+        errorData?.message || error.message || "Login failed";
       dispatch({
         type: AUTH_ACTIONS.SET_ERROR,
-        payload: error.message || "Login failed",
+        payload: errorMessage,
       });
-      return { success: false, error: error.message || "Login failed" };
+      return { success: false, error: errorMessage };
     } finally {
       dispatch({ type: AUTH_ACTIONS.LOADING, payload: false });
     }
@@ -252,13 +262,29 @@ export const AuthProvider = ({ children }) => {
         });
 
         return { success: true, data: response.data };
+      } else {
+        // Vendor login failed - clear any existing auth
+        authStorage.clearAuth();
+        dispatch({ type: AUTH_ACTIONS.LOGOUT });
+        dispatch({
+          type: AUTH_ACTIONS.SET_ERROR,
+          payload: response.message || "Login failed",
+        });
+        return { success: false, error: response.message || "Login failed" };
       }
     } catch (error) {
+      // Clear any existing auth on error
+      authStorage.clearAuth();
+      dispatch({ type: AUTH_ACTIONS.LOGOUT });
+      const errorMessage =
+        error.response?.data?.message || error.message || "Login failed";
       dispatch({
         type: AUTH_ACTIONS.SET_ERROR,
-        payload: error.message || "Login failed",
+        payload: errorMessage,
       });
-      return { success: false, error: error.message || "Login failed" };
+      return { success: false, error: errorMessage };
+    } finally {
+      dispatch({ type: AUTH_ACTIONS.LOADING, payload: false });
     }
   };
 

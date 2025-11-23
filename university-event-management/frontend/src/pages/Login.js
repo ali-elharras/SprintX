@@ -52,7 +52,6 @@ const Login = () => {
   const isUniversityEmail = isGUCEmail(watchedEmail);
 
   const onSubmit = async (data) => {
-    console.log("=== LOGIN FORM SUBMITTED ===", data);
     try {
       setIsSubmitting(true);
 
@@ -71,20 +70,16 @@ const Login = () => {
 
       // Try university login first if it's a GUC email
       if (isGUCEmail(data.email)) {
-        console.log("=== TRYING UNIVERSITY LOGIN ===");
         result = await loginUser({
           email: data.email,
           password: data.password,
         });
-        console.log("=== University LOGIN RESULT ===", result);
       } else {
         // Try vendor login for non-GUC emails
-        console.log("=== TRYING VENDOR LOGIN ===");
         result = await loginVendor({
           email: data.email,
           password: data.password,
         });
-        console.log("=== Vendor LOGIN RESULT ===", result);
         isVendorLogin = true;
       }
 
@@ -167,15 +162,28 @@ const Login = () => {
         }
 
         console.log("Showing toast error for result:", result);
+        console.log(
+          "=== ABOUT TO SHOW ERROR, LOCATION ===",
+          window.location.pathname
+        );
         toast.error(
           result.error || "Login failed. Please check your credentials."
         );
+        console.log(
+          "=== AFTER ERROR TOAST, LOCATION ===",
+          window.location.pathname
+        );
+        // Ensure we stay on login page
+        setIsSubmitting(false);
+        console.log(
+          "=== AFTER setIsSubmitting, LOCATION ===",
+          window.location.pathname
+        );
+        return;
       }
     } catch (error) {
-      console.log("=== LOGIN.JS CATCH BLOCK ===", error);
       toast.error("An unexpected error occurred. Please try again.");
       console.error("Login error:", error);
-    } finally {
       setIsSubmitting(false);
     }
   };
