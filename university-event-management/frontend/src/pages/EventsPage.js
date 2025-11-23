@@ -2053,159 +2053,173 @@ const EventsPage = () => {
   };
 
   const fetchEvents = async () => {
-    if (cancelTokenRef.current) {
-      cancelTokenRef.current.cancel("Operation cancelled due to new request");
-    }
+  if (cancelTokenRef.current) {
+    cancelTokenRef.current.cancel("Operation cancelled due to new request");
+  }
 
-    cancelTokenRef.current = createCancelTokenSource();
-    const currentCancelToken = cancelTokenRef.current;
+  cancelTokenRef.current = createCancelTokenSource();
+  const currentCancelToken = cancelTokenRef.current;
 
-    try {
-      setLoading(true);
-      setError(null);
+  try {
+    setLoading(true);
+    setError(null);
 
-      // Fetch user registrations for regular users (not admin/events office)
-      console.log(
-        "EventsPage - Fetching registrations. User:",
-        user,
-        "isEventsOffice:",
-        auth?.isEventsOffice,
-        "isAdmin:",
-        auth?.isAdmin
-      );
-      if (user && !auth?.isEventsOffice && !auth?.isAdmin) {
-        try {
-          const registrationsResponse =
-            await registrationAPI.getMyRegistrations({}, currentCancelToken);
-          console.log(
-            "EventsPage - Fetched registrations:",
-            registrationsResponse.data
-          );
-          // API returns { data: { upcoming: [], past: [] } }, combine them into a flat array
-          const allRegistrations = [
-            ...(registrationsResponse.data?.upcoming || []),
-            ...(registrationsResponse.data?.past || []),
-          ];
-          console.log("EventsPage - Combined registrations:", allRegistrations);
-          setUserRegistrations(allRegistrations);
-        } catch (err) {
-          if (!err.isCancelled && err.name !== "CanceledError") {
-            console.warn("Could not fetch user registrations", err);
-            setUserRegistrations([]);
-          }
-        }
-
-        // Fetch user favorites
-        try {
-          const favorites = await favoritesAPI.getMyFavorites();
-          console.log("EventsPage - Fetched favorites:", favorites);
-          setUserFavorites(favorites || []);
-        } catch (err) {
-          if (!err.isCancelled && err.name !== "CanceledError") {
-            console.warn("Could not fetch user favorites", err);
-            setUserFavorites([]);
-          }
-        }
-      } else {
+    // Fetch user registrations for regular users (not admin/events office)
+    console.log(
+      "EventsPage - Fetching registrations. User:",
+      user,
+      "isEventsOffice:",
+      auth?.isEventsOffice,
+      "isAdmin:",
+      auth?.isAdmin
+    );
+    if (user && !auth?.isEventsOffice && !auth?.isAdmin) {
+      try {
+        const registrationsResponse =
+          await registrationAPI.getMyRegistrations({}, currentCancelToken);
         console.log(
-          "EventsPage - Skipping registration fetch (admin/events office or no user)"
+          "EventsPage - Fetched registrations:",
+          registrationsResponse.data
         );
-      }
-
-      const params = { upcoming: "false", includeArchived: true };
-      const response = await eventAPI.getEvents(params, currentCancelToken);
-
-      let allEvents = response.data?.data || [];
-
-      const visibleStatuses = [
-        "published",
-        "accepted",
-        "approved",
-        "upcoming",
-        "active",
-        "completed",
-        "pending",
-        "needs_revision",
-      ];
-      allEvents = allEvents.filter((event) =>
-        visibleStatuses.includes(event.status)
-      );
-
-      // Don't filter out published workshops - they should be visible to all users for registration
-      // Only filter out non-published workshops (pending, needs_revision, rejected)
-      allEvents = allEvents.filter((event) => {
-        if (event.type !== "workshop") return true; // Keep all non-workshop events
-        // For workshops: only show published ones to regular users
-        // Events Office will see pending workshops in a separate section
-        if (auth?.isEventsOffice) return event.status === "published"; // Events Office sees published workshops in main grid
-        return event.status === "published"; // All other users (students, staff, TAs, professors) see published workshops
-      });
-
-      // Fetch workshops for Events Office (pending approvals)
-      if (auth?.isEventsOffice) {
-        try {
-          const [pendingResp, revisionResp, userBazaarsResponse] =
-            await Promise.all([
-              api.get("/workshops?status=pending", {
-                cancelToken: currentCancelToken.token,
-              }),
-              api.get("/workshops?status=needs_revision", {
-                cancelToken: currentCancelToken.token,
-              }),
-              api.get("/bazaars", {
-                cancelToken: currentCancelToken.token,
-              }),
-            ]);
-
-          const pendingWorkshopsData = pendingResp.data || [];
-          const revisionWorkshops = revisionResp.data || [];
-
-          setPendingWorkshops([...pendingWorkshopsData, ...revisionWorkshops]);
-
-          const allBazaars = userBazaarsResponse.data?.data || [];
-          const userBazaars = allBazaars.filter((bazaar) => {
-            const isOwner =
-              (typeof bazaar.organizer === "object" &&
-                bazaar.organizer?._id === auth.user?.id) ||
-              (typeof bazaar.organizer === "string" &&
-                bazaar.organizer === auth.user?.id);
-            return isOwner;
-          });
-
-          const eventsMap = new Map();
-          allEvents.forEach((event) => eventsMap.set(event._id, event));
-          userBazaars.forEach((bazaar) => eventsMap.set(bazaar._id, bazaar));
-
-          allEvents = Array.from(eventsMap.values());
-        } catch (err) {
-          if (!err.isCancelled && err.name !== "CanceledError") {
-            console.warn("Could not fetch additional Events Office data", err);
-          }
+        
+        // Handle different response formats
+        let allRegistrations = [];
+        const data = registrationsResponse.data;
+        
+        // Check if data has nested data property
+        if (data?.data?.upcoming || data?.data?.past) {
+          allRegistrations = [
+            ...(data.data.upcoming || []),
+            ...(data.data.past || []),
+          ];
+        } else if (data?.upcoming || data?.past) {
+          allRegistrations = [
+            ...(data.upcoming || []),
+            ...(data.past || []),
+          ];
+        } else if (Array.isArray(data)) {
+          allRegistrations = data;
+        }
+        
+        console.log("EventsPage - Combined registrations:", allRegistrations);
+        console.log("EventsPage - Total registrations:", allRegistrations.length);
+        setUserRegistrations(allRegistrations);
+      } catch (err) {
+        if (!err.isCancelled && err.name !== "CanceledError") {
+          console.warn("Could not fetch user registrations", err);
+          setUserRegistrations([]);
         }
       }
 
-      // Professor workshops section removed - no longer fetching them
-
-      setEvents(allEvents);
-    } catch (err) {
-      if (err.isCancelled || err.name === "CanceledError") {
-        return;
+      // Fetch user favorites
+      try {
+        const favorites = await favoritesAPI.getMyFavorites();
+        console.log("EventsPage - Fetched favorites:", favorites);
+        setUserFavorites(favorites || []);
+      } catch (err) {
+        if (!err.isCancelled && err.name !== "CanceledError") {
+          console.warn("Could not fetch user favorites", err);
+          setUserFavorites([]);
+        }
       }
-
-      console.error("Fetch error:", err);
-      console.error("Error response:", err.response?.data);
-      console.error("Error status:", err.response?.status);
-
-      const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to load events. Please try again.";
-      setError(err);
-      toast.error(errorMessage);
-    } finally {
-      setTimeout(() => setLoading(false), 1000);
+    } else {
+      console.log(
+        "EventsPage - Skipping registration fetch (admin/events office or no user)"
+      );
     }
-  };
+
+    const params = { upcoming: "false", includeArchived: true };
+    const response = await eventAPI.getEvents(params, currentCancelToken);
+
+    let allEvents = response.data?.data || [];
+
+    const visibleStatuses = [
+      "published",
+      "accepted",
+      "approved",
+      "upcoming",
+      "active",
+      "completed",
+      "pending",
+      "needs_revision",
+    ];
+    allEvents = allEvents.filter((event) =>
+      visibleStatuses.includes(event.status)
+    );
+
+    // Don't filter out published workshops - they should be visible to all users for registration
+    // Only filter out non-published workshops (pending, needs_revision, rejected)
+    allEvents = allEvents.filter((event) => {
+      if (event.type !== "workshop") return true; // Keep all non-workshop events
+      // For workshops: only show published ones to regular users
+      // Events Office will see pending workshops in a separate section
+      if (auth?.isEventsOffice) return event.status === "published"; // Events Office sees published workshops in main grid
+      return event.status === "published"; // All other users (students, staff, TAs, professors) see published workshops
+    });
+
+    // Fetch workshops for Events Office (pending approvals)
+    if (auth?.isEventsOffice) {
+      try {
+        const [pendingResp, revisionResp, userBazaarsResponse] =
+          await Promise.all([
+            api.get("/workshops?status=pending", {
+              cancelToken: currentCancelToken.token,
+            }),
+            api.get("/workshops?status=needs_revision", {
+              cancelToken: currentCancelToken.token,
+            }),
+            api.get("/bazaars", {
+              cancelToken: currentCancelToken.token,
+            }),
+          ]);
+
+        const pendingWorkshopsData = pendingResp.data || [];
+        const revisionWorkshops = revisionResp.data || [];
+
+        setPendingWorkshops([...pendingWorkshopsData, ...revisionWorkshops]);
+
+        const allBazaars = userBazaarsResponse.data?.data || [];
+        const userBazaars = allBazaars.filter((bazaar) => {
+          const isOwner =
+            (typeof bazaar.organizer === "object" &&
+              bazaar.organizer?._id === auth.user?.id) ||
+            (typeof bazaar.organizer === "string" &&
+              bazaar.organizer === auth.user?.id);
+          return isOwner;
+        });
+
+        const eventsMap = new Map();
+        allEvents.forEach((event) => eventsMap.set(event._id, event));
+        userBazaars.forEach((bazaar) => eventsMap.set(bazaar._id, bazaar));
+
+        allEvents = Array.from(eventsMap.values());
+      } catch (err) {
+        if (!err.isCancelled && err.name !== "CanceledError") {
+          console.warn("Could not fetch additional Events Office data", err);
+        }
+      }
+    }
+
+    setEvents(allEvents);
+  } catch (err) {
+    if (err.isCancelled || err.name === "CanceledError") {
+      return;
+    }
+
+    console.error("Fetch error:", err);
+    console.error("Error response:", err.response?.data);
+    console.error("Error status:", err.response?.status);
+
+    const errorMessage =
+      err.response?.data?.message ||
+      err.message ||
+      "Failed to load events. Please try again.";
+    setError(err);
+    toast.error(errorMessage);
+  } finally {
+    setTimeout(() => setLoading(false), 1000);
+  }
+};
 
   // Handle payment verification after Stripe redirect
   useEffect(() => {
@@ -3438,6 +3452,7 @@ const EventsPage = () => {
                           ? () => handleOpenRestrictModal(event)
                           : null
                       }
+                      userRegistrations={userRegistrations}
                       onViewDetails={(evt) => {
                         setSelectedEventDetails(evt);
                         setShowEventDetailsModal(true);

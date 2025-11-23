@@ -11,7 +11,7 @@ import { applicationServices } from "../services/api";
 import { favoritesAPI } from "../services/api";
 import toast from "react-hot-toast";
 
-const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit, onEditTrip, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive, onExportRegistrations, onRestrict, onViewDetails, isFavorited = false, onFavoriteToggle }) => {
+const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEventUpdate, onEditConference, onEdit, onEditTrip, onDelete, showArchiveButton, showUnarchiveButton, onArchive, onUnarchive, onExportRegistrations, onRestrict, onViewDetails, isFavorited = false, onFavoriteToggle, userRegistrations = [] }) => {
   // Normalize event/conference object for consistent display
   const normalizedEvent = {
     ...event,
@@ -24,7 +24,6 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
     maxParticipants: event.maxParticipants || event.capacity || 0,
     registrationDeadline: event.registrationDeadline || null,
     cost: event.cost || 0,
-    // Ensure dates are present
     startDate: event.startDate || event.date || new Date().toISOString(),
     endDate: event.endDate || event.startDate || event.date || new Date().toISOString(),
   };
@@ -34,12 +33,59 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   const [vendorsLoading, setVendorsLoading] = useState(false);
   const [isFavorite, setIsFavorite] = useState(isFavorited);
   const [isHovered, setIsHovered] = useState(false);
+  const [hasRegistered, setHasRegistered] = useState(false);
   const navigate = useNavigate();
   const { isEventsOffice, user, isAdmin } = useAuth();
 
   useEffect(() => {
     setIsFavorite(isFavorited);
   }, [isFavorited]);
+
+  // Initialize hasRegistered state based on userRegistrations - runs on every userRegistrations change
+  useEffect(() => {
+    console.log("=== REGISTRATION CHECK ===");
+    console.log("Event:", normalizedEvent.title);
+    console.log("Event ID:", normalizedEvent._id);
+    console.log("User:", user?.email);
+    console.log("Total userRegistrations:", userRegistrations?.length || 0);
+    
+    if (!user) {
+      console.log("No user logged in");
+      setHasRegistered(false);
+      return;
+    }
+    
+    if (!userRegistrations || userRegistrations.length === 0) {
+      console.log("No registrations found");
+      setHasRegistered(false);
+      return;
+    }
+    
+    console.log("All registrations:", userRegistrations.map(r => ({
+      eventId: r.event?._id || r.event,
+      eventTitle: r.event?.title || r.event?.name || 'unknown',
+      status: r.status
+    })));
+    
+    const isRegistered = userRegistrations.some(registration => {
+      const regEventId = registration.event?._id || registration.event;
+      const currentEventId = normalizedEvent._id;
+      const isActiveStatus = registration.status !== 'cancelled';
+      
+      const matches = regEventId === currentEventId && isActiveStatus;
+      
+      if (matches) {
+        console.log("✅ FOUND MATCHING REGISTRATION!");
+      }
+      
+      return matches;
+    });
+    
+    console.log("Final hasRegistered value:", isRegistered);
+    console.log("=========================");
+    
+    setHasRegistered(isRegistered);
+  }, [user, userRegistrations, normalizedEvent._id, normalizedEvent.title]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -71,12 +117,45 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
     return labels[type] || type;
   };
 
+  // Check if user is registered
+  const isUserRegistered = () => {
+    // Check local state first (for immediate feedback after registration)
+    if (hasRegistered) {
+      console.log("User is registered (local state)");
+      return true;
+    }
+    
+    if (!user || !userRegistrations || userRegistrations.length === 0) {
+      console.log("No user or no registrations");
+      return false;
+    }
+    
+    // Check if user has an active registration for this event
+    const registered = userRegistrations.some(registration => {
+      const regEventId = registration.event?._id || registration.event;
+      const currentEventId = normalizedEvent._id;
+      const isActiveStatus = registration.status !== 'cancelled';
+      
+      console.log("Checking registration:", { regEventId, currentEventId, isActiveStatus });
+      
+      return regEventId === currentEventId && isActiveStatus;
+    });
+    
+    console.log("User registered from userRegistrations:", registered);
+    return registered;
+  };
+
   const canRegister = () => {
     const now = new Date();
     const startDate = new Date(normalizedEvent.startDate);
     const registrationDeadline = normalizedEvent.registrationDeadline
       ? new Date(normalizedEvent.registrationDeadline)
       : null;
+
+    // Check if user is already registered
+    if (isUserRegistered()) {
+      return false;
+    }
 
     return (
       normalizedEvent.status === "published" &&
@@ -99,7 +178,6 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
       return { status: "Not Published", color: theme.colors.neutral.gray500 };
     }
 
-    // Treat "same-day (today)" events as upcoming (do not mark ended even if end time passed)
     const isSameCalendarDay =
       startDate &&
       endDate &&
@@ -113,7 +191,6 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
     endOfToday.setHours(23,59,59,999);
     const startIsToday = startDate && startDate >= startOfToday && startDate <= endOfToday;
 
-    // If event has ended and it's NOT a same-day-today event, show Event Ended
     if (endDate && endDate < now && !(isSameCalendarDay && startIsToday)) {
       return { status: "Event Ended", color: theme.colors.neutral.gray500 };
     }
@@ -141,50 +218,26 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
       onEditTrip(normalizedEvent);
     } else if (onEdit) {
       onEdit(normalizedEvent);
-    } else {
-      console.log('ERROR: No edit callback available!');
     }
   };
 
-const handleDeleteConference = async (e) => {
-  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-  // Call parent delete handler
-  if (onDelete) {
-    onDelete(normalizedEvent);
-  }
-};
-
-const handleDeleteWorkshop = async (e) => {
-  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-  // Check if there are registrations before triggering delete
-  if (normalizedEvent.currentParticipants > 0) {
-    toast.error("This workshop cannot be deleted because there are registered users.");
-    return;
-  }
-
-  // Call parent delete handler
-  if (onDelete) {
-    onDelete(normalizedEvent);
-  }
-};
-
   const handleDeleteEvent = async (e) => {
     if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-    // Check if there are registrations before triggering delete
     if (normalizedEvent.currentParticipants > 0) {
       toast.error("This event cannot be deleted because there are registered participants.");
       return;
     }
-
-    // Call parent delete handler
     if (onDelete) {
       onDelete(normalizedEvent);
     }
   };
 
   const handleRegistrationSuccess = (registrationData) => {
+    console.log("Registration successful, setting hasRegistered to true");
     setShowRegistrationForm(false);
+    setHasRegistered(true);
     onRegistrationSuccess && onRegistrationSuccess(registrationData);
+    toast.success("Successfully registered for this event!");
   };
 
   const statusInfo = getStatusInfo();
@@ -200,7 +253,6 @@ const handleDeleteWorkshop = async (e) => {
           setParticipatingVendors(response.data || []);
         } catch (error) {
           console.error('Error fetching participating vendors:', error);
-          // Don't show error toast for this - it's not critical for event display
           setParticipatingVendors([]);
         } finally {
           setVendorsLoading(false);
@@ -221,22 +273,15 @@ const handleDeleteWorkshop = async (e) => {
     );
   }
 
-  // helper: consider event started if startDate is today or earlier
   const eventHasStarted = (event) => {
     if (!event || !event.startDate) return false;
     const now = new Date();
     const start = new Date(event.startDate);
     now.setHours(0, 0, 0, 0);
     start.setHours(0, 0, 0, 0);
-    return start <= now; // started if start is today or in the past
+    return start <= now;
   };
 
-  // convenience flag used in JSX
-  const canShowEventsOfficeControls = isEventsOffice &&
-    ['conference', 'bazaar', 'trip', 'workshop'].includes(normalizedEvent.type) &&
-    !eventHasStarted(normalizedEvent);
-
-  // ownership helper (organizer or createdBy)
   const isOwner = (() => {
     const uid = user?.id || user?._id;
     const owner = normalizedEvent.organizer || normalizedEvent.createdBy;
@@ -247,46 +292,57 @@ const handleDeleteWorkshop = async (e) => {
 
   const hasStarted = eventHasStarted(normalizedEvent);
   const hasEnded = new Date(normalizedEvent.endDate) < new Date();
+  
+  // Debug logs
+  const userIsRegistered = isUserRegistered();
+  const userCanRegister = canRegister();
+  console.log("EventCard render:", {
+    eventTitle: normalizedEvent.title,
+    hasRegistered,
+    userIsRegistered,
+    userCanRegister,
+    isEventsOffice,
+    isAdmin,
+    showRegistration
+  });
 
   return (
-    <>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        transition={{ duration: 0.3 }}
-        whileHover={{ y: -8 }}
-        onClick={() => onViewDetails && onViewDetails(normalizedEvent)}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        style={{
-          background: '#ffffff',
-          borderRadius: "20px",
-          border: `2px solid ${isHovered ? getEventTypeColor(normalizedEvent.type) : '#e5e7eb'}`,
-          overflow: "hidden",
-          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-          cursor: "pointer",
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-          minHeight: "480px",
-          boxShadow: isHovered ? "0 20px 40px rgba(0,0,0,0.12)" : "0 4px 12px rgba(0,0,0,0.05)",
-          position: "relative",
-        }}
-      >
-        {/* Vertical color strip on the left */}
-        <div style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          bottom: 0,
-          width: "8px",
-          background: `linear-gradient(180deg, ${getEventTypeColor(normalizedEvent.type)}, ${getEventTypeColor(normalizedEvent.type)}dd)`,
-          transition: "width 0.3s ease",
-          borderTopLeftRadius: "20px",
-          borderBottomLeftRadius: "20px",
-        }} />
-      {/* Event Header */}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.3 }}
+      whileHover={{ y: -8 }}
+      onClick={() => onViewDetails && onViewDetails(normalizedEvent)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        background: '#ffffff',
+        borderRadius: "20px",
+        border: `2px solid ${isHovered ? getEventTypeColor(normalizedEvent.type) : '#e5e7eb'}`,
+        overflow: "hidden",
+        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        cursor: "pointer",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        minHeight: "480px",
+        boxShadow: isHovered ? "0 20px 40px rgba(0,0,0,0.12)" : "0 4px 12px rgba(0,0,0,0.05)",
+        position: "relative",
+      }}
+    >
+      <div style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        bottom: 0,
+        width: "8px",
+        background: `linear-gradient(180deg, ${getEventTypeColor(normalizedEvent.type)}, ${getEventTypeColor(normalizedEvent.type)}dd)`,
+        transition: "width 0.3s ease",
+        borderTopLeftRadius: "20px",
+        borderBottomLeftRadius: "20px",
+      }} />
+
       <div
         style={{
           background: '#ffffff',
@@ -340,7 +396,6 @@ const handleDeleteWorkshop = async (e) => {
                     setIsFavorite(true);
                     toast.success("Added to favorites");
                   }
-                  // Notify parent to refresh favorites list
                   if (onFavoriteToggle) {
                     onFavoriteToggle();
                   }
@@ -403,9 +458,7 @@ const handleDeleteWorkshop = async (e) => {
         </motion.h3>
       </div>
 
-      {/* Event Content */}
       <div style={{ padding: '1.25rem', display: "flex", flexDirection: "column", flexGrow: 1 }}>
-        {/* Event Details with Icons */}
         <div
           style={{
             display: "flex",
@@ -457,7 +510,6 @@ const handleDeleteWorkshop = async (e) => {
           </div>
         </div>
 
-        {/* Description */}
         <p
           style={{
             fontSize: '0.875rem',
@@ -499,7 +551,6 @@ const handleDeleteWorkshop = async (e) => {
           Read more <span>→</span>
         </motion.button>
 
-        {/* Participating Vendors Section - Only for Bazaars */}
         {normalizedEvent.type === 'bazaar' && (
           <div
             style={{
@@ -597,25 +648,6 @@ const handleDeleteWorkshop = async (e) => {
           </div>
         )}
 
-        {/* Loading state for vendors */}
-        {normalizedEvent.type === 'bazaar' && vendorsLoading && (
-          <div
-            style={{
-              background: '#f9fafb',
-              padding: '1rem',
-              borderRadius: '0.75rem',
-              marginBottom: '1rem',
-              border: '2px solid #e5e7eb',
-              textAlign: 'center',
-            }}
-          >
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
-              Loading vendors...
-            </p>
-          </div>
-        )}
-
-        {/* Registration Info with Progress Bar */}
         {(normalizedEvent.registrationRequired || normalizedEvent.type === 'bazaar') && (
           <div
             style={{
@@ -654,7 +686,6 @@ const handleDeleteWorkshop = async (e) => {
               </span>
             </div>
             
-            {/* Progress Bar */}
             <div style={{
               width: "100%",
               height: "8px",
@@ -738,7 +769,6 @@ const handleDeleteWorkshop = async (e) => {
           </div>
         )}
 
-        {/* Additional Info for specific event types */}
         {normalizedEvent.type === "workshop" && normalizedEvent.instructor && (
           <div
             style={{
@@ -773,131 +803,127 @@ const handleDeleteWorkshop = async (e) => {
           </div>
         )}
         
-        {/* Spacer to push buttons to bottom */}
         <div style={{ flexGrow: 1 }}></div>
         
-        {/* Action Buttons */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-              gap: '0.75rem',
-              marginTop: "auto",
-              paddingTop: '1rem'
-            }}
-          >
-            {isAdmin ? (
-              // Admin: show Delete button only when no participants (NO EDIT)
-              <>
-                {normalizedEvent.currentParticipants === 0 && (
-                  <Button
-                    variant="danger"
-                    onClick={handleDeleteEvent}
-                    title="Delete event (only if no registrations)"
-                    style={{
-                      minHeight: "48px",
-                      padding: '0.75rem 0.5rem',
-                      whiteSpace: "nowrap",
-                      fontSize: '0.875rem',
-                    }}
-                  >
-                    Delete Event
-                  </Button>
-                )}
-              </>
-            ) : isEventsOffice ? (
-              <>
-                {/* Events Office: Edit shown only for events they own and only if event has NOT started */}
-                {(isOwner || onEdit || onEditTrip || onEditConference) && !hasStarted && normalizedEvent.type !== 'workshop' && (
-                  <Button
-                    variant="primary"
-                    onClick={handleEditClick}
-                    style={{
-                      minHeight: "48px",
-                      padding: '0.75rem 0.5rem',
-                      whiteSpace: "nowrap",
-                      fontSize: '0.875rem',
-                    }}
-                  >
-                    Edit
-                  </Button>
-                )}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+            gap: '0.75rem',
+            marginTop: "auto",
+            paddingTop: '1rem'
+          }}
+        >
+          {isAdmin ? (
+            <>
+              {normalizedEvent.currentParticipants === 0 && (
+                <Button
+                  variant="danger"
+                  onClick={handleDeleteEvent}
+                  title="Delete event (only if no registrations)"
+                  style={{
+                    minHeight: "48px",
+                    padding: '0.75rem 0.5rem',
+                    whiteSpace: "nowrap",
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  Delete Event
+                </Button>
+              )}
+            </>
+          ) : isEventsOffice ? (
+            <>
+              {(isOwner || onEdit || onEditTrip || onEditConference) && !hasStarted && normalizedEvent.type !== 'workshop' && (
+                <Button
+                  variant="primary"
+                  onClick={handleEditClick}
+                  style={{
+                    minHeight: "48px",
+                    padding: '0.75rem 0.5rem',
+                    whiteSpace: "nowrap",
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  Edit
+                </Button>
+              )}
 
-                {/* Events Office: Delete shown only for events they own, only if NOT started AND participants === 0 */}
-                {(isOwner || onDelete) && !hasStarted && normalizedEvent.currentParticipants === 0 && (
-                  <Button
-                    variant="danger"
-                    onClick={handleDeleteEvent}
-                    style={{
-                      minHeight: "48px",
-                      padding: '0.75rem 0.5rem',
-                      whiteSpace: "nowrap",
-                      fontSize: '0.875rem',
-                    }}
-                  >
-                    Delete
-                  </Button>
-                )}
-                {showArchiveButton && (
-                  <Button
-                    variant="outline"
-                    onClick={onArchive}
-                    style={{
-                      minHeight: "48px",
-                      padding: '0.75rem 0.5rem',
-                      whiteSpace: "nowrap",
-                      fontSize: '0.875rem',
-                    }}
-                  >
-                    Archive
-                  </Button>
-                )}
-                {showUnarchiveButton && (
-                  <Button
-                    variant="outline"
-                    onClick={onUnarchive}
-                    style={{
-                      minHeight: "48px",
-                      padding: '0.75rem 0.5rem',
-                      whiteSpace: "nowrap",
-                      fontSize: '0.875rem',
-                    }}
-                  >
-                    Unarchive
-                  </Button>
-                )}
-                 {isEventsOffice && normalizedEvent.type !== 'conference' && (
-                  <Button
-                    variant="outline"
-                    onClick={() => onExportRegistrations(normalizedEvent)}
-                    style={{
-                      minHeight: "48px",
-                      padding: '0.75rem 0.5rem',
-                      whiteSpace: "nowrap",
-                      fontSize: '0.8rem',
-                    }}
-                  >
-                    Export
-                  </Button>
-                )}
-                {isEventsOffice && !hasEnded && onRestrict && (
-                  <Button
-                    variant="secondary"
-                    onClick={() => onRestrict(normalizedEvent)}
-                    style={{
-                      minHeight: "48px",
-                      padding: '0.75rem 0.5rem',
-                      whiteSpace: "nowrap",
-                      fontSize: '0.875rem',
-                    }}
-                  >
-                    Restrict
-                  </Button>
-                )}
-              </>
-            ) : (
-              // Regular users: keep Register Now as-is
-              !isEventsOffice && !isAdmin && showRegistration && canRegister() && (
+              {(isOwner || onDelete) && !hasStarted && normalizedEvent.currentParticipants === 0 && (
+                <Button
+                  variant="danger"
+                  onClick={handleDeleteEvent}
+                  style={{
+                    minHeight: "48px",
+                    padding: '0.75rem 0.5rem',
+                    whiteSpace: "nowrap",
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  Delete
+                </Button>
+              )}
+              {showArchiveButton && (
+                <Button
+                  variant="outline"
+                  onClick={onArchive}
+                  style={{
+                    minHeight: "48px",
+                    padding: '0.75rem 0.5rem',
+                    whiteSpace: "nowrap",
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  Archive
+                </Button>
+              )}
+              {showUnarchiveButton && (
+                <Button
+                  variant="outline"
+                  onClick={onUnarchive}
+                  style={{
+                    minHeight: "48px",
+                    padding: '0.75rem 0.5rem',
+                    whiteSpace: "nowrap",
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  Unarchive
+                </Button>
+              )}
+              {isEventsOffice && normalizedEvent.type !== 'conference' && (
+                <Button
+                  variant="outline"
+                  onClick={() => onExportRegistrations(normalizedEvent)}
+                  style={{
+                    minHeight: "48px",
+                    padding: '0.75rem 0.5rem',
+                    whiteSpace: "nowrap",
+                    fontSize: '0.8rem',
+                  }}
+                >
+                  Export
+                </Button>
+              )}
+              {isEventsOffice && !hasEnded && onRestrict && (
+                <Button
+                  variant="secondary"
+                  onClick={() => onRestrict(normalizedEvent)}
+                  style={{
+                    minHeight: "48px",
+                    padding: '0.75rem 0.5rem',
+                    whiteSpace: "nowrap",
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  Restrict
+                </Button>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Regular users: Show Register button or Already Registered badge */}
+              {!isEventsOffice && !isAdmin && showRegistration && canRegister() && !isUserRegistered() && (
                 <motion.div
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -905,7 +931,10 @@ const handleDeleteWorkshop = async (e) => {
                 >
                   <Button
                     variant="primary"
-                    onClick={() => setShowRegistrationForm(true)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowRegistrationForm(true);
+                    }}
                     style={{
                       width: "100%",
                       minHeight: "52px",
@@ -921,13 +950,47 @@ const handleDeleteWorkshop = async (e) => {
                     ✨ Register Now
                   </Button>
                 </motion.div>
-              )
-            )}
-          </div>
+              )}
+              {!isEventsOffice && !isAdmin && isUserRegistered() && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  style={{ gridColumn: "1 / -1" }}
+                >
+                  <div
+                    style={{
+                      width: "100%",
+                      minHeight: "52px",
+                      borderRadius: '0.75rem',
+                      fontWeight: 600,
+                      fontSize: '1rem',
+                      background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                      color: '#15803d',
+                      border: '2px solid #22c55e',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                      cursor: 'default',
+                      boxShadow: '0 2px 8px rgba(34, 197, 94, 0.15)',
+                    }}
+                  >
+                    <span style={{ 
+                      fontSize: '1.25rem',
+                      fontWeight: 'bold',
+                    }}>
+                      ✓
+                    </span>
+                    <span>Already Registered</span>
+                  </div>
+                </motion.div>
+              )}
+            </>
+          )}
+        </div>
       </div>
-
     </motion.div>
-    </>
   );
 };
 

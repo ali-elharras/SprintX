@@ -117,18 +117,24 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
         
         // Notify other tabs/windows
         try {
-          const payload = JSON.stringify({
-            eventId: event._id,
-            ts: Date.now(),
-          });
-          localStorage.setItem("registration_made", payload);
-        } catch (err) {
-          // Ignore storage errors
-        }
+        const payload = JSON.stringify({
+          eventId: event._id,
+          ts: Date.now(),
+          userId: user?.id
+        });
+        localStorage.setItem("registration_made", payload);
+      } catch (err) {
+        // Ignore storage errors
+      }
         
         setIsSubmitting(false);
-        onSuccess && onSuccess(registrationRecord);
+       if (onSuccess) {
+        onSuccess({
+          ...registrationRecord,
+          event: event
+        });
       }
+    }
     } catch (error) {
       console.error("Registration error:", error);
       toast.error(error.message || "Registration failed. Please try again.");
@@ -151,12 +157,21 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
         // Ignore storage errors
       }
       
-      onSuccess && onSuccess(registrationData);
-    } else {
-      toast.error("Payment cancelled. No registration was created.");
-      onCancel && onCancel();
+     // ✅ IMPORTANT: Pass the registration data back to parent
+    // This will trigger a refresh of user registrations
+    if (onSuccess) {
+      onSuccess({
+        ...registrationData,
+        event: event,
+        status: 'confirmed',
+        paymentStatus: 'completed'
+      });
     }
-  };
+  } else {
+    toast.error("Payment cancelled. No registration was created.");
+    onCancel && onCancel();
+  }
+};
 
   // Reset form to user's original data
   const handleResetForm = () => {
