@@ -8,7 +8,7 @@ const Layout = ({ children, title }) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
+      
       <div className="flex items-center justify-center min-h-[calc(100vh-64px)]"> {/* Full height minus navbar */}
         <div className="w-full max-w-xl px-6 py-8"> {/* Narrower container */}
           <div className="text-center mb-8">

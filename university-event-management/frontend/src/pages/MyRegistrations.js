@@ -348,7 +348,7 @@ const MyRegistrations = () => {
   if (!isAuthenticated) {
     return (
       <div style={containerStyles}>
-        <Navbar />
+        
         <div style={contentStyles}>
           <Card style={{ textAlign: "center", padding: theme.spacing[8] }}>
             <h2
@@ -370,7 +370,7 @@ const MyRegistrations = () => {
 
   return (
     <div style={containerStyles}>
-      <Navbar />
+      
       <div style={contentStyles}>
         <div style={headerStyles}>
           <h1 style={titleStyles}>My Events</h1>

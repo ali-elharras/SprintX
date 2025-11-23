@@ -16,7 +16,6 @@ const styles = {
 const WalletPage = () => {
   return (
     <div style={styles.page}>
-      <Navbar />
       <div style={styles.content}>
         <WalletDashboard />
       </div>

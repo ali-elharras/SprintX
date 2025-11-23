@@ -14,7 +14,6 @@ const BoothPolls = () => {
 
   return (
     <>
-      <Navbar />
       <div
         style={{
           minHeight: "100vh",

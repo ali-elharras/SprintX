@@ -143,7 +143,7 @@ const PaymentSuccess = () => {
 
   return (
     <>
-      <Navbar />
+      
       <div style={styles.pageContainer}>
         <div style={styles.contentWrapper}>
           <div style={styles.card}>

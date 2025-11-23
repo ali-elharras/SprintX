@@ -156,7 +156,7 @@ const CourtsPage = () => {
           background: theme.colors.background.default,
         }}
       >
-        <Navbar />
+        
         <LoadingScreen type="courts" />
       </div>
     );
@@ -164,7 +164,7 @@ const CourtsPage = () => {
 
   return (
     <>
-      <Navbar />
+      
       <div
         style={{
           minHeight: "100vh",

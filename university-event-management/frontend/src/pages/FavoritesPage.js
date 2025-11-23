@@ -125,7 +125,6 @@ const FavoritesPage = () => {
 
   return (
     <>
-      <Navbar />
       <div style={styles.container}>
         <div style={styles.header}>
           <h1 style={{ margin: 0 }}>My Favorites</h1>

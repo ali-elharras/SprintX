@@ -517,7 +517,7 @@ const CreateWorkshop = () => {
 
   return (
     <>
-      <Navbar />
+      
       <div style={pageStyles}>
         <div style={containerStyles}>
           {/* Header with Back Button */}
