@@ -9,43 +9,69 @@ import theme from '../theme';
 import toast from 'react-hot-toast';
 
 /**
- * AdminComments Page
- * Shows events that have ratings/comments in a card grid (like events page)
- * Admin clicks "View Ratings" to see a modal with all comments for that event
- * Inside modal, admin can delete individual comments
+ * Comments & Feedback Dashboard
+ * Centralized moderation dashboard showing all user comments across all events
+ * with expandable rows for detailed event information
  */
 const AdminComments = () => {
   const { user } = useAuth();
   const [events, setEvents] = useState([]);
+  const [allComments, setAllComments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Filters
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
-
-  // Modal state
-  const [showModal, setShowModal] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [eventRatings, setEventRatings] = useState([]);
-  const [loadingRatings, setLoadingRatings] = useState(false);
+  const [expandedCommentId, setExpandedCommentId] = useState(null);
 
   const isAdmin = user && user.role === 'admin';
 
-  const fetchEventsWithRatings = useCallback(async () => {
+  const fetchAllComments = useCallback(async () => {
     if (!isAdmin) return;
     setLoading(true);
     setError(null);
     try {
-      const response = await ratingAPI.getEventsWithRatings();
-      const data = response.data;
-      console.log('Events with ratings response:', data);
-      console.log('First event:', data.data?.[0]);
-      setEvents(data.data || []);
+      // First, get all events with ratings
+      const eventsResponse = await ratingAPI.getEventsWithRatings();
+      const eventsData = eventsResponse.data.data || [];
+      setEvents(eventsData);
+
+      // Fetch ratings for each event to get full comment details
+      const allCommentsData = [];
+      
+      for (const event of eventsData) {
+        try {
+          const eventId = event._id || event.id;
+          if (eventId) {
+            const ratingsResponse = await ratingAPI.getEventRatings(eventId);
+            const eventRatings = ratingsResponse.data?.data?.ratings || [];
+            
+            // Add event information to each rating
+            const commentsWithEventInfo = eventRatings.map(rating => ({
+              ...rating,
+              event: {
+                _id: event._id,
+                title: event.title || event.name,
+                type: event.type,
+                startDate: event.startDate,
+                location: event.location,
+                description: event.description
+              }
+            }));
+            
+            allCommentsData.push(...commentsWithEventInfo);
+          }
+        } catch (err) {
+          console.error(`Failed to fetch ratings for event ${event._id}:`, err);
+        }
+      }
+      
+      setAllComments(allCommentsData);
+      console.log('All comments loaded:', allCommentsData.length);
     } catch (err) {
       console.error('Failed fetching events with ratings:', err);
-      console.error('Error response:', err.response?.data);
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to load events';
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to load comments';
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -54,84 +80,63 @@ const AdminComments = () => {
   }, [isAdmin]);
 
   useEffect(() => {
-    fetchEventsWithRatings();
-  }, [fetchEventsWithRatings]);
+    fetchAllComments();
+  }, [fetchAllComments]);
 
-  const handleViewRatings = async (event) => {
-    // Ensure we have a valid event ID
-    const eventId = event._id || event.id;
-    if (!eventId) {
-      console.error('Event has no valid ID:', event);
-      toast.error('Unable to load ratings: Invalid event');
-      return;
-    }
-
-    setSelectedEvent(event);
-    setShowModal(true);
-    setLoadingRatings(true);
-    try {
-      const response = await ratingAPI.getEventRatings(eventId);
-      setEventRatings(response.data?.data?.ratings || []);
-    } catch (err) {
-      console.error('Failed loading ratings:', err);
-      toast.error('Failed to load ratings');
-      setEventRatings([]);
-    } finally {
-      setLoadingRatings(false);
-    }
-  };
-
-  const handleDeleteRating = async (ratingId) => {
+  const handleDeleteComment = async (commentId) => {
     if (!window.confirm('Delete this comment permanently?')) return;
     try {
-      await ratingAPI.deleteRatingAdmin(ratingId);
+      await ratingAPI.deleteRatingAdmin(commentId);
       toast.success('Comment deleted');
       // Remove from local state
-      setEventRatings(prev => prev.filter(r => r._id !== ratingId));
-      // If no more ratings, close modal and refresh events
-      const remaining = eventRatings.filter(r => r._id !== ratingId);
-      if (remaining.length === 0) {
-        setShowModal(false);
-        fetchEventsWithRatings();
-      }
+      setAllComments(prev => prev.filter(c => c._id !== commentId));
     } catch (err) {
       console.error('Delete failed:', err);
       toast.error(err.message || 'Failed to delete');
     }
   };
 
-  const closeModal = () => {
-    setShowModal(false);
-    setSelectedEvent(null);
-    setEventRatings([]);
+  const toggleCommentExpansion = (commentId) => {
+    setExpandedCommentId(expandedCommentId === commentId ? null : commentId);
   };
-
-  // Filter events
-  const filteredEvents = events.filter(event => {
-    let matches = true;
-    if (search.trim()) {
-      const s = search.toLowerCase();
-      matches = matches && (
-        (event.title || event.name || '').toLowerCase().includes(s) ||
-        (event.description || '').toLowerCase().includes(s) ||
-        (event.location || '').toLowerCase().includes(s)
-      );
-    }
-    if (filterType) {
-      matches = matches && event.type === filterType;
-    }
-    return matches;
-  });
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
-      weekday: 'short',
       year: 'numeric',
       month: 'short',
       day: 'numeric',
     });
   };
+
+  const formatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  // Filter comments
+  const filteredComments = allComments.filter(comment => {
+    let matches = true;
+    if (search.trim()) {
+      const s = search.toLowerCase();
+      matches = matches && (
+        (comment.comment || '').toLowerCase().includes(s) ||
+        (comment.userName || '').toLowerCase().includes(s) ||
+        (comment.event?.title || '').toLowerCase().includes(s) ||
+        (comment.event?.location || '').toLowerCase().includes(s)
+      );
+    }
+    if (filterType) {
+      matches = matches && comment.event?.type === filterType;
+    }
+    return matches;
+  });
 
   // Styles
   const containerStyles = {
@@ -142,7 +147,7 @@ const AdminComments = () => {
 
   const contentStyles = {
     padding: theme.spacing[6],
-    maxWidth: theme.layout.containerMaxWidth.xl,
+    maxWidth: theme.layout.containerMaxWidth['7xl'],
     margin: '0 auto',
   };
 
@@ -169,54 +174,90 @@ const AdminComments = () => {
     marginBottom: theme.spacing[6],
   };
 
-  const gridStyles = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-    gap: theme.spacing[4],
+  const tableStyles = {
+    width: '100%',
+    borderCollapse: 'collapse',
+    backgroundColor: theme.colors.background.paper,
+    borderRadius: theme.borderRadius.lg,
+    overflow: 'hidden',
+    boxShadow: theme.shadows.sm,
   };
 
-  const eventCardStyles = {
+  const tableHeaderStyles = {
+    backgroundColor: theme.colors.primary.main + '08',
+    borderBottom: `1px solid ${theme.colors.border.light}`,
+  };
+
+  const tableHeaderCellStyles = {
+    padding: theme.spacing[4],
+    textAlign: 'left',
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  };
+
+  const tableRowStyles = {
+    borderBottom: `1px solid ${theme.colors.border.light}`,
     transition: 'all 0.2s ease',
     cursor: 'pointer',
   };
 
-  const eventTypeStyles = {
-    display: 'inline-block',
-    padding: `${theme.spacing[1]} ${theme.spacing[3]}`,
-    backgroundColor: theme.colors.primary.main + '20',
-    color: theme.colors.primary.main,
-    borderRadius: theme.borderRadius.full,
+  const tableCellStyles = {
+    padding: theme.spacing[4],
     fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.primary,
+    verticalAlign: 'top',
+  };
+
+  const commentTextStyles = {
+    maxWidth: '400px',
+    lineHeight: theme.typography.lineHeight.relaxed,
+  };
+
+  const collapsedCommentStyles = {
+    ...commentTextStyles,
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
+  };
+
+  const expandedRowStyles = {
+    backgroundColor: theme.colors.primary.main + '04',
+    borderBottom: `1px solid ${theme.colors.border.light}`,
+  };
+
+  const eventDetailCardStyles = {
+    backgroundColor: theme.colors.background.default,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing[4],
+    margin: `${theme.spacing[4]} 0`,
+  };
+
+  const eventTypeBadgeStyles = {
+    display: 'inline-block',
+    padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+    backgroundColor: theme.colors.primary.main,
+    color: theme.colors.background.paper,
+    borderRadius: theme.borderRadius.full,
+    fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.medium,
     textTransform: 'capitalize',
-    marginBottom: theme.spacing[2],
+    marginBottom: theme.spacing[3],
   };
 
-  const eventTitleStyles = {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing[2],
-  };
-
-  const eventDetailStyles = {
-    display: 'flex',
-    alignItems: 'center',
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing[2],
-  };
-
-  const ratingBadgeStyles = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: theme.spacing[1],
-    padding: `${theme.spacing[1]} ${theme.spacing[3]}`,
-    backgroundColor: theme.colors.warning.main + '20',
-    color: theme.colors.warning.main,
-    borderRadius: theme.borderRadius.full,
+  const eventDetailLabelStyles = {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.medium,
+    marginBottom: theme.spacing[1],
+    color: theme.colors.text.secondary, // Added for consistency
+  };
+
+  const ratingStarsStyles = {
+    color: theme.colors.warning.main,
+    fontSize: theme.typography.fontSize.lg,
   };
 
   if (!isAdmin) {
@@ -238,9 +279,9 @@ const AdminComments = () => {
     <div style={containerStyles}>
       <div style={contentStyles}>
         <div style={headerStyles}>
-          <h1 style={titleStyles}>Manage Comments & Ratings</h1>
+          <h1 style={titleStyles}>Comments & Feedback Dashboard</h1>
           <p style={subtitleStyles}>
-            View and moderate user feedback across all events.
+            Moderate user feedback across all events in one centralized view.
           </p>
         </div>
 
@@ -248,8 +289,8 @@ const AdminComments = () => {
         <Card style={{ marginBottom: theme.spacing[6] }}>
           <div style={filtersGrid}>
             <Input
-              label="Search Events"
-              placeholder="Search by title, description, location..."
+              label="Search Comments"
+              placeholder="Search by user, comment, event, location..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -258,7 +299,7 @@ const AdminComments = () => {
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
               options={[
-                { value: '', label: 'All Types' },
+                { value: '', label: 'All Event Types' },
                 { value: 'workshop', label: 'Workshop' },
                 { value: 'trip', label: 'Trip' },
                 { value: 'bazaar', label: 'Bazaar' },
@@ -269,184 +310,213 @@ const AdminComments = () => {
           </div>
         </Card>
 
-        {/* Events Grid */}
+        {/* Comments Table */}
         {loading ? (
-          <Card style={{ padding: theme.spacing[6], textAlign: 'center' }}>Loading events...</Card>
+          <Card style={{ padding: theme.spacing[6], textAlign: 'center' }}>Loading comments...</Card>
         ) : error ? (
           <Card style={{ padding: theme.spacing[6], color: theme.colors.error.main }}>{error}</Card>
-        ) : filteredEvents.length === 0 ? (
+        ) : filteredComments.length === 0 ? (
           <Card style={{ padding: theme.spacing[6], textAlign: 'center', color: theme.colors.text.secondary }}>
             <div style={{ fontSize: '64px', marginBottom: theme.spacing[4] }}>💬</div>
             <h3 style={{ fontSize: theme.typography.fontSize.xl, color: theme.colors.text.primary, marginBottom: theme.spacing[4] }}>
-              No Events with Comments
+              No Comments Found
             </h3>
-            <p>{search || filterType ? 'Try adjusting your filters.' : 'No events have ratings yet.'}</p>
+            <p>{search || filterType ? 'Try adjusting your filters.' : 'No comments have been submitted yet.'}</p>
           </Card>
         ) : (
-          <div style={gridStyles}>
-            {filteredEvents.map(event => {
-              const eventId = event._id || event.id;
-              return (
-                <Card key={eventId} style={eventCardStyles} hover>
-                  <div style={eventTypeStyles}>{event.type}</div>
-                  <h3 style={eventTitleStyles}>{event.title || event.name}</h3>
-
-                  <div style={eventDetailStyles}>
-                    <span style={{ marginRight: theme.spacing[2] }}>📅</span>
-                    <span>{formatDate(event.startDate)}</span>
-                  </div>
-
-                  <div style={eventDetailStyles}>
-                    <span style={{ marginRight: theme.spacing[2] }}>📍</span>
-                    <span>{event.location}</span>
-                  </div>
-
-                  {event.description && (
-                    <p style={{
-                      fontSize: theme.typography.fontSize.sm,
-                      color: theme.colors.text.secondary,
-                      marginTop: theme.spacing[2],
-                      marginBottom: theme.spacing[3],
-                      lineHeight: theme.typography.lineHeight.relaxed,
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                    }}>
-                      {event.description}
-                    </p>
-                  )}
-
-                  <div style={{ marginTop: theme.spacing[3], marginBottom: theme.spacing[3] }}>
-                    <div style={ratingBadgeStyles}>
-                      ⭐ {event.averageRating.toFixed(1)} • {event.ratingsCount} comment{event.ratingsCount !== 1 ? 's' : ''}
-                    </div>
-                  </div>
-
-                  <div style={{ paddingTop: theme.spacing[3], borderTop: `1px solid ${theme.colors.border.light}` }}>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleViewRatings(event)}
-                      style={{ width: '100%' }}
-                    >
-                      View & Manage Comments
-                    </Button>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+          <Card style={{ padding: 0, overflow: 'hidden' }}>
+            <table style={tableStyles}>
+              <thead style={tableHeaderStyles}>
+                <tr>
+                  <th style={tableHeaderCellStyles}>User & Rating</th>
+                  <th style={tableHeaderCellStyles}>Comment</th>
+                  <th style={tableHeaderCellStyles}>Date</th>
+                  <th style={{ ...tableHeaderCellStyles, width: '120px' }}>Actions</th>
+                  <th style={{ ...tableHeaderCellStyles, width: '60px' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredComments.map((comment) => {
+                  const isExpanded = expandedCommentId === comment._id;
+                  const commentText = comment.comment || 'No comment provided';
+                  const shouldCollapse = commentText.length > 150;
+                  
+                  return (
+                    <React.Fragment key={comment._id}>
+                      <tr 
+                        style={tableRowStyles}
+                        onClick={() => toggleCommentExpansion(comment._id)}
+                      >
+                        <td style={tableCellStyles}>
+                          <div style={{ fontWeight: theme.typography.fontWeight.semibold, marginBottom: theme.spacing[1] }}>
+                            {comment.userName}
+                          </div>
+                          <div style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.text.secondary, marginBottom: theme.spacing[1] }}>
+                            {comment.userRole}
+                          </div>
+                          <div style={ratingStarsStyles}>
+                            {'⭐'.repeat(comment.rating)}
+                            <span style={{ 
+                              fontSize: theme.typography.fontSize.sm, 
+                              color: theme.colors.text.secondary,
+                              marginLeft: theme.spacing[1]
+                            }}>
+                              ({comment.rating}/5)
+                            </span>
+                          </div>
+                        </td>
+                        <td style={tableCellStyles}>
+                          <div style={shouldCollapse && !isExpanded ? collapsedCommentStyles : commentTextStyles}>
+                            {commentText}
+                          </div>
+                          {shouldCollapse && !isExpanded && (
+                            <button
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: theme.colors.primary.main,
+                                fontSize: theme.typography.fontSize.sm,
+                                cursor: 'pointer',
+                                padding: 0,
+                                marginTop: theme.spacing[1],
+                                fontWeight: theme.typography.fontWeight.medium,
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleCommentExpansion(comment._id);
+                              }}
+                            >
+                              See more
+                            </button>
+                          )}
+                          {shouldCollapse && isExpanded && (
+                            <button
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: theme.colors.primary.main,
+                                fontSize: theme.typography.fontSize.sm,
+                                cursor: 'pointer',
+                                padding: 0,
+                                marginTop: theme.spacing[1],
+                                fontWeight: theme.typography.fontWeight.medium,
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleCommentExpansion(comment._id);
+                              }}
+                            >
+                              See less
+                            </button>
+                          )}
+                        </td>
+                        <td style={tableCellStyles}>
+                          {formatDateTime(comment.createdAt)}
+                        </td>
+                        <td style={tableCellStyles}>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteComment(comment._id);
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </td>
+                        <td style={tableCellStyles}>
+                          <div style={{ 
+                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s ease',
+                            fontSize: theme.typography.fontSize.lg,
+                            color: theme.colors.text.secondary,
+                            textAlign: 'center'
+                          }}>
+                            ▼
+                          </div>
+                        </td>
+                      </tr>
+                      
+                      {/* Expanded Event Details */}
+                      {isExpanded && comment.event && (
+                        <tr style={expandedRowStyles}>
+                          <td colSpan="5" style={{ ...tableCellStyles, paddingTop: 0 }}>
+                            <div style={eventDetailCardStyles}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: theme.spacing[3] }}>
+                                                              <div>
+                                                                <h4 style={{
+                                                                  fontSize: theme.typography.fontSize.lg,
+                                                                  fontWeight: theme.typography.fontWeight.semibold,
+                                                                  marginBottom: theme.spacing[2]
+                                                                }}>
+                                                                  Event Details
+                                                                </h4>
+                                                                <div style={eventTypeBadgeStyles}>
+                                                                  {comment.event.type}
+                                                                </div>
+                                                              </div>
+                                                            </div>
+                              
+                                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: theme.spacing[4] }}>
+                                                              <div>
+                                                                <div style={eventDetailLabelStyles}>
+                                                                  Event Title
+                                                                </div>
+                                                                <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.primary }}>
+                                                                  {comment.event.title}
+                                                                </div>
+                                                              </div>
+                                                              
+                                                              <div>
+                                                                <div style={eventDetailLabelStyles}>
+                                                                  Event Date
+                                                                </div>
+                                                                <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.primary }}>
+                                                                  {formatDate(comment.event.startDate)}
+                                                                </div>
+                                                              </div>
+                                                              
+                                                              <div>
+                                                                <div style={eventDetailLabelStyles}>
+                                                                  Location
+                                                                </div>
+                                                                <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.primary }}>
+                                                                  {comment.event.location}
+                                                                </div>
+                                                              </div>
+                                                            </div>
+                                                            
+                                                            {comment.event.description && (
+                                                              <div style={{ marginTop: theme.spacing[3] }}>
+                                                                <div style={eventDetailLabelStyles}>
+                                                                  Description
+                                                                </div>
+                                                                <div style={{ 
+                                                                  fontSize: theme.typography.fontSize.sm, 
+                                                                  color: theme.colors.text.primary,
+                                                                  lineHeight: theme.typography.lineHeight.relaxed,
+                                                                  display: '-webkit-box',
+                                                                  WebkitLineClamp: 3,
+                                                                  WebkitBoxOrient: 'vertical',
+                                                                  overflow: 'hidden',
+                                                                }}>
+                                                                  {comment.event.description}
+                                                                </div>
+                                                              </div>
+                                                            )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Card>
         )}
       </div>
-
-      {/* Modal for viewing and deleting ratings */}
-      {showModal && selectedEvent && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            backdropFilter: 'blur(5px)',
-            zIndex: theme.zIndex.modal,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: theme.spacing[4],
-          }}
-          onClick={closeModal}
-        >
-          <div
-            style={{
-              backgroundColor: theme.colors.background.paper,
-              borderRadius: theme.borderRadius.lg,
-              boxShadow: theme.shadows['2xl'],
-              maxWidth: '800px',
-              width: '100%',
-              maxHeight: '80vh',
-              overflow: 'auto',
-              padding: theme.spacing[6],
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: theme.spacing[4] }}>
-              <div>
-                <h2 style={{ fontSize: theme.typography.fontSize['2xl'], fontWeight: theme.typography.fontWeight.bold, marginBottom: theme.spacing[2] }}>
-                  {selectedEvent.title || selectedEvent.name}
-                </h2>
-                <p style={{ color: theme.colors.text.secondary, fontSize: theme.typography.fontSize.sm }}>
-                  {eventRatings.length} comment{eventRatings.length !== 1 ? 's' : ''}
-                </p>
-              </div>
-              <button
-                onClick={closeModal}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: theme.typography.fontSize['2xl'],
-                  cursor: 'pointer',
-                  color: theme.colors.text.secondary,
-                  padding: 0,
-                  width: '32px',
-                  height: '32px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            {loadingRatings ? (
-              <div style={{ padding: theme.spacing[6], textAlign: 'center' }}>Loading comments...</div>
-            ) : eventRatings.length === 0 ? (
-              <div style={{ padding: theme.spacing[6], textAlign: 'center', color: theme.colors.text.secondary }}>
-                No comments available.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing[4] }}>
-                {eventRatings.map(rating => (
-                  <Card key={rating._id} style={{ padding: theme.spacing[4] }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: theme.spacing[2] }}>
-                      <div>
-                        <div style={{ fontWeight: theme.typography.fontWeight.semibold, marginBottom: theme.spacing[1] }}>
-                          {rating.userName}
-                        </div>
-                        <div style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.text.secondary }}>
-                          {new Date(rating.createdAt).toLocaleDateString()} • {rating.userRole}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing[1] }}>
-                        <span style={{ color: theme.colors.warning.main, fontSize: theme.typography.fontSize.lg }}>
-                          {'⭐'.repeat(rating.rating)}
-                        </span>
-                      </div>
-                    </div>
-                    <p style={{
-                      color: theme.colors.text.primary,
-                      lineHeight: theme.typography.lineHeight.relaxed,
-                      marginBottom: theme.spacing[3],
-                    }}>
-                      {rating.comment}
-                    </p>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => handleDeleteRating(rating._id)}
-                    >
-                      Delete Comment
-                    </Button>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
