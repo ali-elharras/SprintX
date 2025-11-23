@@ -18,8 +18,7 @@ const EventsRatings = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
-  const [sortBy, setSortBy] = useState("startDate");
-  const [sortOrder, setSortOrder] = useState("desc");
+  const [expandedEventId, setExpandedEventId] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showRatingsModal, setShowRatingsModal] = useState(false);
 
@@ -33,13 +32,6 @@ const EventsRatings = () => {
     { value: "bazaar", label: "Bazaars" },
     { value: "booth", label: "Booths" },
     { value: "conference", label: "Conferences" },
-  ];
-
-  const sortOptions = [
-    { value: "startDate", label: "Start Date" },
-    { value: "endDate", label: "End Date" },
-    { value: "title", label: "Event Title" },
-    { value: "type", label: "Event Type" },
   ];
 
   const fetchPastEvents = useCallback(async () => {
@@ -93,27 +85,11 @@ const EventsRatings = () => {
       filtered = filtered.filter((event) => event.type === filterType);
     }
 
-    // Sort
+    // Sort by start date (most recent first)
     filtered.sort((a, b) => {
-      let aVal, bVal;
-
-      if (sortBy === "endDate") {
-        aVal = new Date(a.endDate || a.startDate);
-        bVal = new Date(b.endDate || b.startDate);
-      } else if (sortBy === "startDate") {
-        aVal = new Date(a.startDate);
-        bVal = new Date(b.startDate);
-      } else if (sortBy === "title") {
-        aVal = (a.title || a.name || "").toLowerCase();
-        bVal = (b.title || b.name || "").toLowerCase();
-      } else {
-        aVal = a[sortBy];
-        bVal = b[sortBy];
-      }
-
-      if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
-      if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
-      return 0;
+      const aDate = new Date(a.startDate);
+      const bDate = new Date(b.startDate);
+      return bDate - aDate;
     });
 
     return filtered;
@@ -124,16 +100,30 @@ const EventsRatings = () => {
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
-      weekday: "short",
       year: "numeric",
       month: "short",
       day: "numeric",
     });
   };
 
+  const formatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const handleViewRatings = (event) => {
     setSelectedEvent(event);
     setShowRatingsModal(true);
+  };
+
+  const toggleEventExpansion = (eventId) => {
+    setExpandedEventId(expandedEventId === eventId ? null : eventId);
   };
 
   // Get event status badge
@@ -159,7 +149,7 @@ const EventsRatings = () => {
 
   const contentStyles = {
     padding: theme.spacing[6],
-    maxWidth: theme.layout.containerMaxWidth.xl,
+    maxWidth: theme.layout.containerMaxWidth['xl'],
     margin: "0 auto",
   };
 
@@ -179,85 +169,89 @@ const EventsRatings = () => {
     color: theme.colors.text.secondary,
   };
 
-  const filtersStyles = {
+  const filtersGrid = {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
     gap: theme.spacing[4],
     marginBottom: theme.spacing[6],
   };
 
-  const statsCardStyles = {
-    background: theme.colors.background.gradient,
-    color: theme.colors.text.white,
-    marginBottom: theme.spacing[6],
-    textAlign: "center",
+  const tableStyles = {
+    width: "100%",
+    borderCollapse: "collapse",
+    backgroundColor: theme.colors.background.paper,
+    borderRadius: theme.borderRadius.lg,
+    overflow: "hidden",
+    boxShadow: theme.shadows.sm,
   };
 
-  const statsValueStyles = {
-    fontSize: theme.typography.fontSize["3xl"],
-    fontWeight: theme.typography.fontWeight.bold,
-    marginBottom: theme.spacing[2],
+  const tableHeaderStyles = {
+    backgroundColor: theme.colors.primary.main + "08",
+    borderBottom: `1px solid ${theme.colors.border.light}`,
   };
 
-  const statsLabelStyles = {
-    fontSize: theme.typography.fontSize.base,
-    opacity: 0.9,
+  const tableHeaderCellStyles = {
+    padding: theme.spacing[4],
+    textAlign: "left",
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
   };
 
-  const gridStyles = {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))",
-    gap: theme.spacing[4],
-  };
-
-  const eventCardStyles = {
+  const tableRowStyles = {
+    borderBottom: `1px solid ${theme.colors.border.light}`,
     transition: "all 0.2s ease",
     cursor: "pointer",
   };
 
-  const eventHeaderStyles = {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: theme.spacing[3],
-    gap: theme.spacing[2],
-  };
-
-  const eventTitleStyles = {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing[2],
-  };
-
-  const eventTypeStyles = {
-    display: "inline-block",
-    padding: `${theme.spacing[1]} ${theme.spacing[3]}`,
-    backgroundColor: theme.colors.primary.main + "20",
-    color: theme.colors.primary.main,
-    borderRadius: theme.borderRadius.full,
+  const tableCellStyles = {
+    padding: theme.spacing[4],
     fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.primary,
+    verticalAlign: "top",
+  };
+
+  const expandedRowStyles = {
+    backgroundColor: theme.colors.primary.main + "04",
+    borderBottom: `1px solid ${theme.colors.border.light}`,
+  };
+
+  const eventDetailCardStyles = {
+    backgroundColor: theme.colors.background.default,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing[4],
+    margin: `${theme.spacing[4]} 0`,
+  };
+
+  const eventTypeBadgeStyles = {
+    display: "inline-block",
+    padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+    backgroundColor: theme.colors.primary.main,
+    color: theme.colors.background.paper,
+    borderRadius: theme.borderRadius.full,
+    fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.medium,
     textTransform: "capitalize",
   };
 
   const statusBadgeStyles = (color) => ({
     display: "inline-block",
-    padding: `${theme.spacing[1]} ${theme.spacing[3]}`,
+    padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
     backgroundColor: color + "20",
     color: color,
     borderRadius: theme.borderRadius.full,
     fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.medium,
-    marginTop: theme.spacing[2],
+    marginLeft: theme.spacing[2],
   });
 
-  const eventDetailStyles = {
-    display: "flex",
-    alignItems: "center",
+  const eventDetailLabelStyles = {
     fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.medium,
+    marginBottom: theme.spacing[1],
     color: theme.colors.text.secondary,
-    marginBottom: theme.spacing[2],
   };
 
   const emptyStateStyles = {
@@ -316,15 +310,9 @@ const EventsRatings = () => {
           </p>
         </div>
 
-        {/* Statistics */}
-        <Card style={statsCardStyles}>
-          <div style={statsValueStyles}>{filteredEvents.length}</div>
-          <div style={statsLabelStyles}>Events Available for Rating</div>
-        </Card>
-
         {/* Filters */}
         <Card style={{ marginBottom: theme.spacing[6] }}>
-          <div style={filtersStyles}>
+          <div style={filtersGrid}>
             <Input
               label="Search Events"
               placeholder="Search by title, description, or location..."
@@ -332,30 +320,15 @@ const EventsRatings = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
             <Select
-              label="Filter by Type"
+              label="Event Type"
               options={eventTypeOptions}
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
             />
-            <Select
-              label="Sort by"
-              options={sortOptions}
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-            />
-            <Select
-              label="Sort Order"
-              options={[
-                { value: "asc", label: "Ascending" },
-                { value: "desc", label: "Descending" },
-              ]}
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-            />
           </div>
         </Card>
 
-        {/* Events Grid */}
+        {/* Events Table */}
         {loading ? (
           <Card style={emptyStateStyles}>
             <div>Loading events...</div>
@@ -379,78 +352,192 @@ const EventsRatings = () => {
             </p>
           </Card>
         ) : (
-          <div style={gridStyles}>
-            {filteredEvents.map((event) => {
-              const status = getEventStatus(event);
-              return (
-                <Card key={event._id} style={eventCardStyles} hover>
-                  <div style={eventHeaderStyles}>
-                    <div style={{ flex: 1 }}>
-                      <div style={eventTypeStyles}>{event.type}</div>
-                      <h3 style={eventTitleStyles}>{event.title || event.name}</h3>
-                      <div style={statusBadgeStyles(status.color)}>
-                        {status.label}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginBottom: theme.spacing[4] }}>
-                    <div style={eventDetailStyles}>
-                      <span style={{ marginRight: theme.spacing[2] }}>📅</span>
-                      <span>
-                        {formatDate(event.startDate)}
-                        {event.endDate &&
-                          new Date(event.startDate).toDateString() !==
-                            new Date(event.endDate).toDateString() &&
-                          ` - ${formatDate(event.endDate)}`}
-                      </span>
-                    </div>
-
-                    <div style={eventDetailStyles}>
-                      <span style={{ marginRight: theme.spacing[2] }}>📍</span>
-                      <span>
-                        {event.location}
-                        {event.venue && event.venue !== event.location && ` - ${event.venue}`}
-                      </span>
-                    </div>
-
-                    {event.description && (
-                      <p
-                        style={{
-                          fontSize: theme.typography.fontSize.sm,
-                          color: theme.colors.text.secondary,
-                          marginTop: theme.spacing[2],
-                          lineHeight: theme.typography.lineHeight.relaxed,
-                          display: "-webkit-box",
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical",
-                          overflow: "hidden",
-                        }}
+          <Card style={{ padding: 0, overflow: "hidden" }}>
+            <table style={tableStyles}>
+              <thead style={tableHeaderStyles}>
+                <tr>
+                  <th style={tableHeaderCellStyles}>Event Details</th>
+                  <th style={tableHeaderCellStyles}>Date</th>
+                  <th style={tableHeaderCellStyles}>Location</th>
+                  <th style={{ ...tableHeaderCellStyles, width: "150px" }}>Actions</th>
+                  <th style={{ ...tableHeaderCellStyles, width: "60px" }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredEvents.map((event) => {
+                  const isExpanded = expandedEventId === event._id;
+                  const status = getEventStatus(event);
+                  
+                  return (
+                    <React.Fragment key={event._id}>
+                      <tr 
+                        style={tableRowStyles}
+                        onClick={() => toggleEventExpansion(event._id)}
                       >
-                        {event.description}
-                      </p>
-                    )}
-                  </div>
+                        <td style={tableCellStyles}>
+                          <div style={{ fontWeight: theme.typography.fontWeight.semibold, marginBottom: theme.spacing[1], fontSize: theme.typography.fontSize.base }}>
+                            {event.title || event.name}
+                          </div>
+                          <div style={eventTypeBadgeStyles}>
+                            {event.type}
+                          </div>
+                          <span style={statusBadgeStyles(status.color)}>
+                            {status.label}
+                          </span>
+                        </td>
+                        <td style={tableCellStyles}>
+                          <div style={{ marginBottom: theme.spacing[1] }}>
+                            {formatDate(event.startDate)}
+                          </div>
+                          {event.endDate && new Date(event.startDate).toDateString() !== new Date(event.endDate).toDateString() && (
+                            <div style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.text.secondary }}>
+                              to {formatDate(event.endDate)}
+                            </div>
+                          )}
+                        </td>
+                        <td style={tableCellStyles}>
+                          <div>{event.location}</div>
+                          {event.venue && event.venue !== event.location && (
+                            <div style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.text.secondary, marginTop: theme.spacing[1] }}>
+                              {event.venue}
+                            </div>
+                          )}
+                        </td>
+                        <td style={tableCellStyles}>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewRatings(event);
+                            }}
+                          >
+                            View Ratings
+                          </Button>
+                        </td>
+                        <td style={tableCellStyles}>
+                          <div style={{ 
+                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s ease',
+                            fontSize: theme.typography.fontSize.lg,
+                            color: theme.colors.text.secondary,
+                            textAlign: 'center'
+                          }}>
+                            ▼
+                          </div>
+                        </td>
+                      </tr>
+                      
+                      {/* Expanded Event Details */}
+                      {isExpanded && (
+                        <tr style={expandedRowStyles}>
+                          <td colSpan="5" style={{ ...tableCellStyles, paddingTop: 0 }}>
+                            <div style={eventDetailCardStyles}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: theme.spacing[3] }}>
+                                <div>
+                                  <h4 style={{
+                                    fontSize: theme.typography.fontSize.lg,
+                                    fontWeight: theme.typography.fontWeight.semibold,
+                                    marginBottom: theme.spacing[2]
+                                  }}>
+                                    Complete Event Information
+                                  </h4>
+                                </div>
+                              </div>
+              
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: theme.spacing[4] }}>
+                                <div>
+                                  <div style={eventDetailLabelStyles}>
+                                    Event Title
+                                  </div>
+                                  <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.primary }}>
+                                    {event.title || event.name}
+                                  </div>
+                                </div>
+                                
+                                <div>
+                                  <div style={eventDetailLabelStyles}>
+                                    Event Type
+                                  </div>
+                                  <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.primary, textTransform: "capitalize" }}>
+                                    {event.type}
+                                  </div>
+                                </div>
+                                
+                                <div>
+                                  <div style={eventDetailLabelStyles}>
+                                    Status
+                                  </div>
+                                  <div style={{ fontSize: theme.typography.fontSize.sm, color: status.color }}>
+                                    {status.label}
+                                  </div>
+                                </div>
 
-                  <div
-                    style={{
-                      paddingTop: theme.spacing[3],
-                      borderTop: `1px solid ${theme.colors.border.light}`,
-                    }}
-                  >
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleViewRatings(event)}
-                      style={{ width: "100%" }}
-                    >
-                      View All Ratings & Comments
-                    </Button>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+                                <div>
+                                  <div style={eventDetailLabelStyles}>
+                                    Start Date
+                                  </div>
+                                  <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.primary }}>
+                                    {formatDate(event.startDate)}
+                                  </div>
+                                </div>
+
+                                {event.endDate && (
+                                  <div>
+                                    <div style={eventDetailLabelStyles}>
+                                      End Date
+                                    </div>
+                                    <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.primary }}>
+                                      {formatDate(event.endDate)}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                <div>
+                                  <div style={eventDetailLabelStyles}>
+                                    Location
+                                  </div>
+                                  <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.primary }}>
+                                    {event.location}
+                                  </div>
+                                </div>
+
+                                {event.venue && (
+                                  <div>
+                                    <div style={eventDetailLabelStyles}>
+                                      Venue
+                                    </div>
+                                    <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.primary }}>
+                                      {event.venue}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {event.description && (
+                                <div style={{ marginTop: theme.spacing[4] }}>
+                                  <div style={eventDetailLabelStyles}>
+                                    Description
+                                  </div>
+                                  <div style={{ 
+                                    fontSize: theme.typography.fontSize.sm, 
+                                    color: theme.colors.text.primary,
+                                    lineHeight: theme.typography.lineHeight.relaxed,
+                                  }}>
+                                    {event.description}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Card>
         )}
       </div>
 
