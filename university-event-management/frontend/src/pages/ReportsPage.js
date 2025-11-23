@@ -1,5 +1,4 @@
 import React from "react";
-import Navbar from "../components/Navbar";
 import AdminReports from "../components/Reports";
 import theme from "../theme";
 
@@ -11,7 +10,6 @@ const ReportsPage = () => {
         backgroundColor: theme.colors.background.default,
       }}
     >
-      <Navbar />
       <div
         style={{
           maxWidth: "1400px",

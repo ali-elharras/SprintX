@@ -1166,7 +1166,7 @@ const Workshops = () => {
     // --- Main Component Render ---
     return (
         <>
-            <Navbar />
+            
             {/* CONTAINER: Max-width and background for main page */}
             <div style={{ 
                 minHeight: '100vh', 

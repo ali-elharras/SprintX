@@ -41,7 +41,7 @@ const EventDetailsPage = () => {
   if (loading) {
     return (
       <>
-        <Navbar />
+        
         <div style={{ padding: theme.spacing[8], textAlign: "center" }}>Loading...</div>
       </>
     );
@@ -50,7 +50,7 @@ const EventDetailsPage = () => {
   if (error || !event) {
     return (
       <>
-        <Navbar />
+        
         <div style={{ padding: theme.spacing[8], textAlign: "center", color: theme.colors.error.main }}>
           {error || "Event not found"}
         </div>
@@ -62,7 +62,7 @@ const EventDetailsPage = () => {
 
   return (
     <>
-      <Navbar />
+      
       <div
         style={{
           minHeight: "100vh",

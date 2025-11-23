@@ -318,7 +318,7 @@ const GymSchedulePage = () => {
   if (loading) {
     return (
       <div style={styles.container}>
-        <Navbar />
+        
         <LoadingScreen type="gym" />
       </div>
     );
@@ -326,7 +326,7 @@ const GymSchedulePage = () => {
 
   return (
     <div style={styles.container}>
-      <Navbar />
+      
       <div style={styles.content}>
         {/* Header */}
         <div style={styles.header}>

@@ -139,7 +139,7 @@ const TripsPage = () => {
   if (loading) {
     return (
       <div style={styles.container}>
-        <Navbar />
+        
         <LoadingScreen type="trips" />
       </div>
     );
@@ -147,7 +147,7 @@ const TripsPage = () => {
 
   return (
     <div style={styles.container}>
-      <Navbar />
+      
       <div style={styles.content}>
         <div style={styles.header}>
           <h1 style={styles.title}>Trips</h1>
