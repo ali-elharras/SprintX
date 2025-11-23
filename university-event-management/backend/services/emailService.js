@@ -1821,7 +1821,7 @@ class EmailService {
             <p style="text-align: center; margin: 30px 0;">
               <a href="${
                 process.env.FRONTEND_URL
-              }/vendor/dashboard" class="cta-button">View Dashboard</a>
+              }/vendor/dashboard" class="cta-button" style="color: black;">View Dashboard</a>
             </p>
             
             <p>If you have any questions or would like more feedback, please don't hesitate to contact our support team.</p>
