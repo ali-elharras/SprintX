@@ -4,6 +4,8 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import toast from "react-hot-toast";
+import { Eye, EyeOff } from "lucide-react";
+import Lottie from "lottie-react";
 
 import { useAuth } from "../context/AuthContext";
 import theme from "../theme";
@@ -11,6 +13,7 @@ import Card from "../components/Card";
 import Input from "../components/Input";
 import Button from "../components/Button";
 import PreLoginNavbar from "../components/PreLoginNavbar";
+import universityAnimation from "../assets/animations/universityMemberAnimation.json";
 
 // Function to detect if email is GUC email format
 const isGUCEmail = (email) => {
@@ -31,6 +34,7 @@ const Login = () => {
   const location = useLocation();
   const { loginUser, loginVendor, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Get the intended destination from location state
   const from = location.state?.from?.pathname || "/dashboard";
@@ -161,24 +165,10 @@ const Login = () => {
           }
         }
 
-        console.log("Showing toast error for result:", result);
-        console.log(
-          "=== ABOUT TO SHOW ERROR, LOCATION ===",
-          window.location.pathname
-        );
         toast.error(
           result.error || "Login failed. Please check your credentials."
         );
-        console.log(
-          "=== AFTER ERROR TOAST, LOCATION ===",
-          window.location.pathname
-        );
-        // Ensure we stay on login page
         setIsSubmitting(false);
-        console.log(
-          "=== AFTER setIsSubmitting, LOCATION ===",
-          window.location.pathname
-        );
         return;
       }
     } catch (error) {
@@ -188,135 +178,316 @@ const Login = () => {
     }
   };
 
-  const containerStyles = {
-    minHeight: "100vh",
-    background: theme.colors.background.gradient,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: theme.spacing[4],
-    fontFamily: theme.typography.fontFamily.primary,
-  };
-
-  const cardStyles = {
-    width: "100%",
-    maxWidth: "500px",
-    margin: "0 auto",
-  };
-
-  const headerStyles = {
-    textAlign: "center",
-    marginBottom: theme.spacing[8],
-  };
-
-  const titleStyles = {
-    fontSize: theme.typography.fontSize["4xl"],
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing[2],
-  };
-
-  const subtitleStyles = {
-    fontSize: theme.typography.fontSize.lg,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing[4],
-  };
-
-  const formStyles = {
-    display: "grid",
-    gap: theme.spacing[5],
-  };
-
-  const linkStyles = {
-    textAlign: "center",
-    marginTop: theme.spacing[6],
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-  };
-
-  const linkAnchorStyles = {
-    color: theme.colors.primary.main,
-    textDecoration: "none",
-    fontWeight: theme.typography.fontWeight.medium,
-  };
-
-  const title = "SprintX Login";
-  const subtitle =
-    "Access your account to discover and participate in campus events";
-
   return (
     <>
       <PreLoginNavbar />
-      <div style={containerStyles}>
-        <Card style={cardStyles}>
-          <div style={headerStyles}>
-            <h1 style={titleStyles}>{title}</h1>
-            <p style={subtitleStyles}>{subtitle}</p>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} style={formStyles}>
-            {/* Email */}
-            <Input
-              label="Email Address"
-              type="email"
-              placeholder="Enter your email address"
-              required
-              error={errors.email?.message}
-              {...register("email")}
-            />
-
-            {/* Show if GUC email is detected */}
-            {isUniversityEmail && (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: theme.colors.background.gradient,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: theme.spacing[8],
+          fontFamily: theme.typography.fontFamily.primary,
+        }}
+      >
+        <Card
+          style={{
+            width: "100%",
+            maxWidth: "1000px",
+            overflow: "hidden",
+            boxShadow: theme.shadows["2xl"],
+            background: theme.colors.background.paper,
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              minHeight: "600px",
+            }}
+          >
+            {/* Left Side - Login Form */}
+            <div
+              style={{
+                padding: theme.spacing[12],
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                background: theme.colors.background.paper,
+                borderRight: `2px solid ${theme.colors.border.light}`,
+              }}
+            >
               <div
                 style={{
-                  fontSize: theme.typography.fontSize.sm,
-                  color: theme.colors.primary.main,
-                  marginTop: `-${theme.spacing[3]}`,
-                  marginBottom: theme.spacing[2],
-                  fontWeight: theme.typography.fontWeight.medium,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: theme.spacing[6],
                 }}
               >
-                ✓ GUC Email Detected
+                {/* Header */}
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: theme.spacing[3],
+                  }}
+                >
+                  <h1
+                    style={{
+                      color: theme.colors.text.primary,
+                      fontSize: theme.typography.fontSize["4xl"],
+                      fontWeight: theme.typography.fontWeight.bold,
+                      lineHeight: "1.2",
+                    }}
+                  >
+                    SprintX Login
+                  </h1>
+                  <p
+                    style={{
+                      color: theme.colors.text.secondary,
+                      fontSize: theme.typography.fontSize.lg,
+                      lineHeight: "1.5",
+                    }}
+                  >
+                    Access your account to discover and participate in campus
+                    events
+                  </p>
+                </div>
+
+                {/* Login Form */}
+                <form
+                  onSubmit={handleSubmit(onSubmit)}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: theme.spacing[6],
+                    marginTop: theme.spacing[8],
+                  }}
+                >
+                  {/* Email Field */}
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: theme.spacing[2],
+                    }}
+                  >
+                    <label
+                      htmlFor="email"
+                      style={{
+                        fontSize: theme.typography.fontSize.sm,
+                        fontWeight: theme.typography.fontWeight.medium,
+                        color: theme.colors.text.primary,
+                      }}
+                    >
+                      Email Address
+                    </label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email"
+                      {...register("email")}
+                      error={errors.email?.message}
+                      style={{
+                        height: "48px",
+                      }}
+                    />
+                  </div>
+
+                  {/* Password Field */}
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: theme.spacing[2],
+                      position: "relative",
+                    }}
+                  >
+                    <label
+                      htmlFor="password"
+                      style={{
+                        fontSize: theme.typography.fontSize.sm,
+                        fontWeight: theme.typography.fontWeight.medium,
+                        color: theme.colors.text.primary,
+                      }}
+                    >
+                      Password
+                    </label>
+                    <div style={{ position: "relative" }}>
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        {...register("password")}
+                        error={errors.password?.message}
+                        style={{
+                          height: "48px",
+                          paddingRight: "48px",
+                          marginBottom: 0,
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{
+                          position: "absolute",
+                          right: "12px",
+                          top: "0",
+                          background: "none",
+                          border: "none",
+                          outline: "none",
+                          cursor: "pointer",
+                          color: theme.colors.text.secondary,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: 0,
+                          width: "24px",
+                          height: "48px",
+                          transition: "color 0.2s",
+                        }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.color =
+                            theme.colors.text.primary)
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.color =
+                            theme.colors.text.secondary)
+                        }
+                      >
+                        {showPassword ? (
+                          <Eye style={{ width: "20px", height: "20px" }} />
+                        ) : (
+                          <EyeOff style={{ width: "20px", height: "20px" }} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sign In Button */}
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting || isLoading}
+                    style={{
+                      width: "100%",
+                      height: "48px",
+                      background: theme.colors.primary.gradient,
+                      color: theme.colors.text.white,
+                      fontSize: theme.typography.fontSize.base,
+                      fontWeight: theme.typography.fontWeight.medium,
+                      border: "none",
+                      borderRadius: theme.borderRadius.md,
+                      cursor:
+                        isSubmitting || isLoading ? "not-allowed" : "pointer",
+                      opacity: isSubmitting || isLoading ? 0.7 : 1,
+                      boxShadow: theme.shadows.lg,
+                      transition: "opacity 0.2s",
+                    }}
+                    onMouseEnter={(e) =>
+                      !isSubmitting &&
+                      !isLoading &&
+                      (e.currentTarget.style.opacity = "0.9")
+                    }
+                    onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                  >
+                    {isSubmitting || isLoading ? "Signing In..." : "Sign In"}
+                  </Button>
+                </form>
+
+                {/* Additional Links */}
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: theme.spacing[3],
+                    textAlign: "center",
+                    paddingTop: theme.spacing[4],
+                  }}
+                >
+                  <p
+                    style={{
+                      color: theme.colors.text.secondary,
+                      fontSize: theme.typography.fontSize.sm,
+                    }}
+                  >
+                    Don't have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => navigate("/signup")}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: theme.colors.primary.main,
+                        cursor: "pointer",
+                        fontWeight: theme.typography.fontWeight.medium,
+                        fontSize: theme.typography.fontSize.sm,
+                        padding: 0,
+                        textDecoration: "none",
+                        transition: "color 0.2s",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.color =
+                          theme.colors.primary.dark)
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.color =
+                          theme.colors.primary.main)
+                      }
+                    >
+                      Sign up Here
+                    </button>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/forgot-password")}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: theme.colors.primary.main,
+                      cursor: "pointer",
+                      fontSize: theme.typography.fontSize.sm,
+                      fontWeight: theme.typography.fontWeight.medium,
+                      padding: 0,
+                      textDecoration: "none",
+                      transition: "color 0.2s",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.color = theme.colors.primary.dark)
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.color = theme.colors.primary.main)
+                    }
+                  >
+                    Forgot your password?
+                  </button>
+                </div>
               </div>
-            )}
+            </div>
 
-            {/* Password */}
-            <Input
-              label="Password"
-              type="password"
-              placeholder="Enter your password"
-              required
-              error={errors.password?.message}
-              {...register("password")}
-            />
-
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              loading={isSubmitting || isLoading}
-              disabled={isSubmitting || isLoading}
-              style={{ marginTop: theme.spacing[4] }}
+            {/* Right Side - Animation */}
+            <div
+              style={{
+                position: "relative",
+                background:
+                  "linear-gradient(135deg, #694fffff 0%, #724fc4ff 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: theme.spacing[8],
+              }}
             >
-              {isSubmitting || isLoading ? "Signing In..." : "Sign In"}
-            </Button>
-
-            {/* Signup Link */}
-            <div style={linkStyles}>
-              <span>Don't have an account? </span>
-              <Link to="/signup" style={linkAnchorStyles}>
-                Sign up here
-              </Link>
+              <Lottie
+                animationData={universityAnimation}
+                loop={true}
+                style={{
+                  width: "380px",
+                  height: "380px",
+                }}
+              />
             </div>
-
-            {/* Help Links */}
-            <div style={linkStyles}>
-              <Link to="/forgot-password" style={linkAnchorStyles}>
-                Forgot your password?
-              </Link>
-            </div>
-          </form>
+          </div>
         </Card>
       </div>
     </>
