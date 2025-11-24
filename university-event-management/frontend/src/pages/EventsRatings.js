@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
-import { eventAPI } from "../services/api";
+import { eventAPI, ratingAPI } from "../services/api";
 import theme from "../theme";
 import Card from "../components/Card";
 import Button from "../components/Button";
@@ -40,7 +40,6 @@ const EventsRatings = () => {
     try {
       setLoading(true);
 
-      // Fetch all events (the API returns all event types)
       const eventsResponse = await eventAPI.getEvents();
       const allEvents = eventsResponse.data?.data || [];
 
@@ -48,11 +47,29 @@ const EventsRatings = () => {
       const now = new Date();
       const pastOrOngoingEvents = allEvents.filter(event => {
         const startDate = new Date(event.startDate);
-        // Include events that have already started (past or ongoing)
         return startDate <= now;
       });
 
-      setEvents(pastOrOngoingEvents);
+      // Fetch rating statistics for each event using the correct API
+      const eventsWithRatings = await Promise.all(
+        pastOrOngoingEvents.map(async (event) => {
+          try {
+            const response = await ratingAPI.getEventRatings(event._id);
+            const stats = response.data.data.statistics;
+            
+            const ratingCount = stats ? stats.totalRatings : 0;
+            const averageRating = stats ? stats.averageRating : 0;
+
+            return { ...event, ratingCount, averageRating };
+          } catch (error) {
+            // API may return an error (e.g., 404) for events with no ratings.
+            // Default to zero so the UI doesn't break.
+            return { ...event, ratingCount: 0, averageRating: 0 };
+          }
+        })
+      );
+
+      setEvents(eventsWithRatings);
     } catch (error) {
       console.error("Error fetching past events:", error);
       toast.error("Failed to load events");
@@ -359,6 +376,7 @@ const EventsRatings = () => {
                   <th style={tableHeaderCellStyles}>Event Details</th>
                   <th style={tableHeaderCellStyles}>Date</th>
                   <th style={tableHeaderCellStyles}>Location</th>
+                  <th style={tableHeaderCellStyles}>Rating</th>
                   <th style={{ ...tableHeaderCellStyles, width: "150px" }}>Actions</th>
                   <th style={{ ...tableHeaderCellStyles, width: "60px" }}></th>
                 </tr>
@@ -404,6 +422,22 @@ const EventsRatings = () => {
                           )}
                         </td>
                         <td style={tableCellStyles}>
+                          {event.ratingCount > 0 ? (
+                            <div>
+                              <div style={{ fontWeight: theme.typography.fontWeight.semibold }}>
+                                {event.averageRating.toFixed(1)} / 5
+                              </div>
+                              <div style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.text.secondary }}>
+                                ({event.ratingCount} {event.ratingCount === 1 ? 'rating' : 'ratings'})
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.secondary }}>
+                              No ratings
+                            </div>
+                          )}
+                        </td>
+                        <td style={tableCellStyles}>
                           <Button
                             variant="primary"
                             size="sm"
@@ -431,7 +465,7 @@ const EventsRatings = () => {
                       {/* Expanded Event Details */}
                       {isExpanded && (
                         <tr style={expandedRowStyles}>
-                          <td colSpan="5" style={{ ...tableCellStyles, paddingTop: 0 }}>
+                          <td colSpan="6" style={{ ...tableCellStyles, paddingTop: 0 }}>
                             <div style={eventDetailCardStyles}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: theme.spacing[3] }}>
                                 <div>
