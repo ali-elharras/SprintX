@@ -9,8 +9,8 @@ import { X, Calendar, MapPin, Upload, Users, DollarSign, Store, Check, Plus, Tra
 const PRICING = {
   booth: {
     basePrice: {
-      "2x2": 150, // Base price per week for 2x2 booth
-      "4x4": 300, // Base price per week for 4x4 booth
+      "2x2": 150, // Base price per week for 2x2 booth in EGP
+      "4x4": 300, // Base price per week for 4x4 booth in EGP
     },
   },
 };
@@ -19,7 +19,7 @@ const PRICING = {
    SKELETON LOADING
    ======================================== */
 const SkeletonShimmer = ({ className = "", rounded = "lg" }) => (
-  <div 
+  <div
     className={`relative overflow-hidden bg-gray-200 ${className} rounded-${rounded}`}
     aria-hidden="true"
   >
@@ -33,7 +33,7 @@ const BoothSkeleton = () => (
       <SkeletonShimmer className="w-32 h-5 mb-3" rounded="md" />
       <SkeletonShimmer className="w-full h-64" rounded="lg" />
     </div>
-    
+
     <div className="grid grid-cols-2 gap-4">
       <div>
         <SkeletonShimmer className="w-24 h-5 mb-2" rounded="md" />
@@ -137,7 +137,7 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
     if (skeletonLoading) return;
 
     const finalAttendees = attendees.filter(a => a.name && a.email);
-    
+
     if (finalAttendees.length === 0) {
       toast.error("Please add at least one attendee.");
       return;
@@ -164,13 +164,13 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
     const end = new Date(start);
     end.setDate(start.getDate() + (durationWeeks * 7));
 
-    onSubmit({ 
-      boothSize, 
-      startDate: start.toISOString(), 
-      endDate: end.toISOString(), 
-      durationWeeks, 
+    onSubmit({
+      boothSize,
+      startDate: start.toISOString(),
+      endDate: end.toISOString(),
+      durationWeeks,
       location: selectedBoothId,
-      attendees: finalAttendees 
+      attendees: finalAttendees
     });
 
     resetForm();
@@ -198,11 +198,11 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
         }
       `}</style>
 
-      <div 
+      <div
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
         onClick={handleClose}
       >
-        <div 
+        <div
           className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-lg shadow-xl overflow-hidden flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
@@ -217,8 +217,8 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
                 <p className="text-xs text-gray-600">Book a permanent booth location</p>
               </div>
             </div>
-            <button 
-              onClick={handleClose} 
+            <button
+              onClick={handleClose}
               className="w-9 h-9 flex items-center justify-center rounded-md hover:bg-gray-100 transition-colors"
               aria-label="Close modal"
             >
@@ -244,11 +244,10 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
                           key={size}
                           type="button"
                           onClick={() => setBoothSize(size)}
-                          className={`relative p-4 border-2 rounded-lg text-left transition-all ${
-                            boothSize === size
+                          className={`relative p-4 border-2 rounded-lg text-left transition-all ${boothSize === size
                               ? 'border-indigo-600 bg-indigo-50'
                               : 'border-gray-200 hover:border-gray-300 bg-white'
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-semibold text-gray-900">{size}</span>
@@ -301,9 +300,9 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Duration
                       </label>
-                      <select 
-                        value={durationWeeks} 
-                        onChange={(e) => setDurationWeeks(parseInt(e.target.value))} 
+                      <select
+                        value={durationWeeks}
+                        onChange={(e) => setDurationWeeks(parseInt(e.target.value))}
                         className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       >
                         <option value={1}>1 week</option>
@@ -323,8 +322,8 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
 
                     <div className="space-y-3">
                       {attendees.map((attendee, index) => (
-                        <div 
-                          key={index} 
+                        <div
+                          key={index}
                           className="p-4 bg-gray-50 border border-gray-200 rounded-lg"
                         >
                           <div className="flex items-center justify-between mb-3">
@@ -357,7 +356,7 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
                               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                               required
                             />
-                            
+
                             <input
                               type="email"
                               placeholder="Email address"
@@ -375,15 +374,13 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                 required
                               />
-                              <div className={`flex items-center gap-3 px-3 py-2 border-2 border-dashed rounded-md transition-colors ${
-                                attendee.idProofFileName 
-                                  ? 'border-emerald-300 bg-emerald-50' 
+                              <div className={`flex items-center gap-3 px-3 py-2 border-2 border-dashed rounded-md transition-colors ${attendee.idProofFileName
+                                  ? 'border-emerald-300 bg-emerald-50'
                                   : 'border-gray-300 bg-white hover:border-gray-400'
-                              }`}>
-                                <Upload size={16} className={attendee.idProofFileName ? 'text-emerald-600' : 'text-gray-400'} />
-                                <span className={`text-sm flex-1 ${
-                                  attendee.idProofFileName ? 'text-emerald-700 font-medium' : 'text-gray-600'
                                 }`}>
+                                <Upload size={16} className={attendee.idProofFileName ? 'text-emerald-600' : 'text-gray-400'} />
+                                <span className={`text-sm flex-1 ${attendee.idProofFileName ? 'text-emerald-700 font-medium' : 'text-gray-600'
+                                  }`}>
                                   {attendee.idProofFileName || 'Upload ID proof'}
                                 </span>
                                 {attendee.idProofFileName && (
@@ -416,7 +413,7 @@ const ApplyBoothModal = ({ isOpen, onClose, onSubmit }) => {
                       </div>
                       <h3 className="text-base font-semibold text-gray-900">Cost summary</h3>
                     </div>
-                    
+
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between text-gray-700">
                         <span>Booth size</span>

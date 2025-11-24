@@ -145,7 +145,7 @@ const PaymentButton = ({ application, applicationType }) => {
         <div style={styles.paymentInfo}>
           <div style={styles.infoRow}>
             <span style={styles.label}>Payment Amount:</span>
-            <span style={styles.amount}>${application.paymentAmount?.toFixed(2) || '0.00'}</span>
+            <span style={styles.amount}>EGP {application.paymentAmount?.toFixed(2) || '0.00'}</span>
           </div>
           <div style={styles.infoRow}>
             <span style={styles.label}>Payment Deadline:</span>

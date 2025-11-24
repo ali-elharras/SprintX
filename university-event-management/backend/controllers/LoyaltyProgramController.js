@@ -15,14 +15,21 @@ exports.getAllLoyaltyPrograms = async (req, res) => {
 exports.createLoyaltyProgram = async (req, res) => {
     try {
         const vendorId = req.vendor.id; // Assuming vendor ID is available in req.vendor
+
+        // Check if vendor already has a loyalty program
+        const existingProgram = await LoyaltyProgram.findOne({ Vendor: vendorId });
+        if (existingProgram) {
+            return res.status(400).json({ error: 'You can only have one active loyalty program. Please delete the existing one to create a new one.' });
+        }
+
         const { discountRate, promoCode, termsAndConditions } = req.body;
         const newProgram = new LoyaltyProgram({ discountRate, promoCode, termsAndConditions, Vendor: vendorId });
         await newProgram.save();
-        
+
         // Get vendor details for notification
         const Vendor = require('../models/Vendor');
         const vendor = await Vendor.findById(vendorId);
-        
+
         // Notify all students, staff, TAs, and professors about the new loyalty partner
         if (vendor && vendor.companyName) {
             try {
@@ -32,7 +39,7 @@ exports.createLoyaltyProgram = async (req, res) => {
                 // Don't fail the loyalty program creation if notifications fail
             }
         }
-        
+
         res.status(201).json(newProgram);
     } catch (error) {
         res.status(400).json({ error: error.message });

@@ -11,7 +11,7 @@ import { Award, Copy, Trash2, Plus, Percent, Calendar, FileText } from 'lucide-r
    SKELETON LOADING (YouTube Style)
    ======================================== */
 const SkeletonShimmer = ({ className = "", rounded = "lg" }) => (
-  <div 
+  <div
     className={`relative overflow-hidden bg-gray-200 ${className} rounded-${rounded}`}
     aria-hidden="true"
   >
@@ -128,22 +128,24 @@ const LoyaltyProgram = () => {
             </p>
           </div>
 
-          <button
-            onClick={() => setShowEnrollmentModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
-            aria-haspopup="dialog"
-          >
-            <Plus size={16} />
-            Create program
-          </button>
+          {programs.length === 0 && (
+            <button
+              onClick={() => setShowEnrollmentModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
+              aria-haspopup="dialog"
+            >
+              <Plus size={16} />
+              Create program
+            </button>
+          )}
         </div>
 
         {/* Content */}
         {loading ? (
-          <div 
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" 
-            role="status" 
-            aria-busy="true" 
+          <div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+            role="status"
+            aria-busy="true"
             aria-label="Loading loyalty programs"
           >
             <SkeletonProgramCard />
@@ -170,8 +172,8 @@ const LoyaltyProgram = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {programs.map((program, index) => (
-              <div 
-                key={program._id} 
+              <div
+                key={program._id}
                 className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-200"
                 style={{ animationDelay: `${index * 60}ms` }}
               >
@@ -200,10 +202,10 @@ const LoyaltyProgram = () => {
                   {/* Metadata */}
                   <div className="flex items-center gap-2 text-xs text-gray-600 mb-4 pb-4 border-b border-gray-100">
                     <Calendar size={12} />
-                    <span>Created {new Date(program.createdAt || Date.now()).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      day: 'numeric', 
-                      year: 'numeric' 
+                    <span>Created {new Date(program.createdAt || Date.now()).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
                     })}</span>
                   </div>
 

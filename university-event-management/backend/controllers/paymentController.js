@@ -1,4 +1,4 @@
-const stripe = process.env.STRIPE_SECRET_KEY 
+const stripe = process.env.STRIPE_SECRET_KEY
   ? require("stripe")(process.env.STRIPE_SECRET_KEY)
   : null;
 
@@ -126,7 +126,7 @@ exports.createBazaarCheckoutSession = async (req, res, next) => {
       line_items: [
         {
           price_data: {
-            currency: "usd",
+            currency: "egp",
             product_data: {
               name: `Bazaar Participation Fee - ${application.bazaar.title}`,
               description: `Booth Size: ${application.boothSize}, Location: ${application.bazaar.location}`,
@@ -235,7 +235,7 @@ exports.createBoothCheckoutSession = async (req, res, next) => {
       line_items: [
         {
           price_data: {
-            currency: "usd",
+            currency: "egp",
             product_data: {
               name: `Booth Participation Fee`,
               description: `Booth Size: ${application.boothSize}, Location: ${application.location}, Duration: ${application.durationWeeks} weeks`,
@@ -843,9 +843,8 @@ exports.createRegistrationCheckoutSession = async (req, res, next) => {
             currency: "usd",
             product_data: {
               name: `Event Registration - ${event.title}`,
-              description: `Registration for ${
-                isConference ? "conference" : event.type
-              } event`,
+              description: `Registration for ${isConference ? "conference" : event.type
+                } event`,
             },
             unit_amount: amount,
           },

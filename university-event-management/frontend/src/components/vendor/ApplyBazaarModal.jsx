@@ -8,8 +8,8 @@ import { X, Upload, Users, MapPin, Info, Check, ChevronRight, ChevronLeft, Dolla
 const PRICING = {
   bazaar: {
     basePrice: {
-      "2x2": 100, // Base price for 2x2 booth in dollars
-      "4x4": 200, // Base price for 4x4 booth in dollars
+      "2x2": 100, // Base price for 2x2 booth in EGP
+      "4x4": 200, // Base price for 4x4 booth in EGP
     },
     locationMultiplier: {
       "Main Hall": 1.5,
@@ -24,7 +24,7 @@ const PRICING = {
    SKELETON LOADING
    ======================================== */
 const SkeletonShimmer = ({ className = "", rounded = "lg" }) => (
-  <div 
+  <div
     className={`relative overflow-hidden bg-gray-200 ${className} rounded-${rounded}`}
     aria-hidden="true"
   >
@@ -115,7 +115,7 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
 
   const handleNext = () => {
     if (skeletonLoading) return;
-    
+
     if (step === 1) {
       setStep(2);
     } else if (step === 2) {
@@ -144,12 +144,12 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (skeletonLoading) return;
-    
+
     if (!agreedToTerms) {
       toast.error("Please agree to the terms and conditions.");
       return;
     }
-    
+
     const finalAttendees = attendees.filter(a => a.name && a.email);
     onSubmit({ boothSize, attendees: finalAttendees });
     resetForm();
@@ -184,11 +184,11 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
         }
       `}</style>
 
-      <div 
+      <div
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
         onClick={handleClose}
       >
-        <div 
+        <div
           className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-lg shadow-xl overflow-hidden flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
@@ -200,8 +200,8 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
               </h2>
               <p className="text-xs text-gray-600 mt-1">Step {step} of 3</p>
             </div>
-            <button 
-              onClick={handleClose} 
+            <button
+              onClick={handleClose}
               className="w-9 h-9 flex items-center justify-center rounded-md hover:bg-gray-100 transition-colors"
               aria-label="Close modal"
             >
@@ -215,25 +215,22 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
               {steps.map((s, idx) => (
                 <React.Fragment key={s.number}>
                   <div className="flex items-center gap-2">
-                    <div className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-semibold transition-all ${
-                      s.number < step 
-                        ? 'bg-emerald-500 text-white' 
-                        : s.number === step 
-                        ? 'bg-indigo-600 text-white' 
-                        : 'bg-gray-200 text-gray-600'
-                    }`}>
+                    <div className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-semibold transition-all ${s.number < step
+                        ? 'bg-emerald-500 text-white'
+                        : s.number === step
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-gray-200 text-gray-600'
+                      }`}>
                       {s.number < step ? <Check size={14} /> : s.icon}
                     </div>
-                    <span className={`hidden sm:inline text-xs font-medium ${
-                      s.number <= step ? 'text-gray-900' : 'text-gray-500'
-                    }`}>
+                    <span className={`hidden sm:inline text-xs font-medium ${s.number <= step ? 'text-gray-900' : 'text-gray-500'
+                      }`}>
                       {s.label}
                     </span>
                   </div>
                   {idx < steps.length - 1 && (
-                    <div className={`flex-1 h-0.5 mx-3 rounded-full transition-colors ${
-                      s.number < step ? 'bg-emerald-500' : 'bg-gray-200'
-                    }`} />
+                    <div className={`flex-1 h-0.5 mx-3 rounded-full transition-colors ${s.number < step ? 'bg-emerald-500' : 'bg-gray-200'
+                      }`} />
                   )}
                 </React.Fragment>
               ))}
@@ -263,16 +260,14 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
                             key={size}
                             type="button"
                             onClick={() => setBoothSize(size)}
-                            className={`relative p-5 border-2 rounded-lg text-left transition-all ${
-                              boothSize === size
+                            className={`relative p-5 border-2 rounded-lg text-left transition-all ${boothSize === size
                                 ? 'border-indigo-600 bg-indigo-50'
                                 : 'border-gray-200 hover:border-gray-300 bg-white'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-start justify-between mb-3">
-                              <div className={`w-12 h-12 rounded-md flex items-center justify-center ${
-                                boothSize === size ? 'bg-indigo-600' : 'bg-gray-100'
-                              }`}>
+                              <div className={`w-12 h-12 rounded-md flex items-center justify-center ${boothSize === size ? 'bg-indigo-600' : 'bg-gray-100'
+                                }`}>
                                 <MapPin className={boothSize === size ? 'text-white' : 'text-gray-600'} size={20} />
                               </div>
                               {boothSize === size && (
@@ -283,7 +278,7 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
                             </div>
                             <h4 className="text-base font-semibold text-gray-900 mb-1">{size} meters</h4>
                             <p className="text-sm text-gray-600">
-                              Base: ${PRICING.bazaar.basePrice[size]}
+                              Base: EGP{PRICING.bazaar.basePrice[size]}
                             </p>
                           </button>
                         ))}
@@ -297,7 +292,7 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
                             <span className="text-sm font-medium text-gray-900">Location</span>
                           </div>
                           <p className="text-sm text-gray-700">
-                            {bazaar.location} 
+                            {bazaar.location}
                             {locationMultiplier !== 1.0 && (
                               <span className="ml-2 text-xs text-indigo-600 font-medium">
                                 ({locationMultiplier}x multiplier)
@@ -387,15 +382,13 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                     required
                                   />
-                                  <div className={`flex items-center gap-3 px-3 py-2 border-2 border-dashed rounded-md transition-colors ${
-                                    attendee.idProofFileName 
-                                      ? 'border-emerald-300 bg-emerald-50' 
+                                  <div className={`flex items-center gap-3 px-3 py-2 border-2 border-dashed rounded-md transition-colors ${attendee.idProofFileName
+                                      ? 'border-emerald-300 bg-emerald-50'
                                       : 'border-gray-300 bg-white hover:border-gray-400'
-                                  }`}>
-                                    <Upload size={16} className={attendee.idProofFileName ? 'text-emerald-600' : 'text-gray-400'} />
-                                    <span className={`text-sm flex-1 ${
-                                      attendee.idProofFileName ? 'text-emerald-700 font-medium' : 'text-gray-600'
                                     }`}>
+                                    <Upload size={16} className={attendee.idProofFileName ? 'text-emerald-600' : 'text-gray-400'} />
+                                    <span className={`text-sm flex-1 ${attendee.idProofFileName ? 'text-emerald-700 font-medium' : 'text-gray-600'
+                                      }`}>
                                       {attendee.idProofFileName || 'Upload ID proof'}
                                     </span>
                                     {attendee.idProofFileName && (
@@ -472,7 +465,7 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between text-gray-700">
                             <span>Base price ({boothSize})</span>
-                            <span className="font-medium">${basePrice}</span>
+                            <span className="font-medium">EGP{basePrice}</span>
                           </div>
                           {locationMultiplier !== 1.0 && (
                             <div className="flex justify-between text-gray-700">
@@ -483,7 +476,7 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
                           <div className="h-px bg-gray-200 my-3" />
                           <div className="flex justify-between items-center">
                             <span className="font-semibold text-gray-900">Total cost</span>
-                            <span className="text-2xl font-bold text-indigo-600">${totalCost}</span>
+                            <span className="text-2xl font-bold text-indigo-600">EGP{totalCost}</span>
                           </div>
                         </div>
                       </div>
