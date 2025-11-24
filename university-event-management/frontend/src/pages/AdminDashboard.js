@@ -30,6 +30,7 @@ const styles = {
     zIndex: 1,
     maxWidth: "1400px",
     margin: "0 auto",
+    padding: `${theme.spacing[8]}`
   },
   headerContainer: {
     background: `linear-gradient(135deg, ${theme.colors.primary.main} 0%, ${theme.colors.primary.dark} 100%)`,

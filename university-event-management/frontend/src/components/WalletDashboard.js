@@ -382,24 +382,28 @@ const WalletDashboard = () => {
 
         {/* Pagination */}
         {pagination && pagination.total > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: theme.spacing[2], marginTop: theme.spacing[4] }}>
-            <Button
-              variant="secondary"
-              onClick={() => setTransactionPage(Math.max(1, transactionPage - 1))}
-              disabled={transactionPage === 1}
-            >
-              Previous
-            </Button>
-            <span style={{ padding: theme.spacing[2], color: theme.colors.text.secondary }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: theme.spacing[2], marginTop: theme.spacing[4] }}>
+            <div style={{ transform: 'scale(0.85)' }}>
+              <Button
+                variant="secondary"
+                onClick={() => setTransactionPage(Math.max(1, transactionPage - 1))}
+                disabled={transactionPage === 1}
+              >
+                Previous
+              </Button>
+            </div>
+            <span style={{ padding: `0 ${theme.spacing[2]}`, color: theme.colors.text.secondary, fontSize: theme.typography.fontSize.sm, whiteSpace: 'nowrap' }}>
               Page {pagination.current} of {pagination.total}
             </span>
-            <Button
-              variant="secondary"
-              onClick={() => setTransactionPage(Math.min(pagination.total, transactionPage + 1))}
-              disabled={transactionPage === pagination.total}
-            >
-              Next
-            </Button>
+            <div style={{ transform: 'scale(0.85)' }}>
+              <Button
+                variant="secondary"
+                onClick={() => setTransactionPage(Math.min(pagination.total, transactionPage + 1))}
+                disabled={transactionPage === pagination.total}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         )}
       </div>

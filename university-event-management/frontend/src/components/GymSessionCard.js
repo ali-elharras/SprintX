@@ -344,6 +344,7 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
   };
 
   return (
+    <>
     <motion.div
       style={styles.card}
       whileHover={{ y: -8 }}
@@ -420,7 +421,10 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
               borderRadius: "0.75rem",
               whiteSpace: "nowrap",
             }}
-            onClick={() => handleRegister()}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRegister();
+            }}
             disabled={!canUserRegister() || registering}
           >
             {getRegisterButtonText()}
@@ -437,7 +441,10 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
                 borderRadius: "0.75rem",
                 whiteSpace: "nowrap",
               }}
-              onClick={() => setIsEditOpen(true)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsEditOpen(true);
+              }}
             >
               Edit
             </button>
@@ -452,38 +459,43 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
               borderRadius: "0.75rem",
               whiteSpace: "nowrap",
             }}
-            onClick={() => setIsDetailsOpen(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsDetailsOpen(true);
+            }}
           >
             Details
           </button>
         </div>
-
-        {/* Edit modal */}
-        <EditSessionModal session={session} isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} onSaved={(id) => { if (typeof onUpdated === 'function') onUpdated(id); }} />
-
-        {/* Details modal */}
-        <GymSessionDetailsModal 
-          session={session} 
-          isOpen={isDetailsOpen} 
-          onClose={() => setIsDetailsOpen(false)} 
-          isAdminOrEventsOffice={auth.isAdmin || auth.isEventsOffice} 
-          onSaved={(id) => { if (typeof onUpdated === 'function') onUpdated(id); }} 
-          viewOnly={viewOnly}
-        />
-
-        {/* Payment Modal */}
-        {showPaymentModal && gymRegistrationData && (
-          <PaymentModal
-            isOpen={showPaymentModal}
-            onClose={handlePaymentComplete}
-            gymRegistrationId={gymRegistrationData._id}
-            amount={session.cost || 0}
-            title={`Registration for ${session.title}`}
-            type="gym"
-          />
-        )}
       </div>
     </motion.div>
+
+    {/* Render modals outside the motion.div to prevent layout issues */}
+    {/* Edit modal */}
+    <EditSessionModal session={session} isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} onSaved={(id) => { if (typeof onUpdated === 'function') onUpdated(id); }} />
+
+    {/* Details modal */}
+    <GymSessionDetailsModal 
+      session={session} 
+      isOpen={isDetailsOpen} 
+      onClose={() => setIsDetailsOpen(false)} 
+      isAdminOrEventsOffice={auth.isAdmin || auth.isEventsOffice} 
+      onSaved={(id) => { if (typeof onUpdated === 'function') onUpdated(id); }} 
+      viewOnly={viewOnly}
+    />
+
+    {/* Payment Modal */}
+    {showPaymentModal && gymRegistrationData && (
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={handlePaymentComplete}
+        gymRegistrationId={gymRegistrationData._id}
+        amount={session.cost || 0}
+        title={`Registration for ${session.title}`}
+        type="gym"
+      />
+    )}
+    </>
   );
 };
 
