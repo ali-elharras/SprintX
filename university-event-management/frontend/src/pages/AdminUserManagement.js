@@ -499,7 +499,7 @@ const AdminUserManagement = () => {
         onSubmit={handleCreate}
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(6, 1fr)",
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
           gap: theme.spacing[3],
           marginBottom: theme.spacing[5],
         }}
@@ -559,7 +559,7 @@ const AdminUserManagement = () => {
           disabled: creating,
           children: creating ? "Creating..." : "Create User",
           style: {
-            gridColumn: "span 6",
+            gridColumn: "span full",
             width: "fit-content",
             alignSelf: "start",
             padding: `${theme.spacing[2]} ${theme.spacing[3]}`,

@@ -354,6 +354,36 @@ const styles = {
     margin: "0 auto",
     animation: "spin 1s linear infinite",
   },
+  tableContainer: {
+    background: theme.colors.neutral.white,
+    borderRadius: "20px",
+    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
+    overflow: "hidden",
+    border: `1px solid ${theme.colors.border.light}`,
+    marginBottom: theme.spacing[8],
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+  },
+  th: {
+    padding: `${theme.spacing[4]} ${theme.spacing[6]}`,
+    textAlign: "left",
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.secondary,
+    textTransform: "uppercase",
+    letterSpacing: theme.typography.letterSpacing.wider,
+    background: theme.colors.neutral.gray50,
+    borderBottom: `2px solid ${theme.colors.border.light}`,
+  },
+  td: {
+    padding: `${theme.spacing[4]} ${theme.spacing[6]}`,
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.primary,
+    borderBottom: `1px solid ${theme.colors.border.light}`,
+    verticalAlign: "middle",
+  },
 };
 
 const cssKeyframes = `
@@ -387,113 +417,63 @@ const cssKeyframes = `
 }
 `;
 
-// Separate ApplicationCard component to use hooks properly
-const ApplicationCard = ({ app, onUpdateStatus, getStatusColor }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const statusColor = getStatusColor(app.status);
-
+// New ApplicationRow component for the table
+const ApplicationRow = ({ app, onUpdateStatus, getStatusColor }) => {
   return (
-    <motion.div 
-      className="application-card" 
-      style={styles.applicationCard(isHovered, statusColor)}
-      whileHover={{ y: -8 }}
-      transition={{ duration: 0.2 }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {/* Vertical Color Strip */}
-      <div style={styles.cardVerticalStrip(statusColor)}></div>
-      
-      <div style={styles.cardHeader}>
-        <div style={{ flex: 1 }}>
-          <div style={styles.companyName}>
-            {app.vendor?.companyName || "N/A"}
-          </div>
-          <div style={styles.bazaarTitle}>
-            {app.applicationType === 'bazaar' 
-              ? app.bazaar?.title || app.bazaar?.startDate?.substring(0, 10) || "N/A" 
-              : "Standalone Booth"}
-          </div>
+    <tr style={{ background: theme.colors.neutral.white }}>
+      <td style={styles.td}>
+        <div style={{ fontWeight: theme.typography.fontWeight.semibold, color: theme.colors.text.primary }}>
+          {app.vendor?.companyName || "N/A"}
         </div>
-        <div style={styles.badgeContainer}>
-          <span style={styles.statusBadge(app.status)}>
-            {app.status}
-          </span>
-          <span style={styles.typeBadge(app.applicationType)}>
-            {app.applicationType}
-          </span>
+        <div style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.text.secondary }}>
+          {app.vendor?.contactPerson || "N/A"}
         </div>
-      </div>
-
-      <div style={styles.cardDetails}>
-        <div style={styles.detailRow}>
-          <span style={styles.detailLabel}>📦 Booth Size:</span>
-          <span style={styles.detailValue}>{app.boothSize || 'N/A'}</span>
-        </div>
-        {app.applicationType === 'booth' && app.startDate && (
-          <div style={styles.detailRow}>
-            <span style={styles.detailLabel}>📅 Start Date:</span>
-            <span style={styles.detailValue}>{new Date(app.startDate).toLocaleDateString()}</span>
-          </div>
-        )}
-        {app.applicationType === 'booth' && app.endDate && (
-          <div style={styles.detailRow}>
-            <span style={styles.detailLabel}>🏁 End Date:</span>
-            <span style={styles.detailValue}>{new Date(app.endDate).toLocaleDateString()}</span>
-          </div>
-        )}
-        {app.applicationType === 'booth' && app.durationWeeks && (
-          <div style={styles.detailRow}>
-            <span style={styles.detailLabel}>⏱️ Duration:</span>
-            <span style={styles.detailValue}>{app.durationWeeks} week(s)</span>
-          </div>
-        )}
-        {app.applicationType === 'booth' && app.location && (
-          <div style={styles.detailRow}>
-            <span style={styles.detailLabel}>📍 Location:</span>
-            <span style={styles.detailValue}>{app.location}</span>
-          </div>
-        )}
-        
-        {app.attendees?.length > 0 && (
-          <div style={styles.attendeesSection}>
-            <div style={styles.attendeesTitle}>
-              👥 Attendees ({app.attendees.length})
-            </div>
-            {app.attendees.map((attendee, idx) => (
-              <div key={idx} style={styles.attendeeItem}>
-                • {attendee.name} ({attendee.email})
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div style={styles.cardActions}>
+      </td>
+      <td style={styles.td}>
+        {app.applicationType === 'bazaar' 
+          ? app.bazaar?.title || app.bazaar?.startDate?.substring(0, 10) || "N/A" 
+          : "Standalone Booth"}
+      </td>
+      <td style={styles.td}>
+        <span style={styles.typeBadge(app.applicationType)}>
+          {app.applicationType}
+        </span>
+      </td>
+      <td style={styles.td}>{app.boothSize || 'N/A'}</td>
+      <td style={styles.td}>
+        <span style={styles.statusBadge(app.status)}>
+          {app.status}
+        </span>
+      </td>
+      <td style={styles.td}>
         {app.status === "pending" ? (
-          <>
+          <div style={{ display: 'flex', gap: theme.spacing[2] }}>
             <button
               className="action-button"
-              style={styles.actionButton("approve")}
+              style={{ ...styles.actionButton("approve"), padding: `${theme.spacing[2]} ${theme.spacing[3]}` }}
               onClick={() => onUpdateStatus(app.applicationType, app._id, "approved")}
             >
               ✓ Approve
             </button>
             <button
               className="action-button"
-              style={styles.actionButton("reject")}
+              style={{ ...styles.actionButton("reject"), padding: `${theme.spacing[2]} ${theme.spacing[3]}` }}
               onClick={() => onUpdateStatus(app.applicationType, app._id, "rejected")}
             >
               ✕ Reject
             </button>
-          </>
+          </div>
         ) : (
-          <div style={styles.statusIndicator(app.status)}>
-            {app.status === "approved" ? "✓ Approved" : "✕ Rejected"}
+          <div style={{
+            ...styles.td, // Inherit base td styles
+            fontWeight: theme.typography.fontWeight.medium,
+            color: theme.colors.text.secondary,
+          }}>
+            N/A
           </div>
         )}
-      </div>
-    </motion.div>
+      </td>
+    </tr>
   );
 };
 
@@ -712,17 +692,31 @@ const AdminDashboard = () => {
             </button>
           </div>
 
-          {/* Cards Grid */}
+          {/* Applications Table */}
           {filteredApplications.length > 0 ? (
-            <div style={styles.cardsGrid}>
-              {filteredApplications.map((app) => (
-                <ApplicationCard
-                  key={app._id}
-                  app={app}
-                  onUpdateStatus={handleUpdateStatus}
-                  getStatusColor={getStatusColor}
-                />
-              ))}
+            <div style={styles.tableContainer}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Company</th>
+                    <th style={styles.th}>Event</th>
+                    <th style={styles.th}>Type</th>
+                    <th style={styles.th}>Booth Size</th>
+                    <th style={styles.th}>Status</th>
+                    <th style={styles.th}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredApplications.map((app) => (
+                    <ApplicationRow
+                      key={app._id}
+                      app={app}
+                      onUpdateStatus={handleUpdateStatus}
+                      getStatusColor={getStatusColor}
+                    />
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : (
             <div style={styles.emptyState}>
