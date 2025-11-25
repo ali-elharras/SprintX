@@ -62,7 +62,6 @@ const EditSessionModal = ({ session, isOpen, onClose, onSaved }) => {
         dayOfWeek: dayOfWeek,
         startTime: session.startTime || "09:00",
         endTime: session.endTime || "10:00",
-        duration: session.duration || 60,
         startDate: session.startDate ? new Date(session.startDate).toISOString().slice(0,10) : "",
         endDate: session.endDate ? new Date(session.endDate).toISOString().slice(0,10) : "",
       });
@@ -92,7 +91,6 @@ const EditSessionModal = ({ session, isOpen, onClose, onSaved }) => {
         endDate: form.endDate,
         startTime: form.startTime,
         endTime: form.endTime,
-        duration: parseInt(form.duration),
         dayOfWeek: form.dayOfWeek,
       };
       
@@ -219,15 +217,6 @@ const EditSessionModal = ({ session, isOpen, onClose, onSaved }) => {
           </div>
 
           <div style={styles.fullRow}>
-            <label style={styles.label}>Duration (minutes) *</label>
-            <input 
-              type="number" 
-              style={styles.input} 
-              value={form.duration} 
-              onChange={(e)=>handleChange('duration', parseInt(e.target.value || 0))}
-              min="15"
-              max="180"
-            />
             <div style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.text.secondary, marginTop: 4 }}>
               Must be between 15 and 180 minutes
             </div>

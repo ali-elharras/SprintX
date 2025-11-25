@@ -499,7 +499,6 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
     dayOfWeek: 1,
     startTime: "09:00",
     endTime: "10:00",
-    duration: 60,
     startDate: new Date().toISOString().slice(0,10),
     endDate: new Date().toISOString().slice(0,10),
     location: "Main Gym",
@@ -543,6 +542,14 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
       errors.instructor_name = 'Instructor name cannot exceed 100 characters';
     }
 
+    // instructor email validation
+    if (form.instructor_email && form.instructor_email.trim()) {
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(form.instructor_email.trim())) {
+        errors.instructor_email = 'Invalid Email';
+      }
+    }
+
     // dayOfWeek
     const dow = parseInt(form.dayOfWeek);
     if (isNaN(dow) || dow < 0 || dow > 6) {
@@ -558,14 +565,14 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
       errors.endTime = 'End time is required and must be in HH:MM format';
     }
 
-    // duration
+    // duration (optional)
     const dur = parseInt(form.duration);
-    if (isNaN(dur)) {
-      errors.duration = 'Duration is required';
-    } else if (dur < 15) {
-      errors.duration = 'Duration must be at least 15 minutes';
-    } else if (dur > 180) {
-      errors.duration = 'Duration cannot exceed 180 minutes';
+    if (form.duration && !isNaN(dur)) {
+      if (dur < 15) {
+        errors.duration = 'Duration must be at least 15 minutes';
+      } else if (dur > 180) {
+        errors.duration = 'Duration cannot exceed 180 minutes';
+      }
     }
 
     // dates
@@ -598,6 +605,7 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
       errors.maxParticipants = 'Maximum participants cannot exceed 100';
     }
 
+    console.log('Validation errors:', errors);
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -665,7 +673,6 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
         dayOfWeek: parseInt(form.dayOfWeek),
         startTime: form.startTime,
         endTime: form.endTime,
-        duration: parseInt(form.duration),
         startDate: form.startDate,
         endDate: form.isRecurring ? form.endDate : form.startDate, // Use same date if not recurring
         location: form.location,
@@ -697,13 +704,14 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
       onCreated && onCreated();
     } catch (err) {
       console.error("Create session failed:", err);
+      console.error("Error response data:", err.response?.data);
+      
       // Parse backend validation errors if present
       const resp = err.response?.data;
-      if (resp && resp.errors) {
-        // resp.errors may be an array of { msg/message, param/field/path }
-        const errors = Array.isArray(resp.errors) ? resp.errors : (resp.errors.data || []);
+      if (resp && resp.errors && Array.isArray(resp.errors) && resp.errors.length > 0) {
+        // resp.errors is an array of { msg/message, param/field/path }
         const map = {};
-        errors.forEach(e => {
+        resp.errors.forEach(e => {
           const key = e.param || e.field || e.path || null;
           const msg = e.msg || e.message || (typeof e === 'string' ? e : 'Invalid value');
           if (!key) return;
@@ -720,8 +728,10 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
         });
         setFormErrors(map);
         toast.error('Please fix the highlighted fields');
+      } else if (resp && resp.message) {
+        toast.error(resp.message);
       } else {
-        toast.error(err.message || "Failed to create session");
+        toast.error("Failed to create session. Please check all fields.");
       }
     }
   };

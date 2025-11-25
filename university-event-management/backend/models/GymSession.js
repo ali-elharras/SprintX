@@ -50,7 +50,7 @@ const gymSessionSchema = new mongoose.Schema(
         lowercase: true,
         match: [
           /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-          "Please provide a valid email address",
+          "Invalid Email",
         ],
       },
       bio: {
@@ -83,9 +83,6 @@ const gymSessionSchema = new mongoose.Schema(
     },
     duration: {
       type: Number, // Duration in minutes
-      required: [true, "Duration is required"],
-      min: [15, "Duration must be at least 15 minutes"],
-      max: [180, "Duration cannot exceed 180 minutes"],
     },
 
     // Date Range (for recurring sessions)

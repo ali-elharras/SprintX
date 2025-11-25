@@ -674,8 +674,10 @@ const createGymSession = async (req, res) => {
     // If validation error from Mongoose, return 400 with detailed messages
     if (error.name === "ValidationError") {
       const errors = Object.values(error.errors).map((err) => ({
-        message: err.message,
+        msg: err.message,
+        param: err.path,
         field: err.path,
+        message: err.message,
       }));
       return res.status(400).json({ success: false, errors });
     }

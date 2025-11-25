@@ -33,7 +33,7 @@ router.post(
     check('dayOfWeek').isInt({ min: 0, max: 6 }).withMessage('Day of week must be an integer between 0 and 6'),
     check('startTime').matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Start time must be in HH:MM format'),
     check('endTime').matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('End time must be in HH:MM format'),
-    check('duration').isInt({ min: 15, max: 180 }).withMessage('Duration must be between 15 and 180 minutes'),
+    check('duration').optional().isInt({ min: 15, max: 180 }).withMessage('Duration must be between 15 and 180 minutes'),
     check('startDate').notEmpty().withMessage('Start date is required').isISO8601().toDate(),
     check('endDate').notEmpty().withMessage('End date is required').isISO8601().toDate(),
     check('location').notEmpty().withMessage('Location is required'),
