@@ -13,11 +13,10 @@ import Button from "../components/Button";
 
 // Function to detect if email is vendor email
 const isVendorEmail = (email) => {
-  const vendorPattern =
-    /^[a-zA-Z0-9._%+-]+@(?!student\.|staff\.|ta\.|professor\.|admin\.|eventsoffice\.).+$/;
-  const universityPattern =
-    /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor|admin|eventsoffice)\.[a-zA-Z0-9.-]+$/;
-  return vendorPattern.test(email) && !universityPattern.test(email);
+  // GUC emails include @guc.edu.eg and @student.guc.edu.eg
+  const universityPattern = /^[a-zA-Z0-9._%+-]+@(student\.)?guc\.edu\.eg$/i;
+  // If it matches university pattern, it's not a vendor email
+  return !universityPattern.test(email);
 };
 
 // Validation schema

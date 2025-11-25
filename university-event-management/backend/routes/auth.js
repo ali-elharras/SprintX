@@ -30,8 +30,10 @@ const userRegistrationValidation = [
   body("email")
     .isEmail()
     .normalizeEmail()
-    .matches(/^[a-zA-Z0-9._%+-]+@guc\.edu\.eg$/)
-    .withMessage("Email must use GUC domain (@guc.edu.eg)"),
+    .matches(/^[a-zA-Z0-9._%+-]+@(student\.)?guc\.edu\.eg$/)
+    .withMessage(
+      "Email must use GUC domain (@guc.edu.eg or @student.guc.edu.eg)"
+    ),
   body("password")
     .isLength({ min: 8 })
     .withMessage("Password must be at least 8 characters long")
@@ -92,9 +94,8 @@ const vendorRegistrationValidation = [
     .isEmail()
     .normalizeEmail()
     .custom((email) => {
-      // Vendor emails should NOT have university domains
-      const universityPattern =
-        /^[a-zA-Z0-9._%+-]+@(student|staff|ta|professor)\.guc\.edu\.eg$/;
+      // Vendor emails should NOT have university domains (@guc.edu.eg or @student.guc.edu.eg)
+      const universityPattern = /^[a-zA-Z0-9._%+-]+@(student\.)?guc\.edu\.eg$/i;
       if (universityPattern.test(email)) {
         throw new Error(
           "Vendor registration requires a company email address, not a university domain"

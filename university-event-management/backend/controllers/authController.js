@@ -8,9 +8,9 @@ const emailService = require("../services/emailService");
 
 // Helper function to determine if email is a vendor email
 const isVendorEmail = (email) => {
-  // With the new unified email format, GUC emails end with @guc.edu.eg
+  // With the new unified email format, GUC emails end with @guc.edu.eg or @student.guc.edu.eg
   // All other emails are vendor emails
-  return !/^[a-zA-Z0-9._%+-]+@guc\.edu\.eg$/i.test(email);
+  return !/^[a-zA-Z0-9._%+-]+@(student\.)?guc\.edu\.eg$/i.test(email);
 };
 
 // Helper function to extract role from university email
@@ -61,10 +61,13 @@ const registerUser = async (req, res, next) => {
     } = req.body;
 
     // Validate that email is using the new GUC format
-    if (!email.endsWith("@guc.edu.eg")) {
+    const isValidGUCEmail =
+      email.endsWith("@guc.edu.eg") || email.endsWith("@student.guc.edu.eg");
+    if (!isValidGUCEmail) {
       return res.status(400).json({
         success: false,
-        message: "Email must use GUC domain (@guc.edu.eg)",
+        message:
+          "Email must use GUC domain (@guc.edu.eg or @student.guc.edu.eg)",
       });
     }
 

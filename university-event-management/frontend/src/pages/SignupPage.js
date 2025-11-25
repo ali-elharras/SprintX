@@ -35,66 +35,92 @@ const isGUCEmail = (email) => {
   }
 };
 
-// Validation schemas
-const userSchema = yup.object({
-  firstName: yup
-    .string()
-    .required("First name is required")
-    .min(1, "First name is required")
-    .max(50, "First name must be less than 50 characters"),
-  lastName: yup
-    .string()
-    .required("Last name is required")
-    .min(1, "Last name is required")
-    .max(50, "Last name must be less than 50 characters"),
-  email: yup
-    .string()
-    .required("Email is required")
-    .email("Please enter a valid email address")
-    .test(
-      "university-domain",
-      "Email must use GUC domain (@guc.edu.eg)",
-      function (value) {
-        if (!value) return false;
-        return isGUCEmail(value);
-      }
-    ),
-  password: yup
-    .string()
-    .required("Password is required")
-    .min(8, "Password must be at least 8 characters")
-    .matches(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      "Password must contain at least one uppercase letter, one lowercase letter, and one number"
-    ),
-  confirmPassword: yup
-    .string()
-    .required("Please confirm your password")
-    .oneOf([yup.ref("password")], "Passwords must match"),
-  universityId: yup
-    .string()
-    .required("University ID is required")
-    .matches(
-      /^[A-Za-z0-9\-_.]+$/,
-      "University ID can only contain letters, numbers, and symbols (-, _, .)"
-    ),
-  department: yup
-    .string()
-    .max(100, "Department name must be less than 100 characters")
-    .nullable(),
-  yearOfStudy: yup.mixed().nullable(),
-  phoneNumber: yup
-    .string()
-    .nullable()
-    .test(
-      "phone-format",
-      "Please enter a valid phone number",
-      function (value) {
-        if (!value || value.trim() === "") return true;
-        return /^[+]?[\d\s\-()]{10,}$/.test(value);
-      }
-    ),
-});
+// Check if email is student domain
+const isStudentEmail = (email) => {
+  if (!email || typeof email !== "string") return false;
+  try {
+    return /^[a-zA-Z0-9._%+-]+@student\.guc\.edu\.eg$/i.test(email);
+  } catch (error) {
+    console.warn("Error parsing email:", error);
+    return false;
+  }
+};
+
+// Check if email is valid for the given role
+const isValidUniversityEmail = (email, role) => {
+  if (!email) return false;
+  // For students, allow both @guc.edu.eg and @student.guc.edu.eg
+  if (role === "student") {
+    return isGUCEmail(email) || isStudentEmail(email);
+  }
+  // For all other roles, only allow @guc.edu.eg
+  return isGUCEmail(email);
+};
+
+// Function to create user schema based on role
+const getUserSchema = (role) => {
+  return yup.object({
+    firstName: yup
+      .string()
+      .required("First name is required")
+      .min(1, "First name is required")
+      .max(50, "First name must be less than 50 characters"),
+    lastName: yup
+      .string()
+      .required("Last name is required")
+      .min(1, "Last name is required")
+      .max(50, "Last name must be less than 50 characters"),
+    email: yup
+      .string()
+      .required("Email is required")
+      .email("Please enter a valid email address")
+      .test(
+        "university-domain",
+        role === "student"
+          ? "Email must use GUC domain (@guc.edu.eg or @student.guc.edu.eg)"
+          : "Email must use GUC domain (@guc.edu.eg)",
+        function (value) {
+          if (!value) return false;
+          return isValidUniversityEmail(value, role);
+        }
+      ),
+    password: yup
+      .string()
+      .required("Password is required")
+      .min(8, "Password must be at least 8 characters")
+      .matches(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+        "Password must contain at least one uppercase letter, one lowercase letter, and one number"
+      ),
+    confirmPassword: yup
+      .string()
+      .required("Please confirm your password")
+      .oneOf([yup.ref("password")], "Passwords must match"),
+    universityId: yup
+      .string()
+      .required("University ID is required")
+      .matches(
+        /^[A-Za-z0-9\-_.]+$/,
+        "University ID can only contain letters, numbers, and symbols (-, _, .)"
+      ),
+    department: yup
+      .string()
+      .max(100, "Department name must be less than 100 characters")
+      .nullable(),
+    yearOfStudy: yup.mixed().nullable(),
+    phoneNumber: yup
+      .string()
+      .nullable()
+      .test(
+        "phone-format",
+        "Please enter a valid phone number",
+        function (value) {
+          if (!value || value.trim() === "") return true;
+          return /^[+]?[\d\s\-()]{10,}$/.test(value);
+        }
+      ),
+  });
+};
 
 const vendorSchema = yup.object({
   companyName: yup
@@ -126,7 +152,8 @@ const vendorSchema = yup.object({
       "Please use your company email address. University emails should use the University Member registration.",
       function (value) {
         if (!value) return true;
-        const universityPattern = /^[a-zA-Z0-9._%+-]+@guc\.edu\.eg$/i;
+        const universityPattern =
+          /^[a-zA-Z0-9._%+-]+@(student\.)?guc\.edu\.eg$/i;
         return !universityPattern.test(value);
       }
     ),
@@ -251,13 +278,18 @@ const SignupPage = () => {
     formState: { errors },
     reset,
   } = useForm({
-    resolver: yupResolver(isVendor ? vendorSchema : userSchema),
+    resolver: yupResolver(
+      isVendor ? vendorSchema : getUserSchema(selectedRole.id)
+    ),
     mode: "onSubmit",
     reValidateMode: "onChange",
   });
 
   const watchedEmail = watch("email") || "";
-  const isGUCEmailDetected = isGUCEmail(watchedEmail);
+  const isGUCEmailDetected = isValidUniversityEmail(
+    watchedEmail,
+    selectedRole.id
+  );
 
   const handlePrevious = () => {
     setSelectedRoleIndex((prev) => (prev === 0 ? roles.length - 1 : prev - 1));
@@ -1257,7 +1289,11 @@ const SignupPage = () => {
                       <Input
                         label="University Email Address"
                         type="email"
-                        placeholder="e.g., john.doe@guc.edu.eg"
+                        placeholder={
+                          selectedRole.id === "student"
+                            ? "e.g., john.doe@student.guc.edu.eg"
+                            : "e.g., john.doe@guc.edu.eg"
+                        }
                         required
                         error={errors.email?.message}
                         {...register("email")}

@@ -17,7 +17,7 @@ import universityAnimation from "../assets/animations/universityMemberAnimation.
 
 // Function to detect if email is GUC email format
 const isGUCEmail = (email) => {
-  return /^[a-zA-Z0-9._%+-]+@guc\.edu\.eg$/i.test(email);
+  return /^[a-zA-Z0-9._%+-]+@(student\.)?guc\.edu\.eg$/i.test(email);
 };
 
 // Validation schema
