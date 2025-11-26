@@ -6,6 +6,7 @@ if (!stripe) {
   console.error('❌ Stripe not initialized - STRIPE_SECRET_KEY is missing');
 }
 const BoothApplication = require("../models/BoothApplication");
+const BazaarApplication = require("../models/BazaarApplication");
 const Event = require("../models/Event");
 const Conference = require("../models/Conference");
 const Registration = require("../models/Registration");

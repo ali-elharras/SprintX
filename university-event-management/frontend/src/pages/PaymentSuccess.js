@@ -100,7 +100,7 @@ const PaymentSuccess = () => {
 
       try {
         let response;
-        
+
         // Handle different payment types
         if (applicationType === 'registration') {
           // New flow: registration is created from session metadata, no registrationId needed
@@ -137,13 +137,13 @@ const PaymentSuccess = () => {
     } else if (applicationType === 'gym') {
       navigate('/fitness');
     } else {
-      navigate('/vendor/dashboard');
+      navigate('/vendor-dashboard');
     }
   };
 
   return (
     <>
-      
+
       <div style={styles.pageContainer}>
         <div style={styles.contentWrapper}>
           <div style={styles.card}>
@@ -160,18 +160,18 @@ const PaymentSuccess = () => {
                 </div>
                 <h1 style={styles.title}>Payment Successful!</h1>
                 <p style={styles.message}>
-                  {applicationType === 'registration' 
+                  {applicationType === 'registration'
                     ? 'Your event registration payment has been processed successfully. You are now registered for the event!'
                     : applicationType === 'gym'
-                    ? 'Your gym session payment has been processed successfully. You are now registered for the session!'
-                    : 'Your payment has been processed successfully. You can now access your participation details.'}
+                      ? 'Your gym session payment has been processed successfully. You are now registered for the session!'
+                      : 'Your payment has been processed successfully. You can now access your participation details.'}
                 </p>
                 <button style={styles.button} onClick={handleGoToDashboard}>
-                  {applicationType === 'registration' 
+                  {applicationType === 'registration'
                     ? 'View My Registrations'
                     : applicationType === 'gym'
-                    ? 'View Gym Schedule'
-                    : 'Go to Dashboard'}
+                      ? 'View Gym Schedule'
+                      : 'Go to Dashboard'}
                 </button>
               </>
             ) : (

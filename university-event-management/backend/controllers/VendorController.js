@@ -5,9 +5,9 @@ const BazaarApplication = require('../models/BazaarApplication');
 //get all pending payments 
 exports.getPendingPayments = async (req, res) => {
   try {
-    const pendingPayments = await BoothApplication.find({ 
-      vendor: req.vendor.id, 
-      paymentStatus: 'pending' 
+    const pendingPayments = await BoothApplication.find({
+      vendor: req.vendor.id,
+      paymentStatus: 'pending'
     });
 
     res.status(200).json({ success: true, data: pendingPayments });
@@ -20,15 +20,25 @@ exports.getPendingPayments = async (req, res) => {
 //get the sum of pending payments 
 exports.getPendingPaymentsSum = async (req, res) => {
   try {
-    const pendingPayments = await BoothApplication.find({ 
-      vendor: req.vendor.id, 
-      paymentStatus: 'pending' 
+    const boothPendingPayments = await BoothApplication.find({
+      vendor: req.vendor.id,
+      paymentStatus: 'pending'
     });
 
-    const totalPendingAmount = pendingPayments.reduce((sum, application) => {
+    const bazaarPendingPayments = await BazaarApplication.find({
+      vendor: req.vendor.id,
+      paymentStatus: 'pending'
+    });
+
+    const totalBoothPendingAmount = boothPendingPayments.reduce((sum, application) => {
       return sum + application.paymentAmount;
     }, 0);
 
+    const totalBazaarPendingAmount = bazaarPendingPayments.reduce((sum, application) => {
+      return sum + application.paymentAmount;
+    }, 0);
+
+    const totalPendingAmount = totalBoothPendingAmount + totalBazaarPendingAmount;
     res.status(200).json({ success: true, data: { totalPendingAmount } });
   } catch (error) {
     console.error('Error calculating pending payments sum:', error);
