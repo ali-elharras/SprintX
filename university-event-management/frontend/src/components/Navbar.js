@@ -201,6 +201,7 @@ const Navbar = ({ onMenuClick }) => {
         { label: "Admin Dashboard", path: "/admin-dashboard" },
         { label: "Reports", path: "/reports" },
         { label: "Event Ratings", path: "/events-ratings" },
+        { label: "Uploaded Files", path: "/uploaded-files" },
       ],
     },
     events: {

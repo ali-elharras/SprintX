@@ -43,6 +43,7 @@ import EventDetailsPage from "./pages/EventDetailsPage";
 import BoothPolls from "./pages/BoothPolls";
 import LoyaltyProgram from "./pages/LoyaltyProgram";
 import WalletPage from "./pages/WalletPage";
+import UploadedFilesPage from "./pages/UploadedFilesPage";
 import RoleRoute from "./components/RoleRoute";
 
 // --- Layout Components ---
@@ -155,6 +156,7 @@ const router = createBrowserRouter([
       { path: "/admin-users", element: <AdminRoute><AdminUserManagement /></AdminRoute> },
       { path: "/admin-comments", element: <AdminRoute><AdminComments /></AdminRoute> },
       { path: "/reports", element: <AdminRoute><ReportsPage /></AdminRoute> },
+      { path: "/uploaded-files", element: <AdminRoute><UploadedFilesPage /></AdminRoute> },
       { path: "/vendor-dashboard", element: <VendorRoute><VendorDashboard /></VendorRoute> },
       { path: "/vendor/payment-success", element: <VendorRoute><PaymentSuccess /></VendorRoute> },
       { path: "/vendor/my-participations", element: <VendorRoute><VendorDashboard /></VendorRoute> },

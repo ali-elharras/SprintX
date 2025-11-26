@@ -9,6 +9,7 @@ import {
   Award,
   BarChart2,
   ClipboardCheck,
+  FileText,
 } from "lucide-react";
 import theme from "../theme";
 
@@ -49,6 +50,11 @@ const AdminSidebar = ({ isOpen }) => {
           label: "Comments",
           path: "/admin-comments",
           icon: <MessageSquare size={20} />,
+        },
+        {
+          label: "Uploaded Files",
+          path: "/uploaded-files",
+          icon: <FileText size={20} />,
         },
       ],
     },

@@ -37,6 +37,7 @@ const LoyaltyRoutes = require("./routes/LoyaltyRoutes");
 //const eventReviewRoutes = require("./routes/eventReviews");
 const favoritesRoutes = require("./routes/favorites");
 const VendorRouter = require("./routes/VendorRouter");
+const fileRoutes = require("./routes/files");
 
 const app = express();
 
@@ -145,6 +146,8 @@ app.use("/api/workshops", workshopRoutes);
 app.use("/api/notifications", notificationRoutes);
 // Report routes (for admin and events office to view reports)
 app.use("/api/reports", reportRoutes);
+// File routes (for viewing uploaded files)
+app.use("/api/files", fileRoutes);
 // Payment routes (for vendor payments)
 app.use("/api/payments", paymentRoutes);
 // Event payment routes (for student/staff event payments)
