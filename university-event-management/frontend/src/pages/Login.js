@@ -35,6 +35,7 @@ const Login = () => {
   const { loginUser, loginVendor, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [banInfo, setBanInfo] = useState(null);
 
   // Get the intended destination from location state
   const from = location.state?.from?.pathname || "/dashboard";
@@ -115,6 +116,17 @@ const Login = () => {
           }
         }
       } else {
+        // Check if account is banned (applies to both users and vendors)
+        if (result.isBanned) {
+          console.log("Account is banned, showing ban info");
+          setBanInfo({
+            reason: result.banReason,
+            bannedAt: result.bannedAt,
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
         // Handle university member verification issues
         if (!isVendorLogin) {
           console.log("Login result:", result);
@@ -489,6 +501,138 @@ const Login = () => {
             </div>
           </div>
         </Card>
+
+        {/* Ban Alert Modal */}
+        {banInfo && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.6)',
+              backdropFilter: 'blur(5px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: theme.zIndex.modal,
+              padding: theme.spacing[4],
+              animation: 'fadeIn 0.3s ease-out',
+            }}
+            onClick={() => setBanInfo(null)}
+          >
+            <div
+              style={{
+                backgroundColor: theme.colors.background.paper,
+                borderRadius: theme.borderRadius.xl,
+                boxShadow: theme.shadows['2xl'],
+                maxWidth: '500px',
+                width: '100%',
+                padding: theme.spacing[6],
+                animation: 'slideInUp 0.3s ease-out',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                style={{
+                  width: '80px',
+                  height: '80px',
+                  borderRadius: '50%',
+                  backgroundColor: theme.colors.error.light,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto',
+                  marginBottom: theme.spacing[4],
+                }}
+              >
+                <span style={{ fontSize: '40px' }}>🚫</span>
+              </div>
+              <h2
+                style={{
+                  fontSize: theme.typography.fontSize['2xl'],
+                  fontWeight: theme.typography.fontWeight.bold,
+                  color: theme.colors.error.dark,
+                  textAlign: 'center',
+                  marginBottom: theme.spacing[3],
+                }}
+              >
+                Account Suspended
+              </h2>
+              <p
+                style={{
+                  fontSize: theme.typography.fontSize.base,
+                  color: theme.colors.text.secondary,
+                  textAlign: 'center',
+                  marginBottom: theme.spacing[4],
+                }}
+              >
+                Your account has been suspended and you cannot access the platform at this time.
+              </p>
+              <div
+                style={{
+                  backgroundColor: theme.colors.error.light,
+                  borderRadius: theme.borderRadius.md,
+                  padding: theme.spacing[4],
+                  marginBottom: theme.spacing[4],
+                  border: `2px solid ${theme.colors.error.main}`,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: theme.typography.fontSize.sm,
+                    fontWeight: theme.typography.fontWeight.semibold,
+                    color: theme.colors.error.dark,
+                    marginBottom: theme.spacing[2],
+                  }}
+                >
+                  Reason for Suspension:
+                </div>
+                <div
+                  style={{
+                    fontSize: theme.typography.fontSize.base,
+                    color: theme.colors.text.primary,
+                    lineHeight: theme.typography.lineHeight.relaxed,
+                  }}
+                >
+                  {banInfo.reason}
+                </div>
+              </div>
+              {banInfo.bannedAt && (
+                <p
+                  style={{
+                    fontSize: theme.typography.fontSize.sm,
+                    color: theme.colors.text.secondary,
+                    textAlign: 'center',
+                    marginBottom: theme.spacing[4],
+                  }}
+                >
+                  Suspended on: {new Date(banInfo.bannedAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </p>
+              )}
+              <Button
+                variant="primary"
+                onClick={() => setBanInfo(null)}
+                style={{ width: '100%' }}
+              >
+                I Understand
+              </Button>
+              <style>
+                {`
+                  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                  @keyframes slideInUp { from { opacity: 0; transform: translateY(20px);} to { opacity: 1; transform: translateY(0);} }
+                `}
+              </style>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

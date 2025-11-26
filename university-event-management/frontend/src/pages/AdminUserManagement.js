@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { adminAPI } from "../services/api";
 import theme from "../theme";
 import axios from "axios";
+import BanUserModal from "../components/BanUserModal";
 
 const initialForm = {
   firstName: "",
@@ -25,6 +26,7 @@ const AdminUserManagement = () => {
   const [roleFilter, setRoleFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("admins"); // 'admins' | 'verification'
   const [approvingUsers, setApprovingUsers] = useState({}); // Track which users are being approved
+  const [userToBan, setUserToBan] = useState(null); // Track user being banned
 
   // Ref for request cancellation
   const cancelTokenRef = useRef(null);
@@ -120,13 +122,21 @@ const AdminUserManagement = () => {
     }
   };
 
-  const handleBlock = async (id) => {
+  const handleBlock = (user) => {
+    // Open the ban modal with user info
+    setUserToBan(user);
+  };
+
+  const confirmBan = async (banReason) => {
+    if (!userToBan) return;
+    
     try {
-      const res = await adminAPI.blockUser(id);
-      toast.success(res?.message || "User blocked");
+      const res = await adminAPI.blockUser(userToBan.id || userToBan._id, banReason);
+      toast.success(res?.message || "User banned successfully");
+      setUserToBan(null);
       fetchUsers();
     } catch (err) {
-      toast.error(err.message || "Failed to block user");
+      toast.error(err.message || "Failed to ban user");
     }
   };
 
@@ -650,7 +660,7 @@ const AdminUserManagement = () => {
                       const isActive = (user.status || "").toString().toLowerCase() === "active";
                       return isActive
                         ? dangerButton({
-                            onClick: () => handleBlock(uid),
+                            onClick: () => handleBlock(user),
                             children: "Block",
                             style: { padding: `${theme.spacing[1]} ${theme.spacing[3]}` },
                           })
@@ -841,6 +851,13 @@ const AdminUserManagement = () => {
           {activeTab === "admins" ? AdminsTab : VerificationTab}
         </div>
       </div>
+      {userToBan && (
+        <BanUserModal
+          user={userToBan}
+          onConfirm={confirmBan}
+          onCancel={() => setUserToBan(null)}
+        />
+      )}
     </>
   );
 };

@@ -702,14 +702,6 @@ const login = async (req, res, next) => {
       });
     }
 
-    // Check if account is active
-    if (!account.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: "Account is inactive. Please contact support.",
-      });
-    }
-
     // Check if student has verified their email
     if (
       accountType === "user" &&
@@ -734,6 +726,25 @@ const login = async (req, res, next) => {
           email: account.email,
           emailVerificationSent: account.emailVerificationSent,
         },
+      });
+    }
+
+    // Check password before revealing account status (security best practice)
+    const isPasswordMatch = await account.comparePassword(password);
+    if (!isPasswordMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    // Check if account is active (after password verification for security)
+    if (!account.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: "Account is inactive. Please contact support.",
+        banReason: account.banReason || "No reason provided",
+        bannedAt: account.bannedAt,
       });
     }
 
@@ -810,15 +821,6 @@ const login = async (req, res, next) => {
             "Your account is awaiting verification by an administrator. You'll be able to log in once verified.",
         });
       }
-    }
-
-    // Check password
-    const isPasswordMatch = await account.comparePassword(password);
-    if (!isPasswordMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials",
-      });
     }
 
     // Generate token
