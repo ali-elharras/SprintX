@@ -158,7 +158,7 @@ const NotificationCenter = () => {
         const interval = setInterval(() => {
             fetchNotifications();
             fetchUnreadCount();
-        }, 30000);
+        }, 60000);
 
         return () => clearInterval(interval);
     }, [token, hasNotificationAccess, fetchNotifications, fetchUnreadCount]);

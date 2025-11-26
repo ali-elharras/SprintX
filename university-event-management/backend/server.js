@@ -43,24 +43,35 @@ const app = express();
 // ===== Security & Performance Middleware =====
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300, // Increased from 100 to 300 requests per windowMs for frequent page switching
+  max: 1000, // Increased to 1000 to prevent 429 errors during dev/testing
   message: "Too many requests from this IP, please try again later.",
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
-app.use(helmet()); // Add secure headers
-app.use(limiter); // Rate limiter
-app.use(morgan("combined")); // Log requests
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: function (origin, callback) {
+      console.log('Request Origin:', origin);
+      const allowedOrigins = [process.env.FRONTEND_URL || "http://localhost:3000"];
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+        console.log('BLOCKED BY CORS:', origin);
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "Accept"],
     exposedHeaders: ["Authorization"],
   })
 );
+app.use(helmet()); // Add secure headers
+app.use(limiter); // Rate limiter
+app.use(morgan("combined")); // Log requests
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
