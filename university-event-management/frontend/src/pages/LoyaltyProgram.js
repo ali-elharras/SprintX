@@ -2,11 +2,18 @@ import React, { useState, useEffect } from "react";
 import api from "../services/api";
 import theme from "../theme";
 import LoadingScreen from "../components/LoadingScreen";
+import { useAuth } from "../context/AuthContext";
 
 const LoyaltyProgram = () => {
   const [loyaltyPrograms, setLoyaltyPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedDocument, setSelectedDocument] = useState(null);
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
+  const { user } = useAuth();
+
+  // Check if user is admin or events_office
+  const canViewDocuments = user && (user.role === "admin" || user.role === "events_office");
 
   useEffect(() => {
     fetchLoyaltyPrograms();
@@ -24,6 +31,48 @@ const LoyaltyProgram = () => {
       setLoyaltyPrograms([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleViewDocument = (program) => {
+    setSelectedDocument({
+      vendorName: program.Vendor?.companyName || "Unknown Vendor",
+      documentUrl: program.Vendor?.taxCardUrl,
+      uploadedAt: program.Vendor?.taxCardUploadedAt,
+    });
+    setShowDocumentModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowDocumentModal(false);
+    setSelectedDocument(null);
+  };
+
+  const handleDownloadDocument = async () => {
+    if (selectedDocument?.documentUrl) {
+      try {
+        // Fetch the document as a blob
+        const response = await fetch(selectedDocument.documentUrl);
+        const blob = await response.blob();
+        
+        // Create a temporary URL for the blob
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        // Create a temporary link and trigger download
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = `${selectedDocument.vendorName}_tax_card.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        
+        // Clean up
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      } catch (error) {
+        console.error("Error downloading document:", error);
+        // Fallback: open in new tab
+        window.open(selectedDocument.documentUrl, "_blank");
+      }
     }
   };
 
@@ -167,6 +216,115 @@ const LoyaltyProgram = () => {
     textAlign: "center",
   };
 
+  const viewDocumentButtonStyles = {
+    backgroundColor: theme.colors.primary.main,
+    color: theme.colors.text.white,
+    padding: `${theme.spacing[3]} ${theme.spacing[6]}`,
+    borderRadius: theme.components.button.borderRadius,
+    border: "none",
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+    width: "100%",
+    marginTop: theme.spacing[4],
+  };
+
+  const modalOverlayStyles = {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000,
+    padding: theme.spacing[4],
+  };
+
+  const modalContentStyles = {
+    backgroundColor: theme.colors.text.white,
+    borderRadius: theme.components.card.borderRadius,
+    padding: theme.spacing[8],
+    maxWidth: "900px",
+    width: "100%",
+    maxHeight: "90vh",
+    overflow: "auto",
+    position: "relative",
+    boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
+  };
+
+  const modalHeaderStyles = {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: theme.spacing[6],
+    paddingBottom: theme.spacing[4],
+    borderBottom: `2px solid ${theme.colors.neutral.gray200}`,
+  };
+
+  const modalTitleStyles = {
+    fontSize: theme.typography.fontSize["2xl"],
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
+    margin: 0,
+  };
+
+  const closeButtonStyles = {
+    backgroundColor: "transparent",
+    border: "none",
+    fontSize: "28px",
+    cursor: "pointer",
+    color: theme.colors.text.secondary,
+    padding: theme.spacing[2],
+    lineHeight: 1,
+    transition: "color 0.3s ease",
+  };
+
+  const documentViewerStyles = {
+    width: "100%",
+    height: "500px",
+    border: `1px solid ${theme.colors.neutral.gray200}`,
+    borderRadius: "8px",
+    marginBottom: theme.spacing[6],
+    backgroundColor: theme.colors.neutral.gray50,
+  };
+
+  const modalButtonsContainerStyles = {
+    display: "flex",
+    gap: theme.spacing[4],
+    justifyContent: "flex-end",
+  };
+
+  const downloadButtonStyles = {
+    backgroundColor: theme.colors.status.approved,
+    color: theme.colors.text.white,
+    padding: `${theme.spacing[3]} ${theme.spacing[6]}`,
+    borderRadius: theme.components.button.borderRadius,
+    border: "none",
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.semibold,
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+    display: "flex",
+    alignItems: "center",
+    gap: theme.spacing[2],
+  };
+
+  const cancelButtonStyles = {
+    backgroundColor: theme.colors.neutral.gray200,
+    color: theme.colors.text.primary,
+    padding: `${theme.spacing[3]} ${theme.spacing[6]}`,
+    borderRadius: theme.components.button.borderRadius,
+    border: "none",
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.semibold,
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+  };
+
   if (loading) {
     return <LoadingScreen />;
   }
@@ -303,11 +461,127 @@ const LoyaltyProgram = () => {
                     </p>
                   )}
                 </div>
+
+                {/* View Document Button - Only for Admin and Events Office */}
+                {canViewDocuments && program.Vendor?.taxCardUrl && (
+                  <button
+                    style={viewDocumentButtonStyles}
+                    onClick={() => handleViewDocument(program)}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = theme.colors.primary.dark;
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = theme.colors.primary.main;
+                      e.currentTarget.style.transform = "translateY(0)";
+                    }}
+                  >
+                    📄 View Vendor Document
+                  </button>
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Document Viewer Modal */}
+      {showDocumentModal && selectedDocument && (
+        <div style={modalOverlayStyles} onClick={handleCloseModal}>
+          <div style={modalContentStyles} onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div style={modalHeaderStyles}>
+              <h2 style={modalTitleStyles}>
+                📄 Vendor Document - {selectedDocument.vendorName}
+              </h2>
+              <button
+                style={closeButtonStyles}
+                onClick={handleCloseModal}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = theme.colors.text.primary;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = theme.colors.text.secondary;
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Document Info */}
+            {selectedDocument.uploadedAt && (
+              <p style={{ 
+                fontSize: theme.typography.fontSize.sm, 
+                color: theme.colors.text.secondary,
+                marginBottom: theme.spacing[4] 
+              }}>
+                📅 Uploaded: {new Date(selectedDocument.uploadedAt).toLocaleDateString()}
+              </p>
+            )}
+
+            {/* Document Viewer */}
+            <div style={documentViewerStyles}>
+              {selectedDocument.documentUrl ? (
+                <iframe
+                  src={selectedDocument.documentUrl}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    border: "none",
+                    borderRadius: "8px",
+                  }}
+                  title="Vendor Document"
+                />
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100%",
+                    color: theme.colors.text.secondary,
+                  }}
+                >
+                  <p>No document available</p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Buttons */}
+            <div style={modalButtonsContainerStyles}>
+              <button
+                style={cancelButtonStyles}
+                onClick={handleCloseModal}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.neutral.gray300;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.neutral.gray200;
+                }}
+              >
+                Close
+              </button>
+              {selectedDocument.documentUrl && (
+                <button
+                  style={downloadButtonStyles}
+                  onClick={handleDownloadDocument}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.colors.status.approved + "dd";
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.colors.status.approved;
+                    e.currentTarget.style.transform = "translateY(0)";
+                  }}
+                >
+                  <span>⬇️</span>
+                  <span>Download Document</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

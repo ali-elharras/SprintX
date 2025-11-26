@@ -21,7 +21,7 @@ const AdminSidebar = ({ isOpen }) => {
       title: "Administration",
       items: [
         {
-          label: "Applications",
+          label: "Dashboard",
           path: "/admin-dashboard",
           icon: <ClipboardCheck size={20} />,
         },
