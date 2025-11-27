@@ -615,7 +615,7 @@ export const adminAPI = {
   blockUser: async (id, banReason) => {
     try {
       const response = await api.patch(`/admin/block-user/${id}`, {
-        banReason: banReason || "No reason provided"
+        banReason: banReason || "No reason provided",
       });
       return response.data;
     } catch (error) {
