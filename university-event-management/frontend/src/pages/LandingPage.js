@@ -15,10 +15,10 @@ const LandingPage = () => {
     <div className="min-h-screen bg-white">
       <HeroSection onGetStarted={() => navigate("/login")} />
       <EventTypesSection />
-      <UserTypeSection 
-        onStudentSignup={() => navigate("/signup/user")}
-        onFacultySignup={() => navigate("/signup/user")}
-        onPartnerSignup={() => navigate("/signup/vendor")}
+      <UserTypeSection
+        onStudentSignup={() => navigate("/signup")}
+        onFacultySignup={() => navigate("/signup")}
+        onPartnerSignup={() => navigate("/signup")}
       />
       <KeyFeaturesSection />
       <StatsSection />

@@ -17,6 +17,7 @@ import LandingPage from "./pages/LandingPage";
 import SignupPage from "./pages/SignupPage";
 import Login from "./pages/Login";
 import VendorLogin from "./pages/VendorLogin";
+import AccountBanned from "./pages/AccountBanned";
 import VerificationEmailSelection from "./pages/VerificationEmailSelection";
 import VerificationSuccess from "./pages/VerificationSuccess";
 import VerificationPending from "./pages/VerificationPending";
@@ -113,21 +114,96 @@ const VendorRoute = ({ children }) => {
 
 const router = createBrowserRouter([
   // Public Routes
-  { path: "/", element: <PublicRoute><LandingPage /></PublicRoute> },
-  { path: "/login", element: <PublicRoute><Login /></PublicRoute> },
-  { path: "/signup", element: <PublicRoute><SignupPage /></PublicRoute> },
-  { path: "/vendor-login", element: <PublicRoute><VendorLogin /></PublicRoute> },
-  { path: "/verification-email-selection", element: <PublicRoute><VerificationEmailSelection /></PublicRoute> },
-  { path: "/verification-success", element: <PublicRoute><VerificationSuccess /></PublicRoute> },
-  { path: "/email-verification-sent", element: <PublicRoute><EmailVerificationSent /></PublicRoute> },
-  { path: "/verification-pending", element: <PublicRoute><VerificationPending /></PublicRoute> },
+  {
+    path: "/",
+    element: (
+      <PublicRoute>
+        <LandingPage />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/login",
+    element: (
+      <PublicRoute>
+        <Login />
+      </PublicRoute>
+    ),
+  },
+  { path: "/account-banned", element: <AccountBanned /> },
+  {
+    path: "/signup",
+    element: (
+      <PublicRoute>
+        <SignupPage />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/vendor-login",
+    element: (
+      <PublicRoute>
+        <VendorLogin />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/verification-email-selection",
+    element: (
+      <PublicRoute>
+        <VerificationEmailSelection />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/verification-success",
+    element: (
+      <PublicRoute>
+        <VerificationSuccess />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/email-verification-sent",
+    element: (
+      <PublicRoute>
+        <EmailVerificationSent />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/verification-pending",
+    element: (
+      <PublicRoute>
+        <VerificationPending />
+      </PublicRoute>
+    ),
+  },
   { path: "/email-verified", element: <EmailVerified /> },
-  { path: "/forgot-password", element: <PublicRoute><ForgotPassword /></PublicRoute> },
-  { path: "/reset-password/:token", element: <PublicRoute><ResetPassword /></PublicRoute> },
+  {
+    path: "/forgot-password",
+    element: (
+      <PublicRoute>
+        <ForgotPassword />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/reset-password/:token",
+    element: (
+      <PublicRoute>
+        <ResetPassword />
+      </PublicRoute>
+    ),
+  },
 
   // Protected Routes with Layout
   {
-    element: <ProtectedRoute><AppLayout /></ProtectedRoute>,
+    element: (
+      <ProtectedRoute>
+        <AppLayout />
+      </ProtectedRoute>
+    ),
     children: [
       { path: "/dashboard", element: <Dashboard /> },
       { path: "/events", element: <EventsPage /> },
@@ -138,28 +214,112 @@ const router = createBrowserRouter([
       { path: "/gym-schedule", element: <GymSchedulePage /> },
       { path: "/booth-polls", element: <BoothPolls /> },
       { path: "/wallet", element: <WalletPage /> },
-      { path: "/loyalty-program", element: <RoleRoute
-          allowedRoles={[
-            "student", 
-            "staff", 
-            "ta", 
-            "professor", 
-            "events_office", 
-            "admin",
-          ]}
-        ><LoyaltyProgram /></RoleRoute> },
-      { path: "/create-workshop", element: <RoleRoute allowedRoles={["professor"]}><CreateWorkshop /></RoleRoute> },
-      { path: "/my-workshops", element: <RoleRoute allowedRoles={["professor"]}><Workshops /></RoleRoute> },
+      {
+        path: "/loyalty-program",
+        element: (
+          <RoleRoute
+            allowedRoles={[
+              "student",
+              "staff",
+              "ta",
+              "professor",
+              "events_office",
+              "admin",
+            ]}
+          >
+            <LoyaltyProgram />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: "/create-workshop",
+        element: (
+          <RoleRoute allowedRoles={["professor"]}>
+            <CreateWorkshop />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: "/my-workshops",
+        element: (
+          <RoleRoute allowedRoles={["professor"]}>
+            <Workshops />
+          </RoleRoute>
+        ),
+      },
       { path: "/workshops", element: <Navigate to="/events" replace /> },
-      { path: "/events-ratings", element: <AdminRoute><EventsRatings /></AdminRoute> },
-      { path: "/admin-dashboard", element: <AdminRoute><AdminDashboard /></AdminRoute> },
-      { path: "/admin-users", element: <AdminRoute><AdminUserManagement /></AdminRoute> },
-      { path: "/admin-comments", element: <AdminRoute><AdminComments /></AdminRoute> },
-      { path: "/reports", element: <AdminRoute><ReportsPage /></AdminRoute> },
-      { path: "/uploaded-files", element: <AdminRoute><UploadedFilesPage /></AdminRoute> },
-      { path: "/vendor-dashboard", element: <VendorRoute><VendorDashboard /></VendorRoute> },
-      { path: "/vendor/payment-success", element: <VendorRoute><PaymentSuccess /></VendorRoute> },
-      { path: "/vendor/my-participations", element: <VendorRoute><VendorDashboard /></VendorRoute> },
+      {
+        path: "/events-ratings",
+        element: (
+          <AdminRoute>
+            <EventsRatings />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/admin-dashboard",
+        element: (
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/admin-users",
+        element: (
+          <AdminRoute>
+            <AdminUserManagement />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/admin-comments",
+        element: (
+          <AdminRoute>
+            <AdminComments />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/reports",
+        element: (
+          <AdminRoute>
+            <ReportsPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/uploaded-files",
+        element: (
+          <AdminRoute>
+            <UploadedFilesPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/vendor-dashboard",
+        element: (
+          <VendorRoute>
+            <VendorDashboard />
+          </VendorRoute>
+        ),
+      },
+      {
+        path: "/vendor/payment-success",
+        element: (
+          <VendorRoute>
+            <PaymentSuccess />
+          </VendorRoute>
+        ),
+      },
+      {
+        path: "/vendor/my-participations",
+        element: (
+          <VendorRoute>
+            <VendorDashboard />
+          </VendorRoute>
+        ),
+      },
     ],
   },
 

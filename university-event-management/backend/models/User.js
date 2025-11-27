@@ -133,6 +133,15 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    banReason: {
+      type: String,
+      default: null,
+      maxlength: [500, "Ban reason cannot exceed 500 characters"],
+    },
+    bannedAt: {
+      type: Date,
+      default: null,
+    },
     isRegistrationComplete: {
       type: Boolean,
       default: true, // Most users have complete registration

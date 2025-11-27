@@ -189,29 +189,25 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.log("Login error caught:", error);
       console.log("Error response data:", error.response?.data);
-      console.log("Error data direct:", error.data);
-      console.log("Error banReason:", error.banReason);
 
-      // Get error data from either error.data or error.response.data
-      const errorData = error.data || error.response?.data || error;
+      // Get error data - axios stores it in error.response.data
+      const errorData = error.response?.data || error.data || error;
 
-      // Check if account is banned/blocked - check both in data and at top level
-      if (errorData?.banReason || error.banReason) {
+      // Check if account is banned/blocked
+      if (errorData?.banReason) {
         console.log("Detected banned account");
-        const banReason = error.banReason || errorData.banReason;
-        const bannedAt = error.bannedAt || errorData.bannedAt;
-        console.log("Ban reason:", banReason);
-        console.log("Banned at:", bannedAt);
-        
+        console.log("Ban reason:", errorData.banReason);
+        console.log("Banned at:", errorData.bannedAt);
+
         // Make sure we dispatch loading false before returning
         dispatch({ type: AUTH_ACTIONS.LOADING, payload: false });
-        
+
         return {
           success: false,
           isBanned: true,
-          banReason: banReason,
-          bannedAt: bannedAt,
-          error: error.message || errorData.message,
+          banReason: errorData.banReason,
+          bannedAt: errorData.bannedAt,
+          error: errorData.message || "Account is banned",
         };
       }
 
@@ -296,28 +292,25 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.log("Vendor login error caught:", error);
       console.log("Error response data:", error.response?.data);
-      console.log("Error banReason:", error.banReason);
-      
-      // Get error data - check multiple possible locations
-      const errorData = error.data || error.response?.data || error;
 
-      // Check if account is banned/blocked - check both in data and at top level
-      if (errorData?.banReason || error.banReason) {
+      // Get error data - axios stores it in error.response.data
+      const errorData = error.response?.data || error.data || error;
+
+      // Check if account is banned/blocked
+      if (errorData?.banReason) {
         console.log("Detected banned vendor account");
-        const banReason = error.banReason || errorData.banReason;
-        const bannedAt = error.bannedAt || errorData.bannedAt;
-        console.log("Ban reason:", banReason);
-        console.log("Banned at:", bannedAt);
-        
+        console.log("Ban reason:", errorData.banReason);
+        console.log("Banned at:", errorData.bannedAt);
+
         // Make sure we dispatch loading false before returning
         dispatch({ type: AUTH_ACTIONS.LOADING, payload: false });
-        
+
         return {
           success: false,
           isBanned: true,
-          banReason: banReason,
-          bannedAt: bannedAt,
-          error: error.message || errorData.message,
+          banReason: errorData.banReason,
+          bannedAt: errorData.bannedAt,
+          error: errorData.message || "Account is banned",
         };
       }
 

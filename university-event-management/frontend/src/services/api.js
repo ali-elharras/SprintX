@@ -612,9 +612,11 @@ export const adminAPI = {
   },
 
   // ✅ Block user
-  blockUser: async (id) => {
+  blockUser: async (id, banReason) => {
     try {
-      const response = await api.patch(`/admin/block-user/${id}`);
+      const response = await api.patch(`/admin/block-user/${id}`, {
+        banReason: banReason || "No reason provided"
+      });
       return response.data;
     } catch (error) {
       throw error;

@@ -261,6 +261,7 @@ const approveAcademic = async (req, res) => {
 const blockUser = async (req, res) => {
   try { 
     const { id } = req.params;
+    const { banReason } = req.body;
     // Validate ObjectId shape (optional but safer)
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid user id" });
@@ -271,6 +272,8 @@ const blockUser = async (req, res) => {
       return res.status(200).json({ message: "User already blocked" });
     }
     user.isActive = false;
+    user.banReason = banReason || "No reason provided";
+    user.bannedAt = new Date();
     await user.save();
     const { password, ...safe } = user.toObject();
     return res.status(200).json({ message: "User blocked successfully", user: safe });
@@ -293,6 +296,8 @@ const unblockUser = async (req, res) => {
       return res.status(200).json({ message: "User already active" });
     }
     user.isActive = true;
+    user.banReason = null;
+    user.bannedAt = null;
     await user.save();
     const { password, ...safe } = user.toObject();
     return res

@@ -231,6 +231,15 @@ const vendorSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    banReason: {
+      type: String,
+      default: null,
+      maxlength: [500, "Ban reason cannot exceed 500 characters"],
+    },
+    bannedAt: {
+      type: Date,
+      default: null,
+    },
 
     // Password Reset
     passwordResetToken: {
