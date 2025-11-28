@@ -503,7 +503,7 @@ const CreateWorkshop = () => {
       toast.success(
         "Workshop successfully created and waiting for approval! 🎉"
       );
-      navigate("/events");
+      navigate("/my-workshops");
     } catch (error) {
       console.error("Submission Error:", error.message);
       setSubmissionError(`Error submitting workshop: ${error.message}`);

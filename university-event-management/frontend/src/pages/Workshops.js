@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import ReactDOM from "react-dom";
 import { motion } from "framer-motion";
+import toast from "react-hot-toast";
 import Navbar from "../components/Navbar";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -1404,11 +1405,12 @@ const Workshops = () => {
 
       // Show success message
       if (editingWorkshop.status === "needs_revision") {
-        alert(
-          "✅ Workshop resubmitted successfully! It is now pending approval from the Events Office."
+        toast.success(
+          "Workshop resubmitted successfully! It is now pending approval from the Events Office.",
+          { duration: 4000 }
         );
       } else {
-        alert("✅ Workshop updated successfully!");
+        toast.success("Workshop updated successfully!", { duration: 3000 });
       }
 
       setEditModalOpen(false);
@@ -1418,7 +1420,7 @@ const Workshops = () => {
       console.error("Failed to update workshop:", e);
       const errorMessage = e.message || "Failed to update workshop";
       setError(errorMessage);
-      alert(`❌ Error: ${errorMessage}`);
+      toast.error(`Error: ${errorMessage}`, { duration: 4000 });
     } finally {
       setIsLoading(false);
     }

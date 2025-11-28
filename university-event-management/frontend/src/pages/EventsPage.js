@@ -2148,15 +2148,77 @@ const EventsPage = () => {
       visibleStatuses.includes(event.status)
     );
 
-    // Don't filter out published workshops - they should be visible to all users for registration
-    // Only filter out non-published workshops (pending, needs_revision, rejected)
-    allEvents = allEvents.filter((event) => {
-      if (event.type !== "workshop") return true; // Keep all non-workshop events
-      // For workshops: only show published ones to regular users
-      // Events Office will see pending workshops in a separate section
-      if (auth?.isEventsOffice) return event.status === "published"; // Events Office sees published workshops in main grid
-      return event.status === "published"; // All other users (students, staff, TAs, professors) see published workshops
-    });
+    // Fetch workshops from Workshops collection
+    try {
+      const workshopsResponse = await api.get("/workshops", {
+        cancelToken: currentCancelToken.token,
+      });
+      
+      const workshops = workshopsResponse.data || [];
+      console.log("=== WORKSHOPS DEBUG ===");
+      console.log("Fetched workshops from /api/workshops:", workshops);
+      console.log("Current user:", user);
+      console.log("Auth user:", auth?.user);
+      console.log("User role:", auth?.user?.role || user?.role);
+      
+      // Filter workshops based on user role
+      const visibleWorkshops = workshops.filter((workshop) => {
+        console.log(`Checking workshop: ${workshop.workshopName}, status: ${workshop.status}, createdBy: ${workshop.createdBy}`);
+        
+        // 1. Published workshops are visible to everyone (but they're already in Events as type=workshop)
+        // So skip published ones to avoid duplicates
+        if (workshop.status === "published") {
+          console.log(`  -> Skipping (already published as Event)`);
+          return false;
+        }
+        
+        // 2. Professors should NOT see their workshops in browse events
+        // They should only see them in "My Workshops" page
+        // Events Office sees pending/needs_revision workshops in a separate pending section
+        
+        console.log(`  -> NOT VISIBLE`);
+        return false;
+      });
+      
+      console.log("Visible workshops after filtering:", visibleWorkshops);
+      
+      // Convert workshops to event-like format for display
+      const workshopEvents = visibleWorkshops.map((workshop) => ({
+        ...workshop,
+        _id: workshop._id,
+        name: workshop.workshopName,
+        title: workshop.workshopName,
+        description: workshop.shortDescription,
+        type: "workshop",
+        startDate: workshop.startDate,
+        endDate: workshop.endDate,
+        location: workshop.location,
+        venue: workshop.location,
+        registrationDeadline: workshop.registrationDeadline,
+        maxParticipants: workshop.capacity,
+        currentParticipants: workshop.attendees || 0,
+        status: workshop.status,
+        createdBy: workshop.createdBy,
+        // Add workshop-specific fields
+        isWorkshopSource: true, // Flag to identify this came from Workshops collection
+        facultyResponsible: workshop.facultyResponsible,
+        professorsParticipating: workshop.professorsParticipating,
+        fullAgenda: workshop.fullAgenda,
+        extraRequiredResources: workshop.extraRequiredResources,
+        requiredBudget: workshop.requiredBudget,
+        fundingSource: workshop.fundingSource,
+        editRequests: workshop.editRequests,
+      }));
+      
+      console.log("Converted workshop events:", workshopEvents);
+      
+      // Merge workshops with events
+      allEvents = [...allEvents, ...workshopEvents];
+    } catch (err) {
+      if (!err.isCancelled && err.name !== "CanceledError") {
+        console.warn("Could not fetch workshops", err);
+      }
+    }
 
     // Fetch workshops for Events Office (pending approvals)
     if (auth?.isEventsOffice) {
