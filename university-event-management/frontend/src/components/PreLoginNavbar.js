@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import theme from "../theme";
 
-const PreLoginNavbar = () => {
+const PreLoginNavbar = ({ align = "center" }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -16,7 +16,7 @@ const PreLoginNavbar = () => {
     left: 0,
     right: 0,
     display: "flex",
-    justifyContent: "flex-start",
+    justifyContent: align === "left" ? "flex-start" : "center",
     alignItems: "center",
     padding: `${theme.spacing[4]} ${theme.spacing[6]}`,
     zIndex: 1000,
@@ -30,7 +30,7 @@ const PreLoginNavbar = () => {
   };
 
   const logoImageStyles = {
-    height: "60px",
+    height: "40px",
     width: "auto",
   };
 

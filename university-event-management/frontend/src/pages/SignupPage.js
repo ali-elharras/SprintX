@@ -442,7 +442,7 @@ const SignupPage = () => {
 
   return (
     <>
-      <PreLoginNavbar />
+      <PreLoginNavbar align="left" />
       <div
         style={{
           minHeight: "100vh",

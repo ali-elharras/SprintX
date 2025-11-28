@@ -55,6 +55,7 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
   ]);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [skeletonLoading, setSkeletonLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -68,6 +69,7 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
 
   const resetForm = () => {
     setSkeletonLoading(false);
+    setIsSubmitting(false);
     setStep(1);
     setBoothSize("2x2");
     setAttendees([{ name: "", email: "", idProofBase64: null, idProofFileName: "" }]);
@@ -141,9 +143,9 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (skeletonLoading) return;
+    if (skeletonLoading || isSubmitting) return;
 
     if (!agreedToTerms) {
       toast.error("Please agree to the terms and conditions.");
@@ -151,8 +153,13 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
     }
 
     const finalAttendees = attendees.filter(a => a.name && a.email);
-    onSubmit({ boothSize, attendees: finalAttendees });
-    resetForm();
+    setIsSubmitting(true);
+    try {
+      await onSubmit({ boothSize, attendees: finalAttendees });
+      resetForm();
+    } catch (error) {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
@@ -240,7 +247,13 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
           <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto px-6 py-6">
-              {skeletonLoading ? (
+              {isSubmitting ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                  <p className="text-base font-medium text-gray-900">Submitting application...</p>
+                  <p className="text-sm text-gray-600">Please wait while we process your request</p>
+                </div>
+              ) : skeletonLoading ? (
                 <ModalSkeleton />
               ) : (
                 <>
@@ -507,8 +520,8 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
                   <button
                     type="button"
                     onClick={handleBack}
-                    disabled={skeletonLoading}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    disabled={skeletonLoading || isSubmitting}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <ChevronLeft size={16} />
                     Back
@@ -521,8 +534,8 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
                   <button
                     type="button"
                     onClick={handleNext}
-                    disabled={skeletonLoading}
-                    className="inline-flex items-center gap-2 px-6 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                    disabled={skeletonLoading || isSubmitting}
+                    className="inline-flex items-center gap-2 px-6 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Continue
                     <ChevronRight size={16} />
@@ -530,10 +543,10 @@ const ApplyBazaarModal = ({ bazaar, isOpen, onClose, onSubmit }) => {
                 ) : (
                   <button
                     type="submit"
-                    disabled={!agreedToTerms || skeletonLoading}
+                    disabled={!agreedToTerms || skeletonLoading || isSubmitting}
                     className="px-6 py-2 text-sm font-medium text-white bg-emerald-600 rounded-md hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Submit application
+                    {isSubmitting ? 'Submitting...' : 'Submit application'}
                   </button>
                 )}
               </div>

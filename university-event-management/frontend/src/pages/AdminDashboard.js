@@ -606,7 +606,7 @@ const AdminDashboard = () => {
           <div style={styles.headerContainer}>
             <div style={styles.headerGlow}></div>
             <div style={styles.headerContent}>
-              <h1 style={styles.headerTitle}>Applications</h1>
+              <h1 style={styles.headerTitle}>Application Management</h1>
               <p style={styles.headerSubtitle}>Manage all vendor applications and booth requests</p>
             </div>
           </div>

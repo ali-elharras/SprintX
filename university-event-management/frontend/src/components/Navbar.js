@@ -198,7 +198,7 @@ const Navbar = ({ onMenuClick }) => {
     management: {
       label: "Management",
       items: [
-        { label: "Admin Dashboard", path: "/admin-dashboard" },
+        { label: "Application Management", path: "/admin-dashboard" },
         { label: "Reports", path: "/reports" },
         { label: "Event Ratings", path: "/events-ratings" },
         { label: "Uploaded Files", path: "/uploaded-files" },
@@ -676,32 +676,6 @@ const Navbar = ({ onMenuClick }) => {
   const renderEventsOfficeNav = () => {
     return (
       <div style={navLinkContainerStyles}>
-        {/* Dashboard - Always visible */}
-        <button
-          onClick={() => navigate("/dashboard")}
-          style={{
-            ...navLinkStyles,
-            color: location.pathname === "/dashboard"
-              ? theme.colors.primary.main
-              : theme.colors.text.secondary,
-            borderBottom: location.pathname === "/dashboard"
-              ? `2px solid ${theme.colors.primary.main}`
-              : "2px solid transparent",
-          }}
-          onMouseEnter={(e) => {
-            if (location.pathname !== "/dashboard") {
-              e.target.style.color = theme.colors.primary.main;
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (location.pathname !== "/dashboard") {
-              e.target.style.color = theme.colors.text.secondary;
-            }
-          }}
-        >
-          Dashboard
-        </button>
-
         {/* Management Dropdown */}
         <div
           ref={(el) => (dropdownRefs.current["management"] = el)}
@@ -1021,9 +995,10 @@ const Navbar = ({ onMenuClick }) => {
     ...theme.components.navbar,
     display: "flex",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: isVendor ? "center" : "space-between",
     fontFamily: theme.typography.fontFamily.primary,
     padding: "0.5rem 2rem",
+    position: "relative",
   };
 
   const logoStyles = {
@@ -1040,6 +1015,10 @@ const Navbar = ({ onMenuClick }) => {
     display: "flex",
     alignItems: "center",
     gap: theme.spacing[4],
+    ...(isVendor && {
+      position: "absolute",
+      right: "2rem",
+    }),
   };
 
   const userInfoStyles = {
@@ -1125,76 +1104,7 @@ const Navbar = ({ onMenuClick }) => {
         ) : user && user.role === "admin" ? (
           <></> // Admin nav is handled by the sidebar, so this is empty
         ) : isVendor ? (
-          <>
-            <button
-              onClick={() => navigate("/dashboard")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/dashboard"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/dashboard"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/dashboard") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/dashboard") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => navigate("/vendor-dashboard")}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: theme.typography.fontSize.base,
-                fontWeight: theme.typography.fontWeight.medium,
-                color:
-                  location.pathname === "/vendor-dashboard"
-                    ? theme.colors.primary.main
-                    : theme.colors.text.secondary,
-                cursor: "pointer",
-                padding: theme.spacing[2],
-                textDecoration: "none",
-                borderBottom:
-                  location.pathname === "/vendor-dashboard"
-                    ? `2px solid ${theme.colors.primary.main}`
-                    : "2px solid transparent",
-                transition: "all 0.2s ease",
-                fontFamily: theme.typography.fontFamily.primary,
-              }}
-              onMouseEnter={(e) => {
-                if (location.pathname !== "/vendor-dashboard") {
-                  e.target.style.color = theme.colors.primary.main;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== "/vendor-dashboard") {
-                  e.target.style.color = theme.colors.text.secondary;
-                }
-              }}
-            >
-              Vendor Dashboard
-            </button>
-          </>
+          <></>
         ) : user && user.role === "student" ? (
           renderStudentNav()
         ) : isUser ? (

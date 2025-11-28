@@ -106,7 +106,7 @@ const AdminRoute = ({ children }) => {
 const VendorRoute = ({ children }) => {
   const { isVendor, isLoading } = useAuth();
   if (isLoading) return <div>Loading...</div>;
-  if (!isVendor) return <Navigate to="/dashboard" replace />;
+  if (!isVendor) return <Navigate to="/login" replace />;
   return children;
 };
 
@@ -205,7 +205,17 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { path: "/dashboard", element: <Dashboard /> },
+      { 
+        path: "/dashboard", 
+        element: (() => {
+          const DashboardWrapper = () => {
+            const { isVendor } = useAuth();
+            if (isVendor) return <Navigate to="/vendor-dashboard" replace />;
+            return <Dashboard />;
+          };
+          return <DashboardWrapper />;
+        })()
+      },
       { path: "/events", element: <EventsPage /> },
       { path: "/events/:id", element: <EventDetailsPage /> },
       { path: "/my-registrations", element: <MyRegistrations /> },

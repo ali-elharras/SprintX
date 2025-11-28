@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useLocation } from "react-router-dom";
 import { eventServices, applicationServices, bazaarServices , paymentSum} from "../services/api";
 import toast from "react-hot-toast";
 import ApplyBazaarModal from "../components/vendor/ApplyBazaarModal";
@@ -10,7 +11,7 @@ import LoyaltyProgram from '../components/vendor/LoyaltyProgram';
 import { 
   Calendar, Store, FileText, Award, DollarSign, Clock, Search, 
   ChevronLeft, ChevronRight, MapPin, TrendingUp, CheckCircle, 
-  XCircle, AlertCircle, Sparkles, Zap, Eye, Plus, MoreHorizontal,Banknote
+  XCircle, AlertCircle, Sparkles, Zap, Eye, Plus, Banknote
 } from 'lucide-react';
 
 /* ========================================
@@ -189,12 +190,6 @@ const BazaarCard = ({ bazaar, onApply, application, index }) => {
             {action.icon}
             {action.text}
           </button>
-          <button 
-            className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
-            aria-label="More options"
-          >
-            <MoreHorizontal size={16} className="text-gray-500" />
-          </button>
         </div>
       </div>
     </article>
@@ -321,8 +316,13 @@ const ParticipationItem = ({ participation, index }) => (
 
 const VendorDashboard = () => {
   const { vendor } = useAuth();
+  const location = useLocation();
   
-  const [activeTab, setActiveTab] = useState('overview');
+  // Read tab from URL query parameter
+  const urlParams = new URLSearchParams(location.search);
+  const tabFromUrl = urlParams.get('tab') || 'overview';
+  
+  const [activeTab, setActiveTab] = useState(tabFromUrl);
   const [upcomingBazaars, setUpcomingBazaars] = useState([]);
   const [myApplications, setMyApplications] = useState([]);
   const [myParticipations, setMyParticipations] = useState([]);
@@ -485,7 +485,7 @@ const stats = {
 // Remove the PaymentSum function from BazaarCard component entirely
 
   const tabs = [
-    { id: 'overview', label: 'Upcoming Events', icon: Eye },
+    { id: 'overview', label: 'Upcoming Bazaars', icon: Eye },
     { id: 'applications', label: 'Applications', icon: FileText },
     { id: 'participations', label: 'Accepted Applications', icon: Calendar },
     { id: 'loyalty', label: 'Loyalty Program', icon: Award },
@@ -748,7 +748,7 @@ const stats = {
             {activeTab === 'participations' && (
               <div>
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-semibold text-gray-900">Upcoming events</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">Upcoming Bazaars</h2>
                 </div>
                 
                 {loading.participations ? (
@@ -775,7 +775,7 @@ const stats = {
                     <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
                       <Calendar className="text-gray-400" size={24} />
                     </div>
-                    <h3 className="text-base font-semibold text-gray-900 mb-2">No upcoming events</h3>
+                    <h3 className="text-base font-semibold text-gray-900 mb-2">No upcoming bazaars</h3>
                     <p className="text-sm text-gray-600">Your confirmed events will appear here</p>
                   </div>
                 )}

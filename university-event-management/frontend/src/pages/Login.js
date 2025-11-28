@@ -195,7 +195,7 @@ const Login = () => {
 
   return (
     <>
-      <PreLoginNavbar />
+      <PreLoginNavbar align="left" />
       <div
         style={{
           minHeight: "100vh",

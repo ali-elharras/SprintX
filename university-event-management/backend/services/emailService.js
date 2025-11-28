@@ -1570,7 +1570,7 @@ class EmailService {
             <p style="text-align: center; margin: 30px 0;">
               <a href="${
                 process.env.FRONTEND_URL
-              }/vendor/dashboard" class="cta-button">Go to Dashboard & Pay</a>
+              }/vendor-dashboard?tab=applications" class="cta-button">Go to Dashboard & Pay</a>
             </p>
             
             <p>You can make the payment through your vendor dashboard. Simply log in and navigate to your approved applications.</p>
