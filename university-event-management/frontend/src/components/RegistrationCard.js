@@ -7,11 +7,13 @@ import RatingModal from "./RatingModal";
 import ViewRatingsModal from "./ViewRatingsModal";
 import { useAuth } from "../context/AuthContext";
 
-const RegistrationCard = ({ registration, onCancel, isPastEvent = false }) => {
+const RegistrationCard = ({ registration, onCancel, isPastEvent = false, hideRatingsButton = false }) => {
   const { user } = useAuth();
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showViewRatingsModal, setShowViewRatingsModal] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+
+  console.log('RegistrationCard - hideRatingsButton:', hideRatingsButton, 'isPastEvent:', isPastEvent, 'event:', registration?.event?.title);
 
   if (!registration || !registration.event) {
     return null;
@@ -393,8 +395,8 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false }) => {
           </div>
           
           <div style={buttonGroupStyles}>
-            {/* Show View Ratings button for allowed roles (only for regular events) */}
-            {showRatingsAndComments && canViewRatings() && (
+            {/* Show View Ratings button for allowed roles (only for regular events) - hide if hideRatingsButton is true */}
+            {showRatingsAndComments && canViewRatings() && !hideRatingsButton && (
               <Button
                 variant="outline"
                 size="sm"
