@@ -159,6 +159,15 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
       return false;
     }
 
+    // Prevent professors from registering to their own workshops
+    if (normalizedEvent.type === "workshop" && user?.role === "professor") {
+      const creatorId = normalizedEvent.createdBy?._id || normalizedEvent.createdBy;
+      const userId = user?._id || user?.id;
+      if (creatorId && userId && creatorId.toString() === userId.toString()) {
+        return false; // Professor cannot register to their own workshop
+      }
+    }
+
     return (
       normalizedEvent.status === "published" &&
       normalizedEvent.registrationRequired &&

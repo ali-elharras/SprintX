@@ -179,12 +179,22 @@ exports.updateWorkshop = async (req, res) => {
             });
         }
         
-        // Professors can only edit workshops that are NOT published
-        if (workshop.status === 'published' && !isAdminOrEventsOffice) {
-            console.log(`Cannot edit published workshop: User ${req.user._id} tried to edit published workshop ${workshopId}`);
-            return res.status(403).json({ 
-                message: 'Cannot edit a published workshop. Please contact Events Office.' 
+        // Check if there are registrations for published workshops
+        if (workshop.status === 'published' && workshop.publishedEventId) {
+            const Registration = require('../models/Registration');
+            const registrationCount = await Registration.countDocuments({
+                event: workshop.publishedEventId,
+                status: { $in: ['confirmed', 'attended'] }
             });
+            
+            // If there are registrations, only allow Events Office to edit
+            if (registrationCount > 0 && !isAdminOrEventsOffice) {
+                console.log(`Cannot edit published workshop with registrations: ${registrationCount} registrations found`);
+                return res.status(403).json({ 
+                    message: `Cannot edit workshop - ${registrationCount} student(s) have already registered. Please contact Events Office.`,
+                    registrationCount: registrationCount
+                });
+            }
         }
         
         // If the workshop name is being changed, check for duplicates
@@ -227,6 +237,47 @@ exports.updateWorkshop = async (req, res) => {
         ).populate('createdBy', 'firstName lastName email');
         
         console.log(`[UPDATE WORKSHOP] Successfully updated workshop ${workshopId}`);
+        
+        // If workshop is published and has an associated Event, sync the changes to the Event
+        if (updatedWorkshop.status === 'published' && updatedWorkshop.publishedEventId) {
+            try {
+                const eventUpdatePayload = {};
+                
+                // Map workshop fields to event fields
+                if (req.body.workshopName) {
+                    eventUpdatePayload.name = req.body.workshopName;
+                    eventUpdatePayload.title = req.body.workshopName;
+                }
+                if (req.body.shortDescription) eventUpdatePayload.description = req.body.shortDescription;
+                if (req.body.startDate) eventUpdatePayload.startDate = req.body.startDate;
+                if (req.body.endDate) eventUpdatePayload.endDate = req.body.endDate;
+                if (req.body.location) {
+                    eventUpdatePayload.location = req.body.location;
+                    eventUpdatePayload.venue = req.body.location;
+                }
+                if (req.body.registrationDeadline) eventUpdatePayload.registrationDeadline = req.body.registrationDeadline;
+                if (req.body.capacity) eventUpdatePayload.maxParticipants = req.body.capacity;
+                if (req.body.requiredBudget) eventUpdatePayload.cost = req.body.requiredBudget;
+                if (req.body.extraRequiredResources) eventUpdatePayload.prerequisites = req.body.extraRequiredResources;
+                if (req.body.facultyResponsible) eventUpdatePayload.tags = [req.body.facultyResponsible];
+                
+                // Update instructor if professors changed
+                if (req.body.professorsParticipating) {
+                    eventUpdatePayload.instructor = Array.isArray(req.body.professorsParticipating) 
+                        ? req.body.professorsParticipating.join(', ') 
+                        : req.body.professorsParticipating;
+                }
+                
+                // Only update if there are changes
+                if (Object.keys(eventUpdatePayload).length > 0) {
+                    await Event.findByIdAndUpdate(updatedWorkshop.publishedEventId, eventUpdatePayload);
+                    console.log(`[UPDATE WORKSHOP] Synced changes to associated Event ${updatedWorkshop.publishedEventId}`);
+                }
+            } catch (eventError) {
+                console.error('[UPDATE WORKSHOP] Error syncing to Event:', eventError);
+                // Don't fail the workshop update if event sync fails
+            }
+        }
         
         // Create rejection notification
         if (isBeingRejected && workshop.createdBy && workshop.createdBy._id) {
