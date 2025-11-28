@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import theme, { getEventTypeColor } from "../theme";
 import Button from "./Button";
 import RegistrationForm from "./RegistrationForm";
+import ViewRatingsModal from "./ViewRatingsModal";
 import { useAuth } from "../context/AuthContext";
 import { conferenceAPI } from "../services/api";
 import { eventAPI } from "../services/api";
@@ -29,6 +30,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   };
 
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
+  const [showViewRatingsModal, setShowViewRatingsModal] = useState(false);
   const [participatingVendors, setParticipatingVendors] = useState([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
   const [isFavorite, setIsFavorite] = useState(isFavorited);
@@ -240,6 +242,20 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
     toast.success("Successfully registered for this event!");
   };
 
+  // Check if user can view ratings
+  const canViewRatings = () => {
+    const allowedRoles = ['student', 'staff', 'ta', 'professor', 'events_office', 'admin'];
+    return user && allowedRoles.includes(user.role.toLowerCase());
+  };
+
+  // Check if event has ended
+  const hasEnded = new Date(normalizedEvent.endDate) < new Date();
+
+  // Determine if ratings and comments should be shown (not for gym or court events)
+  const isGymSession = normalizedEvent.type === 'gym';
+  const isCourtReservation = normalizedEvent.type === 'court';
+  const showRatingsAndComments = !isGymSession && !isCourtReservation;
+
   const statusInfo = getStatusInfo();
   const participationPercentage = (normalizedEvent.currentParticipants / normalizedEvent.maxParticipants) * 100;
 
@@ -291,7 +307,6 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   })();
 
   const hasStarted = eventHasStarted(normalizedEvent);
-  const hasEnded = new Date(normalizedEvent.endDate) < new Date();
   
   // Debug logs
   const userIsRegistered = isUserRegistered();
@@ -306,455 +321,399 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
     showRegistration
   });
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3 }}
-      whileHover={{ y: -8 }}
-      onClick={() => onViewDetails && onViewDetails(normalizedEvent)}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      style={{
-        background: '#ffffff',
-        borderRadius: "20px",
-        border: `2px solid ${isHovered ? getEventTypeColor(normalizedEvent.type) : '#e5e7eb'}`,
-        overflow: "hidden",
-        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-        cursor: "pointer",
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        minHeight: "480px",
-        boxShadow: isHovered ? "0 20px 40px rgba(0,0,0,0.12)" : "0 4px 12px rgba(0,0,0,0.05)",
-        position: "relative",
-      }}
-    >
-      <div style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        bottom: 0,
-        width: "4px",
-        background: `linear-gradient(180deg, ${getEventTypeColor(normalizedEvent.type)}, ${getEventTypeColor(normalizedEvent.type)}dd)`,
-        transition: "width 0.3s ease",
-        borderTopLeftRadius: "20px",
-        borderBottomLeftRadius: "20px",
-        zIndex: 2,
-      }} />
+  // Completely isolated click handler for View Ratings
+  const handleViewRatingsClick = (e) => {
+    // Completely prevent any default behavior and propagation
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // If it's a synthetic React event, also stop immediate propagation
+    if (e.nativeEvent) {
+      e.nativeEvent.stopImmediatePropagation();
+    }
+    
+    // Directly set the modal state
+    setShowViewRatingsModal(true);
+    
+    // Return false to prevent any default behavior
+    return false;
+  };
 
-      <div
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.3 }}
+        whileHover={{ y: -8 }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         style={{
-          background: 'transparent',
-          padding: '1.25rem',
-          paddingLeft: '1.75rem',
-          color: '#111827',
+          background: '#ffffff',
+          borderRadius: "20px",
+          border: `2px solid ${isHovered ? getEventTypeColor(normalizedEvent.type) : '#e5e7eb'}`,
+          overflow: "hidden",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          cursor: "default",
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          minHeight: "480px",
+          boxShadow: isHovered ? "0 20px 40px rgba(0,0,0,0.12)" : "0 4px 12px rgba(0,0,0,0.05)",
           position: "relative",
         }}
       >
+        <div style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: "4px",
+          background: `linear-gradient(180deg, ${getEventTypeColor(normalizedEvent.type)}, ${getEventTypeColor(normalizedEvent.type)}dd)`,
+          transition: "width 0.3s ease",
+          borderTopLeftRadius: "20px",
+          borderBottomLeftRadius: "20px",
+          zIndex: 2,
+        }} />
+
         <div
           style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            marginBottom: '0.75rem',
+            background: 'transparent',
+            padding: '1.25rem',
+            paddingLeft: '1.75rem',
+            color: '#111827',
             position: "relative",
-            zIndex: 1,
           }}
         >
-          <motion.div
-            animate={{ scale: isHovered ? 1.05 : 1 }}
-            transition={{ duration: 0.2 }}
+          <div
             style={{
-              background: `${getEventTypeColor(normalizedEvent.type)}15`,
-              padding: '0.5rem 1rem',
-              borderRadius: "30px",
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              color: getEventTypeColor(normalizedEvent.type),
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              marginBottom: '0.75rem',
+              position: "relative",
+              zIndex: 1,
             }}
           >
-            {getEventTypeLabel(normalizedEvent.type)}
-          </motion.div>
-          
-          <div style={{ display: "flex", gap: '0.5rem', alignItems: "center" }}>
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              title={isFavorite ? "Remove from favorites" : "Add to favorites"}
-              onClick={async (e) => {
-                e.stopPropagation();
-                try {
-                  if (isFavorite) {
-                    await favoritesAPI.removeFavorite(normalizedEvent._id);
-                    setIsFavorite(false);
-                    toast.success("Removed from favorites");
-                  } else {
-                    await favoritesAPI.addFavorite(normalizedEvent._id);
-                    setIsFavorite(true);
-                    toast.success("Added to favorites");
-                  }
-                  if (onFavoriteToggle) {
-                    onFavoriteToggle();
-                  }
-                } catch (err) {
-                  toast.error(err.message || "Failed to update favorites");
-                }
-              }}
-              style={{
-                background: isFavorite ? "#fef2f2" : "#f9fafb",
-                color: isFavorite ? "#ef4444" : "#6b7280",
-                border: `2px solid ${isFavorite ? "#ef4444" : "#e5e7eb"}`,
-                padding: '0.5rem',
-                borderRadius: "50%",
-                cursor: "pointer",
-                fontSize: "1.2rem",
-                transition: "all 0.2s ease",
-                width: "40px",
-                height: "40px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {isFavorite ? "❤️" : "♥"}
-            </motion.button>
-            
             <motion.div
               animate={{ scale: isHovered ? 1.05 : 1 }}
+              transition={{ duration: 0.2 }}
               style={{
-                background: statusInfo.color,
-                color: '#ffffff',
-                padding: '0.5rem 0.75rem',
+                background: `${getEventTypeColor(normalizedEvent.type)}15`,
+                padding: '0.5rem 1rem',
                 borderRadius: "30px",
                 fontSize: '0.75rem',
                 fontWeight: 700,
-                display: "flex",
-                alignItems: "center",
-                gap: '0.25rem',
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                color: getEventTypeColor(normalizedEvent.type),
               }}
             >
-              <span>✓</span>
-              {statusInfo.status}
+              {getEventTypeLabel(normalizedEvent.type)}
             </motion.div>
-          </div>
-        </div>
-        
-        <motion.h3
-          animate={{ x: isHovered ? 4 : 0 }}
-          transition={{ duration: 0.2 }}
-          style={{
-            fontSize: '1.5rem',
-            fontWeight: 700,
-            lineHeight: 1.2,
-            margin: 0,
-            position: "relative",
-            zIndex: 1,
-          }}
-        >
-          {normalizedEvent.title}
-        </motion.h3>
-      </div>
-
-      <div style={{ padding: '1.25rem', display: "flex", flexDirection: "column", flexGrow: 1 }}>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: '0.5rem',
-            marginBottom: '1rem',
-          }}
-        >
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: '0.5rem',
-            padding: '0.5rem',
-            background: '#f9fafb',
-            borderRadius: '0.5rem',
-            fontSize: '0.875rem',
-            color: '#111827',
-          }}>
-            <span style={{ fontSize: "1.2rem" }}>📅</span>
-            <span style={{ fontWeight: 500 }}>{formatDate(normalizedEvent.startDate)}</span>
-          </div>
-          
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: '0.5rem',
-            padding: '0.5rem',
-            background: '#f9fafb',
-            borderRadius: '0.5rem',
-            fontSize: '0.875rem',
-            color: '#111827',
-          }}>
-            <span style={{ fontSize: "1.2rem" }}>🕐</span>
-            <span style={{ fontWeight: 500 }}>{formatTime(normalizedEvent.startDate)}</span>
-          </div>
-          
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: '0.5rem',
-            padding: '0.5rem',
-            background: '#f9fafb',
-            borderRadius: '0.5rem',
-            fontSize: '0.875rem',
-            color: '#111827',
-          }}>
-            <span style={{ fontSize: "1.2rem" }}>📍</span>
-            <span style={{ fontWeight: 500 }}>{normalizedEvent.location}</span>
-          </div>
-        </div>
-
-        <p
-          style={{
-            fontSize: '0.875rem',
-            color: '#6b7280',
-            lineHeight: 1.6,
-            marginBottom: '0.75rem',
-            margin: 0,
-            display: "-webkit-box",
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {normalizedEvent.description}
-        </p>
-
-        <motion.button
-          whileHover={{ x: 4 }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onViewDetails && onViewDetails(normalizedEvent);
-          }}
-          style={{
-            background: "none",
-            border: "none",
-            color: getEventTypeColor(normalizedEvent.type),
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            cursor: "pointer",
-            padding: 0,
-            marginBottom: '1rem',
-            textDecoration: "none",
-            display: "flex",
-            alignItems: "center",
-            gap: '0.25rem',
-          }}
-        >
-          Read more <span>→</span>
-        </motion.button>
-
-        {normalizedEvent.type === 'bazaar' && (
-          <div
-            style={{
-              background: '#f9fafb',
-              padding: '1rem',
-              borderRadius: '0.75rem',
-              marginBottom: '1rem',
-              border: '2px solid #e5e7eb',
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: '0.5rem',
-                marginBottom: '0.75rem',
-              }}
-            >
-              <span style={{ fontSize: '1rem' }}>🏪</span>
-              <h4
-                style={{
-                  margin: 0,
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  color: '#111827',
+            
+            <div style={{ display: "flex", gap: '0.5rem', alignItems: "center" }}>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+                onClick={async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                  try {
+                    if (isFavorite) {
+                      await favoritesAPI.removeFavorite(normalizedEvent._id);
+                      setIsFavorite(false);
+                      toast.success("Removed from favorites");
+                    } else {
+                      await favoritesAPI.addFavorite(normalizedEvent._id);
+                      setIsFavorite(true);
+                      toast.success("Added to favorites");
+                    }
+                    if (onFavoriteToggle) {
+                      onFavoriteToggle();
+                    }
+                  } catch (err) {
+                    toast.error(err.message || "Failed to update favorites");
+                  }
+                  return false;
                 }}
-              >
-                Participating Vendors ({participatingVendors.length})
-              </h4>
-            </div>
-            {vendorsLoading ? (
-              <p style={{ 
-                fontSize: '0.875rem', 
-                color: '#6b7280',
-                margin: 0 
-              }}>
-                Loading vendors...
-              </p>
-            ) : participatingVendors.length > 0 ? (
-              <div
                 style={{
+                  background: isFavorite ? "#fef2f2" : "#f9fafb",
+                  color: isFavorite ? "#ef4444" : "#6b7280",
+                  border: `2px solid ${isFavorite ? "#ef4444" : "#e5e7eb"}`,
+                  padding: '0.5rem',
+                  borderRadius: "50%",
+                  cursor: "pointer",
+                  fontSize: "1.2rem",
+                  transition: "all 0.2s ease",
+                  width: "40px",
+                  height: "40px",
                   display: "flex",
-                  flexWrap: "wrap",
-                  gap: '0.5rem',
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                {participatingVendors.slice(0, 5).map((vendor) => (
-                  <div
-                    key={vendor._id}
-                    style={{
-                      background: '#ffffff',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '0.5rem',
-                      padding: '0.375rem 0.75rem',
-                      fontSize: '0.75rem',
-                      fontWeight: 500,
-                      color: '#111827',
-                      display: "flex",
-                      alignItems: "center",
-                      gap: '0.25rem',
-                    }}
-                  >
-                    <span style={{ fontSize: "0.9em" }}>🏢</span>
-                    {vendor.companyName}
-                  </div>
-                ))}
-                {participatingVendors.length > 5 && (
-                  <div
-                    style={{
-                      background: getEventTypeColor(normalizedEvent.type),
-                      color: '#ffffff',
-                      border: '1px solid transparent',
-                      borderRadius: '0.5rem',
-                      padding: '0.375rem 0.75rem',
-                      fontSize: '0.75rem',
-                      fontWeight: 600,
-                      display: "flex",
-                      alignItems: "center",
-                    }}
-                  >
-                    +{participatingVendors.length - 5} more
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p style={{ 
-                fontSize: '0.875rem', 
-                color: '#6b7280',
-                margin: 0,
-                fontStyle: 'italic'
-              }}>
-                No vendors have been approved yet
-              </p>
-            )}
+                {isFavorite ? "❤️" : "♥"}
+              </motion.button>
+              
+              <motion.div
+                animate={{ scale: isHovered ? 1.05 : 1 }}
+                style={{
+                  background: statusInfo.color,
+                  color: '#ffffff',
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: "30px",
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: '0.25rem',
+                }}
+              >
+                <span>✓</span>
+                {statusInfo.status}
+              </motion.div>
+            </div>
           </div>
-        )}
-
-        {(normalizedEvent.registrationRequired || normalizedEvent.type === 'bazaar') && (
-          <div
+          
+          <motion.h3
+            animate={{ x: isHovered ? 4 : 0 }}
+            transition={{ duration: 0.2 }}
             style={{
-              background: 'linear-gradient(135deg, #f9fafb, #ffffff)',
-              padding: '1rem',
-              borderRadius: '0.75rem',
-              marginBottom: '1rem',
-              border: '2px solid #e5e7eb',
+              fontSize: '1.5rem',
+              fontWeight: 700,
+              lineHeight: 1.2,
+              margin: 0,
+              position: "relative",
+              zIndex: 1,
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: '0.75rem',
-              }}
-            >
-              <span
-                style={{
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  color: '#6b7280',
-                }}
-              >
-                👥 {normalizedEvent.type === 'bazaar' ? 'Vendors' : 'Participants'}
-              </span>
-              <span
-                style={{
-                  fontSize: '1.125rem',
-                  fontWeight: 700,
-                  color: getEventTypeColor(normalizedEvent.type),
-                }}
-              >
-                {normalizedEvent.currentParticipants} / {normalizedEvent.maxParticipants}
-              </span>
+            {normalizedEvent.title}
+          </motion.h3>
+        </div>
+
+        <div style={{ padding: '1.25rem', display: "flex", flexDirection: "column", flexGrow: 1 }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: '0.5rem',
+              marginBottom: '1rem',
+            }}
+          >
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: '0.5rem',
+              padding: '0.5rem',
+              background: '#f9fafb',
+              borderRadius: '0.5rem',
+              fontSize: '0.875rem',
+              color: '#111827',
+            }}>
+              <span style={{ fontSize: "1.2rem" }}>📅</span>
+              <span style={{ fontWeight: 500 }}>{formatDate(normalizedEvent.startDate)}</span>
             </div>
             
             <div style={{
-              width: "100%",
-              height: "8px",
-              background: '#e5e7eb',
-              borderRadius: "999px",
-              overflow: "hidden",
-              marginBottom: '0.5rem',
+              display: "flex",
+              alignItems: "center",
+              gap: '0.5rem',
+              padding: '0.5rem',
+              background: '#f9fafb',
+              borderRadius: '0.5rem',
+              fontSize: '0.875rem',
+              color: '#111827',
             }}>
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${participationPercentage}%` }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                style={{
-                  height: "100%",
-                  background: `linear-gradient(90deg, ${getEventTypeColor(normalizedEvent.type)}, ${getEventTypeColor(normalizedEvent.type)}dd)`,
-                  borderRadius: "999px",
-                }}
-              />
+              <span style={{ fontSize: "1.2rem" }}>🕐</span>
+              <span style={{ fontWeight: 500 }}>{formatTime(normalizedEvent.startDate)}</span>
             </div>
             
-            {normalizedEvent.registrationDeadline && (
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: '0.5rem',
+              padding: '0.5rem',
+              background: '#f9fafb',
+              borderRadius: '0.5rem',
+              fontSize: '0.875rem',
+              color: '#111827',
+            }}>
+              <span style={{ fontSize: "1.2rem" }}>📍</span>
+              <span style={{ fontWeight: 500 }}>{normalizedEvent.location}</span>
+            </div>
+          </div>
+
+          <p
+            style={{
+              fontSize: '0.875rem',
+              color: '#6b7280',
+              lineHeight: 1.6,
+              marginBottom: '0.75rem',
+              margin: 0,
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {normalizedEvent.description}
+          </p>
+
+          <motion.button
+            whileHover={{ x: 4 }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+              onViewDetails && onViewDetails(normalizedEvent);
+              return false;
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              color: getEventTypeColor(normalizedEvent.type),
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              cursor: "pointer",
+              padding: 0,
+              marginBottom: '1rem',
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: '0.25rem',
+            }}
+          >
+            Read more <span>→</span>
+          </motion.button>
+
+          {normalizedEvent.type === 'bazaar' && (
+            <div
+              style={{
+                background: '#f9fafb',
+                padding: '1rem',
+                borderRadius: '0.75rem',
+                marginBottom: '1rem',
+                border: '2px solid #e5e7eb',
+              }}
+            >
               <div
                 style={{
                   display: "flex",
-                  justifyContent: "space-between",
                   alignItems: "center",
-                  paddingTop: '0.5rem',
-                  borderTop: '1px solid #e5e7eb',
-                  marginTop: '0.5rem',
+                  gap: '0.5rem',
+                  marginBottom: '0.75rem',
                 }}
               >
-                <span
+                <span style={{ fontSize: '1rem' }}>🏪</span>
+                <h4
                   style={{
-                    fontSize: '0.875rem',
-                    color: '#6b7280',
-                  }}
-                >
-                  Registration Deadline
-                </span>
-                <span
-                  style={{
+                    margin: 0,
                     fontSize: '0.875rem',
                     fontWeight: 600,
                     color: '#111827',
                   }}
                 >
-                  {formatDate(normalizedEvent.registrationDeadline)}
-                </span>
+                  Participating Vendors ({participatingVendors.length})
+                </h4>
               </div>
-            )}
-            {normalizedEvent.cost > 0 && (
+              {vendorsLoading ? (
+                <p style={{ 
+                  fontSize: '0.875rem', 
+                  color: '#6b7280',
+                  margin: 0 
+                }}>
+                  Loading vendors...
+                </p>
+              ) : participatingVendors.length > 0 ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: '0.5rem',
+                  }}
+                >
+                  {participatingVendors.slice(0, 5).map((vendor) => (
+                    <div
+                      key={vendor._id}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '0.5rem',
+                        padding: '0.375rem 0.75rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 500,
+                        color: '#111827',
+                        display: "flex",
+                        alignItems: "center",
+                        gap: '0.25rem',
+                      }}
+                    >
+                      <span style={{ fontSize: "0.9em" }}>🏢</span>
+                      {vendor.companyName}
+                    </div>
+                  ))}
+                  {participatingVendors.length > 5 && (
+                    <div
+                      style={{
+                        background: getEventTypeColor(normalizedEvent.type),
+                        color: '#ffffff',
+                        border: '1px solid transparent',
+                        borderRadius: '0.5rem',
+                        padding: '0.375rem 0.75rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      +{participatingVendors.length - 5} more
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p style={{ 
+                  fontSize: '0.875rem', 
+                  color: '#6b7280',
+                  margin: 0,
+                  fontStyle: 'italic'
+                }}>
+                  No vendors have been approved yet
+                </p>
+              )}
+            </div>
+          )}
+
+          {(normalizedEvent.registrationRequired || normalizedEvent.type === 'bazaar') && (
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #f9fafb, #ffffff)',
+                padding: '1rem',
+                borderRadius: '0.75rem',
+                marginBottom: '1rem',
+                border: '2px solid #e5e7eb',
+              }}
+            >
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  paddingTop: '0.5rem',
-                  borderTop: '1px solid #e5e7eb',
-                  marginTop: '0.5rem',
+                  marginBottom: '0.75rem',
                 }}
               >
                 <span
                   style={{
                     fontSize: '0.875rem',
+                    fontWeight: 600,
                     color: '#6b7280',
                   }}
                 >
-                  💰 Cost
+                  👥 {normalizedEvent.type === 'bazaar' ? 'Vendors' : 'Participants'}
                 </span>
                 <span
                   style={{
@@ -763,235 +722,423 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
                     color: getEventTypeColor(normalizedEvent.type),
                   }}
                 >
-                  ${normalizedEvent.cost}
+                  {normalizedEvent.currentParticipants} / {normalizedEvent.maxParticipants}
                 </span>
               </div>
-            )}
-          </div>
-        )}
+              
+              <div style={{
+                width: "100%",
+                height: "8px",
+                background: '#e5e7eb',
+                borderRadius: "999px",
+                overflow: "hidden",
+                marginBottom: '0.5rem',
+              }}>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${participationPercentage}%` }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  style={{
+                    height: "100%",
+                    background: `linear-gradient(90deg, ${getEventTypeColor(normalizedEvent.type)}, ${getEventTypeColor(normalizedEvent.type)}dd)`,
+                    borderRadius: "999px",
+                  }}
+                />
+              </div>
+              
+              {normalizedEvent.registrationDeadline && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    paddingTop: '0.5rem',
+                    borderTop: '1px solid #e5e7eb',
+                    marginTop: '0.5rem',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: '0.875rem',
+                      color: '#6b7280',
+                    }}
+                  >
+                    Registration Deadline
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                      color: '#111827',
+                    }}
+                  >
+                    {formatDate(normalizedEvent.registrationDeadline)}
+                  </span>
+                </div>
+              )}
+              {normalizedEvent.cost > 0 && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    paddingTop: '0.5rem',
+                    borderTop: '1px solid #e5e7eb',
+                    marginTop: '0.5rem',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: '0.875rem',
+                      color: '#6b7280',
+                    }}
+                  >
+                    💰 Cost
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '1.125rem',
+                      fontWeight: 700,
+                      color: getEventTypeColor(normalizedEvent.type),
+                    }}
+                  >
+                    ${normalizedEvent.cost}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
-        {normalizedEvent.type === "workshop" && normalizedEvent.instructor && (
-          <div
-            style={{
-              background: '#f9fafb',
-              padding: '0.75rem',
-              borderRadius: '0.5rem',
-              marginBottom: '1rem',
-            }}
-          >
-            <p
+          {normalizedEvent.type === "workshop" && normalizedEvent.instructor && (
+            <div
               style={{
-                fontSize: '0.875rem',
-                color: '#6b7280',
-                marginBottom: '0.25rem',
-                margin: 0,
+                background: '#f9fafb',
+                padding: '0.75rem',
+                borderRadius: '0.5rem',
+                marginBottom: '1rem',
               }}
             >
-              <strong style={{ color: '#111827' }}>Instructor:</strong> {normalizedEvent.instructor}
-            </p>
-            {normalizedEvent.duration && (
               <p
                 style={{
                   fontSize: '0.875rem',
                   color: '#6b7280',
+                  marginBottom: '0.25rem',
                   margin: 0,
-                  marginTop: '0.25rem',
                 }}
               >
-                <strong style={{ color: '#111827' }}>Duration:</strong> {normalizedEvent.duration} hours
+                <strong style={{ color: '#111827' }}>Instructor:</strong> {normalizedEvent.instructor}
               </p>
+              {normalizedEvent.duration && (
+                <p
+                  style={{
+                    fontSize: '0.875rem',
+                    color: '#6b7280',
+                    margin: 0,
+                    marginTop: '0.25rem',
+                  }}
+                >
+                  <strong style={{ color: '#111827' }}>Duration:</strong> {normalizedEvent.duration} hours
+                </p>
+              )}
+            </div>
+          )}
+          
+          <div style={{ flexGrow: 1 }}></div>
+          
+          {/* Button Grid Container with COMPLETE event isolation */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+              gap: '0.75rem',
+              marginTop: "auto",
+              paddingTop: '1rem'
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+            }}
+          >
+            {/* Show View Ratings button for ended events and allowed roles (only for regular events) */}
+            {showRatingsAndComments && hasEnded && canViewRatings() && (
+              <div 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                }}
+              >
+                <Button
+                  variant="outline"
+                  onClick={handleViewRatingsClick}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                  }}
+                  style={{
+                    minHeight: "48px",
+                    padding: '0.75rem 0.5rem',
+                    whiteSpace: "nowrap",
+                    fontSize: '0.875rem',
+                    width: '100%'
+                  }}
+                >
+                  View All Ratings
+                </Button>
+              </div>
             )}
-          </div>
-        )}
-        
-        <div style={{ flexGrow: 1 }}></div>
-        
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-            gap: '0.75rem',
-            marginTop: "auto",
-            paddingTop: '1rem'
-          }}
-        >
-          {isAdmin ? (
-            <>
-              {normalizedEvent.currentParticipants === 0 && (
-                <Button
-                  variant="danger"
-                  onClick={handleDeleteEvent}
-                  title="Delete event (only if no registrations)"
-                  style={{
-                    minHeight: "48px",
-                    padding: '0.75rem 0.5rem',
-                    whiteSpace: "nowrap",
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  Delete Event
-                </Button>
-              )}
-            </>
-          ) : isEventsOffice ? (
-            <>
-              {(isOwner || onEdit || onEditTrip || onEditConference) && !hasStarted && normalizedEvent.type !== 'workshop' && (
-                <Button
-                  variant="primary"
-                  onClick={handleEditClick}
-                  style={{
-                    minHeight: "48px",
-                    padding: '0.75rem 0.5rem',
-                    whiteSpace: "nowrap",
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  Edit
-                </Button>
-              )}
 
-              {(isOwner || onDelete) && !hasStarted && normalizedEvent.currentParticipants === 0 && (
-                <Button
-                  variant="danger"
-                  onClick={handleDeleteEvent}
-                  style={{
-                    minHeight: "48px",
-                    padding: '0.75rem 0.5rem',
-                    whiteSpace: "nowrap",
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  Delete
-                </Button>
-              )}
-              {showArchiveButton && (
-                <Button
-                  variant="outline"
-                  onClick={onArchive}
-                  style={{
-                    minHeight: "48px",
-                    padding: '0.75rem 0.5rem',
-                    whiteSpace: "nowrap",
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  Archive
-                </Button>
-              )}
-              {showUnarchiveButton && (
-                <Button
-                  variant="outline"
-                  onClick={onUnarchive}
-                  style={{
-                    minHeight: "48px",
-                    padding: '0.75rem 0.5rem',
-                    whiteSpace: "nowrap",
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  Unarchive
-                </Button>
-              )}
-              {isEventsOffice && normalizedEvent.type !== 'conference' && (
-                <Button
-                  variant="outline"
-                  onClick={() => onExportRegistrations(normalizedEvent)}
-                  style={{
-                    minHeight: "48px",
-                    padding: '0.75rem 0.5rem',
-                    whiteSpace: "nowrap",
-                    fontSize: '0.8rem',
-                  }}
-                >
-                  Export
-                </Button>
-              )}
-              {isEventsOffice && !hasEnded && onRestrict && (
-                <Button
-                  variant="secondary"
-                  onClick={() => onRestrict(normalizedEvent)}
-                  style={{
-                    minHeight: "48px",
-                    padding: '0.75rem 0.5rem',
-                    whiteSpace: "nowrap",
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  Restrict
-                </Button>
-              )}
-            </>
-          ) : (
-            <>
-              {/* Regular users: Show Register button or Already Registered badge */}
-              {!isEventsOffice && !isAdmin && showRegistration && canRegister() && !isUserRegistered() && (
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  style={{ gridColumn: "1 / -1" }}
-                >
+            {isAdmin ? (
+              <>
+                {normalizedEvent.currentParticipants === 0 && (
+                  <Button
+                    variant="danger"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                      handleDeleteEvent(e);
+                    }}
+                    title="Delete event (only if no registrations)"
+                    style={{
+                      minHeight: "48px",
+                      padding: '0.75rem 0.5rem',
+                      whiteSpace: "nowrap",
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    Delete Event
+                  </Button>
+                )}
+              </>
+            ) : isEventsOffice ? (
+              <>
+                {(isOwner || onEdit || onEditTrip || onEditConference) && !hasStarted && normalizedEvent.type !== 'workshop' && (
                   <Button
                     variant="primary"
                     onClick={(e) => {
+                      e.preventDefault();
                       e.stopPropagation();
-                      setShowRegistrationForm(true);
+                      if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                      handleEditClick(e);
                     }}
                     style={{
-                      width: "100%",
-                      minHeight: "52px",
-                      borderRadius: '0.75rem',
-                      fontWeight: 700,
-                      fontSize: '1rem',
-                      background: `linear-gradient(135deg, ${getEventTypeColor(normalizedEvent.type)}, ${getEventTypeColor(normalizedEvent.type)}dd)`,
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                      border: 'none',
-                      color: '#ffffff',
+                      minHeight: "48px",
+                      padding: '0.75rem 0.5rem',
+                      whiteSpace: "nowrap",
+                      fontSize: '0.875rem',
                     }}
                   >
-                    ✨ Register Now
+                    Edit
                   </Button>
-                </motion.div>
-              )}
-              {!isEventsOffice && !isAdmin && isUserRegistered() && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3 }}
-                  style={{ gridColumn: "1 / -1" }}
-                >
-                  <div
+                )}
+
+                {(isOwner || onDelete) && !hasStarted && normalizedEvent.currentParticipants === 0 && (
+                  <Button
+                    variant="danger"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                      handleDeleteEvent(e);
+                    }}
                     style={{
-                      width: "100%",
-                      minHeight: "52px",
-                      borderRadius: '0.75rem',
-                      fontWeight: 600,
-                      fontSize: '1rem',
-                      background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-                      color: '#15803d',
-                      border: '2px solid #22c55e',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                      cursor: 'default',
-                      boxShadow: '0 2px 8px rgba(34, 197, 94, 0.15)',
+                      minHeight: "48px",
+                      padding: '0.75rem 0.5rem',
+                      whiteSpace: "nowrap",
+                      fontSize: '0.875rem',
                     }}
                   >
-                    <span style={{ 
-                      fontSize: '1.25rem',
-                      fontWeight: 'bold',
-                    }}>
-                      ✓
-                    </span>
-                    <span>Already Registered</span>
-                  </div>
-                </motion.div>
-              )}
-            </>
-          )}
+                    Delete
+                  </Button>
+                )}
+                {showArchiveButton && (
+                  <Button
+                    variant="outline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                      onArchive && onArchive();
+                    }}
+                    style={{
+                      minHeight: "48px",
+                      padding: '0.75rem 0.5rem',
+                      whiteSpace: "nowrap",
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    Archive
+                  </Button>
+                )}
+                {showUnarchiveButton && (
+                  <Button
+                    variant="outline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                      onUnarchive && onUnarchive();
+                    }}
+                    style={{
+                      minHeight: "48px",
+                      padding: '0.75rem 0.5rem',
+                      whiteSpace: "nowrap",
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    Unarchive
+                  </Button>
+                )}
+                {isEventsOffice && normalizedEvent.type !== 'conference' && (
+                  <Button
+                    variant="outline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                      onExportRegistrations && onExportRegistrations(normalizedEvent);
+                    }}
+                    style={{
+                      minHeight: "48px",
+                      padding: '0.75rem 0.5rem',
+                      whiteSpace: "nowrap",
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    Export
+                  </Button>
+                )}
+                {isEventsOffice && !hasEnded && onRestrict && (
+                  <Button
+                    variant="secondary"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                      onRestrict && onRestrict(normalizedEvent);
+                    }}
+                    style={{
+                      minHeight: "48px",
+                      padding: '0.75rem 0.5rem',
+                      whiteSpace: "nowrap",
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    Restrict
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Regular users: Show Register button or Already Registered badge */}
+                {!isEventsOffice && !isAdmin && showRegistration && canRegister() && !isUserRegistered() && (
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    style={{ gridColumn: "1 / -1" }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                    }}
+                  >
+                    <Button
+                      variant="primary"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                        setShowRegistrationForm(true);
+                      }}
+                      style={{
+                        width: "100%",
+                        minHeight: "52px",
+                        borderRadius: '0.75rem',
+                        fontWeight: 700,
+                        fontSize: '1rem',
+                        background: `linear-gradient(135deg, ${getEventTypeColor(normalizedEvent.type)}, ${getEventTypeColor(normalizedEvent.type)}dd)`,
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                        border: 'none',
+                        color: '#ffffff',
+                      }}
+                    >
+                      ✨ Register Now
+                    </Button>
+                  </motion.div>
+                )}
+                {!isEventsOffice && !isAdmin && isUserRegistered() && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ gridColumn: "1 / -1" }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "100%",
+                        minHeight: "52px",
+                        borderRadius: '0.75rem',
+                        fontWeight: 600,
+                        fontSize: '1rem',
+                        background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                        color: '#15803d',
+                        border: '2px solid #22c55e',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        cursor: 'default',
+                        boxShadow: '0 2px 8px rgba(34, 197, 94, 0.15)',
+                      }}
+                    >
+                      <span style={{ 
+                        fontSize: '1.25rem',
+                        fontWeight: 'bold',
+                      }}>
+                        ✓
+                      </span>
+                      <span>Already Registered</span>
+                    </div>
+                  </motion.div>
+                )}
+              </>
+            )}
+          </div>
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+
+      {/* View Ratings Modal - only for regular events */}
+      {showRatingsAndComments && (
+        <ViewRatingsModal
+          isOpen={showViewRatingsModal}
+          onClose={() => setShowViewRatingsModal(false)}
+          event={normalizedEvent}
+        />
+      )}
+    </>
   );
 };
 
