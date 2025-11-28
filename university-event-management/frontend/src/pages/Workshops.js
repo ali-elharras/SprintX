@@ -278,17 +278,15 @@ const WorkshopCard = ({ workshop, onEdit, onDelete }) => {
                 top: 0,
                 left: 0,
                 bottom: 0,
-                width: "8px",
-                background: `linear-gradient(180deg, ${facultyColor}, ${facultyColor}dd)`,
+                width: "4px",
+                background: `linear-gradient(180deg, ${themeColors.indigo600}, ${themeColors.indigo600}dd)`,
                 transition: "width 0.3s ease",
-                borderTopLeftRadius: "20px",
-                borderBottomLeftRadius: "20px",
+                zIndex: 0,
             }} />
 
             {/* Workshop Header */}
             <div
                 style={{
-                    background: '#ffffff',
                     padding: '1.25rem',
                     paddingLeft: '1.75rem',
                     color: '#111827',
