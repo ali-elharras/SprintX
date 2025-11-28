@@ -229,7 +229,7 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false, hideRat
             left: 0,
             top: 0,
             bottom: 0,
-            width: "8px",
+            width: "4px",
             background: `linear-gradient(to bottom, ${getEventTypeColor(event.type)}, ${getEventTypeColor(event.type)}dd)`,
             borderTopLeftRadius: "18px",
             borderBottomLeftRadius: "18px",

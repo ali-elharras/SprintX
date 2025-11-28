@@ -1553,15 +1553,16 @@ const BazaarManagementCard = ({
         top: 0,
         left: 0,
         bottom: 0,
-        width: "8px",
+        width: "4px",
         background: `linear-gradient(180deg, ${getEventTypeColor('bazaar')}, ${getEventTypeColor('bazaar')}dd)`,
         transition: "width 0.3s ease",
         borderRadius: "20px 0 0 20px",
+        zIndex: 2,
       }} />
       {/* Event Header */}
       <div
         style={{
-          background: '#ffffff',
+          background: 'transparent',
           padding: '1.25rem',
           paddingLeft: '1.75rem',
           color: '#111827',

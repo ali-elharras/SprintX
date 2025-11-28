@@ -336,16 +336,17 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
         top: 0,
         left: 0,
         bottom: 0,
-        width: "8px",
+        width: "4px",
         background: `linear-gradient(180deg, ${getEventTypeColor(normalizedEvent.type)}, ${getEventTypeColor(normalizedEvent.type)}dd)`,
         transition: "width 0.3s ease",
         borderTopLeftRadius: "20px",
         borderBottomLeftRadius: "20px",
+        zIndex: 2,
       }} />
 
       <div
         style={{
-          background: '#ffffff',
+          background: 'transparent',
           padding: '1.25rem',
           paddingLeft: '1.75rem',
           color: '#111827',
