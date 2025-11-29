@@ -64,11 +64,6 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
       setValue("lastName", user.lastName || "", { shouldValidate: false });
       setValue("email", user.email || "", { shouldValidate: false });
       setValue("universityId", user.universityId || "", { shouldValidate: false });
-      
-      toast.success("Form auto-filled with your profile information", {
-        icon: "✨",
-        duration: 3000,
-      });
     }
   }, [user, setValue]);
 
@@ -113,7 +108,7 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
         });
       } else {
         // Free event - registration complete
-        toast.success("Registration successful!");
+        // Note: Success toast is shown by parent component (EventCard)
         
         // Notify other tabs/windows
         try {
@@ -147,7 +142,8 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
     setIsSubmitting(false);
 
     if (success) {
-      toast.success("Registration and payment successful!");
+      // Note: Success toast is shown by PaymentModal for balance payments
+      // For Stripe payments, success is shown on PaymentSuccess page
       
       // Notify other tabs/windows
       try {
