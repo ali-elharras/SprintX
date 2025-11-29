@@ -810,7 +810,7 @@ const Dashboard = () => {
                   </div>
                   <div style={styles.actionContent}>
                     <h3 style={styles.actionTitle}>
-                      Book a Court{" "}
+                      Book Court{" "}
                       <span style={styles.exclusiveBadge}>Student Only</span>
                     </h3>
                     <p style={styles.actionDescription}>

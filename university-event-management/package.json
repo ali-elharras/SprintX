@@ -23,7 +23,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "concurrently": "^8.2.0"
+    "concurrently": "^8.2.2"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -31,6 +31,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^8.1.0",
     "helmet": "^8.1.0",
+    "i": "^0.3.7",
     "lottie-react": "^2.4.1",
     "manual": "^1.0.2",
     "mongoose": "^8.19.0",
