@@ -4,12 +4,14 @@ import { adminAPI } from "../services/api";
 import theme from "../theme";
 import axios from "axios";
 import BanUserModal from "../components/BanUserModal";
+import Modal from "../components/Modal";
 
 const initialForm = {
   firstName: "",
   lastName: "",
   email: "",
   password: "",
+  confirmPassword: "",
   universityId: "",
   role: "admin",
 };
@@ -27,6 +29,7 @@ const AdminUserManagement = () => {
   const [activeTab, setActiveTab] = useState("admins"); // 'admins' | 'verification'
   const [approvingUsers, setApprovingUsers] = useState({}); // Track which users are being approved
   const [userToBan, setUserToBan] = useState(null); // Track user being banned
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
 
   // Ref for request cancellation
   const cancelTokenRef = useRef(null);
@@ -89,14 +92,24 @@ const AdminUserManagement = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleCreate = async (e) => {
+  const handleCreateUser = async (e) => {
     e.preventDefault();
+    
+    // Validate password confirmation
+    if (form.password !== form.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    
     setCreating(true);
     try {
-      const data = await adminAPI.createUser(form);
+      // Don't send confirmPassword to the API
+      const { confirmPassword, ...userData } = form;
+      const data = await adminAPI.createUser(userData);
       if (data) {
-        toast.success(data.message || "User created");
+        toast.success(data.message || "User created successfully");
         setForm(initialForm);
+        setShowCreateUserModal(false);
         fetchUsers();
       } else {
         toast.error("Error creating user");
@@ -502,80 +515,14 @@ const AdminUserManagement = () => {
             details and status (Active/Blocked).
           </p>
         </div>
-      </div>
-
-      {/* Users Table */}
-      <form
-        onSubmit={handleCreate}
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: theme.spacing[3],
-          marginBottom: theme.spacing[5],
-        }}
-      >
-        <input
-          name="firstName"
-          placeholder="First Name"
-          value={form.firstName}
-          onChange={handleChange}
-          required
-          style={inputStyle}
-        />
-        <input
-          name="lastName"
-          placeholder="Last Name"
-          value={form.lastName}
-          onChange={handleChange}
-          required
-          style={inputStyle}
-        />
-        <input
-          name="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={handleChange}
-          required
-          type="email"
-          style={inputStyle}
-        />
-        <input
-          name="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={handleChange}
-          required
-          type="password"
-          style={inputStyle}
-        />
-        <input
-          name="universityId"
-          placeholder="University ID (optional)"
-          value={form.universityId}
-          onChange={handleChange}
-          style={inputStyle}
-        />
-        <select
-          name="role"
-          value={form.role}
-          onChange={handleChange}
-          style={selectStyle}
-        >
-          <option value="admin">Admin</option>
-          <option value="event_office">Event Office</option>
-        </select>
         {primaryButton({
-          type: "submit",
-          disabled: creating,
-          children: creating ? "Creating..." : "Create User",
+          onClick: () => setShowCreateUserModal(true),
+          children: "+ Create User",
           style: {
-            gridColumn: "span full",
-            width: "fit-content",
-            alignSelf: "start",
-            padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
+            padding: `${theme.spacing[3]} ${theme.spacing[5]}`,
           },
         })}
-      </form>
+      </div>
 
       {/* Users Table */}
       {loading ? (
@@ -851,6 +798,8 @@ const AdminUserManagement = () => {
           {activeTab === "admins" ? AdminsTab : VerificationTab}
         </div>
       </div>
+
+      {/* Ban User Modal */}
       {userToBan && (
         <BanUserModal
           user={userToBan}
@@ -858,6 +807,237 @@ const AdminUserManagement = () => {
           onCancel={() => setUserToBan(null)}
         />
       )}
+
+      {/* Create User Modal */}
+      <Modal
+        isOpen={showCreateUserModal}
+        onClose={() => {
+          setShowCreateUserModal(false);
+          setForm(initialForm);
+        }}
+        title="Create New User"
+      >
+        <form onSubmit={handleCreateUser} style={{ padding: theme.spacing[4] }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: theme.spacing[4],
+          }}>
+            <div>
+              <label style={{
+                display: 'block',
+                marginBottom: theme.spacing[2],
+                fontSize: theme.typography.fontSize.sm,
+                fontWeight: theme.typography.fontWeight.medium,
+                color: theme.colors.text.primary,
+              }}>
+                First Name *
+              </label>
+              <input
+                name="firstName"
+                placeholder="Enter first name"
+                value={form.firstName}
+                onChange={handleChange}
+                required
+                style={{
+                  ...inputStyle,
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{
+                display: 'block',
+                marginBottom: theme.spacing[2],
+                fontSize: theme.typography.fontSize.sm,
+                fontWeight: theme.typography.fontWeight.medium,
+                color: theme.colors.text.primary,
+              }}>
+                Last Name *
+              </label>
+              <input
+                name="lastName"
+                placeholder="Enter last name"
+                value={form.lastName}
+                onChange={handleChange}
+                required
+                style={{
+                  ...inputStyle,
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{
+                display: 'block',
+                marginBottom: theme.spacing[2],
+                fontSize: theme.typography.fontSize.sm,
+                fontWeight: theme.typography.fontWeight.medium,
+                color: theme.colors.text.primary,
+              }}>
+                Email Address *
+              </label>
+              <input
+                name="email"
+                placeholder="Enter email address"
+                value={form.email}
+                onChange={handleChange}
+                required
+                type="email"
+                style={{
+                  ...inputStyle,
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{
+                display: 'block',
+                marginBottom: theme.spacing[2],
+                fontSize: theme.typography.fontSize.sm,
+                fontWeight: theme.typography.fontWeight.medium,
+                color: theme.colors.text.primary,
+              }}>
+                Password *
+              </label>
+              <input
+                name="password"
+                placeholder="Enter password"
+                value={form.password}
+                onChange={handleChange}
+                required
+                type="password"
+                style={{
+                  ...inputStyle,
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{
+                display: 'block',
+                marginBottom: theme.spacing[2],
+                fontSize: theme.typography.fontSize.sm,
+                fontWeight: theme.typography.fontWeight.medium,
+                color: theme.colors.text.primary,
+              }}>
+                Confirm Password *
+              </label>
+              <input
+                name="confirmPassword"
+                placeholder="Re-enter password"
+                value={form.confirmPassword}
+                onChange={handleChange}
+                required
+                type="password"
+                style={{
+                  ...inputStyle,
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  borderColor: form.confirmPassword && form.password !== form.confirmPassword ? '#ef4444' : theme.colors.border.light,
+                }}
+              />
+              {form.confirmPassword && form.password !== form.confirmPassword && (
+                <p style={{
+                  color: '#ef4444',
+                  fontSize: '0.875rem',
+                  marginTop: '0.25rem',
+                  marginBottom: 0,
+                }}>
+                  Passwords do not match
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label style={{
+                display: 'block',
+                marginBottom: theme.spacing[2],
+                fontSize: theme.typography.fontSize.sm,
+                fontWeight: theme.typography.fontWeight.medium,
+                color: theme.colors.text.primary,
+              }}>
+                University ID (Optional)
+              </label>
+              <input
+                name="universityId"
+                placeholder="Enter university ID"
+                value={form.universityId}
+                onChange={handleChange}
+                style={{
+                  ...inputStyle,
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{
+                display: 'block',
+                marginBottom: theme.spacing[2],
+                fontSize: theme.typography.fontSize.sm,
+                fontWeight: theme.typography.fontWeight.medium,
+                color: theme.colors.text.primary,
+              }}>
+                Role *
+              </label>
+              <select
+                name="role"
+                value={form.role}
+                onChange={handleChange}
+                style={{
+                  ...selectStyle,
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <option value="admin">Admin</option>
+                <option value="event_office">Events Office</option>
+              </select>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              gap: theme.spacing[3],
+              justifyContent: 'flex-end',
+              marginTop: theme.spacing[2],
+            }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCreateUserModal(false);
+                  setForm(initialForm);
+                }}
+                style={{
+                  background: theme.colors.background.default,
+                  color: theme.colors.text.primary,
+                  border: `1px solid ${theme.colors.border.light}`,
+                  padding: `${theme.spacing[2]} ${theme.spacing[4]}`,
+                  borderRadius: theme.borderRadius.md,
+                  cursor: 'pointer',
+                  fontWeight: theme.typography.fontWeight.medium,
+                }}
+              >
+                Cancel
+              </button>
+              {primaryButton({
+                type: "submit",
+                disabled: creating,
+                children: creating ? "Creating..." : "Create User",
+              })}
+            </div>
+          </div>
+        </form>
+      </Modal>
     </>
   );
 };

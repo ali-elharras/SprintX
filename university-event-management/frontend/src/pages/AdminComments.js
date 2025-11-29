@@ -3,6 +3,7 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Select from '../components/Select';
+import Modal from '../components/Modal';
 import { ratingAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import theme from '../theme';
@@ -24,6 +25,10 @@ const AdminComments = () => {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [expandedCommentId, setExpandedCommentId] = useState(null);
+  
+  // Delete modal state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState(null);
 
   const isAdmin = user && user.role === 'admin';
 
@@ -84,16 +89,34 @@ const AdminComments = () => {
   }, [fetchAllComments]);
 
   const handleDeleteComment = async (commentId) => {
-    if (!window.confirm('Delete this comment permanently?')) return;
+    if (!commentToDelete) return;
+    
     try {
-      await ratingAPI.deleteRatingAdmin(commentId);
-      toast.success('Comment deleted');
+      await ratingAPI.deleteRatingAdmin(commentToDelete.id);
+      toast.success('Comment deleted successfully');
       // Remove from local state
-      setAllComments(prev => prev.filter(c => c._id !== commentId));
+      setAllComments(prev => prev.filter(c => c._id !== commentToDelete.id));
+      setDeleteModalOpen(false);
+      setCommentToDelete(null);
     } catch (err) {
       console.error('Delete failed:', err);
-      toast.error(err.message || 'Failed to delete');
+      toast.error(err.message || 'Failed to delete comment');
     }
+  };
+
+  const openDeleteModal = (comment) => {
+    setCommentToDelete({
+      id: comment._id,
+      userName: comment.userName,
+      comment: comment.comment,
+      rating: comment.rating,
+    });
+    setDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setCommentToDelete(null);
   };
 
   const toggleCommentExpansion = (commentId) => {
@@ -419,7 +442,7 @@ const AdminComments = () => {
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDeleteComment(comment._id);
+                              openDeleteModal(comment);
                             }}
                           >
                             Delete
@@ -516,6 +539,124 @@ const AdminComments = () => {
             </table>
           </Card>
         )}
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          isOpen={deleteModalOpen}
+          onClose={closeDeleteModal}
+          title="Delete Comment"
+        >
+          <div style={{ padding: theme.spacing[4] }}>
+            <div style={{
+              backgroundColor: theme.colors.error.main + '10',
+              borderLeft: `4px solid ${theme.colors.error.main}`,
+              padding: theme.spacing[4],
+              borderRadius: theme.borderRadius.md,
+              marginBottom: theme.spacing[4],
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: theme.spacing[2],
+                marginBottom: theme.spacing[2],
+              }}>
+                <span style={{ fontSize: '24px' }}>⚠️</span>
+                <h3 style={{
+                  margin: 0,
+                  fontSize: theme.typography.fontSize.lg,
+                  fontWeight: theme.typography.fontWeight.semibold,
+                  color: theme.colors.error.main,
+                }}>
+                  Warning: This action cannot be undone
+                </h3>
+              </div>
+              <p style={{
+                margin: 0,
+                fontSize: theme.typography.fontSize.sm,
+                color: theme.colors.text.secondary,
+                lineHeight: theme.typography.lineHeight.relaxed,
+              }}>
+                You are about to permanently delete this comment. This will remove all feedback data and cannot be recovered.
+              </p>
+            </div>
+
+            {commentToDelete && (
+              <div style={{
+                backgroundColor: theme.colors.background.default,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing[4],
+                marginBottom: theme.spacing[4],
+              }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: theme.spacing[3],
+                }}>
+                  <div>
+                    <div style={{
+                      fontSize: theme.typography.fontSize.sm,
+                      fontWeight: theme.typography.fontWeight.semibold,
+                      color: theme.colors.text.primary,
+                      marginBottom: theme.spacing[1],
+                    }}>
+                      {commentToDelete.userName}
+                    </div>
+                    <div style={{
+                      fontSize: theme.typography.fontSize.lg,
+                      color: theme.colors.warning.main,
+                    }}>
+                      {'⭐'.repeat(commentToDelete.rating)}
+                      <span style={{
+                        fontSize: theme.typography.fontSize.sm,
+                        color: theme.colors.text.secondary,
+                        marginLeft: theme.spacing[1],
+                      }}>
+                        ({commentToDelete.rating}/5)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div style={{
+                  padding: theme.spacing[3],
+                  backgroundColor: theme.colors.background.paper,
+                  borderRadius: theme.borderRadius.md,
+                  borderLeft: `3px solid ${theme.colors.primary.main}`,
+                }}>
+                  <p style={{
+                    margin: 0,
+                    fontSize: theme.typography.fontSize.sm,
+                    color: theme.colors.text.primary,
+                    lineHeight: theme.typography.lineHeight.relaxed,
+                    fontStyle: 'italic',
+                  }}>
+                    "{commentToDelete.comment || 'No comment provided'}"
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div style={{
+              display: 'flex',
+              gap: theme.spacing[3],
+              justifyContent: 'flex-end',
+            }}>
+              <Button
+                variant="outline"
+                onClick={closeDeleteModal}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleDeleteComment}
+              >
+                Delete Comment
+              </Button>
+            </div>
+          </div>
+        </Modal>
       </div>
     </div>
   );

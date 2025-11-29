@@ -35,10 +35,46 @@ const LoyaltyProgram = () => {
   };
 
   const handleViewDocument = (program) => {
+    const getFileExtensionAndType = (url) => {
+      if (!url) return { extension: 'pdf', isImage: false };
+      try {
+        // Extract extension from URL path
+        const urlPath = new URL(url).pathname;
+        const parts = urlPath.split('.');
+        const extension = parts.length > 1 ? parts.pop().toLowerCase() : '';
+        
+        // Common image extensions
+        const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
+        if (imageExtensions.includes(extension)) {
+          return { extension, isImage: true };
+        }
+        
+        // Common document extensions
+        if (['pdf', 'doc', 'docx'].includes(extension)) {
+          return { extension, isImage: false };
+        }
+        
+        // Check if URL contains image indicators (ImageKit pattern)
+        if (url.includes('ik.imagekit.io') || url.includes('tax-cards') || url.includes('logos')) {
+          // Likely an image from ImageKit, default to jpg
+          return { extension: extension || 'jpg', isImage: true };
+        }
+        
+        // Default to pdf
+        return { extension: extension || 'pdf', isImage: false };
+      } catch (e) {
+        return { extension: 'pdf', isImage: false };
+      }
+    };
+
+    const fileInfo = getFileExtensionAndType(program.Vendor?.taxCardUrl);
+    
     setSelectedDocument({
       vendorName: program.Vendor?.companyName || "Unknown Vendor",
       documentUrl: program.Vendor?.taxCardUrl,
       uploadedAt: program.Vendor?.taxCardUploadedAt,
+      fileExtension: fileInfo.extension,
+      isImage: fileInfo.isImage,
     });
     setShowDocumentModal(true);
   };
@@ -61,7 +97,8 @@ const LoyaltyProgram = () => {
         // Create a temporary link and trigger download
         const link = document.createElement("a");
         link.href = blobUrl;
-        link.download = `${selectedDocument.vendorName}_tax_card.pdf`;
+        const extension = selectedDocument.fileExtension || 'pdf';
+        link.download = `${selectedDocument.vendorName}_tax_card.${extension}`;
         document.body.appendChild(link);
         link.click();
         
@@ -285,11 +322,16 @@ const LoyaltyProgram = () => {
 
   const documentViewerStyles = {
     width: "100%",
-    height: "500px",
+    height: "600px",
     border: `1px solid ${theme.colors.neutral.gray200}`,
     borderRadius: "8px",
     marginBottom: theme.spacing[6],
     backgroundColor: theme.colors.neutral.gray50,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "auto",
+    padding: theme.spacing[2],
   };
 
   const modalButtonsContainerStyles = {
@@ -522,16 +564,33 @@ const LoyaltyProgram = () => {
             {/* Document Viewer */}
             <div style={documentViewerStyles}>
               {selectedDocument.documentUrl ? (
-                <iframe
-                  src={selectedDocument.documentUrl}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    border: "none",
-                    borderRadius: "8px",
-                  }}
-                  title="Vendor Document"
-                />
+                selectedDocument.isImage ? (
+                  <img
+                    src={selectedDocument.documentUrl}
+                    alt="Tax Card"
+                    style={{
+                      width: "100%",
+                      height: "auto",
+                      objectFit: "contain",
+                      borderRadius: "8px",
+                    }}
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      e.target.parentElement.innerHTML = '<p style="color: ' + theme.colors.text.secondary + '">Failed to load image</p>';
+                    }}
+                  />
+                ) : (
+                  <iframe
+                    src={selectedDocument.documentUrl}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      border: "none",
+                      borderRadius: "8px",
+                    }}
+                    title="Vendor Document"
+                  />
+                )
               ) : (
                 <div
                   style={{

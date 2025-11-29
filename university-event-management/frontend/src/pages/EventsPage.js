@@ -2412,19 +2412,32 @@ const EventsPage = () => {
     if (filters.search) {
       const s = filters.search.toLowerCase();
       filtered = filtered.filter((e) => {
-        const title = (e.title || e.name || "").toLowerCase();
-        const description = (e.description || "").toLowerCase();
+        const title = (e.title || e.name || e.workshopName || "").toLowerCase();
+        const description = (e.description || e.shortDescription || "").toLowerCase();
         const location = (e.location || "").toLowerCase();
         const instructor = (
           e.instructor ||
           e.professorName ||
           ""
         ).toLowerCase();
+        
+        // Search in professors participating (for workshops)
+        const professors = Array.isArray(e.professorsParticipating)
+          ? e.professorsParticipating.join(" ").toLowerCase()
+          : "";
+        
+        // Search in organizer name (for conferences and events)
+        const organizerName = typeof e.organizer === "object" 
+          ? (e.organizer?.firstName + " " + e.organizer?.lastName || "").toLowerCase()
+          : "";
+        
         return (
           title.includes(s) ||
           description.includes(s) ||
           location.includes(s) ||
-          instructor.includes(s)
+          instructor.includes(s) ||
+          professors.includes(s) ||
+          organizerName.includes(s)
         );
       });
     }
@@ -3485,7 +3498,57 @@ const EventsPage = () => {
             }
           `}</style>
 
-          {filteredEvents.length > 0 ? (
+          {loading ? (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: theme.spacing[12],
+                minHeight: "400px",
+              }}
+            >
+              <motion.div
+                animate={{
+                  rotate: 360,
+                }}
+                transition={{
+                  duration: 1,
+                  repeat: Infinity,
+                  ease: "linear",
+                }}
+                style={{
+                  width: "64px",
+                  height: "64px",
+                  border: "4px solid #e5e7eb",
+                  borderTop: "4px solid #4f46e5",
+                  borderRadius: "50%",
+                  marginBottom: theme.spacing[4],
+                }}
+              />
+              <h3
+                style={{
+                  margin: 0,
+                  marginBottom: theme.spacing[2],
+                  fontSize: theme.typography.fontSize.xl,
+                  fontWeight: theme.typography.fontWeight.semibold,
+                  color: theme.colors.text.primary,
+                }}
+              >
+                Loading Events...
+              </h3>
+              <p
+                style={{
+                  margin: 0,
+                  color: theme.colors.text.secondary,
+                  fontSize: theme.typography.fontSize.base,
+                }}
+              >
+                Please wait while we fetch the latest events
+              </p>
+            </div>
+          ) : filteredEvents.length > 0 ? (
             <div className="events-grid">
               {filteredEvents.map((event) => {
                 const isOwner =
@@ -3588,7 +3651,7 @@ const EventsPage = () => {
                 );
               })}
             </div>
-          ) : loading ? null : (
+          ) : (
             <div
               style={{
                 background: theme.colors.background.paper,
