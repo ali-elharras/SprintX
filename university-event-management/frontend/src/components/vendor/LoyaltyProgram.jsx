@@ -70,9 +70,18 @@ const LoyaltyProgram = () => {
   };
 
   const handleCreateProgram = async (formData) => {
+    if (programs.length > 0) {
+      toast.error('You can only have one active loyalty program at a time.');
+      return;
+    }
+
+    if (!window.confirm('You are about to create a new loyalty program. Please note that you can only have ONE active program at a time. Do you want to proceed?')) {
+      throw new Error('Creation cancelled by user');
+    }
+
     try {
       const res = await api.post('/loyalty', formData);
-      toast.success('Loyalty program created successfully');
+      toast.success('Loyalty program created successfully. You have reached the limit of 1 active program.');
       await fetchLoyaltyPrograms();
       return res.data;
     } catch (error) {
@@ -127,18 +136,20 @@ const LoyaltyProgram = () => {
               Create and manage promotional codes for {vendor?.businessName || 'your business'}
             </p>
           </div>
-
-          {programs.length === 0 && (
-            <button
-              onClick={() => setShowEnrollmentModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
-              aria-haspopup="dialog"
-            >
-              <Plus size={16} />
-              Create program
-            </button>
-          )}
         </div>
+
+        {/* Limit Warning */}
+        {programs.length > 0 && (
+          <div className="bg-amber-50 border-l-4 border-amber-400 p-4">
+            <div className="flex">
+              <div className="ml-3">
+                <p className="text-sm text-amber-700">
+                  You have reached the limit of 1 active loyalty program. You must cancel the current program before creating a new one.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         {loading ? (

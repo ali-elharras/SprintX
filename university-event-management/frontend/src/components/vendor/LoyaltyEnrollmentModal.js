@@ -6,7 +6,7 @@ import { X, Percent, Tag, FileText, Sparkles } from 'lucide-react';
    SKELETON LOADING
    ======================================== */
 const SkeletonShimmer = ({ className = "", rounded = "lg" }) => (
-  <div 
+  <div
     className={`relative overflow-hidden bg-gray-200 ${className} rounded-${rounded}`}
     aria-hidden="true"
   >
@@ -73,7 +73,7 @@ const LoyaltyEnrollmentModal = ({ isOpen, onClose, onEnroll }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (skeletonLoading) return;
 
     // Validate discount rate
@@ -133,11 +133,11 @@ const LoyaltyEnrollmentModal = ({ isOpen, onClose, onEnroll }) => {
         }
       `}</style>
 
-      <div 
+      <div
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
         onClick={handleClose}
       >
-        <div 
+        <div
           className="relative w-full max-w-lg max-h-[90vh] bg-white rounded-lg shadow-xl overflow-hidden flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
@@ -152,7 +152,7 @@ const LoyaltyEnrollmentModal = ({ isOpen, onClose, onEnroll }) => {
                 <p className="text-xs text-gray-600">Set up a new promotional discount code</p>
               </div>
             </div>
-            <button 
+            <button
               onClick={handleClose}
               disabled={submitting}
               className="w-9 h-9 flex items-center justify-center rounded-md hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -241,10 +241,10 @@ const LoyaltyEnrollmentModal = ({ isOpen, onClose, onEnroll }) => {
                     </p>
                   </div>
 
-                  {/* Info Banner */}
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-900">
-                      <strong className="font-semibold">Note:</strong> Once created, the promo code can be shared with customers. Make sure all details are correct before submitting.
+                  {/* Warning Banner */}
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm text-amber-900">
+                      <strong className="font-semibold">Important:</strong> You can only have <strong>ONE</strong> active loyalty program at a time. Creating this program will reach your limit.
                     </p>
                   </div>
                 </div>

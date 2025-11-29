@@ -3,82 +3,138 @@ import { applicationServices } from '../../services/api';
 import theme from '../../theme';
 
 const styles = {
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: '500px',
+    margin: '0 auto',
+  },
   mapContainer: {
     width: '100%',
-    maxWidth: '400px',
-    margin: '20px auto',
-    border: `2px solid ${theme.colors.border.main}`,
-    borderRadius: '8px',
     position: 'relative',
-    backgroundColor: theme.colors.neutral.gray100,
+    backgroundColor: '#f8fafc', // Slate-50
+    borderRadius: '12px',
+    border: `1px solid ${theme.colors.border.main}`,
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+    padding: '20px',
     overflow: 'hidden',
   },
   svg: {
     display: 'block',
+    margin: '0 auto',
   },
   platform: {
-    fill: theme.colors.neutral.gray200,
-    stroke: theme.colors.border.main,
+    fill: '#e2e8f0', // Slate-200
+    stroke: '#cbd5e1', // Slate-300
     strokeWidth: 2,
+    rx: 8, // Rounded corners for the platform rect
   },
   booth: {
-    fill: theme.colors.primary.light,
+    fill: '#ffffff',
     stroke: theme.colors.primary.main,
-    strokeWidth: 1,
+    strokeWidth: 1.5,
     cursor: 'pointer',
     transition: 'all 0.2s ease-in-out',
+    rx: 4, // Rounded corners for booths
+  },
+  boothHover: {
+    fill: theme.colors.primary.light,
   },
   selectedBooth: {
     fill: theme.colors.primary.main,
     stroke: theme.colors.primary.dark,
     strokeWidth: 2,
+    filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.2))',
   },
   occupiedBooth: {
-    fill: theme.colors.error.light,
-    stroke: theme.colors.error.main,
+    fill: '#fee2e2', // Red-100
+    stroke: '#ef4444', // Red-500
     strokeWidth: 1,
     cursor: 'not-allowed',
-    opacity: 0.7,
+    opacity: 0.8,
   },
   entryExit: {
-    fill: theme.colors.success.main,
-    stroke: theme.colors.success.dark,
+    fill: '#22c55e', // Green-500
+    stroke: '#16a34a', // Green-600
     strokeWidth: 1,
+    rx: 2,
   },
   label: {
-    fontSize: '10px',
+    fontSize: '11px',
+    fontWeight: '600',
     fill: theme.colors.text.primary,
     pointerEvents: 'none',
     userSelect: 'none',
+    fontFamily: 'sans-serif',
   },
-  instructionText: {
+  selectedLabel: {
+    fill: '#ffffff',
+  },
+  header: {
     textAlign: 'center',
+    marginBottom: '16px',
+    width: '100%',
+  },
+  title: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    marginBottom: '4px',
+  },
+  subtitle: {
+    fontSize: '13px',
     color: theme.colors.text.secondary,
-    fontSize: theme.typography.fontSize.sm,
-    marginBottom: theme.spacing[3],
+  },
+  legendContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '16px',
+    marginTop: '16px',
+    flexWrap: 'wrap',
+  },
+  legendItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '12px',
+    color: theme.colors.text.secondary,
+  },
+  legendColor: {
+    width: '12px',
+    height: '12px',
+    borderRadius: '3px',
+    border: '1px solid rgba(0,0,0,0.1)',
   },
   conflictWarning: {
-    backgroundColor: theme.colors.error.light,
-    color: theme.colors.error.dark,
-    padding: theme.spacing[2],
-    borderRadius: '4px',
-    fontSize: theme.typography.fontSize.sm,
+    backgroundColor: '#fef2f2',
+    color: '#991b1b',
+    padding: '12px',
+    borderRadius: '8px',
+    fontSize: '13px',
     textAlign: 'center',
-    marginTop: theme.spacing[2],
-    border: `1px solid ${theme.colors.error.main}`,
+    marginTop: '16px',
+    border: '1px solid #fecaca',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    width: '100%',
   },
 };
 
 const BoothMapSelector = ({ onSelectBooth, selectedBoothId, startDate, durationWeeks }) => {
-  const platformWidth = 300;
-  const platformHeight = 200;
-  const boothSize = 20;
-  const padding = 10;
+  const platformWidth = 340;
+  const platformHeight = 240;
+  const boothSize = 24;
+  const padding = 16;
 
   const [occupiedBooths, setOccupiedBooths] = useState(new Set());
   const [loading, setLoading] = useState(false);
+  const [hoveredBooth, setHoveredBooth] = useState(null);
 
-  // Define booth positions (example: 15 booths around the edges)
+  // Define booth positions
   const boothPositions = [
     // Top edge
     { id: 'B1', x: padding, y: padding },
@@ -148,66 +204,102 @@ const BoothMapSelector = ({ onSelectBooth, selectedBoothId, startDate, durationW
     if (selectedBoothId === boothId) {
       return { ...styles.booth, ...styles.selectedBooth };
     }
+    if (hoveredBooth === boothId) {
+      return { ...styles.booth, ...styles.boothHover };
+    }
     return styles.booth;
   };
 
+  const getLabelStyle = (boothId) => {
+    if (selectedBoothId === boothId) {
+      return { ...styles.label, ...styles.selectedLabel };
+    }
+    return styles.label;
+  };
+
   return (
-    <div style={styles.mapContainer}>
-      <p style={styles.instructionText}>
-        Select your preferred booth location{startDate && durationWeeks ? ' (conflicts checked)' : ''}:
-      </p>
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <div style={styles.title}>Select Booth Location</div>
+        <div style={styles.subtitle}>
+          {loading ? 'Checking availability...' :
+            startDate && durationWeeks ? 'Availability checked for your dates' :
+              'Select dates to check availability'}
+        </div>
+      </div>
 
-      {loading && (
-        <p style={{ textAlign: 'center', color: theme.colors.text.secondary }}>
-          Checking availability...
-        </p>
-      )}
+      <div style={styles.mapContainer}>
+        <svg width="100%" height="100%" viewBox={`0 0 ${platformWidth} ${platformHeight}`} style={styles.svg}>
+          {/* Platform Background */}
+          <rect
+            x={0}
+            y={0}
+            width={platformWidth}
+            height={platformHeight}
+            style={styles.platform}
+          />
 
-      <svg width={platformWidth} height={platformHeight} style={styles.svg}>
-        {/* Platform */}
-        <rect
-          x={0}
-          y={0}
-          width={platformWidth}
-          height={platformHeight}
-          style={styles.platform}
-        />
-
-        {/* Entry/Exit (example: bottom center) */}
-        <rect
-          x={platformWidth / 2 - 20}
-          y={platformHeight - 5}
-          width={40}
-          height={5}
-          style={styles.entryExit}
-        />
-        <text x={platformWidth / 2} y={platformHeight - 10} textAnchor="middle" style={styles.label}>Entry/Exit</text>
-
-        {/* Booths */}
-        {boothPositions.map((booth) => (
-          <g key={booth.id} onClick={() => handleBoothClick(booth.id)}>
+          {/* Entry/Exit Indicator */}
+          <g transform={`translate(${platformWidth / 2}, ${platformHeight - 8})`}>
             <rect
-              x={booth.x}
-              y={booth.y}
-              width={boothSize}
-              height={boothSize}
-              style={getBoothStyle(booth.id)}
+              x={-24}
+              y={0}
+              width={48}
+              height={6}
+              style={styles.entryExit}
             />
-            <text
-              x={booth.x + boothSize / 2}
-              y={booth.y + boothSize / 2 + 3} // Adjust for vertical centering
-              textAnchor="middle"
-              style={styles.label}
-            >
-              {booth.id}
-            </text>
+            <text x={0} y={-5} textAnchor="middle" style={{ ...styles.label, fontSize: '10px', fill: '#64748b' }}>ENTRY</text>
           </g>
-        ))}
-      </svg>
+
+          {/* Booths */}
+          {boothPositions.map((booth) => (
+            <g
+              key={booth.id}
+              onClick={() => handleBoothClick(booth.id)}
+              onMouseEnter={() => setHoveredBooth(booth.id)}
+              onMouseLeave={() => setHoveredBooth(null)}
+              style={{ cursor: occupiedBooths.has(booth.id) ? 'not-allowed' : 'pointer' }}
+            >
+              <rect
+                x={booth.x}
+                y={booth.y}
+                width={boothSize}
+                height={boothSize}
+                style={getBoothStyle(booth.id)}
+              />
+              <text
+                x={booth.x + boothSize / 2}
+                y={booth.y + boothSize / 2 + 4}
+                textAnchor="middle"
+                style={getLabelStyle(booth.id)}
+              >
+                {booth.id}
+              </text>
+            </g>
+          ))}
+        </svg>
+      </div>
+
+      {/* Legend */}
+      <div style={styles.legendContainer}>
+        <div style={styles.legendItem}>
+          <div style={{ ...styles.legendColor, backgroundColor: '#ffffff', borderColor: theme.colors.primary.main }}></div>
+          <span>Available</span>
+        </div>
+        <div style={styles.legendItem}>
+          <div style={{ ...styles.legendColor, backgroundColor: theme.colors.primary.main, borderColor: theme.colors.primary.dark }}></div>
+          <span>Selected</span>
+        </div>
+        <div style={styles.legendItem}>
+          <div style={{ ...styles.legendColor, backgroundColor: '#fee2e2', borderColor: '#ef4444' }}></div>
+          <span>Occupied</span>
+        </div>
+      </div>
 
       {occupiedBooths.size > 0 && (
         <div style={styles.conflictWarning}>
-          ⚠️ Some booths are occupied during your requested period
+          <span style={{ fontSize: '16px' }}>⚠️</span>
+          <span>Some booths are occupied during your requested period</span>
         </div>
       )}
     </div>

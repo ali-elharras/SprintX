@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useLocation } from "react-router-dom";
-import { eventServices, applicationServices, bazaarServices , paymentSum} from "../services/api";
+import { eventServices, applicationServices, bazaarServices, paymentSum } from "../services/api";
 import toast from "react-hot-toast";
 import ApplyBazaarModal from "../components/vendor/ApplyBazaarModal";
 import ApplyBoothModal from "../components/vendor/ApplyBoothModal";
 import PaymentButton from "../components/vendor/PaymentButton";
 import Navbar from "../components/Navbar";
 import LoyaltyProgram from '../components/vendor/LoyaltyProgram';
-import { 
-  Calendar, Store, FileText, Award, DollarSign, Clock, Search, 
-  ChevronLeft, ChevronRight, MapPin, TrendingUp, CheckCircle, 
+import VendorDetailsModal from '../components/vendor/VendorDetailsModal';
+import {
+  Calendar, Store, FileText, Award, DollarSign, Clock, Search,
+  ChevronLeft, ChevronRight, MapPin, TrendingUp, CheckCircle,
   XCircle, AlertCircle, Sparkles, Zap, Eye, Plus, Banknote
 } from 'lucide-react';
 
@@ -19,7 +20,7 @@ import {
    ======================================== */
 
 const SkeletonShimmer = ({ className = "", rounded = "lg" }) => (
-  <div 
+  <div
     className={`relative overflow-hidden bg-gray-200 ${className} rounded-${rounded}`}
     aria-hidden="true"
   >
@@ -67,7 +68,7 @@ const SkeletonListItem = () => (
    ======================================== */
 
 const MetricCard = ({ icon: Icon, label, value, trend, trendDirection, index }) => (
-  <div 
+  <div
     className="bg-white rounded-lg border border-gray-200 p-6 hover:border-gray-300 hover:shadow-sm transition-all duration-200"
     style={{ animationDelay: `${index * 60}ms` }}
     role="region"
@@ -78,9 +79,8 @@ const MetricCard = ({ icon: Icon, label, value, trend, trendDirection, index }) 
         <Icon className="text-gray-700" size={20} />
       </div>
       {trend && (
-        <span className={`text-xs font-medium px-2 py-1 rounded ${
-          trendDirection === 'up' ? 'text-emerald-700 bg-emerald-50' : 'text-gray-600 bg-gray-100'
-        }`}>
+        <span className={`text-xs font-medium px-2 py-1 rounded ${trendDirection === 'up' ? 'text-emerald-700 bg-emerald-50' : 'text-gray-600 bg-gray-100'
+          }`}>
           {trend}
         </span>
       )}
@@ -90,50 +90,40 @@ const MetricCard = ({ icon: Icon, label, value, trend, trendDirection, index }) 
   </div>
 );
 
-const BazaarCard = ({ bazaar, onApply, application, index }) => {
+const BazaarCard = ({ bazaar, onApply, application, index, onViewDetails }) => {
   const registrationClosed = new Date(bazaar.registrationDeadline) < new Date();
   const canApply = !application || application.status === 'rejected';
-  
+
   const getActionState = () => {
-    if (registrationClosed && !application) return { 
-      text: 'Registration closed', 
+    if (registrationClosed && !application) return {
+      text: 'Registration closed',
       variant: 'disabled',
       icon: null
     };
-    if (!application) return { 
-      text: 'Apply now', 
+    if (!application) return {
+      text: 'Apply now',
       variant: 'primary',
       icon: <Plus size={16} />
     };
-    if (application.status === 'approved') return { 
-      text: 'Approved', 
+    if (application.status === 'approved') return {
+      text: 'Approved',
       variant: 'success',
       icon: <CheckCircle size={16} />
     };
-    if (application.status === 'rejected') return { 
-      text: 'Apply again', 
+    if (application.status === 'rejected') return {
+      text: 'Apply again',
       variant: 'primary',
       icon: <Plus size={16} />
     };
-    return { 
-      text: 'Pending review', 
+    return {
+      text: 'Pending review',
       variant: 'pending',
       icon: <Clock size={16} />
     };
   };
-  
+
   const action = getActionState();
   const isDisabled = !canApply || (registrationClosed && !application);
-
-  const PaymentSum = async () => {  
-    try {
-      const data = await paymentSum.getPendingPaymentsSum();
-      return data.data.totalPendingAmount;
-    } catch (error) {
-      console.error("Failed to fetch payment sum:", error);
-      return 0; // or handle the error as needed
-    }
-  };
 
   const buttonStyles = {
     primary: 'bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800',
@@ -141,9 +131,9 @@ const BazaarCard = ({ bazaar, onApply, application, index }) => {
     pending: 'bg-amber-50 text-amber-700 cursor-default',
     disabled: 'bg-gray-100 text-gray-400 cursor-not-allowed'
   };
-  
+
   return (
-    <article 
+    <article
       className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-200"
       style={{ animationDelay: `${index * 60}ms` }}
       aria-labelledby={`bazaar-${bazaar._id}-title`}
@@ -151,11 +141,10 @@ const BazaarCard = ({ bazaar, onApply, application, index }) => {
       <div className="p-6">
         {application && (
           <div className="flex items-center gap-2 mb-4">
-            <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
-              application.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
+            <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${application.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
               application.status === 'pending' ? 'bg-amber-50 text-amber-700' :
-              'bg-red-50 text-red-700'
-            }`}>
+                'bg-red-50 text-red-700'
+              }`}>
               {application.status === 'approved' && <CheckCircle size={12} />}
               {application.status === 'pending' && <Clock size={12} />}
               {application.status === 'rejected' && <XCircle size={12} />}
@@ -163,23 +152,29 @@ const BazaarCard = ({ bazaar, onApply, application, index }) => {
             </span>
           </div>
         )}
-        
+
         <h3 id={`bazaar-${bazaar._id}-title`} className="text-base font-semibold text-gray-900 mb-3">
           {bazaar.name || bazaar.title}
         </h3>
-        
+
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
           <Calendar size={14} />
           <span>
             {new Date(bazaar.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(bazaar.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </span>
         </div>
-        
+
         <p className="text-sm text-gray-600 mb-6 line-clamp-2 leading-relaxed">
           {bazaar.description}
         </p>
 
         <div className="flex gap-2">
+          <button
+            onClick={() => onViewDetails(bazaar, 'Bazaar Details')}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+          >
+            View Details
+          </button>
           <button
             onClick={() => canApply && !isDisabled && onApply(bazaar)}
             disabled={isDisabled}
@@ -196,10 +191,10 @@ const BazaarCard = ({ bazaar, onApply, application, index }) => {
   );
 };
 
-const ApplicationItem = ({ application, onCancel, index }) => {
+const ApplicationItem = ({ application, onCancel, index, onViewDetails }) => {
   const [cancelling, setCancelling] = useState(false);
   const applicationType = application.bazaar ? 'bazaar' : 'booth';
-  
+
   const handleCancel = async () => {
     if (window.confirm('Cancel this application? This action cannot be undone.')) {
       setCancelling(true);
@@ -214,19 +209,19 @@ const ApplicationItem = ({ application, onCancel, index }) => {
       }
     }
   };
-  
+
   const canCancel = application.paymentStatus !== 'completed' && application.status !== 'rejected';
-  
+
   const statusConfig = {
     pending: { bg: 'bg-amber-50', text: 'text-amber-700', icon: <Clock size={14} /> },
     approved: { bg: 'bg-emerald-50', text: 'text-emerald-700', icon: <CheckCircle size={14} /> },
     rejected: { bg: 'bg-red-50', text: 'text-red-700', icon: <XCircle size={14} /> }
   };
-  
+
   const status = statusConfig[application.status] || statusConfig.pending;
-  
+
   return (
-    <div 
+    <div
       className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
       style={{ animationDelay: `${index * 40}ms` }}
       role="article"
@@ -245,12 +240,18 @@ const ApplicationItem = ({ application, onCancel, index }) => {
               </span>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 ${status.bg} ${status.text} text-xs font-medium rounded-full`}>
               {status.icon}
               {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
             </span>
+            <button
+              onClick={() => onViewDetails(application, 'Application Details', applicationType)}
+              className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              Details
+            </button>
             {canCancel && (
               <button
                 onClick={handleCancel}
@@ -262,7 +263,7 @@ const ApplicationItem = ({ application, onCancel, index }) => {
             )}
           </div>
         </div>
-        
+
         {application.status === 'approved' && (
           <div className="pt-4 border-t border-gray-100">
             <PaymentButton application={application} applicationType={applicationType} />
@@ -273,8 +274,8 @@ const ApplicationItem = ({ application, onCancel, index }) => {
   );
 };
 
-const ParticipationItem = ({ participation, index }) => (
-  <div 
+const ParticipationItem = ({ participation, index, onViewDetails }) => (
+  <div
     className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
     style={{ animationDelay: `${index * 40}ms` }}
     role="article"
@@ -293,7 +294,7 @@ const ParticipationItem = ({ participation, index }) => (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Calendar size={14} />
               <span>
-                {participation.bazaar 
+                {participation.bazaar
                   ? new Date(participation.bazaar.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                   : new Date(participation.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                 }
@@ -301,10 +302,18 @@ const ParticipationItem = ({ participation, index }) => (
             </div>
           </div>
         </div>
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full">
-          <CheckCircle size={14} />
-          {participation.status}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full">
+            <CheckCircle size={14} />
+            {participation.status}
+          </span>
+          <button
+            onClick={() => onViewDetails(participation, 'Participation Details')}
+            className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
+          >
+            Details
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -317,17 +326,17 @@ const ParticipationItem = ({ participation, index }) => (
 const VendorDashboard = () => {
   const { vendor } = useAuth();
   const location = useLocation();
-  
+
   // Read tab from URL query parameter
   const urlParams = new URLSearchParams(location.search);
   const tabFromUrl = urlParams.get('tab') || 'overview';
-  
+
   const [activeTab, setActiveTab] = useState(tabFromUrl);
   const [upcomingBazaars, setUpcomingBazaars] = useState([]);
   const [myApplications, setMyApplications] = useState([]);
   const [myParticipations, setMyParticipations] = useState([]);
   const [bazaarApplications, setBazaarApplications] = useState(new Map());
-  const [loading, setLoading] = useState({ bazaars: true, applications: true, participations: true , paymentSum: true });
+  const [loading, setLoading] = useState({ bazaars: true, applications: true, participations: true, paymentSum: true });
   const [error, setError] = useState({ bazaars: null, applications: null, participations: null });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBoothModalOpen, setIsBoothModalOpen] = useState(false);
@@ -336,6 +345,22 @@ const VendorDashboard = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
+
+  const [detailsModal, setDetailsModal] = useState({
+    isOpen: false,
+    data: null,
+    title: '',
+    type: ''
+  });
+
+  const handleViewDetails = (data, title, type = 'general') => {
+    setDetailsModal({
+      isOpen: true,
+      data,
+      title,
+      type
+    });
+  };
 
   const fetchBazaars = async () => {
     try {
@@ -436,7 +461,7 @@ const VendorDashboard = () => {
     }
   };
 
-  const filteredApplications = myApplications.filter(app => 
+  const filteredApplications = myApplications.filter(app =>
     (filterStatus === 'all' || app.status === filterStatus) &&
     (searchQuery === '' || (app.bazaar?.name || app.bazaar?.title || '').toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -447,42 +472,42 @@ const VendorDashboard = () => {
     currentPage * itemsPerPage
   );
 
-// In VendorDashboard component, add this state
-const [pendingPaymentsSum, setPendingPaymentsSum] = useState(0);
+  // In VendorDashboard component, add this state
+  const [pendingPaymentsSum, setPendingPaymentsSum] = useState(0);
 
 
-// Add this fetch function
-const fetchPendingPaymentsSum = async () => {
-  try {
-    setLoading(prev => ({ ...prev, paymentSum: true }));
-    const data = await paymentSum.getPendingPaymentsSum();
-    setPendingPaymentsSum(data.data.totalPendingAmount || 0);
-  } catch (error) {
-    console.error("Failed to fetch payment sum:", error);
-    setPendingPaymentsSum(0);
-  } finally {
-    setLoading(prev => ({ ...prev, paymentSum: false }));
-  }
-};
+  // Add this fetch function
+  const fetchPendingPaymentsSum = async () => {
+    try {
+      setLoading(prev => ({ ...prev, paymentSum: true }));
+      const data = await paymentSum.getPendingPaymentsSum();
+      setPendingPaymentsSum(data.data.totalPendingAmount || 0);
+    } catch (error) {
+      console.error("Failed to fetch payment sum:", error);
+      setPendingPaymentsSum(0);
+    } finally {
+      setLoading(prev => ({ ...prev, paymentSum: false }));
+    }
+  };
 
-// Call it in useEffect
-useEffect(() => {
-  fetchBazaars();
-  fetchApplications();
-  fetchParticipations();
-  fetchPendingPaymentsSum(); // Add this line
-}, []);
+  // Call it in useEffect
+  useEffect(() => {
+    fetchBazaars();
+    fetchApplications();
+    fetchParticipations();
+    fetchPendingPaymentsSum(); // Add this line
+  }, []);
 
-// Update your stats object
-const stats = {
-  totalApplications: myApplications.length,
-  activeEvents: myParticipations.length,
-  pendingPayments: myApplications.filter(app => app.paymentStatus === 'pending').length,
-  approvedApplications: myApplications.filter(app => app.status === 'approved').length,
-  pendingPaymentsSum: pendingPaymentsSum, // Use state value instead
-};
+  // Update your stats object
+  const stats = {
+    totalApplications: myApplications.length,
+    activeEvents: myParticipations.length,
+    pendingPayments: myApplications.filter(app => app.paymentStatus === 'pending').length,
+    approvedApplications: myApplications.filter(app => app.status === 'approved').length,
+    pendingPaymentsSum: pendingPaymentsSum, // Use state value instead
+  };
 
-// Remove the PaymentSum function from BazaarCard component entirely
+  // Remove the PaymentSum function from BazaarCard component entirely
 
   const tabs = [
     { id: 'overview', label: 'Upcoming Bazaars', icon: Eye },
@@ -493,8 +518,8 @@ const stats = {
 
   return (
     <>
-      
-      
+
+
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
@@ -509,8 +534,8 @@ const stats = {
                   <p className="text-xs text-gray-500">{vendor?.businessName || "Vendor"}</p>
                 </div>
               </div>
-              
-              <button 
+
+              <button
                 onClick={() => setIsBoothModalOpen(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
               >
@@ -533,35 +558,35 @@ const stats = {
               </>
             ) : (
               <>
-                <MetricCard 
-                  icon={FileText} 
-                  label="Applications" 
-                  value={stats.totalApplications} 
+                <MetricCard
+                  icon={FileText}
+                  label="Applications"
+                  value={stats.totalApplications}
                   trend={`${stats.approvedApplications} approved`}
                   trendDirection="up"
-                  index={0} 
+                  index={0}
                 />
-                <MetricCard 
-                  icon={Calendar} 
-                  label="Active events" 
-                  value={stats.activeEvents} 
-                  index={1} 
+                <MetricCard
+                  icon={Calendar}
+                  label="Active events"
+                  value={stats.activeEvents}
+                  index={1}
                 />
-                <MetricCard 
-                  icon={Banknote} 
-                  label="Pending payments" 
-                  value={stats.pendingPaymentsSum} 
+                <MetricCard
+                  icon={Banknote}
+                  label="Pending payments"
+                  value={stats.pendingPaymentsSum}
                   trend={stats.pendingPayments > 0 ? 'Action required' : 'All paid'}
                   trendDirection={stats.pendingPayments > 0 ? 'down' : 'up'}
-                  index={2} 
+                  index={2}
                 />
-                <MetricCard 
-                  icon={Award} 
-                  label="Account status" 
-                  value="Active" 
+                <MetricCard
+                  icon={Award}
+                  label="Account status"
+                  value="Active"
                   trend="Good standing"
                   trendDirection="up"
-                  index={3} 
+                  index={3}
                 />
               </>
             )}
@@ -578,11 +603,10 @@ const stats = {
                   setSearchQuery('');
                   setFilterStatus('all');
                 }}
-                className={`inline-flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'border-indigo-600 text-indigo-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
-                }`}
+                className={`inline-flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                  }`}
               >
                 <tab.icon size={16} />
                 {tab.label}
@@ -598,7 +622,7 @@ const stats = {
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-lg font-semibold text-gray-900">Upcoming opportunities</h2>
                 </div>
-                
+
                 {loading.bazaars ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" role="status" aria-busy="true" aria-label="Loading bazaars">
                     {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
@@ -611,12 +635,13 @@ const stats = {
                 ) : upcomingBazaars.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {upcomingBazaars.slice(0, 6).map((bazaar, i) => (
-                      <BazaarCard 
+                      <BazaarCard
                         key={bazaar._id}
                         bazaar={bazaar}
                         onApply={handleApplyClick}
                         application={bazaarApplications.get(bazaar._id)}
                         index={i}
+                        onViewDetails={handleViewDetails}
                       />
                     ))}
                   </div>
@@ -637,7 +662,7 @@ const stats = {
               <div>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                   <h2 className="text-lg font-semibold text-gray-900">My applications</h2>
-                  
+
                   <div className="flex items-center gap-2 w-full sm:w-auto">
                     <div className="relative flex-1 sm:flex-initial sm:w-64">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
@@ -653,8 +678,8 @@ const stats = {
                         aria-label="Search applications"
                       />
                     </div>
-                    <select 
-                      value={filterStatus} 
+                    <select
+                      value={filterStatus}
                       onChange={(e) => {
                         setFilterStatus(e.target.value);
                         setCurrentPage(1);
@@ -669,7 +694,7 @@ const stats = {
                     </select>
                   </div>
                 </div>
-                
+
                 {loading.applications ? (
                   <div className="space-y-3" role="status" aria-busy="true" aria-label="Loading applications">
                     {Array.from({ length: 4 }).map((_, i) => <SkeletonListItem key={i} />)}
@@ -683,7 +708,7 @@ const stats = {
                   <>
                     <div className="space-y-3">
                       {paginatedApplications.map((app, i) => (
-                        <ApplicationItem 
+                        <ApplicationItem
                           key={app._id}
                           application={app}
                           onCancel={() => {
@@ -691,13 +716,14 @@ const stats = {
                             fetchParticipations();
                           }}
                           index={i}
+                          onViewDetails={handleViewDetails}
                         />
                       ))}
                     </div>
-                    
+
                     {totalPages > 1 && (
                       <div className="flex items-center justify-center gap-2 mt-6">
-                        <button 
+                        <button
                           onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                           disabled={currentPage === 1}
                           className="p-2 border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -709,17 +735,16 @@ const stats = {
                           <button
                             key={page}
                             onClick={() => setCurrentPage(page)}
-                            className={`w-10 h-10 text-sm font-medium rounded-md transition-colors ${
-                              currentPage === page
-                                ? 'bg-indigo-600 text-white'
-                                : 'border border-gray-200 text-gray-700 hover:bg-gray-50'
-                            }`}
+                            className={`w-10 h-10 text-sm font-medium rounded-md transition-colors ${currentPage === page
+                              ? 'bg-indigo-600 text-white'
+                              : 'border border-gray-200 text-gray-700 hover:bg-gray-50'
+                              }`}
                             aria-current={currentPage === page ? 'page' : undefined}
                           >
                             {page}
                           </button>
                         ))}
-                        <button 
+                        <button
                           onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                           disabled={currentPage === totalPages}
                           className="p-2 border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -750,7 +775,7 @@ const stats = {
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-lg font-semibold text-gray-900">Upcoming Bazaars</h2>
                 </div>
-                
+
                 {loading.participations ? (
                   <div className="space-y-3" role="status" aria-busy="true" aria-label="Loading participations">
                     {Array.from({ length: 3 }).map((_, i) => <SkeletonListItem key={i} />)}
@@ -763,10 +788,11 @@ const stats = {
                 ) : myParticipations.length > 0 ? (
                   <div className="space-y-3">
                     {myParticipations.map((participation, i) => (
-                      <ParticipationItem 
+                      <ParticipationItem
                         key={participation._id}
                         participation={participation}
                         index={i}
+                        onViewDetails={handleViewDetails}
                       />
                     ))}
                   </div>
@@ -805,10 +831,18 @@ const stats = {
         />
       )}
 
-      <ApplyBoothModal 
+      <ApplyBoothModal
         isOpen={isBoothModalOpen}
         onClose={() => setIsBoothModalOpen(false)}
         onSubmit={handleBoothApplicationSubmit}
+      />
+
+      <VendorDetailsModal
+        isOpen={detailsModal.isOpen}
+        onClose={() => setDetailsModal(prev => ({ ...prev, isOpen: false }))}
+        title={detailsModal.title}
+        data={detailsModal.data}
+        type={detailsModal.type}
       />
     </>
   );

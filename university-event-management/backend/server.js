@@ -42,17 +42,10 @@ const fileRoutes = require("./routes/files");
 const app = express();
 
 // ===== Security & Performance Middleware =====
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300, // Increased from 100 to 300 requests per windowMs for frequent page switching
-  message: "Too many requests from this IP, please try again later.",
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-});
-
 app.use(helmet()); // Add secure headers
-app.use(limiter); // Rate limiter
 app.use(morgan("combined")); // Log requests
+
+// CORS must be before rate limiter to ensure 429s have CORS headers
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:3000",
@@ -62,6 +55,16 @@ app.use(
     exposedHeaders: ["Authorization"],
   })
 );
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // Increased to 1000 to prevent blocking during development
+  message: "Too many requests from this IP, please try again later.",
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+app.use(limiter); // Rate limiter
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
