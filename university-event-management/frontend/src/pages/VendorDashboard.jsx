@@ -125,16 +125,6 @@ const BazaarCard = ({ bazaar, onApply, application, index }) => {
   const action = getActionState();
   const isDisabled = !canApply || (registrationClosed && !application);
 
-  const PaymentSum = async () => {  
-    try {
-      const data = await paymentSum.getPendingPaymentsSum();
-      return data.data.totalPendingAmount;
-    } catch (error) {
-      console.error("Failed to fetch payment sum:", error);
-      return 0; // or handle the error as needed
-    }
-  };
-
   const buttonStyles = {
     primary: 'bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800',
     success: 'bg-emerald-50 text-emerald-700 cursor-default',

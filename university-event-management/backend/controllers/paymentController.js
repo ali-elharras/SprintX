@@ -49,13 +49,10 @@ const calculateBazaarPayment = (boothSize, location) => {
 };
 
 // Calculate payment amount for booth application
-const calculateBoothPayment = (boothSize, location, durationWeeks) => {
+const calculateBoothPayment = (boothSize, durationWeeks) => {
   const basePrice =
     PRICING.booth.basePrice[boothSize] || PRICING.booth.basePrice["2x2"];
-  const locationMultiplier =
-    PRICING.booth.locationMultiplier[location] ||
-    PRICING.booth.locationMultiplier.default;
-  return Math.round(basePrice * locationMultiplier * durationWeeks * 100); // Convert to cents
+  return Math.round(basePrice * durationWeeks * 100); // Convert to cents
 };
 
 // @desc    Create Stripe checkout session for bazaar application
@@ -226,7 +223,6 @@ exports.createBoothCheckoutSession = async (req, res, next) => {
     // Calculate payment amount
     const amount = calculateBoothPayment(
       application.boothSize,
-      application.location,
       application.durationWeeks
     );
 
