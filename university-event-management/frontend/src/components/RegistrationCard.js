@@ -73,13 +73,13 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false, hideRat
   // Determine if ratings and comments should be shown
   const showRatingsAndComments = !isGymSession && !isCourtReservation;
 
-  // Check if cancellation is allowed (24 hours before event)
+  // Check if cancellation is allowed (2 weeks before event)
   const canCancel = () => {
     if (isPastEvent || registration.status === "cancelled") return false;
     
     const now = new Date();
     const eventStart = new Date(event.startDate);
-    const cancellationDeadline = new Date(eventStart.getTime() - 24 * 60 * 60 * 1000);
+    const cancellationDeadline = new Date(eventStart.getTime() - 14 * 24 * 60 * 60 * 1000);
     
     return now <= cancellationDeadline;
   };

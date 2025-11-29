@@ -511,13 +511,13 @@ const cancelRegistration = async (req, res) => {
     const now = new Date();
     const eventStart = new Date(event.startDate);
     
-    // Allow cancellation up to 24 hours before the event
-    const cancellationDeadline = new Date(eventStart.getTime() - 24 * 60 * 60 * 1000);
+    // Allow cancellation up to 2 weeks (14 days) before the event
+    const cancellationDeadline = new Date(eventStart.getTime() - 14 * 24 * 60 * 60 * 1000);
     
     if (now > cancellationDeadline) {
       return res.status(400).json({
         success: false,
-        message: "Cannot cancel registration within 24 hours of the event",
+        message: "Cannot cancel registration within 2 weeks of the event",
       });
     }
     

@@ -205,6 +205,11 @@ const MyRegistrations = () => {
     });
 
     const now = new Date();
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date(now);
+    endOfToday.setHours(23, 59, 59, 999);
+
     const upcoming = items.filter((item) => {
       const startDate = new Date(item.event.startDate);
       const endDate = new Date(item.event.endDate);
@@ -214,9 +219,21 @@ const MyRegistrations = () => {
         return endDate >= now;
       }
       
-      // For other events, use startDate
-      return startDate > now;
+      // For other events: include future events and same-day events
+      if (startDate >= now) return true;
+
+      // Check if it's a same-day event happening today
+      const sameDay =
+        startDate &&
+        endDate &&
+        startDate.getFullYear() === endDate.getFullYear() &&
+        startDate.getMonth() === endDate.getMonth() &&
+        startDate.getDate() === endDate.getDate();
+
+      const isToday = startDate >= startOfToday && startDate <= endOfToday;
+      return sameDay && isToday;
     });
+    
     const past = items.filter((item) => {
       const startDate = new Date(item.event.startDate);
       const endDate = new Date(item.event.endDate);
@@ -226,8 +243,8 @@ const MyRegistrations = () => {
         return endDate < now;
       }
       
-      // For other events, use startDate
-      return startDate <= now;
+      // For other events, use endDate to determine if past
+      return endDate < now;
     });
 
     setDisplayedItems({ upcoming, past });

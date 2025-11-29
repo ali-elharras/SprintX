@@ -41,7 +41,7 @@ const EventsFilterBar = ({
         <div style={{ marginBottom: theme.spacing[3] }}>
           <Input
             label=""
-            placeholder="🔍 Search events by title, description, or location..."
+            placeholder="🔍 Search events by name, professor, description, or location..."
             value={filters.search}
             onChange={(e) => onFilterChange("search", e.target.value)}
             style={{
