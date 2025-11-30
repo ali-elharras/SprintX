@@ -141,7 +141,9 @@ class EmailService {
           .card { background: #fff; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); overflow: hidden; }
           .header { background: linear-gradient(135deg,#667eea,#764ba2); color: #fff; padding: 24px; text-align: center; }
           .content { padding: 28px; }
-          .btn { display: inline-block; background: #667eea; color: #fff; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; }
+          .btn { display: inline-block; background-color: #667eea; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff !important; padding: 14px 32px; border-radius: 8px; text-decoration: none !important; font-weight: bold; font-size: 16px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); transition: transform 0.2s ease; }
+          .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4); }
+          .btn:visited { color: #ffffff !important; }
           .note { color: #666; font-size: 14px; margin-top: 16px; }
           .footer { color: #777; font-size: 12px; text-align: center; padding: 18px 24px; background: #fafbfc; }
           .link { color: #667eea; word-break: break-all; font-size: 13px; }
@@ -304,13 +306,15 @@ class EmailService {
             display: inline-block;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 15px 30px;
+            padding: 15px 40px;
             border-radius: 8px;
             text-decoration: none;
             font-weight: bold;
             font-size: 16px;
             margin: 20px 0;
             transition: transform 0.2s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            border: none;
           }
           .reset-button:hover {
             transform: translateY(-2px);
@@ -490,18 +494,25 @@ class EmailService {
           }
           .verify-button {
             display: inline-block;
+            background-color: #667eea;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white !important;
-            padding: 15px 30px;
+            color: #ffffff !important;
+            padding: 15px 40px;
             border-radius: 8px;
             text-decoration: none !important;
             font-weight: bold;
             font-size: 16px;
             margin: 20px 0;
             transition: transform 0.2s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            border: none;
           }
           .verify-button:hover {
             transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+          }
+          .verify-button:visited {
+            color: #ffffff !important;
           }
           .success {
             background: #d4edda;
@@ -704,18 +715,25 @@ class EmailService {
           }
           .verify-button {
             display: inline-block;
+            background-color: #667eea;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white !important;
-            padding: 15px 30px;
+            color: #ffffff !important;
+            padding: 15px 40px;
             border-radius: 8px;
             text-decoration: none !important;
             font-weight: bold;
             font-size: 16px;
             margin: 20px 0;
             transition: transform 0.2s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            border: none;
           }
           .verify-button:hover {
             transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+          }
+          .verify-button:visited {
+            color: #ffffff !important;
           }
           .success {
             background: #d4edda;
@@ -966,7 +984,7 @@ class EmailService {
             display: inline-block;
             padding: 12px 30px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white !important;
+            color: #ffffff !important;
             text-decoration: none;
             border-radius: 5px;
             font-weight: bold;
@@ -1502,7 +1520,7 @@ class EmailService {
             display: inline-block;
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
-            padding: 15px 30px;
+            padding: 15px 40px;
             border-radius: 8px;
             text-decoration: none;
             font-weight: bold;
