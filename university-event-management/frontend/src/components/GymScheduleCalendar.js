@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import EditSessionModal from "./EditSessionModal";
 import GymSessionDetailsModal from "./GymSessionDetailsModal";
 
-const GymScheduleCalendar = ({ sessions, year, month, onSessionUpdated }) => {
+const GymScheduleCalendar = ({ sessions, year, month, onSessionUpdated, userGymRegistrations = [] }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedSessionModal, setSelectedSessionModal] = useState(null);
   const auth = useAuth();
@@ -438,6 +438,7 @@ const GymScheduleCalendar = ({ sessions, year, month, onSessionUpdated }) => {
         }}
         isAdminOrEventsOffice={auth.isAdmin || auth.isEventsOffice}
         viewOnly={false}
+        userGymRegistrations={userGymRegistrations}
       />
     </div>
   );

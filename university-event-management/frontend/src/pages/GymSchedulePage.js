@@ -17,6 +17,7 @@ const GymSchedulePage = () => {
   const [viewMode, setViewMode] = useState("calendar"); // "calendar" or "list"
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [userGymRegistrations, setUserGymRegistrations] = useState([]);
 
   // Filters
   const [filters, setFilters] = useState({
@@ -87,13 +88,31 @@ const GymSchedulePage = () => {
   }, [viewMode, currentYear, currentMonth]);
 
   const fetchMyRegistrations = useCallback(async () => {
-    // Removed - page is now view-only
-  }, []);
+    // Only fetch if user is logged in and not admin/events office
+    if (!auth?.user || auth?.isAdmin || auth?.isEventsOffice) {
+      setUserGymRegistrations([]);
+      return;
+    }
+
+    try {
+      const response = await gymAPI.getMyRegistrations({ status: 'active' });
+      if (response.data.success) {
+        setUserGymRegistrations(response.data.data || []);
+      }
+    } catch (error) {
+      if (axios.isCancel(error)) {
+        console.log('Request cancelled:', error.message);
+        return;
+      }
+      console.error('Error fetching gym registrations:', error);
+      // Don't show error toast, just fail silently
+    }
+  }, [auth?.user, auth?.isAdmin, auth?.isEventsOffice]);
 
   const handleAfterRegister = useCallback(async () => {
-    // Removed - page is now view-only
     await fetchSessions();
-  }, [fetchSessions]);
+    await fetchMyRegistrations();
+  }, [fetchSessions, fetchMyRegistrations]);
 
   const cancelRegistration = useCallback(async ({ registrationId = null, sessionId = null } = {}) => {
     // Removed - page is now view-only
@@ -133,6 +152,7 @@ const GymSchedulePage = () => {
   useEffect(() => {
     fetchSessionTypes();
     fetchSessions();
+    fetchMyRegistrations();
     
     // Cleanup function to cancel requests on unmount
     return () => {
@@ -140,7 +160,7 @@ const GymSchedulePage = () => {
         cancelTokenRef.current.cancel('Component unmounted');
       }
     };
-  }, [currentMonth, currentYear, fetchSessionTypes, fetchSessions]);
+  }, [currentMonth, currentYear, fetchSessionTypes, fetchSessions, fetchMyRegistrations]);
 
   useEffect(() => {
     applyFilters();
@@ -459,7 +479,8 @@ const GymSchedulePage = () => {
             sessions={filteredSessions}
             year={currentYear}
             month={currentMonth}
-            onSessionUpdated={fetchSessions}
+            onSessionUpdated={handleAfterRegister}
+            userGymRegistrations={userGymRegistrations}
           />
         ) : (
           <div>
@@ -473,8 +494,9 @@ const GymSchedulePage = () => {
                   <GymSessionCard
                     key={session._id}
                     session={session}
-                    onUpdated={() => fetchSessions()}
+                    onUpdated={handleAfterRegister}
                     viewOnly={false}
+                    userGymRegistrations={userGymRegistrations}
                   />
                 ))}
               </div>

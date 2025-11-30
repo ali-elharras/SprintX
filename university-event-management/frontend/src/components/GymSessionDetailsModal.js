@@ -13,13 +13,30 @@ const styles = {
   actions: { display: 'flex', justifyContent: 'flex-end', gap: theme.spacing[2] },
 };
 
-const GymSessionDetailsModal = ({ session, isOpen, onClose, onSaved, isAdminOrEventsOffice = false, viewOnly = false }) => {
+const GymSessionDetailsModal = ({ session, isOpen, onClose, onSaved, isAdminOrEventsOffice = false, viewOnly = false, userGymRegistrations = [] }) => {
   const [isEditOpen, setIsEditOpen] = React.useState(false);
   const [registering, setRegistering] = React.useState(false);
+  const [hasRegistered, setHasRegistered] = React.useState(false);
   const { user } = useAuth();
 
-  // Check if user can register (not admin/events office viewing mode)
-  const canRegister = !isAdminOrEventsOffice && !viewOnly && user;
+  // Check if user can register (not admin/events office viewing mode and not already registered)
+  const canRegister = !isAdminOrEventsOffice && !viewOnly && user && !hasRegistered;
+  // Check if user is already registered for this session
+  React.useEffect(() => {
+    if (!user || !session || !userGymRegistrations) {
+      setHasRegistered(false);
+      return;
+    }
+
+    const isRegistered = userGymRegistrations.some(registration => {
+      const regSessionId = registration.gymSession?._id || registration.gymSession;
+      const currentSessionId = session._id;
+      const isActiveStatus = registration.status === 'active';
+      return regSessionId === currentSessionId && isActiveStatus;
+    });
+
+    setHasRegistered(isRegistered);
+  }, [user, userGymRegistrations, session]);
   
   // Debug logging
   React.useEffect(() => {
@@ -101,6 +118,27 @@ const GymSessionDetailsModal = ({ session, isOpen, onClose, onSaved, isAdminOrEv
         </div>
 
         <div style={styles.actions}>
+          {hasRegistered && !isAdminOrEventsOffice && (
+            <div
+              style={{
+                padding: '12px 24px',
+                borderRadius: '0.75rem',
+                fontWeight: 600,
+                fontSize: '1rem',
+                background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                color: '#15803d',
+                border: '2px solid #22c55e',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                boxShadow: '0 2px 8px rgba(34, 197, 94, 0.15)',
+              }}
+            >
+              <span style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>✓</span>
+              <span>Registered</span>
+            </div>
+          )}
           {canRegister && (
             <button 
               onClick={handleRegister} 

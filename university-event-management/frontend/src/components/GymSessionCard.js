@@ -8,7 +8,7 @@ import EditSessionModal from "./EditSessionModal";
 import GymSessionDetailsModal from "./GymSessionDetailsModal";
 import PaymentModal from "./PaymentModal";
 
-const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
+const GymSessionCard = ({ session, onUpdated, viewOnly = false, userGymRegistrations = [] }) => {
   const { user, isAdmin, isEventsOffice } = useAuth();
   const auth = { isAdmin, isEventsOffice };
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -17,6 +17,7 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [gymRegistrationData, setGymRegistrationData] = useState(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [hasRegistered, setHasRegistered] = useState(false);
 
   const getSessionTypeColor = (type) => {
     const colors = {
@@ -113,8 +114,26 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
     if (viewOnly) return false;
     if (!user) return false;
     if (isAdmin || isEventsOffice) return false; // Admins/Events Office don't register
+    if (hasRegistered) return false; // Already registered
     return session.status === 'active';
   };
+
+  // Check if user is already registered for this session
+  React.useEffect(() => {
+    if (!user || !session || !userGymRegistrations) {
+      setHasRegistered(false);
+      return;
+    }
+
+    const isRegistered = userGymRegistrations.some(registration => {
+      const regSessionId = registration.gymSession?._id || registration.gymSession;
+      const currentSessionId = session._id;
+      const isActiveStatus = registration.status === 'active';
+      return regSessionId === currentSessionId && isActiveStatus;
+    });
+
+    setHasRegistered(isRegistered);
+  }, [user, userGymRegistrations, session]);
 
   // Debug logging
   React.useEffect(() => {
@@ -302,6 +321,17 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
   const capacityPercentage = (session.currentParticipants / session.maxParticipants) * 100;
 
   const getRegisterButtonStyle = () => {
+    if (hasRegistered) {
+      return {
+        ...styles.registerButton,
+        background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+        color: '#15803d',
+        border: '2px solid #22c55e',
+        cursor: 'default',
+        boxShadow: '0 2px 8px rgba(34, 197, 94, 0.15)',
+      };
+    }
+
     if (!canUserRegister()) {
       return {
         ...styles.registerButton,
@@ -333,6 +363,12 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
   };
 
   const getRegisterButtonText = () => {
+    if (hasRegistered) return (
+      <>
+        <span style={{ fontSize: '1.25rem', fontWeight: 'bold', marginRight: '0.5rem' }}>✓</span>
+        <span>Registered</span>
+      </>
+    );
     if (viewOnly) return "View Only";
     if (!user) return "Login to Register";
     if (isAdmin || isEventsOffice) return "Admin View";
@@ -423,9 +459,11 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false }) => {
             }}
             onClick={(e) => {
               e.stopPropagation();
-              handleRegister();
+              if (!hasRegistered) {
+                handleRegister();
+              }
             }}
-            disabled={!canUserRegister() || registering}
+            disabled={!canUserRegister() || registering || hasRegistered}
           >
             {getRegisterButtonText()}
           </button>
