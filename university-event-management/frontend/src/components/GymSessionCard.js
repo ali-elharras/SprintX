@@ -4,6 +4,7 @@ import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { gymAPI } from "../services/api";
 import theme from "../theme";
+import Modal from "./Modal";
 import EditSessionModal from "./EditSessionModal";
 import GymSessionDetailsModal from "./GymSessionDetailsModal";
 import PaymentModal from "./PaymentModal";
@@ -18,6 +19,8 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false, userGymRegistrat
   const [gymRegistrationData, setGymRegistrationData] = useState(null);
   const [isHovered, setIsHovered] = useState(false);
   const [hasRegistered, setHasRegistered] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteReason, setDeleteReason] = useState("");
 
   const getSessionTypeColor = (type) => {
     const colors = {
@@ -107,6 +110,23 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false, userGymRegistrat
       if (onUpdated) {
         onUpdated(session._id);
       }
+    }
+  };
+
+  const handleDeleteSession = async () => {
+    try {
+      await gymAPI.cancelSession(session._id, { 
+        reason: deleteReason || "Session deleted by Events Office",
+        notifyParticipants: true 
+      });
+      toast.success("Session deleted successfully. Participants have been notified.");
+      if (onUpdated) onUpdated(session._id);
+      setShowDeleteConfirm(false);
+      setDeleteReason("");
+    } catch (err) {
+      console.error(err);
+      const errorMsg = err.response?.data?.message || "Failed to delete session";
+      toast.error(errorMsg);
     }
   };
 
@@ -469,23 +489,44 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false, userGymRegistrat
           </button>
 
           {(auth.isAdmin || auth.isEventsOffice) && (
-            <button
-              style={{
-                ...styles.detailsButton,
-                backgroundColor: theme.colors.background.paper,
-                minHeight: "48px",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                borderRadius: "0.75rem",
-                whiteSpace: "nowrap",
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsEditOpen(true);
-              }}
-            >
-              Edit
-            </button>
+            <>
+              <button
+                style={{
+                  ...styles.detailsButton,
+                  backgroundColor: theme.colors.background.paper,
+                  minHeight: "48px",
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  borderRadius: "0.75rem",
+                  whiteSpace: "nowrap",
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditOpen(true);
+                }}
+              >
+                Edit
+              </button>
+              <button
+                style={{
+                  ...styles.detailsButton,
+                  backgroundColor: theme.colors.error?.main || "#ef4444",
+                  color: theme.colors.text.white,
+                  border: "none",
+                  minHeight: "48px",
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  borderRadius: "0.75rem",
+                  whiteSpace: "nowrap",
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDeleteConfirm(true);
+                }}
+              >
+                Delete
+              </button>
+            </>
           )}
 
           <button
@@ -532,6 +573,49 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false, userGymRegistrat
         title={`Registration for ${session.title}`}
         type="gym"
       />
+    )}
+
+    {/* Delete Confirmation Modal */}
+    {showDeleteConfirm && (
+      <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} ariaLabel="Delete session confirmation">
+        <div>
+          <h3 style={{ ...theme.typography.h4, marginBottom: theme.spacing[4], color: theme.colors.text.primary }}>
+            Delete Gym Session
+          </h3>
+          <p style={{ marginBottom: theme.spacing[4], color: theme.colors.text.secondary }}>
+            Are you sure you want to delete "{session.title}"? All registered participants will be notified and their registrations will be cancelled.
+          </p>
+          
+          <div style={{ marginBottom: theme.spacing[4] }}>
+            <label style={{ display: "block", marginBottom: theme.spacing[1], fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.medium }}>
+              Deletion Reason (Optional)
+            </label>
+            <textarea
+              style={{ ...theme.components.input.base, width: "100%", height: 100, resize: "vertical", padding: theme.spacing[2] }}
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              placeholder="Enter reason for deletion (will be included in participant notifications)..."
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: theme.spacing[2], justifyContent: "flex-end" }}>
+            <button onClick={() => setShowDeleteConfirm(false)} style={{ ...theme.components.button.secondary }}>
+              Cancel
+            </button>
+            <button 
+              onClick={handleDeleteSession} 
+              style={{ 
+                ...theme.components.button.secondary,
+                backgroundColor: theme.colors.error?.main || "#ef4444",
+                color: theme.colors.text.white,
+                border: "none"
+              }}
+            >
+              Confirm Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
     )}
     </>
   );

@@ -85,6 +85,20 @@ const EditSessionModal = ({ session, isOpen, onClose, onSaved }) => {
 
   const handleSave = async () => {
     try {
+      // Validate dates
+      const startDate = new Date(form.startDate);
+      const endDate = new Date(form.endDate);
+      
+      if (!form.startDate || !form.endDate) {
+        toast.error("Start date and end date are required");
+        return;
+      }
+      
+      if (endDate < startDate) {
+        toast.error("End date must be on or after the start date");
+        return;
+      }
+      
       // Only send the fields that can be edited
       const payload = {
         startDate: form.startDate,
@@ -192,6 +206,7 @@ const EditSessionModal = ({ session, isOpen, onClose, onSaved }) => {
               type="date" 
               style={styles.input} 
               value={form.endDate} 
+              min={form.startDate}
               onChange={(e)=>handleChange('endDate', e.target.value)} 
             />
           </div>

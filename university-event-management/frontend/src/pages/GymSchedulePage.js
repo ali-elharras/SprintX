@@ -922,6 +922,7 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
                   style={inputStyle} 
                   type="date" 
                   value={form.endDate} 
+                  min={form.startDate}
                   onChange={(e)=>{ handleChange('endDate', e.target.value); clearFieldError('endDate'); }} 
                 />
                 {formErrors.endDate && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.endDate}</div>}

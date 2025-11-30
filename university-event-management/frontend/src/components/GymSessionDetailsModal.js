@@ -17,6 +17,8 @@ const GymSessionDetailsModal = ({ session, isOpen, onClose, onSaved, isAdminOrEv
   const [isEditOpen, setIsEditOpen] = React.useState(false);
   const [registering, setRegistering] = React.useState(false);
   const [hasRegistered, setHasRegistered] = React.useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const [deleteReason, setDeleteReason] = React.useState("");
   const { user } = useAuth();
 
   // Check if user can register (not admin/events office viewing mode and not already registered)
@@ -81,7 +83,67 @@ const GymSessionDetailsModal = ({ session, isOpen, onClose, onSaved, isAdminOrEv
     }
   };
 
+  const handleDeleteSession = async () => {
+    try {
+      await gymAPI.cancelSession(session._id, { 
+        reason: deleteReason || "Session deleted by Events Office",
+        notifyParticipants: true 
+      });
+      toast.success("Session deleted successfully. Participants have been notified.");
+      if (onSaved) onSaved(session._id);
+      setShowDeleteConfirm(false);
+      setDeleteReason("");
+      onClose();
+    } catch (err) {
+      console.error(err);
+      const errorMsg = err.response?.data?.message || "Failed to delete session";
+      toast.error(errorMsg);
+    }
+  };
+
   if (!isOpen || !session) return null;
+  
+  if (showDeleteConfirm) {
+    return (
+      <Modal isOpen={isOpen} onClose={() => setShowDeleteConfirm(false)} ariaLabel="Delete session confirmation">
+        <div>
+          <h3 style={styles.header}>Delete Gym Session</h3>
+          <p style={{ marginBottom: theme.spacing[4], color: theme.colors.text.secondary }}>
+            Are you sure you want to delete "{session.title}"? All registered participants will be notified and their registrations will be cancelled.
+          </p>
+          
+          <div style={{ marginBottom: theme.spacing[4] }}>
+            <label style={{ display: "block", marginBottom: theme.spacing[1], fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.medium }}>
+              Deletion Reason (Optional)
+            </label>
+            <textarea
+              style={{ ...theme.components.input.base, width: "100%", height: 100, resize: "vertical", padding: theme.spacing[2] }}
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              placeholder="Enter reason for deletion (will be included in participant notifications)..."
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: theme.spacing[2], justifyContent: "flex-end" }}>
+            <button onClick={() => setShowDeleteConfirm(false)} style={{ ...theme.components.button.secondary }}>
+              Cancel
+            </button>
+            <button 
+              onClick={handleDeleteSession} 
+              style={{ 
+                ...theme.components.button.secondary,
+                backgroundColor: theme.colors.error?.main || "#ef4444",
+                color: theme.colors.text.white,
+                border: "none"
+              }}
+            >
+              Confirm Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
   
   return (
     <Modal isOpen={isOpen} onClose={onClose} ariaLabel={`Details for ${session.title}`}>
@@ -153,7 +215,20 @@ const GymSessionDetailsModal = ({ session, isOpen, onClose, onSaved, isAdminOrEv
             </button>
           )}
           {isAdminOrEventsOffice && !viewOnly && (
-            <button onClick={() => setIsEditOpen(true)} style={{ ...theme.components.button.primary }}>Edit</button>
+            <>
+              <button onClick={() => setIsEditOpen(true)} style={{ ...theme.components.button.primary }}>Edit</button>
+              <button 
+                onClick={() => setShowDeleteConfirm(true)} 
+                style={{ 
+                  ...theme.components.button.secondary,
+                  backgroundColor: theme.colors.error?.main || "#ef4444",
+                  color: theme.colors.text.white,
+                  border: "none"
+                }}
+              >
+                Delete
+              </button>
+            </>
           )}
           <button onClick={onClose} style={{ ...theme.components.button.secondary }}>Close</button>
         </div>
