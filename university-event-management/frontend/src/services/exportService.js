@@ -1,8 +1,10 @@
 import { registrationAPI } from './api';
 import * as XLSX from 'xlsx';
+import toast from 'react-hot-toast';
 
 export const exportRegistrationsToXLSX = async (event) => {
   if (!event || !event._id) {
+    toast.error("Event is not valid.");
     throw new Error("Event is not valid.");
   }
 
@@ -11,9 +13,7 @@ export const exportRegistrationsToXLSX = async (event) => {
     const registrations = response.data?.data || [];
 
     if (registrations.length === 0) {
-      // Using toast notification for better user feedback
-      const toast = require('react-hot-toast');
-      toast.error("No registrations to export for this event.");
+      toast.info("No users have registered for this event yet.");
       return;
     }
 
@@ -36,10 +36,10 @@ export const exportRegistrationsToXLSX = async (event) => {
     const fileName = `Registrations_${eventName.replace(/ /g, '_')}.xlsx`;
 
     XLSX.writeFile(workbook, fileName);
+    toast.success(`Successfully exported ${registrations.length} registration(s).`);
 
   } catch (error) {
     console.error("Failed to export registrations:", error);
-    const toast = require('react-hot-toast');
     toast.error(error.message || "Failed to export registrations.");
   }
 };

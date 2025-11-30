@@ -1475,6 +1475,12 @@ const Workshops = () => {
   // 3. View Participants Handler
   const handleViewParticipants = useCallback(
     async (workshop) => {
+      // Check if workshop has been published (has a publishedEventId)
+      if (!workshop.publishedEventId && !workshop._id) {
+        toast.error("This workshop hasn't been published yet, so there are no participants.");
+        return;
+      }
+
       setSelectedWorkshopForParticipants(workshop);
       setParticipantsModalOpen(true);
       setLoadingParticipants(true);
@@ -1489,10 +1495,13 @@ const Workshops = () => {
           headers["Authorization"] = `Bearer ${token}`;
         }
 
+        // Use publishedEventId if available, otherwise fall back to workshop._id
+        const eventId = workshop.publishedEventId || workshop._id;
+        
         const response = await fetch(
           `${
             process.env.REACT_APP_API_URL || "http://localhost:8080/api"
-          }/events/${workshop._id}/registrations`,
+          }/events/${eventId}/registrations`,
           {
             headers,
           }
@@ -1508,6 +1517,7 @@ const Workshops = () => {
         setParticipants(data.registrations || []);
       } catch (e) {
         console.error("Error fetching participants:", e);
+        toast.error("Failed to load participants");
         setParticipants([]);
       } finally {
         setLoadingParticipants(false);

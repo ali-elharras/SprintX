@@ -47,6 +47,8 @@ const EventEditModal = ({ open, event, onClose, onSaved }) => {
   const tomorrowString = formatDateTimeLocal(tomorrow);
 
   useEffect(() => {
+    console.log('EventEditModal received event:', event);
+    console.log('Event ID:', event?._id || event?.id);
     setForm(event ? {
       name: event.name || event.title || '',
       description: event.description || '',
@@ -82,9 +84,24 @@ const EventEditModal = ({ open, event, onClose, onSaved }) => {
       } else {
         original = event[k];
       }
+      
+      // Convert numeric fields properly
+      let formValue = form[k];
+      let origValue = original;
+      
+      if (k === 'maxParticipants' || k === 'cost') {
+        formValue = Number(formValue);
+        origValue = Number(origValue || 0);
+      }
+      
       // normalized compare for dates
-      const origVal = original ? (typeof original === 'string' && original.length > 10 ? original.slice(0,16) : original) : original;
-      if ((form[k] || '') !== (origVal || '')) changed[k] = form[k];
+      if (typeof origValue === 'string' && origValue.length > 10) {
+        origValue = origValue.slice(0, 16);
+      }
+      
+      if (formValue !== origValue) {
+        changed[k] = formValue;
+      }
     });
 
     if (Object.keys(changed).length === 0) {
@@ -99,25 +116,35 @@ const EventEditModal = ({ open, event, onClose, onSaved }) => {
 
     setSaving(true);
     try {
-  await eventAPI.updateEvent(event._id || event.id, changed);
-  setSaving(false);
-  try { toast.success('Trip updated successfully'); } catch (e) {}
-  onSaved && onSaved();
-  onClose && onClose();
+      const eventId = event._id || event.id;
+      console.log('Attempting to update event with ID:', eventId);
+      console.log('Updating event with changes:', changed);
+      await eventAPI.updateEvent(eventId, changed);
+      setSaving(false);
+      const eventType = event?.type || 'event';
+      const eventTypeLabel = eventType.charAt(0).toUpperCase() + eventType.slice(1);
+      try { toast.success(`${eventTypeLabel} updated successfully`); } catch (e) {}
+      onSaved && onSaved();
+      onClose && onClose();
     } catch (err) {
-      console.error('Failed to update event', err);
-      setError(err?.response?.data?.message || 'Failed to save changes');
+      console.error('Failed to update event:', err);
+      console.error('Error response:', err?.response?.data);
+      const errorMsg = err?.response?.data?.message || err?.response?.data?.error || err.message || 'Failed to save changes';
+      setError(errorMsg);
       setSaving(false);
     }
   };
 
+  const eventType = event?.type || 'trip';
+  const eventTypeLabel = eventType.charAt(0).toUpperCase() + eventType.slice(1);
+
   return ReactDOM.createPortal(
     <div style={modalStyles.overlay}>
       <div style={modalStyles.container}>
-        <div style={modalStyles.title}>Edit Trip</div>
+        <div style={modalStyles.title}>Edit {eventTypeLabel}</div>
         {error && <div style={{ color: theme.colors.error.main, marginBottom: theme.spacing[2] }}>{error}</div>}
         <form onSubmit={handleSave}>
-          <label style={modalStyles.label}>Trip name</label>
+          <label style={modalStyles.label}>{eventTypeLabel} name</label>
           <input style={modalStyles.input} value={form.name} onChange={(e)=>handleChange('name', e.target.value)} />
 
           <label style={modalStyles.label}>Short description</label>

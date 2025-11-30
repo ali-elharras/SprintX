@@ -2031,6 +2031,10 @@ const EventsPage = () => {
   const [editTripOpen, setEditTripOpen] = useState(false);
   const [editingTrip, setEditingTrip] = useState(null);
 
+  // Generic event edit states (for booths and other event types)
+  const [editEventOpen, setEditEventOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
+
   // Bazaar delete state
   const [deleteBazaarCandidate, setDeleteBazaarCandidate] = useState(null);
 
@@ -3573,11 +3577,7 @@ const EventsPage = () => {
                       onArchive={() => handleArchive(event._id, true)}
                       onUnarchive={() => handleArchive(event._id, false)}
                       onExportRegistrations={handleExportRegistrations}
-                      onRestrict={
-                        isEventsOffice
-                          ? () => handleOpenRestrictModal(event)
-                          : null
-                      }
+                      onRestrict={handleOpenRestrictModal}
                       userRegistrations={userRegistrations}
                       onViewDetails={(evt) => {
                         setSelectedEventDetails(evt);
@@ -3602,6 +3602,10 @@ const EventsPage = () => {
                       setEditingTrip(trip);
                       setEditTripOpen(true);
                     }}
+                    onEdit={(event) => {
+                      setEditingEvent(event);
+                      setEditEventOpen(true);
+                    }}
                     showArchiveButton={
                       isEventsOffice &&
                       isPast &&
@@ -3620,16 +3624,8 @@ const EventsPage = () => {
                         ? () => handleArchive(event._id, false)
                         : null
                     }
-                    onExportRegistrations={
-                      isEventsOffice
-                        ? () => handleExportRegistrations(event)
-                        : null
-                    }
-                    onRestrict={
-                      isEventsOffice
-                        ? () => handleOpenRestrictModal(event)
-                        : null
-                    }
+                    onExportRegistrations={handleExportRegistrations}
+                    onRestrict={handleOpenRestrictModal}
                     userRegistrations={userRegistrations}
                     onViewDetails={(evt) => {
                       setSelectedEventDetails(evt);
@@ -4764,6 +4760,18 @@ const EventsPage = () => {
             onClose={() => setEditTripOpen(false)}
             onSaved={() => {
               setEditTripOpen(false);
+              fetchEvents();
+            }}
+          />
+        )}
+        {/* Generic Event Edit Modal (for booths and other event types) */}
+        {editEventOpen && (
+          <EventEditModal
+            open={editEventOpen}
+            event={editingEvent}
+            onClose={() => setEditEventOpen(false)}
+            onSaved={() => {
+              setEditEventOpen(false);
               fetchEvents();
             }}
           />
