@@ -13,7 +13,10 @@ const BoothPollManager = ({ onPollCreated }) => {
     durationWeeks: 1,
     boothSize: '2x2',
     pollEndDate: '',
-    vendors: [{ companyName: '', description: '' }],
+    vendors: [
+      { companyName: '', description: '' },
+      { companyName: '', description: '' }
+    ],
   });
 
   const handleInputChange = (e) => {
@@ -41,6 +44,10 @@ const BoothPollManager = ({ onPollCreated }) => {
   };
 
   const removeVendorOption = (index) => {
+    if (formData.vendors.length <= 2) {
+      toast.error('A poll must have at least two vendor options');
+      return;
+    }
     setFormData((prev) => ({
       ...prev,
       vendors: prev.vendors.filter((_, i) => i !== index),
@@ -59,8 +66,8 @@ const BoothPollManager = ({ onPollCreated }) => {
       toast.error('Poll description is required');
       return;
     }
-    if (formData.vendors.length === 0) {
-      toast.error('At least one vendor option is required');
+    if (formData.vendors.length < 2) {
+      toast.error('At least two vendor options are required for a poll');
       return;
     }
     
@@ -109,7 +116,10 @@ const BoothPollManager = ({ onPollCreated }) => {
         durationWeeks: 1,
         boothSize: '2x2',
         pollEndDate: '',
-        vendors: [{ companyName: '', description: '' }],
+        vendors: [
+          { companyName: '', description: '' },
+          { companyName: '', description: '' }
+        ],
       });
       
       // Call the callback to refresh polls

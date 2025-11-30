@@ -8,11 +8,11 @@ exports.createBoothPoll = async (req, res) => {
   try {
     const { title, description, location, startDate, endDate, durationWeeks, boothSize, vendors, pollEndDate } = req.body;
 
-    // Validate that at least one vendor is provided
-    if (!vendors || vendors.length === 0) {
+    // Validate that at least two vendors are provided
+    if (!vendors || vendors.length < 2) {
       return res.status(400).json({
         success: false,
-        message: 'At least one vendor option is required',
+        message: 'At least two vendor options are required for a poll',
       });
     }
 
