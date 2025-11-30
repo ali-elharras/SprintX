@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { boothPollAPI } from '../services/api';
 import theme from '../theme';
 
-const BoothPollManager = () => {
+const BoothPollManager = ({ onPollCreated }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -111,6 +111,11 @@ const BoothPollManager = () => {
         pollEndDate: '',
         vendors: [{ companyName: '', description: '' }],
       });
+      
+      // Call the callback to refresh polls
+      if (onPollCreated) {
+        onPollCreated();
+      }
     } catch (error) {
       console.error('Poll creation error:', error);
       const errorMsg = error.response?.data?.message || error.message || 'Failed to create poll';

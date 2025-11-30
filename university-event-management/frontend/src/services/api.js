@@ -720,6 +720,11 @@ export const boothPollAPI = {
       api.post(`/booth-polls/${pollId}/vote`, { vendorIndex })
     ),
 
+  removeVoteFromPoll: (pollId) =>
+    retryRequest(async () =>
+      api.delete(`/booth-polls/${pollId}/vote`)
+    ),
+
   closePoll: (pollId) =>
     retryRequest(async () => api.post(`/booth-polls/${pollId}/close`, {})),
 

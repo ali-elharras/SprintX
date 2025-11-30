@@ -11,6 +11,13 @@ const BoothPolls = () => {
   const { user } = useAuth();
   const isEventsOffice = user?.role === 'events_office';
   const [pollsManagerOpen, setPollsManagerOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const handlePollCreated = () => {
+    setPollsManagerOpen(false);
+    toast.success("Booth poll created successfully!");
+    setRefreshTrigger(prev => prev + 1); // Trigger refresh
+  };
 
   return (
     <>
@@ -86,10 +93,7 @@ const BoothPolls = () => {
           {pollsManagerOpen && (
             <div style={{ marginBottom: theme.spacing[4], padding: theme.spacing[4], backgroundColor: theme.colors.background.default, borderRadius: theme.borderRadius.base }}>
               <BoothPollManager
-                onPollCreated={() => {
-                  setPollsManagerOpen(false);
-                  toast.success("Booth poll created successfully!");
-                }}
+                onPollCreated={handlePollCreated}
                 onCancel={() => setPollsManagerOpen(false)}
               />
             </div>
@@ -117,7 +121,7 @@ const BoothPolls = () => {
         >
           Active Polls
         </h2>
-        <BoothPollVoting />
+        <BoothPollVoting refreshTrigger={refreshTrigger} />
       </div>
     </div>
       </div>

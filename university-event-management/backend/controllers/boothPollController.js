@@ -138,6 +138,57 @@ exports.getBoothPoll = async (req, res) => {
   }
 };
 
+// @desc    Remove vote from a booth poll
+// @route   DELETE /api/booth-polls/:id/vote
+// @access  Private (Authenticated users)
+exports.removeVoteFromPoll = async (req, res) => {
+  try {
+    const poll = await BoothPoll.findById(req.params.id);
+
+    if (!poll) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booth poll not found',
+      });
+    }
+
+    // Find existing vote
+    const existingVote = poll.votes.find((v) => v.user.toString() === req.user._id.toString());
+    
+    if (!existingVote) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have not voted on this poll',
+      });
+    }
+
+    // Remove vote count from vendor
+    poll.vendors[existingVote.vendorIndex].votes = Math.max(0, poll.vendors[existingVote.vendorIndex].votes - 1);
+    
+    // Remove vote from poll
+    poll.votes = poll.votes.filter((v) => v.user.toString() !== req.user._id.toString());
+
+    await poll.save();
+    const populatedPoll = await poll.populate('createdBy', 'firstName lastName email');
+
+    const pollObj = populatedPoll.toObject();
+    pollObj.userVote = null;
+
+    res.status(200).json({
+      success: true,
+      message: 'Vote removed successfully',
+      data: pollObj,
+    });
+  } catch (error) {
+    console.error('Error removing vote from poll:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error removing vote from poll',
+      error: error.message,
+    });
+  }
+};
+
 // @desc    Vote on a booth poll (Students, Staff, TA, Professor)
 // @route   POST /api/booth-polls/:id/vote
 // @access  Private (Authenticated users)
