@@ -1498,26 +1498,39 @@ const Workshops = () => {
         // Use publishedEventId if available, otherwise fall back to workshop._id
         const eventId = workshop.publishedEventId || workshop._id;
         
+        console.log('Fetching participants for event ID:', eventId);
+        
         const response = await fetch(
           `${
             process.env.REACT_APP_API_URL || "http://localhost:8080/api"
-          }/events/${eventId}/registrations`,
+          }/registrations/event/${eventId}`,
           {
             headers,
           }
         );
 
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error('API response not OK:', response.status, errorText);
           throw new Error(
             `Failed to fetch participants: ${response.statusText}`
           );
         }
 
         const data = await response.json();
-        setParticipants(data.registrations || []);
+        console.log('Participants API response:', data);
+        
+        // Handle different response formats
+        const participantsList = data.registrations || data.data || data || [];
+        setParticipants(participantsList);
+        
+        if (participantsList.length === 0) {
+          toast.info("No participants have registered for this workshop yet.");
+        }
       } catch (e) {
         console.error("Error fetching participants:", e);
-        toast.error("Failed to load participants");
+        console.error("Error details:", e.message);
+        toast.error("Failed to load participants: " + (e.message || "Unknown error"));
         setParticipants([]);
       } finally {
         setLoadingParticipants(false);
