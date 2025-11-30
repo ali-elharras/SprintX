@@ -101,6 +101,15 @@ const UploadedFilesPage = () => {
     return date.toLocaleDateString() + " " + date.toLocaleTimeString();
   };
 
+  const isApplicationCategory = (category) => {
+    if (!category) return false;
+    try {
+      return category.toString().toLowerCase().includes("application");
+    } catch (e) {
+      return false;
+    }
+  };
+
   const filteredFiles = files.filter((file) => {
     if (filter === "all") return true;
     return file.type === filter;
@@ -341,8 +350,10 @@ const UploadedFilesPage = () => {
                     style={{
                       display: "inline-block",
                       padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
-                      backgroundColor: theme.colors.primary.light,
-                      color: theme.colors.primary.main,
+                      backgroundColor: isApplicationCategory(file.category)
+                        ? theme.colors.primary.main
+                        : theme.colors.primary.light,
+                      color: isApplicationCategory(file.category) ? "#ffffff" : theme.colors.primary.main,
                       borderRadius: theme.borderRadius.full,
                       fontSize: theme.typography.fontSize.xs,
                       fontWeight: theme.typography.fontWeight.semibold,
