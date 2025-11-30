@@ -3448,12 +3448,12 @@ const EventsPage = () => {
             filteredCount={filteredEvents.length}
             onClearFilters={() => {
               setFilters({
+                type: "",
                 search: "",
-                type: "all",
-                view: "all",
-                sortOrder: "asc",
+                view: "upcoming",
                 dateFrom: "",
                 dateTo: "",
+                sortOrder: "asc",
               });
             }}
             onRefresh={fetchEvents}
