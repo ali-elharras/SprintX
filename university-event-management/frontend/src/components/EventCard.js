@@ -934,7 +934,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
               </>
             ) : isEventsOffice ? (
               <>
-                {(isOwner || onEdit || onEditTrip || onEditConference) && !hasStarted && normalizedEvent.type !== 'workshop' && (
+                {(isOwner || onEdit || onEditTrip || onEditConference) && !hasStarted && normalizedEvent.type !== 'workshop' && normalizedEvent.type !== 'booth' && (
                   <Button
                     variant="primary"
                     onClick={(e) => {
