@@ -391,7 +391,7 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false, userGymRegistrat
     );
     if (viewOnly) return "View Only";
     if (!user) return "Login to Register";
-    if (isAdmin || isEventsOffice) return "Admin View";
+
     if (registering) return "Registering...";
     if (session.isFull && !session.waitlistEnabled) return "Full";
     if (session.isFull && session.waitlistEnabled) return "Join Waitlist";
@@ -468,25 +468,27 @@ const GymSessionCard = ({ session, onUpdated, viewOnly = false, userGymRegistrat
             gap: "0.75rem",
           }}
         >
-          <button
-            style={{
-              ...getRegisterButtonStyle(),
-              minHeight: "48px",
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              borderRadius: "0.75rem",
-              whiteSpace: "nowrap",
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!hasRegistered) {
-                handleRegister();
-              }
-            }}
-            disabled={!canUserRegister() || registering || hasRegistered}
-          >
-            {getRegisterButtonText()}
-          </button>
+          {!auth.isAdmin && !auth.isEventsOffice && (
+            <button
+              style={{
+                ...getRegisterButtonStyle(),
+                minHeight: "48px",
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                borderRadius: "0.75rem",
+                whiteSpace: "nowrap",
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!hasRegistered) {
+                  handleRegister();
+                }
+              }}
+              disabled={!canUserRegister() || registering || hasRegistered}
+            >
+              {getRegisterButtonText()}
+            </button>
+          )}
 
           {(auth.isAdmin || auth.isEventsOffice) && (
             <>
