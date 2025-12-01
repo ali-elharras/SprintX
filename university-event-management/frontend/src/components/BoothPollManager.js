@@ -21,10 +21,16 @@ const BoothPollManager = ({ onPollCreated }) => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => {
+      const newValues = { ...prev, [name]: value };
+      if (name === 'startDate') {
+        // if startDate is cleared or is now before pollEndDate, clear pollEndDate
+        if (!value || (prev.pollEndDate && new Date(value) < new Date(prev.pollEndDate))) {
+          newValues.pollEndDate = '';
+        }
+      }
+      return newValues;
+    });
   };
 
   const handleVendorChange = (index, field, value) => {
@@ -82,6 +88,29 @@ const BoothPollManager = ({ onPollCreated }) => {
       toast.error('Start date and poll end date are required');
       return;
     }
+
+    const startDateObj = new Date(formData.startDate);
+    const pollEndDateObj = new Date(formData.pollEndDate);
+    const now = new Date();
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0,0,0,0);
+
+    if (startDateObj < tomorrow) {
+        toast.error('Start date must be tomorrow or later.');
+        return;
+    }
+    
+    if (pollEndDateObj > startDateObj) {
+        toast.error('Voting must end on or before the event starts.');
+        return;
+    }
+
+    if (pollEndDateObj < now) {
+      toast.error('Poll end date cannot be in the past.');
+      return;
+    }
     
     // Calculate end date from start date and duration
     const startDate = new Date(formData.startDate);
@@ -135,6 +164,14 @@ const BoothPollManager = ({ onPollCreated }) => {
     }
   };
 
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const minStartDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}T00:00`;
+
+  const now = new Date();
+  const minPollEndDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+
   return (
     <div
       style={{
@@ -172,7 +209,7 @@ const BoothPollManager = ({ onPollCreated }) => {
 
         <div>
           <label style={{ fontWeight: 600, color: theme.colors.text.primary, marginBottom: theme.spacing[2], display: 'block' }}>
-            Description *
+            Description
           </label>
           <textarea
             name="description"
@@ -244,6 +281,7 @@ const BoothPollManager = ({ onPollCreated }) => {
               type="datetime-local"
               name="startDate"
               value={formData.startDate}
+              min={minStartDate}
               onChange={handleInputChange}
               style={{
                 width: '100%',
@@ -313,12 +351,16 @@ const BoothPollManager = ({ onPollCreated }) => {
               name="pollEndDate"
               value={formData.pollEndDate}
               onChange={handleInputChange}
+              min={minPollEndDate}
+              max={formData.startDate || ''}
+              disabled={!formData.startDate}
               style={{
                 width: '100%',
                 padding: theme.spacing[2],
                 border: `1px solid ${theme.colors.border.light}`,
                 borderRadius: theme.borderRadius.sm,
                 fontSize: '1rem',
+                backgroundColor: !formData.startDate ? '#f3f4f6' : 'white',
               }}
             />
           </div>
