@@ -84,7 +84,7 @@ const AppLayout = () => {
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return <div>Loading...</div>;
-  if (!isAuthenticated) return <Navigate to="/" replace />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
   return children;
 };
 
@@ -205,8 +205,8 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { 
-        path: "/dashboard", 
+      {
+        path: "/dashboard",
         element: (() => {
           const DashboardWrapper = () => {
             const { isVendor } = useAuth();
@@ -214,7 +214,7 @@ const router = createBrowserRouter([
             return <Dashboard />;
           };
           return <DashboardWrapper />;
-        })()
+        })(),
       },
       { path: "/events", element: <EventsPage /> },
       { path: "/events/:id", element: <EventDetailsPage /> },

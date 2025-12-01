@@ -260,13 +260,27 @@ const SignupPage = () => {
   const navigate = useNavigate();
   const { registerUser, registerVendor, isLoading } = useAuth();
 
-  const [selectedRoleIndex, setSelectedRoleIndex] = useState(0);
-  const [showRegistration, setShowRegistration] = useState(false);
+  const [selectedRoleIndex, setSelectedRoleIndex] = useState(() => {
+    const savedIndex = localStorage.getItem("signupRoleIndex");
+    return savedIndex ? parseInt(savedIndex) : 0;
+  });
+  const [showRegistrationState, setShowRegistrationState] = useState(() => {
+    const saved = localStorage.getItem("signupFormVisible");
+    return saved === "true";
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // File upload states for vendors
   const [taxCard, setTaxCard] = useState(null);
   const [companyLogo, setCompanyLogo] = useState(null);
+
+  // Wrapper to persist showRegistration state
+  const setShowRegistration = (value) => {
+    localStorage.setItem("signupFormVisible", String(value));
+    setShowRegistrationState(value);
+  };
+
+  const showRegistration = showRegistrationState;
 
   const selectedRole = roles[selectedRoleIndex];
   const isVendor = selectedRole.id === "vendor";
@@ -292,14 +306,22 @@ const SignupPage = () => {
   );
 
   const handlePrevious = () => {
-    setSelectedRoleIndex((prev) => (prev === 0 ? roles.length - 1 : prev - 1));
+    setSelectedRoleIndex((prev) => {
+      const newIndex = prev === 0 ? roles.length - 1 : prev - 1;
+      localStorage.setItem("signupRoleIndex", String(newIndex));
+      return newIndex;
+    });
     reset();
     setTaxCard(null);
     setCompanyLogo(null);
   };
 
   const handleNext = () => {
-    setSelectedRoleIndex((prev) => (prev === roles.length - 1 ? 0 : prev + 1));
+    setSelectedRoleIndex((prev) => {
+      const newIndex = prev === roles.length - 1 ? 0 : prev + 1;
+      localStorage.setItem("signupRoleIndex", String(newIndex));
+      return newIndex;
+    });
     reset();
     setTaxCard(null);
     setCompanyLogo(null);
@@ -320,6 +342,18 @@ const SignupPage = () => {
       setIsSubmitting(true);
 
       if (isVendor) {
+        // Validate required files
+        if (!taxCard) {
+          toast.error("Tax Card is required");
+          setIsSubmitting(false);
+          return;
+        }
+        if (!companyLogo) {
+          toast.error("Company Logo is required");
+          setIsSubmitting(false);
+          return;
+        }
+
         // Vendor registration
         const formData = new FormData();
 
@@ -362,10 +396,14 @@ const SignupPage = () => {
         const result = await registerVendor(formData);
 
         if (result.success) {
+          localStorage.removeItem("signupFormVisible");
+          localStorage.removeItem("signupRoleIndex");
           toast.success("Vendor registration successful! Welcome to SprintX!");
           navigate("/vendor-dashboard");
         } else {
           toast.error(result.error || "Registration failed. Please try again.");
+          setIsSubmitting(false);
+          return;
         }
       } else {
         // User registration
@@ -393,6 +431,8 @@ const SignupPage = () => {
         const result = await registerUser(submitData);
 
         if (result.success) {
+          localStorage.removeItem("signupFormVisible");
+          localStorage.removeItem("signupRoleIndex");
           // Check if verification email is required
           if (
             result.requiresVerificationEmail ||
@@ -425,6 +465,8 @@ const SignupPage = () => {
           }
 
           toast.error(result.error || "Registration failed. Please try again.");
+          setIsSubmitting(false);
+          return;
         }
       }
     } catch (error) {
@@ -562,7 +604,13 @@ const SignupPage = () => {
                         style={{ position: "absolute", inset: 0 }}
                       >
                         <motion.div
-                          onClick={() => setShowRegistration(true)}
+                          onClick={() => {
+                            localStorage.setItem(
+                              "signupRoleIndex",
+                              String(selectedRoleIndex)
+                            );
+                            setShowRegistration(true);
+                          }}
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           style={{
@@ -721,7 +769,13 @@ const SignupPage = () => {
                     </p>
 
                     <div
-                      onClick={() => setShowRegistration(true)}
+                      onClick={() => {
+                        localStorage.setItem(
+                          "signupRoleIndex",
+                          String(selectedRoleIndex)
+                        );
+                        setShowRegistration(true);
+                      }}
                       style={{
                         background: theme.colors.primary.gradient,
                         color: "#ffffff",
@@ -772,6 +826,10 @@ const SignupPage = () => {
                   </span>
                   <Link
                     to="/login"
+                    onClick={() => {
+                      localStorage.removeItem("signupFormVisible");
+                      localStorage.removeItem("signupRoleIndex");
+                    }}
                     style={{
                       color: theme.colors.primary.main,
                       textDecoration: "none",
@@ -793,7 +851,11 @@ const SignupPage = () => {
                 {/* Header */}
                 <div style={{ marginBottom: theme.spacing[8] }}>
                   <button
-                    onClick={() => setShowRegistration(false)}
+                    onClick={() => {
+                      localStorage.removeItem("signupFormVisible");
+                      localStorage.removeItem("signupRoleIndex");
+                      setShowRegistration(false);
+                    }}
                     style={{
                       border: "none",
                       background: "transparent",
@@ -804,6 +866,7 @@ const SignupPage = () => {
                       gap: theme.spacing[2],
                       marginBottom: theme.spacing[4],
                       fontSize: theme.typography.fontSize.base,
+                      outline: "none",
                     }}
                   >
                     <ChevronLeft size={16} />
@@ -1030,6 +1093,7 @@ const SignupPage = () => {
                               file={taxCard}
                               onChange={(e) => handleFileChange(e, setTaxCard)}
                               onClear={() => setTaxCard(null)}
+                              required
                             />
 
                             <FileUpload
@@ -1039,6 +1103,7 @@ const SignupPage = () => {
                                 handleFileChange(e, setCompanyLogo)
                               }
                               onClear={() => setCompanyLogo(null)}
+                              required
                             />
                           </div>
                         </div>
@@ -1418,6 +1483,10 @@ const SignupPage = () => {
                     </span>
                     <Link
                       to="/login"
+                      onClick={() => {
+                        localStorage.removeItem("signupFormVisible");
+                        localStorage.removeItem("signupRoleIndex");
+                      }}
                       style={{
                         color: theme.colors.primary.main,
                         textDecoration: "none",

@@ -19,7 +19,7 @@ const VerificationPending = () => {
 
   // If no data, redirect to login
   if (!userId) {
-    navigate("/");
+    navigate("/login");
     return null;
   }
 
@@ -37,7 +37,7 @@ const VerificationPending = () => {
             duration: 5000,
           }
         );
-        navigate("/");
+        navigate("/login");
       } else {
         toast.error(
           result.error ||
@@ -53,7 +53,7 @@ const VerificationPending = () => {
   };
 
   const handleBackToLogin = () => {
-    navigate("/");
+    navigate("/login");
   };
 
   const containerStyles = {

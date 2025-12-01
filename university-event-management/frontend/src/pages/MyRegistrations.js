@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import api, { registrationAPI, eventAPI, gymAPI, courtAPI } from "../services/api";
+import api, {
+  registrationAPI,
+  eventAPI,
+  gymAPI,
+  courtAPI,
+} from "../services/api";
 import theme from "../theme";
 import Card from "../components/Card";
 import Navbar from "../components/Navbar";
@@ -55,42 +60,48 @@ const MyRegistrations = () => {
 
   const fetchData = useCallback(async () => {
     if (!isAuthenticated) return;
-    
+
     // Cancel any existing request
     if (cancelTokenRef.current) {
-      cancelTokenRef.current.cancel('Operation cancelled due to new request');
+      cancelTokenRef.current.cancel("Operation cancelled due to new request");
     }
-    
+
     // Create new cancel token
     cancelTokenRef.current = axios.CancelToken.source();
-    
+
     try {
       setLoading(true);
       setError(null);
 
       // 1. Fetch event registrations with cancellation token
-      const regResponse = await registrationAPI.getMyRegistrations({}, cancelTokenRef.current);
+      const regResponse = await registrationAPI.getMyRegistrations(
+        {},
+        cancelTokenRef.current
+      );
       const fetchedRegistrations = (
         regResponse.data?.data?.upcoming || []
       ).concat(regResponse.data?.data?.past || []);
 
       // 2. Fetch gym registrations
-      const gymRegResponse = await gymAPI.getMyRegistrations({}, cancelTokenRef.current);
+      const gymRegResponse = await gymAPI.getMyRegistrations(
+        {},
+        cancelTokenRef.current
+      );
       const gymRegistrations = gymRegResponse.data?.data || [];
-      
-      console.log('Gym registrations response:', gymRegResponse.data);
-      console.log('Gym registrations array:', gymRegistrations);
-      
+
+      console.log("Gym registrations response:", gymRegResponse.data);
+      console.log("Gym registrations array:", gymRegistrations);
+
       // Transform gym registrations to match event registration format
       const transformedGymRegs = gymRegistrations
-        .filter(gymReg => gymReg.gymSession) // Only process if gymSession is populated
-        .map(gymReg => ({
+        .filter((gymReg) => gymReg.gymSession) // Only process if gymSession is populated
+        .map((gymReg) => ({
           _id: gymReg._id,
           event: {
             _id: gymReg.gymSession._id,
             title: gymReg.gymSession.title,
-            description: gymReg.gymSession.description || '',
-            type: 'gym',
+            description: gymReg.gymSession.description || "",
+            type: "gym",
             startDate: gymReg.gymSession.startDate,
             endDate: gymReg.gymSession.endDate,
             location: gymReg.gymSession.location,
@@ -107,26 +118,31 @@ const MyRegistrations = () => {
           status: gymReg.status,
           isGymSession: true, // Flag to identify gym sessions
         }));
-      
-      console.log('Transformed gym registrations:', transformedGymRegs);
+
+      console.log("Transformed gym registrations:", transformedGymRegs);
 
       // 3. Fetch court reservations
-      const courtResponse = await courtAPI.getMyReservations(cancelTokenRef.current);
+      const courtResponse = await courtAPI.getMyReservations(
+        cancelTokenRef.current
+      );
       const courtReservations = courtResponse.data?.data || [];
-      
-      console.log('Court reservations response:', courtResponse.data);
-      console.log('Court reservations array:', courtReservations);
-      
+
+      console.log("Court reservations response:", courtResponse.data);
+      console.log("Court reservations array:", courtReservations);
+
       // Transform court reservations to match event registration format
       const transformedCourtReservations = courtReservations
-        .filter(reservation => reservation.court) // Only process if court is populated
-        .map(reservation => ({
+        .filter((reservation) => reservation.court) // Only process if court is populated
+        .map((reservation) => ({
           _id: reservation._id,
           event: {
             _id: reservation.court._id,
-            title: `${reservation.court.name} - ${reservation.court.type.charAt(0).toUpperCase() + reservation.court.type.slice(1)}`,
+            title: `${reservation.court.name} - ${
+              reservation.court.type.charAt(0).toUpperCase() +
+              reservation.court.type.slice(1)
+            }`,
             description: `${reservation.startTime} - ${reservation.endTime}`,
-            type: 'court',
+            type: "court",
             startDate: reservation.date,
             endDate: reservation.date,
             location: reservation.court.location,
@@ -144,17 +160,24 @@ const MyRegistrations = () => {
           isCourtReservation: true, // Flag to identify court reservations
           reservationData: reservation, // Keep full reservation data for cancellation
         }));
-      
-      console.log('Transformed court reservations:', transformedCourtReservations);
+
+      console.log(
+        "Transformed court reservations:",
+        transformedCourtReservations
+      );
 
       // Combine all types of registrations
-      const allRegistrations = [...fetchedRegistrations, ...transformedGymRegs, ...transformedCourtReservations];
-      console.log('All registrations:', allRegistrations);
+      const allRegistrations = [
+        ...fetchedRegistrations,
+        ...transformedGymRegs,
+        ...transformedCourtReservations,
+      ];
+      console.log("All registrations:", allRegistrations);
       setAllItems(allRegistrations);
     } catch (err) {
       // Don't show error if request was cancelled
       if (axios.isCancel(err)) {
-        console.log('Request cancelled:', err.message);
+        console.log("Request cancelled:", err.message);
         return;
       }
       setError(err);
@@ -167,11 +190,11 @@ const MyRegistrations = () => {
 
   useEffect(() => {
     fetchData();
-    
+
     // Cleanup function to cancel request on unmount
     return () => {
       if (cancelTokenRef.current) {
-        cancelTokenRef.current.cancel('Component unmounted');
+        cancelTokenRef.current.cancel("Component unmounted");
       }
     };
   }, [fetchData, refreshTrigger]);
@@ -213,12 +236,12 @@ const MyRegistrations = () => {
     const upcoming = items.filter((item) => {
       const startDate = new Date(item.event.startDate);
       const endDate = new Date(item.event.endDate);
-      
+
       // For gym sessions (recurring/weekly), check if we're within the date range
       if (item.isGymSession) {
         return endDate >= now;
       }
-      
+
       // For other events: include future events and same-day events
       if (startDate >= now) return true;
 
@@ -233,16 +256,16 @@ const MyRegistrations = () => {
       const isToday = startDate >= startOfToday && startDate <= endOfToday;
       return sameDay && isToday;
     });
-    
+
     const past = items.filter((item) => {
       const startDate = new Date(item.event.startDate);
       const endDate = new Date(item.event.endDate);
-      
+
       // For gym sessions (recurring/weekly), check if the session has ended
       if (item.isGymSession) {
         return endDate < now;
       }
-      
+
       // For other events, use endDate to determine if past
       return endDate < now;
     });
@@ -258,7 +281,11 @@ const MyRegistrations = () => {
     });
   }, [allItems, search, filter, sortBy, sortOrder]);
 
-  const handleCancelRegistration = async (registrationId, isGymSession = false, isCourtReservation = false) => {
+  const handleCancelRegistration = async (
+    registrationId,
+    isGymSession = false,
+    isCourtReservation = false
+  ) => {
     if (!window.confirm("Are you sure you want to cancel this registration?"))
       return;
     try {
@@ -365,7 +392,6 @@ const MyRegistrations = () => {
   if (!isAuthenticated) {
     return (
       <div style={containerStyles}>
-        
         <div style={contentStyles}>
           <Card style={{ textAlign: "center", padding: theme.spacing[8] }}>
             <h2
@@ -376,7 +402,7 @@ const MyRegistrations = () => {
             >
               Please log in
             </h2>
-            <Link to="/">
+            <Link to="/login">
               <Button variant="primary">Login</Button>
             </Link>
           </Card>
@@ -387,13 +413,10 @@ const MyRegistrations = () => {
 
   return (
     <div style={containerStyles}>
-      
       <div style={contentStyles}>
         <div style={headerStyles}>
           <h1 style={titleStyles}>My Events</h1>
-          <p style={subtitleStyles}>
-            View and manage your registered events.
-          </p>
+          <p style={subtitleStyles}>View and manage your registered events.</p>
         </div>
 
         {summary && (
@@ -545,15 +568,21 @@ const MyRegistrations = () => {
 
         {!loading && currentItems.length > 0 && (
           <div style={gridStyles}>
-            {currentItems.map((item) =>
-                <RegistrationCard
-                  key={item._id}
-                  registration={item}
-                  onCancel={(regId) => handleCancelRegistration(regId, item.isGymSession, item.isCourtReservation)}
-                  isPastEvent={activeTab === "past"}
-                  hideRatingsButton={activeTab === "upcoming"}
-                />
-            )}
+            {currentItems.map((item) => (
+              <RegistrationCard
+                key={item._id}
+                registration={item}
+                onCancel={(regId) =>
+                  handleCancelRegistration(
+                    regId,
+                    item.isGymSession,
+                    item.isCourtReservation
+                  )
+                }
+                isPastEvent={activeTab === "past"}
+                hideRatingsButton={activeTab === "upcoming"}
+              />
+            ))}
           </div>
         )}
       </div>

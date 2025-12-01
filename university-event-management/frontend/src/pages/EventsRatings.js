@@ -23,7 +23,8 @@ const EventsRatings = () => {
   const [showRatingsModal, setShowRatingsModal] = useState(false);
 
   // Check if user is authorized
-  const isAuthorized = user && (user.role === "events_office" || user.role === "admin");
+  const isAuthorized =
+    user && (user.role === "events_office" || user.role === "admin");
 
   const eventTypeOptions = [
     { value: "all", label: "All Events" },
@@ -45,7 +46,7 @@ const EventsRatings = () => {
 
       // Filter for events that have started or ended
       const now = new Date();
-      const pastOrOngoingEvents = allEvents.filter(event => {
+      const pastOrOngoingEvents = allEvents.filter((event) => {
         const startDate = new Date(event.startDate);
         return startDate <= now;
       });
@@ -56,7 +57,7 @@ const EventsRatings = () => {
           try {
             const response = await ratingAPI.getEventRatings(event._id);
             const stats = response.data.data.statistics;
-            
+
             const ratingCount = stats ? stats.totalRatings : 0;
             const averageRating = stats ? stats.averageRating : 0;
 
@@ -91,7 +92,9 @@ const EventsRatings = () => {
       const lowercasedSearch = search.toLowerCase();
       filtered = filtered.filter(
         (event) =>
-          (event.title || event.name || "").toLowerCase().includes(lowercasedSearch) ||
+          (event.title || event.name || "")
+            .toLowerCase()
+            .includes(lowercasedSearch) ||
           event.description?.toLowerCase().includes(lowercasedSearch) ||
           event.location?.toLowerCase().includes(lowercasedSearch)
       );
@@ -166,7 +169,7 @@ const EventsRatings = () => {
 
   const contentStyles = {
     padding: theme.spacing[6],
-    maxWidth: theme.layout.containerMaxWidth['xl'],
+    maxWidth: theme.layout.containerMaxWidth["xl"],
     margin: "0 auto",
   };
 
@@ -283,10 +286,15 @@ const EventsRatings = () => {
       <div style={containerStyles}>
         <div style={contentStyles}>
           <Card style={{ textAlign: "center", padding: theme.spacing[8] }}>
-            <h2 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing[4] }}>
+            <h2
+              style={{
+                color: theme.colors.text.primary,
+                marginBottom: theme.spacing[4],
+              }}
+            >
               Please log in
             </h2>
-            <Button variant="primary" onClick={() => navigate("/")}>
+            <Button variant="primary" onClick={() => navigate("/login")}>
               Login
             </Button>
           </Card>
@@ -300,11 +308,23 @@ const EventsRatings = () => {
       <div style={containerStyles}>
         <div style={contentStyles}>
           <Card style={{ textAlign: "center", padding: theme.spacing[8] }}>
-            <div style={{ fontSize: "64px", marginBottom: theme.spacing[4] }}>🚫</div>
-            <h2 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing[4] }}>
+            <div style={{ fontSize: "64px", marginBottom: theme.spacing[4] }}>
+              🚫
+            </div>
+            <h2
+              style={{
+                color: theme.colors.text.primary,
+                marginBottom: theme.spacing[4],
+              }}
+            >
               Access Denied
             </h2>
-            <p style={{ color: theme.colors.text.secondary, marginBottom: theme.spacing[6] }}>
+            <p
+              style={{
+                color: theme.colors.text.secondary,
+                marginBottom: theme.spacing[6],
+              }}
+            >
               This page is only accessible to Events Office and Admin users.
             </p>
             <Button variant="primary" onClick={() => navigate("/events")}>
@@ -323,7 +343,8 @@ const EventsRatings = () => {
         <div style={headerStyles}>
           <h1 style={titleStyles}>Events Ratings & Feedback</h1>
           <p style={subtitleStyles}>
-            View ratings and comments from attendees for all past and ongoing events
+            View ratings and comments from attendees for all past and ongoing
+            events
           </p>
         </div>
 
@@ -352,7 +373,9 @@ const EventsRatings = () => {
           </Card>
         ) : filteredEvents.length === 0 ? (
           <Card style={emptyStateStyles}>
-            <div style={{ fontSize: "64px", marginBottom: theme.spacing[4] }}>📊</div>
+            <div style={{ fontSize: "64px", marginBottom: theme.spacing[4] }}>
+              📊
+            </div>
             <h3
               style={{
                 fontSize: theme.typography.fontSize.xl,
@@ -377,7 +400,9 @@ const EventsRatings = () => {
                   <th style={tableHeaderCellStyles}>Date</th>
                   <th style={tableHeaderCellStyles}>Location</th>
                   <th style={tableHeaderCellStyles}>Rating</th>
-                  <th style={{ ...tableHeaderCellStyles, width: "150px" }}>Actions</th>
+                  <th style={{ ...tableHeaderCellStyles, width: "150px" }}>
+                    Actions
+                  </th>
                   <th style={{ ...tableHeaderCellStyles, width: "60px" }}></th>
                 </tr>
               </thead>
@@ -385,20 +410,24 @@ const EventsRatings = () => {
                 {filteredEvents.map((event) => {
                   const isExpanded = expandedEventId === event._id;
                   const status = getEventStatus(event);
-                  
+
                   return (
                     <React.Fragment key={event._id}>
-                      <tr 
+                      <tr
                         style={tableRowStyles}
                         onClick={() => toggleEventExpansion(event._id)}
                       >
                         <td style={tableCellStyles}>
-                          <div style={{ fontWeight: theme.typography.fontWeight.semibold, marginBottom: theme.spacing[1], fontSize: theme.typography.fontSize.base }}>
+                          <div
+                            style={{
+                              fontWeight: theme.typography.fontWeight.semibold,
+                              marginBottom: theme.spacing[1],
+                              fontSize: theme.typography.fontSize.base,
+                            }}
+                          >
                             {event.title || event.name}
                           </div>
-                          <div style={eventTypeBadgeStyles}>
-                            {event.type}
-                          </div>
+                          <div style={eventTypeBadgeStyles}>{event.type}</div>
                           <span style={statusBadgeStyles(status.color)}>
                             {status.label}
                           </span>
@@ -407,16 +436,29 @@ const EventsRatings = () => {
                           <div style={{ marginBottom: theme.spacing[1] }}>
                             {formatDate(event.startDate)}
                           </div>
-                          {event.endDate && new Date(event.startDate).toDateString() !== new Date(event.endDate).toDateString() && (
-                            <div style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.text.secondary }}>
-                              to {formatDate(event.endDate)}
-                            </div>
-                          )}
+                          {event.endDate &&
+                            new Date(event.startDate).toDateString() !==
+                              new Date(event.endDate).toDateString() && (
+                              <div
+                                style={{
+                                  fontSize: theme.typography.fontSize.xs,
+                                  color: theme.colors.text.secondary,
+                                }}
+                              >
+                                to {formatDate(event.endDate)}
+                              </div>
+                            )}
                         </td>
                         <td style={tableCellStyles}>
                           <div>{event.location}</div>
                           {event.venue && event.venue !== event.location && (
-                            <div style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.text.secondary, marginTop: theme.spacing[1] }}>
+                            <div
+                              style={{
+                                fontSize: theme.typography.fontSize.xs,
+                                color: theme.colors.text.secondary,
+                                marginTop: theme.spacing[1],
+                              }}
+                            >
                               {event.venue}
                             </div>
                           )}
@@ -424,15 +466,32 @@ const EventsRatings = () => {
                         <td style={tableCellStyles}>
                           {event.ratingCount > 0 ? (
                             <div>
-                              <div style={{ fontWeight: theme.typography.fontWeight.semibold }}>
+                              <div
+                                style={{
+                                  fontWeight:
+                                    theme.typography.fontWeight.semibold,
+                                }}
+                              >
                                 {event.averageRating.toFixed(1)} / 5
                               </div>
-                              <div style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.text.secondary }}>
-                                ({event.ratingCount} {event.ratingCount === 1 ? 'rating' : 'ratings'})
+                              <div
+                                style={{
+                                  fontSize: theme.typography.fontSize.xs,
+                                  color: theme.colors.text.secondary,
+                                }}
+                              >
+                                ({event.ratingCount}{" "}
+                                {event.ratingCount === 1 ? "rating" : "ratings"}
+                                )
                               </div>
                             </div>
                           ) : (
-                            <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.secondary }}>
+                            <div
+                              style={{
+                                fontSize: theme.typography.fontSize.sm,
+                                color: theme.colors.text.secondary,
+                              }}
+                            >
                               No ratings
                             </div>
                           )}
@@ -450,59 +509,99 @@ const EventsRatings = () => {
                           </Button>
                         </td>
                         <td style={tableCellStyles}>
-                          <div style={{ 
-                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                            transition: 'transform 0.2s ease',
-                            fontSize: theme.typography.fontSize.lg,
-                            color: theme.colors.text.secondary,
-                            textAlign: 'center'
-                          }}>
+                          <div
+                            style={{
+                              transform: isExpanded
+                                ? "rotate(180deg)"
+                                : "rotate(0deg)",
+                              transition: "transform 0.2s ease",
+                              fontSize: theme.typography.fontSize.lg,
+                              color: theme.colors.text.secondary,
+                              textAlign: "center",
+                            }}
+                          >
                             ▼
                           </div>
                         </td>
                       </tr>
-                      
+
                       {/* Expanded Event Details */}
                       {isExpanded && (
                         <tr style={expandedRowStyles}>
-                          <td colSpan="6" style={{ ...tableCellStyles, paddingTop: 0 }}>
+                          <td
+                            colSpan="6"
+                            style={{ ...tableCellStyles, paddingTop: 0 }}
+                          >
                             <div style={eventDetailCardStyles}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: theme.spacing[3] }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "flex-start",
+                                  marginBottom: theme.spacing[3],
+                                }}
+                              >
                                 <div>
-                                  <h4 style={{
-                                    fontSize: theme.typography.fontSize.lg,
-                                    fontWeight: theme.typography.fontWeight.semibold,
-                                    marginBottom: theme.spacing[2]
-                                  }}>
+                                  <h4
+                                    style={{
+                                      fontSize: theme.typography.fontSize.lg,
+                                      fontWeight:
+                                        theme.typography.fontWeight.semibold,
+                                      marginBottom: theme.spacing[2],
+                                    }}
+                                  >
                                     Complete Event Information
                                   </h4>
                                 </div>
                               </div>
-              
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: theme.spacing[4] }}>
+
+                              <div
+                                style={{
+                                  display: "grid",
+                                  gridTemplateColumns:
+                                    "repeat(auto-fit, minmax(200px, 1fr))",
+                                  gap: theme.spacing[4],
+                                }}
+                              >
                                 <div>
                                   <div style={eventDetailLabelStyles}>
                                     Event Title
                                   </div>
-                                  <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.primary }}>
+                                  <div
+                                    style={{
+                                      fontSize: theme.typography.fontSize.sm,
+                                      color: theme.colors.text.primary,
+                                    }}
+                                  >
                                     {event.title || event.name}
                                   </div>
                                 </div>
-                                
+
                                 <div>
                                   <div style={eventDetailLabelStyles}>
                                     Event Type
                                   </div>
-                                  <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.primary, textTransform: "capitalize" }}>
+                                  <div
+                                    style={{
+                                      fontSize: theme.typography.fontSize.sm,
+                                      color: theme.colors.text.primary,
+                                      textTransform: "capitalize",
+                                    }}
+                                  >
                                     {event.type}
                                   </div>
                                 </div>
-                                
+
                                 <div>
                                   <div style={eventDetailLabelStyles}>
                                     Status
                                   </div>
-                                  <div style={{ fontSize: theme.typography.fontSize.sm, color: status.color }}>
+                                  <div
+                                    style={{
+                                      fontSize: theme.typography.fontSize.sm,
+                                      color: status.color,
+                                    }}
+                                  >
                                     {status.label}
                                   </div>
                                 </div>
@@ -511,7 +610,12 @@ const EventsRatings = () => {
                                   <div style={eventDetailLabelStyles}>
                                     Start Date
                                   </div>
-                                  <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.primary }}>
+                                  <div
+                                    style={{
+                                      fontSize: theme.typography.fontSize.sm,
+                                      color: theme.colors.text.primary,
+                                    }}
+                                  >
                                     {formatDate(event.startDate)}
                                   </div>
                                 </div>
@@ -521,17 +625,27 @@ const EventsRatings = () => {
                                     <div style={eventDetailLabelStyles}>
                                       End Date
                                     </div>
-                                    <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.primary }}>
+                                    <div
+                                      style={{
+                                        fontSize: theme.typography.fontSize.sm,
+                                        color: theme.colors.text.primary,
+                                      }}
+                                    >
                                       {formatDate(event.endDate)}
                                     </div>
                                   </div>
                                 )}
-                                
+
                                 <div>
                                   <div style={eventDetailLabelStyles}>
                                     Location
                                   </div>
-                                  <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.primary }}>
+                                  <div
+                                    style={{
+                                      fontSize: theme.typography.fontSize.sm,
+                                      color: theme.colors.text.primary,
+                                    }}
+                                  >
                                     {event.location}
                                   </div>
                                 </div>
@@ -541,23 +655,31 @@ const EventsRatings = () => {
                                     <div style={eventDetailLabelStyles}>
                                       Venue
                                     </div>
-                                    <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.primary }}>
+                                    <div
+                                      style={{
+                                        fontSize: theme.typography.fontSize.sm,
+                                        color: theme.colors.text.primary,
+                                      }}
+                                    >
                                       {event.venue}
                                     </div>
                                   </div>
                                 )}
                               </div>
-                              
+
                               {event.description && (
                                 <div style={{ marginTop: theme.spacing[4] }}>
                                   <div style={eventDetailLabelStyles}>
                                     Description
                                   </div>
-                                  <div style={{ 
-                                    fontSize: theme.typography.fontSize.sm, 
-                                    color: theme.colors.text.primary,
-                                    lineHeight: theme.typography.lineHeight.relaxed,
-                                  }}>
+                                  <div
+                                    style={{
+                                      fontSize: theme.typography.fontSize.sm,
+                                      color: theme.colors.text.primary,
+                                      lineHeight:
+                                        theme.typography.lineHeight.relaxed,
+                                    }}
+                                  >
                                     {event.description}
                                   </div>
                                 </div>

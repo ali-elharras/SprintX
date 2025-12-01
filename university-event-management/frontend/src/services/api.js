@@ -114,10 +114,10 @@ api.interceptors.response.use(
         localStorage.removeItem("userType");
 
         if (
-          window.location.pathname !== "/" &&
+          window.location.pathname !== "/login" &&
           window.location.pathname !== "/vendor-login"
         ) {
-          window.location.href = wasVendor ? "/vendor-login" : "/";
+          window.location.href = wasVendor ? "/vendor-login" : "/login";
         }
       }
     }
@@ -721,9 +721,7 @@ export const boothPollAPI = {
     ),
 
   removeVoteFromPoll: (pollId) =>
-    retryRequest(async () =>
-      api.delete(`/booth-polls/${pollId}/vote`)
-    ),
+    retryRequest(async () => api.delete(`/booth-polls/${pollId}/vote`)),
 
   closePoll: (pollId) =>
     retryRequest(async () => api.post(`/booth-polls/${pollId}/close`, {})),
