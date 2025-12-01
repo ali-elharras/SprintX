@@ -116,12 +116,7 @@ const BoothPollVoting = ({ refreshTrigger }) => {
         Booth Vendor Polls
       </h2>
 
-      {/* Debug Info */}
-      <div style={{ marginBottom: theme.spacing[4], padding: theme.spacing[2], background: '#f0f0f0', fontSize: '0.75rem', borderRadius: '4px' }}>
-        <strong>Debug:</strong> User role: {user?.role || 'Not logged in'} | 
-        Can vote: {isAuthenticated && user && user.role !== 'events_office' && user.role !== 'admin' ? 'Yes' : 'No'} |
-        Voting states: {JSON.stringify(votingStates)}
-      </div>
+
 
       {polls.length === 0 ? (
         <div
