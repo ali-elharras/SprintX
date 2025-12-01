@@ -611,9 +611,12 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
     const sd = new Date(form.startDate);
     sd.setHours(0,0,0,0); // For date-only comparison
 
+    const minDate = new Date(minStartDate);
+    minDate.setHours(0,0,0,0); // For date-only comparison
+
     if (!form.startDate || isNaN(sd.getTime())) {
       errors.startDate = 'Start date is required';
-    } else if (sd < new Date(minStartDate)) { // Compare with tomorrow
+    } else if (sd < minDate) { // Compare with tomorrow
       errors.startDate = 'Start date must be tomorrow or later';
     }
     const ed = new Date(form.endDate);
@@ -624,9 +627,11 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
       errors.endDate = 'End date must be the same day or after start date';
     }
     
-    // end time must be after start time
-    if (!errors.startTime && !errors.endTime && form.startTime && form.endTime) {
-      if (form.endTime <= form.startTime) {
+    // end time must be after start time (when on the same date)
+    if (!errors.startDate && !errors.endDate && !errors.startTime && !errors.endTime && form.startTime && form.endTime) {
+      // If start and end are on the same day, end time must be after start time
+      const sameDay = sd.getTime() === ed.getTime();
+      if (sameDay && form.endTime <= form.startTime) {
         errors.endTime = 'End time must be after start time';
       }
     }
@@ -718,7 +723,7 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
         type: form.type,
         instructor: {
           name: form.instructor_name,
-          email: form.instructor_email || '',
+          email: form.instructor_email || undefined, // Don't send empty string
           bio: '',
           certifications: [],
         },
@@ -750,6 +755,7 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
         dropInCost: form.dropInCost ? parseFloat(form.dropInCost) : 0,
       };
 
+      console.log('Attempting to create gym session with payload:', payload);
       await gymAPI.createSession(payload);
       toast.success(form.isRecurring ? "Recurring gym session created" : "Gym session created");
       setOpen(false);
@@ -763,9 +769,15 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
       if (resp && resp.errors && Array.isArray(resp.errors) && resp.errors.length > 0) {
         // resp.errors is an array of { msg/message, param/field/path }
         const map = {};
+        const errorMessages = [];
+        
         resp.errors.forEach(e => {
           const key = e.param || e.field || e.path || null;
           const msg = e.msg || e.message || (typeof e === 'string' ? e : 'Invalid value');
+          
+          // Collect all error messages for toast
+          errorMessages.push(msg);
+          
           if (!key) return;
           // normalize field names used in our form
           const normalize = (k) => {
@@ -778,12 +790,19 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
           };
           map[normalize(key)] = msg;
         });
+        
         setFormErrors(map);
-        toast.error('Please fix the highlighted fields');
+        
+        // Show specific error messages
+        if (errorMessages.length > 0) {
+          errorMessages.forEach(msg => toast.error(msg));
+        } else {
+          toast.error('Please fix the highlighted fields');
+        }
       } else if (resp && resp.message) {
         toast.error(resp.message);
       } else {
-        toast.error("Failed to create session. Please check all fields.");
+        toast.error("Failed to create session. Please try again.");
       }
     }
   };
