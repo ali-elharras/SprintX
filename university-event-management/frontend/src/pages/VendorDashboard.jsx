@@ -139,20 +139,6 @@ const BazaarCard = ({ bazaar, onApply, application, index, onViewDetails }) => {
       aria-labelledby={`bazaar-${bazaar._id}-title`}
     >
       <div className="p-6">
-        {application && (
-          <div className="flex items-center gap-2 mb-4">
-            <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${application.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
-              application.status === 'pending' ? 'bg-amber-50 text-amber-700' :
-                'bg-red-50 text-red-700'
-              }`}>
-              {application.status === 'approved' && <CheckCircle size={12} />}
-              {application.status === 'pending' && <Clock size={12} />}
-              {application.status === 'rejected' && <XCircle size={12} />}
-              {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
-            </span>
-          </div>
-        )}
-
         <h3 id={`bazaar-${bazaar._id}-title`} className="text-base font-semibold text-gray-900 mb-3">
           {bazaar.name || bazaar.title}
         </h3>

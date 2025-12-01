@@ -219,12 +219,6 @@ const Navbar = ({ onMenuClick }) => {
         { label: "Gym Schedule", path: "/gym-schedule" },
       ],
     },
-    account: {
-      label: "My Account",
-      items: [
-        { label: "Wallet", path: "/wallet" },
-      ],
-    },
   };
 
   const isPathInGroup = (groupItems) => {
@@ -862,67 +856,7 @@ const Navbar = ({ onMenuClick }) => {
           )}
         </div>
 
-        {/* My Account Dropdown */}
-        <div
-          ref={(el) => (dropdownRefs.current["account"] = el)}
-          style={dropdownContainerStyles}
-        >
-          <button
-            onClick={() => toggleDropdown("account")}
-            style={{
-              ...navLinkStyles,
-              color: isPathInGroup(eventsOfficeNavGroups.account.items)
-                ? theme.colors.primary.main
-                : theme.colors.text.secondary,
-              borderBottom: isPathInGroup(eventsOfficeNavGroups.account.items)
-                ? `2px solid ${theme.colors.primary.main}`
-                : "2px solid transparent",
-              display: "flex",
-              alignItems: "center",
-              gap: theme.spacing[1],
-            }}
-          >
-            {eventsOfficeNavGroups.account.label}
-            <ChevronDown size={16} style={{
-              transform: activeDropdown === "account" ? "rotate(180deg)" : "rotate(0deg)",
-              transition: "transform 0.2s ease",
-            }} />
-          </button>
-          {activeDropdown === "account" && (
-            <div style={dropdownMenuStyles}>
-              {eventsOfficeNavGroups.account.items.map((item, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => {
-                    navigate(item.path);
-                    setActiveDropdown(null);
-                  }}
-                  style={{
-                    ...dropdownItemStyles,
-                    background: location.pathname === item.path
-                      ? `${theme.colors.primary.main}10`
-                      : "transparent",
-                    color: location.pathname === item.path
-                      ? theme.colors.primary.main
-                      : theme.colors.text.primary,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (location.pathname !== item.path) {
-                      e.target.style.background = theme.colors.neutral.gray50;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (location.pathname !== item.path) {
-                      e.target.style.background = "transparent";
-                    }
-                  }}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+
       </div>
     );
   };
