@@ -853,4 +853,4 @@ Planned features for future releases:
 
 **Built with ❤️ by the SprintX Team**
 
-*Last Updated: November 2024*
+*Last Updated: December 2025*
