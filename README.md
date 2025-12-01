@@ -126,22 +126,44 @@ A comprehensive MERN stack application for managing university events, sports fa
   - Payment confirmations
 
 ### 📊 Admin & Reporting
-- **Admin Dashboard**:
-  - User management
-  - Event oversight
-  - Vendor approval
-  - Payment monitoring
-  - Analytics and reports
-- **User Management**:
+- **Admin Dashboard** (`/admin-dashboard`):
+  - **Application Management**: Central hub for managing vendor applications
+  - **Real-time Statistics**: Total, pending, approved, and rejected applications
+  - **Dual Application Types**: Bazaar and booth applications
+  - **Filtering System**: Filter by status (pending/approved/rejected) and type (bazaar/booth)
+  - **Application Actions**: 
+    - Approve applications with admin comments
+    - Reject applications with feedback
+    - View detailed application information
+  - **Application Details Display**:
+    - Business/vendor information
+    - Event details and dates
+    - Financial information (booth fees, expected revenue)
+    - Visitor email lists for booth applications
+    - Application timestamps and status history
+  - **Responsive Design**: Modern gradient UI with statistics cards
+
+- **User Management** (`/admin-users`):
+  - View all users with role-based filtering
   - Account activation/deactivation
-  - Role management
-  - Ban/unban functionality
-  - Verification status
-- **Reports Generation**:
+  - Ban/unban functionality with modal confirmation
+  - User search and filtering
+  - Role management (Student, Staff, TA, Professor, Admin, Events Office)
+  - Account status monitoring
+  - Vendor verification status
+
+- **Reports & Analytics** (`/reports`):
   - Event attendance reports
-  - Revenue reports
+  - Revenue reports with financial summaries
   - User activity analytics
+  - Registration statistics
   - Excel export functionality
+  - Booth poll results and analytics
+
+- **Admin Comments System** (`/admin-comments`):
+  - Review and manage comments on applications
+  - Track admin feedback history
+  - Application decision documentation
 
 ### 🔒 Security Features
 - **Password Security**: 
@@ -171,60 +193,134 @@ university-event-management/
 │   │   ├── Event.js
 │   │   ├── Registration.js
 │   │   ├── EventPayment.js
+│   │   ├── EventRating.js
 │   │   ├── Wallet.js
 │   │   ├── Court.js
 │   │   ├── CourtReservation.js
 │   │   ├── GymSession.js
+│   │   ├── GymRegistration.js
 │   │   ├── Conference.js
 │   │   ├── Workshop.js
 │   │   ├── BazaarApplication.js
 │   │   ├── BoothApplication.js
+│   │   ├── BoothPoll.js
 │   │   ├── LoyaltyProgram.js
 │   │   └── Notification.js
 │   ├── routes/             # API routes
 │   │   ├── auth.js
 │   │   ├── events.js
+│   │   ├── createEvents.js
 │   │   ├── registrations.js
 │   │   ├── payments.js
+│   │   ├── eventPayments.js
 │   │   ├── wallet.js
 │   │   ├── courts.js
 │   │   ├── gym.js
 │   │   ├── conference.js
 │   │   ├── workshop.js
 │   │   ├── bazaar.js
+│   │   ├── applications.js
+│   │   ├── boothPolls.js
 │   │   ├── admin.js
+│   │   ├── ratings.js
+│   │   ├── favorites.js
+│   │   ├── files.js
+│   │   ├── report.js
 │   │   ├── VendorRouter.js
 │   │   ├── LoyaltyRoutes.js
 │   │   └── notifications.js
 │   ├── controllers/        # Request handlers
+│   │   ├── authController.js
+│   │   ├── eventController.js
+│   │   ├── CreateEvent.js
+│   │   ├── registrationController.js
+│   │   ├── paymentController.js
+│   │   ├── eventPaymentController.js
+│   │   ├── walletController.js
+│   │   ├── courtController.js
+│   │   ├── gymController.js
+│   │   ├── conferenceController.js
+│   │   ├── workshopController.js
+│   │   ├── bazaarController.js
+│   │   ├── applicationController.js
+│   │   ├── boothPollController.js
+│   │   ├── adminController.js
+│   │   ├── eventReviewController.js
+│   │   ├── favoritesController.js
+│   │   ├── fileController.js
+│   │   ├── reportController.js
+│   │   ├── notificationController.js
+│   │   ├── VendorController.js
+│   │   └── LoyaltyProgramController.js
 │   ├── middleware/         # Auth & error handling
+│   │   ├── auth.js
+│   │   └── errorHandler.js
 │   ├── services/           # Business logic & integrations
 │   │   ├── emailService.js
 │   │   ├── qrCodeService.js
-│   │   ├── stripeService.js
-│   │   └── walletService.js
+│   │   ├── eventReminderService.js
+│   │   └── workshopCertificateScheduler.js
 │   ├── utils/              # Helper functions
+│   │   └── imageKitUploader.js
+│   ├── scripts/            # Database maintenance scripts
+│   │   ├── createAdminAccounts.js
+│   │   ├── checkRegistrations.js
+│   │   ├── cleanupCancelledRegistrations.js
+│   │   ├── cleanupPendingRegistrations.js
+│   │   ├── fixRegistrationIndexes.js
+│   │   └── seedAdminUsers.js
 │   └── server.js           # Main server file
 ├── frontend/               # React application
 │   ├── src/
 │   │   ├── components/     # Reusable UI components
+│   │   │   ├── Navbar.js
+│   │   │   ├── AdminSidebar.js
+│   │   │   ├── EventCard.js
+│   │   │   ├── EventPaymentModal.js
+│   │   │   ├── EventEditModal.js
+│   │   │   ├── CourtCard.js
+│   │   │   ├── GymSessionCard.js
+│   │   │   ├── RatingModal.js
+│   │   │   ├── NotificationCenter.js
+│   │   │   ├── WalletDashboard.js
+│   │   │   ├── BoothPollManager.js
+│   │   │   ├── BanUserModal.js
+│   │   │   └── ...
 │   │   ├── pages/          # Page components
 │   │   │   ├── LandingPage.js
+│   │   │   ├── Login.js
+│   │   │   ├── SignupPage.js
+│   │   │   ├── VendorLogin.js
 │   │   │   ├── Dashboard.js
 │   │   │   ├── EventsPage.js
+│   │   │   ├── EventDetailsPage.js
 │   │   │   ├── CourtsPage.js
 │   │   │   ├── GymSchedulePage.js
+│   │   │   ├── Workshops.js
+│   │   │   ├── CreateWorkshop.js
+│   │   │   ├── MyRegistrations.js
 │   │   │   ├── WalletPage.js
 │   │   │   ├── LoyaltyProgram.js
+│   │   │   ├── FavoritesPage.js
+│   │   │   ├── EventsRatings.js
+│   │   │   ├── BoothPolls.js
 │   │   │   ├── AdminDashboard.js
-│   │   │   └── VendorDashboard.jsx
+│   │   │   ├── AdminUserManagement.js
+│   │   │   ├── AdminComments.js
+│   │   │   ├── ReportsPage.js
+│   │   │   ├── VendorDashboard.jsx
+│   │   │   ├── PaymentSuccess.js
+│   │   │   └── UploadedFilesPage.js
 │   │   ├── context/        # React context (AuthContext)
 │   │   ├── services/       # API service layer
 │   │   ├── lib/            # UI utilities
-│   │   ├── utils/          # Helper functions
+│   │   ├── styles/         # CSS styles
 │   │   └── theme.js        # Design system theme
-│   └── public/
-├── scripts/                # Utility scripts
+│   ├── public/             # Static assets
+│   ├── build/              # Production build
+│   ├── package.json
+│   ├── tailwind.config.js
+│   └── postcss.config.js
 └── README.md
 ```
 
