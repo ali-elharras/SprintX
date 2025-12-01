@@ -77,7 +77,7 @@ const CreateTripModal = ({ open, onClose, onCreated, currentUser }) => {
     if (!form.startDate) e.startDate = 'Start date and time required';
     else if (new Date(form.startDate) < tomorrow) e.startDate = 'Start date must be at least tomorrow';
     if (!form.endDate) e.endDate = 'End date and time required';
-    if (form.startDate && form.endDate && new Date(form.endDate) < new Date(form.startDate)) e.endDate = 'End must be after start';
+    if (form.startDate && form.endDate && new Date(form.endDate) <= new Date(form.startDate)) e.endDate = 'End date and time must be at least 1 hour after start date and time';
     if (!form.registrationDeadline) e.registrationDeadline = 'Registration deadline required';
     else if (new Date(form.registrationDeadline) < tomorrow) e.registrationDeadline = 'Registration deadline must be at least tomorrow';
     if (form.registrationDeadline && form.startDate && new Date(form.registrationDeadline) >= new Date(form.startDate)) e.registrationDeadline = 'Registration deadline must be before the trip start';
@@ -205,10 +205,33 @@ const CreateTripModal = ({ open, onClose, onCreated, currentUser }) => {
                   const newStartDate = e.target.value;
                   setForm(f => {
                     const newForm = { ...f, startDate: newStartDate };
-                    // if endDate is now invalid, clear it
-                    if (f.endDate && newStartDate && new Date(f.endDate) < new Date(newStartDate)) {
-                      newForm.endDate = '';
+                    
+                    // Auto-set end date to 1 hour after start date
+                    if (newStartDate) {
+                      const dateTimeParts = newStartDate.split('T');
+                      const datePart = dateTimeParts[0];
+                      const timeParts = dateTimeParts[1].split(':');
+                      
+                      let hours = parseInt(timeParts[0], 10);
+                      const minutes = timeParts[1];
+                      
+                      hours = hours + 1;
+                      
+                      let newDatePart = datePart;
+                      if (hours >= 24) {
+                        hours = hours - 24;
+                        const dateObj = new Date(datePart + 'T00:00');
+                        dateObj.setDate(dateObj.getDate() + 1);
+                        const year = dateObj.getFullYear();
+                        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                        const day = String(dateObj.getDate()).padStart(2, '0');
+                        newDatePart = `${year}-${month}-${day}`;
+                      }
+                      
+                      const paddedHours = String(hours).padStart(2, '0');
+                      newForm.endDate = `${newDatePart}T${paddedHours}:${minutes}`;
                     }
+                    
                     // if registrationDeadline is now invalid, clear it
                     if (f.registrationDeadline && newStartDate && new Date(f.registrationDeadline) >= new Date(newStartDate)) {
                       newForm.registrationDeadline = '';

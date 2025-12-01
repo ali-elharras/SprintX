@@ -4616,6 +4616,7 @@ const EventsPage = () => {
                     type="datetime-local"
                     value={bazaarData.endDate}
                     min={bazaarData.startDate || getTomorrowDateTimeString()}
+                    disabled={!bazaarData.startDate}
                     onChange={(e) =>
                       setBazaarData({ ...bazaarData, endDate: e.target.value })
                     }
@@ -4711,6 +4712,16 @@ const EventsPage = () => {
                       ) {
                         toast.error(
                           "Please fill all required fields: Name, Description, Theme, Dates, Max Participants, and Registration Deadline."
+                        );
+                        return;
+                      }
+
+                      if (
+                        new Date(bazaarData.endDate) <=
+                        new Date(bazaarData.startDate)
+                      ) {
+                        toast.error(
+                          "End date and time must be at least 1 hour after start date and time."
                         );
                         return;
                       }
