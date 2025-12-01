@@ -757,12 +757,6 @@ npm start
 
 Access the application at `http://localhost:3000`
 
-## 📚 Additional Documentation
-
-- **[QR Code System Guide](./QR_CODE_SYSTEM_GUIDE.md)** - Complete guide to the QR code feature
-- **[Receipt Email Guide](./RECEIPT_EMAIL_GUIDE.md)** - Payment receipt email documentation
-- **[QR Code Fix](./QR_CODE_FIX.md)** - Technical details on QR code implementation
-
 ## 🧪 Testing
 
 ### Test Accounts
