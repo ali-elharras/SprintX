@@ -609,6 +609,13 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
     if (!errors.startDate && !errors.endDate && ed < sd) {
       errors.endDate = 'End date must be the same day or after start date';
     }
+    
+    // end time must be after start time
+    if (!errors.startTime && !errors.endTime && form.startTime && form.endTime) {
+      if (form.endTime <= form.startTime) {
+        errors.endTime = 'End time must be after start time';
+      }
+    }
 
     // location
     if (!form.location || !form.location.trim()) {
@@ -664,7 +671,16 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
 
   const show = Boolean(isVisible);
 
-  const handleChange = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
+  const handleChange = (k, v) => {
+    setForm(prev => {
+      const newForm = { ...prev, [k]: v };
+      // If startTime changes and endTime is set but becomes invalid, clear endTime
+      if (k === 'startTime' && newForm.endTime && v && newForm.endTime <= v) {
+        newForm.endTime = ''; 
+      }
+      return newForm;
+    });
+  };
 
   const clearFieldError = (k) => setFormErrors(prev => {
     if (!prev) return {};
@@ -950,6 +966,7 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
                 style={inputStyle} 
                 type="time" 
                 value={form.endTime} 
+                min={form.startTime}
                 onChange={(e)=>{ handleChange('endTime', e.target.value); clearFieldError('endTime'); }} 
               />
               {formErrors.endTime && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.endTime}</div>}

@@ -185,38 +185,54 @@ const CreateTripModal = ({ open, onClose, onCreated, currentUser }) => {
               </ul>
             </div>
           )}
-          <label style={modalStyles.label}>Trip name</label>
+          <label style={modalStyles.label}>Trip name *</label>
           <input style={modalStyles.input} value={form.name} onChange={(e)=>setForm(f=>({...f,name:e.target.value}))} />
           {errors.name && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.name}</div>}
 
-          <label style={modalStyles.label}>Short description</label>
+          <label style={modalStyles.label}>Short description *</label>
           <textarea style={modalStyles.textarea} value={form.description} onChange={(e)=>setForm(f=>({...f,description:e.target.value}))} />
           {errors.description && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.description}</div>}
 
-          <label style={modalStyles.label}>Location</label>
+          <label style={modalStyles.label}>Location *</label>
           <input style={modalStyles.input} value={form.location} onChange={(e)=>setForm(f=>({...f,location:e.target.value}))} />
           {errors.location && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.location}</div>}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing[3] }}>
             <div>
-              <label style={modalStyles.label}>Start (local)</label>
-              <input type="datetime-local" style={modalStyles.input} value={form.startDate} min={tomorrowString} onChange={(e)=>setForm(f=>({...f,startDate:e.target.value}))} />
+              <label style={modalStyles.label}>Start Date *</label>
+              <input type="datetime-local" style={modalStyles.input} value={form.startDate} min={tomorrowString} 
+                onChange={(e) => {
+                  const newStartDate = e.target.value;
+                  setForm(f => {
+                    const newForm = { ...f, startDate: newStartDate };
+                    // if endDate is now invalid, clear it
+                    if (f.endDate && newStartDate && new Date(f.endDate) < new Date(newStartDate)) {
+                      newForm.endDate = '';
+                    }
+                    // if registrationDeadline is now invalid, clear it
+                    if (f.registrationDeadline && newStartDate && new Date(f.registrationDeadline) >= new Date(newStartDate)) {
+                      newForm.registrationDeadline = '';
+                    }
+                    return newForm;
+                  });
+                }} 
+              />
               {errors.startDate && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.startDate}</div>}
             </div>
             <div>
-              <label style={modalStyles.label}>End (local)</label>
-              <input type="datetime-local" style={modalStyles.input} value={form.endDate} min={minEndDate} onChange={(e)=>setForm(f=>({...f,endDate:e.target.value}))} />
+              <label style={modalStyles.label}>End Date *</label>
+              <input type="datetime-local" style={modalStyles.input} value={form.endDate} min={minEndDate} disabled={!form.startDate} onChange={(e)=>setForm(f=>({...f,endDate:e.target.value}))} />
               {errors.endDate && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.endDate}</div>}
             </div>
           </div>
 
-          <label style={modalStyles.label}>Registration deadline</label>
-          <input type="datetime-local" style={modalStyles.input} value={form.registrationDeadline} min={tomorrowString} max={maxRegistrationDate} onChange={(e)=>setForm(f=>({...f,registrationDeadline:e.target.value}))} />
+          <label style={modalStyles.label}>Registration deadline *</label>
+          <input type="datetime-local" style={modalStyles.input} value={form.registrationDeadline} min={tomorrowString} max={maxRegistrationDate} disabled={!form.startDate} onChange={(e)=>setForm(f=>({...f,registrationDeadline:e.target.value}))} />
           {errors.registrationDeadline && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.registrationDeadline}</div>}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing[3] }}>
             <div>
-              <label style={modalStyles.label}>Capacity</label>
+              <label style={modalStyles.label}>Capacity *</label>
               <input type="number" style={modalStyles.input} value={form.maxParticipants} onChange={(e)=>setForm(f=>({...f,maxParticipants:e.target.value}))} />
               {errors.maxParticipants && <div style={{ color: theme.colors.error.main, marginTop: -8, marginBottom: theme.spacing[2] }}>{errors.maxParticipants}</div>}
             </div>
