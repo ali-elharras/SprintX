@@ -511,6 +511,16 @@ const GymSchedulePage = () => {
 // Inline simple create session modal component
 
 const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => {
+  const getTomorrowDateString = () => {
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const year = tomorrow.getFullYear();
+    const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const day = String(tomorrow.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const minStartDate = getTomorrowDateString();
+
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     title: "",
@@ -521,8 +531,8 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
     dayOfWeek: 1,
     startTime: "09:00",
     endTime: "10:00",
-    startDate: new Date().toISOString().slice(0,10),
-    endDate: new Date().toISOString().slice(0,10),
+    startDate: minStartDate, // Initialize with tomorrow's date
+    endDate: minStartDate, // Also initialize endDate to tomorrow, makes sense if not recurring
     location: "Main Gym",
     room: "",
     maxParticipants: 20,
@@ -599,10 +609,14 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
 
     // dates
     const sd = new Date(form.startDate);
-    const ed = new Date(form.endDate);
+    sd.setHours(0,0,0,0); // For date-only comparison
+
     if (!form.startDate || isNaN(sd.getTime())) {
       errors.startDate = 'Start date is required';
+    } else if (sd < new Date(minStartDate)) { // Compare with tomorrow
+      errors.startDate = 'Start date must be tomorrow or later';
     }
+    const ed = new Date(form.endDate);
     if (!form.endDate || isNaN(ed.getTime())) {
       errors.endDate = 'End date is required';
     }
@@ -901,6 +915,7 @@ const CreateSessionInline = ({ isVisible, onCreated, sessionTypes, styles }) => 
                 style={inputStyle} 
                 type="date" 
                 value={form.startDate} 
+                min={minStartDate}
                 onChange={(e)=>{ handleChange('startDate', e.target.value); clearFieldError('startDate'); }} 
               />
               {formErrors.startDate && <div style={{ color: theme.colors.error.main, marginTop: 6, fontSize: 13 }}>{formErrors.startDate}</div>}
