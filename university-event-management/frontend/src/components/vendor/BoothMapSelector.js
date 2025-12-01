@@ -62,12 +62,14 @@ const styles = {
     rx: 2,
   },
   label: {
-    fontSize: '11px',
+    fontSize: '10px',
     fontWeight: '600',
     fill: theme.colors.text.primary,
     pointerEvents: 'none',
     userSelect: 'none',
     fontFamily: 'sans-serif',
+    dominantBaseline: 'middle',
+    textAnchor: 'middle',
   },
   selectedLabel: {
     fill: '#ffffff',
@@ -125,36 +127,37 @@ const styles = {
 };
 
 const BoothMapSelector = ({ onSelectBooth, selectedBoothId, startDate, durationWeeks }) => {
-  const platformWidth = 340;
-  const platformHeight = 240;
-  const boothSize = 24;
-  const padding = 16;
+  const platformWidth = 400;
+  const platformHeight = 280;
+  const boothSize = 28;
+  const padding = 24;
+  const spacing = 8;
 
   const [occupiedBooths, setOccupiedBooths] = useState(new Set());
   const [loading, setLoading] = useState(false);
   const [hoveredBooth, setHoveredBooth] = useState(null);
 
-  // Define booth positions
+  // Define booth positions with better spacing
   const boothPositions = [
     // Top edge
     { id: 'B1', x: padding, y: padding },
-    { id: 'B2', x: padding + boothSize + padding, y: padding },
-    { id: 'B3', x: padding + 2 * (boothSize + padding), y: padding },
-    { id: 'B4', x: padding + 3 * (boothSize + padding), y: padding },
+    { id: 'B2', x: padding + boothSize + spacing, y: padding },
+    { id: 'B3', x: padding + 2 * (boothSize + spacing), y: padding },
+    { id: 'B4', x: padding + 3 * (boothSize + spacing), y: padding },
     // Right edge
     { id: 'B5', x: platformWidth - padding - boothSize, y: padding },
-    { id: 'B6', x: platformWidth - padding - boothSize, y: padding + boothSize + padding },
-    { id: 'B7', x: platformWidth - padding - boothSize, y: padding + 2 * (boothSize + padding) },
-    { id: 'B8', x: platformWidth - padding - boothSize, y: padding + 3 * (boothSize + padding) },
+    { id: 'B6', x: platformWidth - padding - boothSize, y: padding + boothSize + spacing },
+    { id: 'B7', x: platformWidth - padding - boothSize, y: padding + 2 * (boothSize + spacing) },
+    { id: 'B8', x: platformWidth - padding - boothSize, y: padding + 3 * (boothSize + spacing) },
     // Bottom edge
     { id: 'B9', x: platformWidth - padding - boothSize, y: platformHeight - padding - boothSize },
-    { id: 'B10', x: platformWidth - 2 * (boothSize + padding), y: platformHeight - padding - boothSize },
-    { id: 'B11', x: platformWidth - 3 * (boothSize + padding), y: platformHeight - padding - boothSize },
-    { id: 'B12', x: platformWidth - 4 * (boothSize + padding), y: platformHeight - padding - boothSize },
+    { id: 'B10', x: platformWidth - padding - boothSize - (boothSize + spacing), y: platformHeight - padding - boothSize },
+    { id: 'B11', x: platformWidth - padding - boothSize - 2 * (boothSize + spacing), y: platformHeight - padding - boothSize },
+    { id: 'B12', x: platformWidth - padding - boothSize - 3 * (boothSize + spacing), y: platformHeight - padding - boothSize },
     // Left edge
     { id: 'B13', x: padding, y: platformHeight - padding - boothSize },
-    { id: 'B14', x: padding, y: platformHeight - 2 * (boothSize + padding) },
-    { id: 'B15', x: padding, y: platformHeight - 3 * (boothSize + padding) },
+    { id: 'B14', x: padding, y: platformHeight - padding - boothSize - (boothSize + spacing) },
+    { id: 'B15', x: padding, y: platformHeight - padding - boothSize - 2 * (boothSize + spacing) },
   ];
 
   useEffect(() => {
@@ -269,8 +272,7 @@ const BoothMapSelector = ({ onSelectBooth, selectedBoothId, startDate, durationW
               />
               <text
                 x={booth.x + boothSize / 2}
-                y={booth.y + boothSize / 2 + 4}
-                textAnchor="middle"
+                y={booth.y + boothSize / 2}
                 style={getLabelStyle(booth.id)}
               >
                 {booth.id}

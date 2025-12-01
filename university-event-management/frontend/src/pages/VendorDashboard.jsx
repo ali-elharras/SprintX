@@ -495,10 +495,26 @@ const VendorDashboard = () => {
 
   // Remove the PaymentSum function from BazaarCard component entirely
 
+  // Calculate if vendor has a pending booth application
+  const hasPendingBoothApplication = myApplications.some(
+    app => !app.bazaar && app.status === 'pending'
+  );
+
+  const handleBoothModalOpen = () => {
+    if (hasPendingBoothApplication) {
+      toast.error("You already have a pending booth application. Please wait for it to be processed before submitting a new request.", {
+        duration: 5000,
+        icon: '⚠️',
+      });
+      return;
+    }
+    setIsBoothModalOpen(true);
+  };
+
   const tabs = [
     { id: 'overview', label: 'Upcoming Bazaars', icon: Eye },
     { id: 'applications', label: 'Applications', icon: FileText },
-    { id: 'participations', label: 'Accepted Applications', icon: Calendar },
+    { id: 'participations', label: 'Paid Applications', icon: Calendar },
     { id: 'loyalty', label: 'Loyalty Program', icon: Award },
   ];
 
@@ -522,7 +538,7 @@ const VendorDashboard = () => {
               </div>
 
               <button
-                onClick={() => setIsBoothModalOpen(true)}
+                onClick={handleBoothModalOpen}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
               >
                 <Plus size={16} />
@@ -821,6 +837,7 @@ const VendorDashboard = () => {
         isOpen={isBoothModalOpen}
         onClose={() => setIsBoothModalOpen(false)}
         onSubmit={handleBoothApplicationSubmit}
+        hasPendingBooth={hasPendingBoothApplication}
       />
 
       <VendorDetailsModal
