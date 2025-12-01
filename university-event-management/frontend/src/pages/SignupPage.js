@@ -270,20 +270,96 @@ const SignupPage = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // File upload states for vendors
-  const [taxCard, setTaxCard] = useState(null);
-  const [companyLogo, setCompanyLogo] = useState(null);
+  // File upload states for vendors - restore from localStorage if available
+  const [taxCardState, setTaxCardState] = useState(() => {
+    try {
+      const saved = localStorage.getItem("signupTaxCard");
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+  const [companyLogoState, setCompanyLogoState] = useState(() => {
+    try {
+      const saved = localStorage.getItem("signupCompanyLogo");
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  // Wrappers to persist file upload states
+  const setTaxCard = (value) => {
+    console.log("Setting taxCard:", value ? "File present" : "null");
+    setTaxCardState(value);
+    if (value) {
+      try {
+        localStorage.setItem("signupTaxCard", JSON.stringify(value));
+        console.log("Saved taxCard to localStorage");
+      } catch (e) {
+        console.error("Failed to save taxCard to localStorage:", e);
+        // Still set the state even if localStorage fails
+      }
+    } else {
+      localStorage.removeItem("signupTaxCard");
+    }
+  };
+
+  const setCompanyLogo = (value) => {
+    console.log("Setting companyLogo:", value ? "File present" : "null");
+    setCompanyLogoState(value);
+    if (value) {
+      try {
+        localStorage.setItem("signupCompanyLogo", JSON.stringify(value));
+        console.log("Saved companyLogo to localStorage");
+      } catch (e) {
+        console.error("Failed to save companyLogo to localStorage:", e);
+        // Still set the state even if localStorage fails
+      }
+    } else {
+      localStorage.removeItem("signupCompanyLogo");
+    }
+  };
+
+  const taxCard = taxCardState;
+  const companyLogo = companyLogoState;
 
   // Wrapper to persist showRegistration state
   const setShowRegistration = (value) => {
     localStorage.setItem("signupFormVisible", String(value));
     setShowRegistrationState(value);
+
+    // When going back to role selection (value = false), clear saved form data
+    if (value === false) {
+      localStorage.removeItem("signupFormData");
+      localStorage.removeItem("signupTaxCard");
+      localStorage.removeItem("signupCompanyLogo");
+      setTaxCardState(null);
+      setCompanyLogoState(null);
+      reset({});
+    }
   };
 
   const showRegistration = showRegistrationState;
 
   const selectedRole = roles[selectedRoleIndex];
   const isVendor = selectedRole.id === "vendor";
+
+  // Get saved form data from localStorage
+  const getSavedFormData = () => {
+    try {
+      const saved = localStorage.getItem("signupFormData");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Remove email field from saved data
+        const { email, ...rest } = parsed;
+        return rest;
+      }
+    } catch (e) {
+      console.error("Error loading saved form data:", e);
+    }
+    return {};
+  };
 
   const {
     register,
@@ -297,6 +373,7 @@ const SignupPage = () => {
     ),
     mode: "onSubmit",
     reValidateMode: "onChange",
+    defaultValues: getSavedFormData(),
   });
 
   const watchedEmail = watch("email") || "";
@@ -398,9 +475,15 @@ const SignupPage = () => {
         if (result.success) {
           localStorage.removeItem("signupFormVisible");
           localStorage.removeItem("signupRoleIndex");
+          localStorage.removeItem("signupFormData");
+          localStorage.removeItem("signupTaxCard");
+          localStorage.removeItem("signupCompanyLogo");
           toast.success("Vendor registration successful! Welcome to SprintX!");
           navigate("/vendor-dashboard");
         } else {
+          // Save form data (except email) for next attempt
+          const { email, password, confirmPassword, ...dataToSave } = data;
+          localStorage.setItem("signupFormData", JSON.stringify(dataToSave));
           toast.error(result.error || "Registration failed. Please try again.");
           setIsSubmitting(false);
           return;
@@ -433,6 +516,9 @@ const SignupPage = () => {
         if (result.success) {
           localStorage.removeItem("signupFormVisible");
           localStorage.removeItem("signupRoleIndex");
+          localStorage.removeItem("signupFormData");
+          localStorage.removeItem("signupTaxCard");
+          localStorage.removeItem("signupCompanyLogo");
           // Check if verification email is required
           if (
             result.requiresVerificationEmail ||
@@ -464,6 +550,9 @@ const SignupPage = () => {
             return;
           }
 
+          // Save form data (except email and passwords) for next attempt
+          const { email, password, confirmPassword, ...dataToSave } = data;
+          localStorage.setItem("signupFormData", JSON.stringify(dataToSave));
           toast.error(result.error || "Registration failed. Please try again.");
           setIsSubmitting(false);
           return;
@@ -829,6 +918,12 @@ const SignupPage = () => {
                     onClick={() => {
                       localStorage.removeItem("signupFormVisible");
                       localStorage.removeItem("signupRoleIndex");
+                      localStorage.removeItem("signupFormData");
+                      localStorage.removeItem("signupTaxCard");
+                      localStorage.removeItem("signupCompanyLogo");
+                      reset({});
+                      setTaxCard(null);
+                      setCompanyLogo(null);
                     }}
                     style={{
                       color: theme.colors.primary.main,
@@ -852,8 +947,15 @@ const SignupPage = () => {
                 <div style={{ marginBottom: theme.spacing[8] }}>
                   <button
                     onClick={() => {
+                      // Clear all localStorage and state
                       localStorage.removeItem("signupFormVisible");
                       localStorage.removeItem("signupRoleIndex");
+                      localStorage.removeItem("signupFormData");
+                      localStorage.removeItem("signupTaxCard");
+                      localStorage.removeItem("signupCompanyLogo");
+                      setTaxCard(null);
+                      setCompanyLogo(null);
+                      reset({});
                       setShowRegistration(false);
                     }}
                     style={{
@@ -1486,6 +1588,12 @@ const SignupPage = () => {
                       onClick={() => {
                         localStorage.removeItem("signupFormVisible");
                         localStorage.removeItem("signupRoleIndex");
+                        localStorage.removeItem("signupFormData");
+                        localStorage.removeItem("signupTaxCard");
+                        localStorage.removeItem("signupCompanyLogo");
+                        reset({});
+                        setTaxCard(null);
+                        setCompanyLogo(null);
                       }}
                       style={{
                         color: theme.colors.primary.main,
