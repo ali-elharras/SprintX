@@ -593,30 +593,32 @@ const AdminUserManagement = () => {
                       ? new Date(user.createdAt).toLocaleString()
                       : "-"}
                   </td>
-                  <td style={{ ...tdStyle, display: "flex", gap: theme.spacing[2] }}>
-                    {(["admin", "events_office", "event_office"].includes(
-                      user.role
-                    ) && dangerButton({
-                      onClick: () => handleDelete(user.id || user._id),
-                      children: "Delete",
-                      style: { padding: `${theme.spacing[1]} ${theme.spacing[3]}` },
-                    }))}
+                  <td style={tdStyle}>
+                    <div style={{ display: "flex", gap: theme.spacing[2] }}>
+                      {(["admin", "events_office", "event_office"].includes(
+                        user.role
+                      ) && dangerButton({
+                        onClick: () => handleDelete(user.id || user._id),
+                        children: "Delete",
+                        style: { padding: `${theme.spacing[1]} ${theme.spacing[3]}` },
+                      }))}
 
-                    {(() => {
-                      const uid = user.id || user._id;
-                      const isActive = (user.status || "").toString().toLowerCase() === "active";
-                      return isActive
-                        ? dangerButton({
-                            onClick: () => handleBlock(user),
-                            children: "Block",
-                            style: { padding: `${theme.spacing[1]} ${theme.spacing[3]}` },
-                          })
-                        : successButton({
-                            onClick: () => handleUnblock(uid),
-                            children: "Unblock",
-                            style: { padding: `${theme.spacing[1]} ${theme.spacing[3]}` },
-                          });
-                    })()}
+                      {(() => {
+                        const uid = user.id || user._id;
+                        const isActive = (user.status || "").toString().toLowerCase() === "active";
+                        return isActive
+                          ? dangerButton({
+                              onClick: () => handleBlock(user),
+                              children: "Block",
+                              style: { padding: `${theme.spacing[1]} ${theme.spacing[3]}` },
+                            })
+                          : successButton({
+                              onClick: () => handleUnblock(uid),
+                              children: "Unblock",
+                              style: { padding: `${theme.spacing[1]} ${theme.spacing[3]}` },
+                            });
+                      })()}
+                    </div>
                   </td>
                 </tr>
               ))}
