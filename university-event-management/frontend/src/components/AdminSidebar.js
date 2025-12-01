@@ -22,12 +22,12 @@ const AdminSidebar = ({ isOpen }) => {
       title: "Administration",
       items: [
         {
-          label: "Application Management",
+          label: "Applications",
           path: "/admin-dashboard",
           icon: <ClipboardCheck size={20} />,
         },
         {
-          label: "User Management",
+          label: "Users",
           path: "/admin-users",
           icon: <Users size={20} />,
         },

@@ -75,13 +75,14 @@ const AdminReports = () => {
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', alignItems: 'flex-end' }}>
         <div style={{ display: 'grid', gridTemplateColumns: tab === 'attendees' ? 'repeat(4,1fr)' : 'repeat(4,1fr)', gap: '0.75rem', flex: 1 }}>
           {tab === 'attendees' && (
-            <Input name="eventName" placeholder="Event Name" value={filters.eventName} onChange={handleChange} />
+            <Input name="eventName" label="Event Name" placeholder="Event Name" value={filters.eventName} onChange={handleChange} />
           )}
           <Select 
             name="eventType" 
+            label="Event Type"
             value={filters.eventType} 
             onChange={handleChange} 
             options={[
@@ -92,10 +93,10 @@ const AdminReports = () => {
               { value: 'workshop', label: 'Workshop' }
             ]} 
           />
-          <Input type="date" name="startDate" value={filters.startDate} onChange={handleChange} />
-          <Input type="date" name="endDate" value={filters.endDate} onChange={handleChange} />
+          <Input type="date" name="startDate" label="From" value={filters.startDate} onChange={handleChange} />
+          <Input type="date" name="endDate" label="To" value={filters.endDate} onChange={handleChange} />
           {tab === 'sales' && (
-            <Select name="sort" value={filters.sort} onChange={handleChange} options={[
+            <Select name="sort" label="Sort by" value={filters.sort} onChange={handleChange} options={[
               { value: 'desc', label: 'Revenue ↓' },
               { value: 'asc', label: 'Revenue ↑' }
             ]} />
