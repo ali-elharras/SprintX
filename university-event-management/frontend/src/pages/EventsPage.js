@@ -2480,7 +2480,7 @@ const EventsPage = () => {
       });
     }
 
-    // --- view filter (archived / upcoming / past) ---
+    // --- view filter (archived / upcoming / active / past) ---
     if (filters.view === "archived") {
       filtered = filtered.filter((e) => e.isArchived);
     } else {
@@ -2508,6 +2508,14 @@ const EventsPage = () => {
 
           const isToday = start >= startOfToday && start <= endOfToday;
           return sameDay && isToday;
+        });
+      } else if (filters.view === "active") {
+        // Show events that are happening right now (started but not yet ended)
+        filtered = filtered.filter((e) => {
+          const start = e.startDate ? new Date(e.startDate) : null;
+          const end = e.endDate ? new Date(e.endDate) : null;
+          if (!start || !end) return false;
+          return start <= now && end >= now;
         });
       } else if (filters.view === "past") {
         filtered = filtered.filter((e) => new Date(e.endDate) < now);
@@ -2867,6 +2875,7 @@ const EventsPage = () => {
 
   const viewOptions = [
     { value: "upcoming", label: "Upcoming" },
+    { value: "active", label: "Active" },
     { value: "past", label: "Past" },
     { value: "all", label: "All Events" },
   ];
@@ -4562,11 +4571,34 @@ const EventsPage = () => {
                         startDate: newStartDate,
                       };
 
-                      if (
-                        updatedData.endDate &&
-                        newStartDate > updatedData.endDate
-                      ) {
-                        updatedData.endDate = "";
+                      // Auto-set end date to 1 hour after start date
+                      if (newStartDate) {
+                        // Split the datetime-local value (format: YYYY-MM-DDTHH:mm)
+                        const dateTimeParts = newStartDate.split('T');
+                        const datePart = dateTimeParts[0]; // YYYY-MM-DD
+                        const timeParts = dateTimeParts[1].split(':'); // [HH, mm]
+                        
+                        let hours = parseInt(timeParts[0], 10);
+                        const minutes = timeParts[1];
+                        
+                        // Add 1 hour
+                        hours = hours + 1;
+                        
+                        // Handle day overflow if needed
+                        let newDatePart = datePart;
+                        if (hours >= 24) {
+                          hours = hours - 24;
+                          // Increment the day
+                          const dateObj = new Date(datePart + 'T00:00');
+                          dateObj.setDate(dateObj.getDate() + 1);
+                          const year = dateObj.getFullYear();
+                          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                          const day = String(dateObj.getDate()).padStart(2, '0');
+                          newDatePart = `${year}-${month}-${day}`;
+                        }
+                        
+                        const paddedHours = String(hours).padStart(2, '0');
+                        updatedData.endDate = `${newDatePart}T${paddedHours}:${minutes}`;
                       }
 
                       if (

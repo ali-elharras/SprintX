@@ -348,6 +348,9 @@ const App = () => {
       <RouterProvider router={router} />
       <Toaster
         position="bottom-right"
+        containerStyle={{
+          zIndex: 99999,
+        }}
         toastOptions={{
           duration: 4000,
           style: {

@@ -36,6 +36,24 @@ exports.createBazaar = async (req, res) => {
       });
     }
 
+    // Validate that start date and end date are not the same
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (start.getTime() === end.getTime()) {
+      return res.status(400).json({
+        success: false,
+        message: "Start date and end date cannot be the same",
+      });
+    }
+
+    // Validate that end date is after start date
+    if (end <= start) {
+      return res.status(400).json({
+        success: false,
+        message: "End date must be after start date",
+      });
+    }
+
     // Create bazaar event
     const newBazaar = await Event.create({
       title,
@@ -117,6 +135,24 @@ exports.updateBazaar = async (req, res) => {
         bazaar[field] = req.body[field];
       }
     });
+
+    // Validate that start date and end date are not the same
+    const start = new Date(bazaar.startDate);
+    const end = new Date(bazaar.endDate);
+    if (start.getTime() === end.getTime()) {
+      return res.status(400).json({
+        success: false,
+        message: "Start date and end date cannot be the same",
+      });
+    }
+
+    // Validate that end date is after start date
+    if (end <= start) {
+      return res.status(400).json({
+        success: false,
+        message: "End date must be after start date",
+      });
+    }
 
     await bazaar.save();
 

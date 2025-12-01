@@ -150,9 +150,7 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
   const [formData, setFormData] = useState({
     name: '',
     startDate: '',
-    startTime: '',
     endDate: '',
-    endTime: '',
     shortDescription: '',
     fullAgenda: '',
     websiteLink: '',
@@ -171,10 +169,8 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
       const endDateTime = new Date(conference.endDate);
       setFormData({
         name: conference.title || conference.name || '',
-        startDate: conference.startDate ? startDateTime.toISOString().split('T')[0] : '',
-        startTime: conference.startDate ? startDateTime.toISOString().split('T')[1].slice(0, 5) : '',
-        endDate: conference.endDate ? endDateTime.toISOString().split('T')[0] : '',
-        endTime: conference.endDate ? endDateTime.toISOString().split('T')[1].slice(0, 5) : '',
+        startDate: conference.startDate ? startDateTime.toISOString().slice(0, 16) : '',
+        endDate: conference.endDate ? endDateTime.toISOString().slice(0, 16) : '',
         shortDescription: conference.shortDescription || conference.description || '',
         fullAgenda: conference.fullAgenda || '',
         websiteLink: conference.websiteLink || '',
@@ -188,9 +184,7 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
       setFormData({
         name: '',
         startDate: '',
-        startTime: '',
         endDate: '',
-        endTime: '',
         shortDescription: '',
         fullAgenda: '',
         websiteLink: '',
@@ -208,8 +202,8 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
     setLoading(true);
 
     try {
-      const startDateTime = new Date(`${formData.startDate}T${formData.startTime}:00`);
-      const endDateTime = new Date(`${formData.endDate}T${formData.endTime}:00`);
+      const startDateTime = new Date(formData.startDate);
+      const endDateTime = new Date(formData.endDate);
       
       const minimumEndDateTime = new Date(startDateTime);
       minimumEndDateTime.setHours(startDateTime.getHours() + 1); // Add 1 hour
@@ -223,8 +217,8 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
       const conferenceData = {
         name: formData.name,
         title: formData.name, // For backward compatibility
-        startDate: `${formData.startDate}T${formData.startTime}:00`,
-        endDate: `${formData.endDate}T${formData.endTime}:00`,
+        startDate: new Date(formData.startDate).toISOString(),
+        endDate: new Date(formData.endDate).toISOString(),
         shortDescription: formData.shortDescription,
         description: formData.shortDescription, // For backward compatibility
         fullAgenda: formData.fullAgenda,
@@ -263,40 +257,32 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
     setFormData((prev) => {
       const newFormData = { ...prev, [name]: value };
 
-      // Re-validate end date and time if start date, start time, or end date changes
-      if (['startDate', 'startTime', 'endDate'].includes(name)) {
-        const currentStartDate = newFormData.startDate;
-        const currentStartTime = newFormData.startTime;
-        const currentEndDate = newFormData.endDate;
-        const currentEndTime = newFormData.endTime;
-
-        // Only proceed if all date/time components are present to form valid Date objects
-        if (currentStartDate && currentStartTime && currentEndDate && currentEndTime) {
-          const startDateTime = new Date(`${currentStartDate}T${currentStartTime}:00`);
-          const endDateTime = new Date(`${currentEndDate}T${currentEndTime}:00`);
-
-          const minimumEndDateTime = new Date(startDateTime);
-          minimumEndDateTime.setHours(startDateTime.getHours() + 1); // Add 1 hour
-
-          // If the new change makes endDateTime no longer strictly after startDateTime + 1 hour
-          if (endDateTime < minimumEndDateTime) {
-            // Clear endTime, as it's definitely invalid
-            newFormData.endTime = ''; 
-            
-            // If the end date is now before the start date, clear end date too
-            if (new Date(currentEndDate) < new Date(currentStartDate)) {
-                newFormData.endDate = '';
-            } else if (new Date(currentEndDate).toDateString() === new Date(currentStartDate).toDateString()) {
-                // If same day, check if current end time is less than 1 hr from start time
-                const startMinutes = Number(currentStartTime.split(':')[0]) * 60 + Number(currentStartTime.split(':')[1]);
-                const endMinutes = Number(currentEndTime.split(':')[0]) * 60 + Number(currentEndTime.split(':')[1]);
-                if (endMinutes < startMinutes + 60) {
-                    newFormData.endTime = '';
-                }
-            }
-          }
+      // Auto-set end date to 1 hour after start date
+      if (name === 'startDate' && value) {
+        const dateTimeParts = value.split('T');
+        const datePart = dateTimeParts[0];
+        const timeParts = dateTimeParts[1].split(':');
+        
+        let hours = parseInt(timeParts[0], 10);
+        const minutes = timeParts[1];
+        
+        hours = hours + 1;
+        
+        let newDatePart = datePart;
+        if (hours >= 24) {
+          hours = hours - 24;
+          const dateObj = new Date(datePart + 'T00:00');
+          dateObj.setDate(dateObj.getDate() + 1);
+          const year = dateObj.getFullYear();
+          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+          const day = String(dateObj.getDate()).padStart(2, '0');
+          newDatePart = `${year}-${month}-${day}`;
         }
+        
+        const paddedHours = String(hours).padStart(2, '0');
+        newFormData.endDate = `${newDatePart}T${paddedHours}:${minutes}`;
       }
+
       return newFormData;
     });
   };
@@ -307,41 +293,14 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
     }
   };
 
-  // Calculate tomorrow's date (minimum allowed date)
-  const getTomorrow = () => {
+  // Calculate tomorrow's datetime (minimum allowed datetime)
+  const getTomorrowDateTimeString = () => {
     const now = new Date();
     const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    const year = tomorrow.getFullYear();
-    const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
-    const day = String(tomorrow.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return tomorrow.toISOString().slice(0, 16);
   };
   
-  const tomorrowString = getTomorrow();
-
-  // Min date for endDate input
-  const minDateForEndDate = formData.startDate || tomorrowString;
-
-  // Min time for endTime input
-  let minTimeForEndTime = "00:00";
-  if (formData.startDate && formData.endDate && formData.startTime) {
-    const startOnlyDate = new Date(formData.startDate).toDateString();
-    const endOnlyDate = new Date(formData.endDate).toDateString();
-
-    if (startOnlyDate === endOnlyDate) {
-      const [startHour, startMinute] = formData.startTime.split(':').map(Number);
-      const startMinutesTotal = startHour * 60 + startMinute;
-      const oneHourLaterMinutesTotal = startMinutesTotal + 60; // Add 60 minutes
-
-      if (oneHourLaterMinutesTotal >= 24 * 60) { // If it goes past midnight
-        minTimeForEndTime = "23:59"; // Effectively making selection impossible for the same day
-      } else {
-        const newMinHour = Math.floor(oneHourLaterMinutesTotal / 60);
-        const newMinMinute = oneHourLaterMinutesTotal % 60;
-        minTimeForEndTime = `${String(newMinHour).padStart(2, '0')}:${String(newMinMinute).padStart(2, '0')}`;
-      }
-    }
-  }
+  const tomorrowString = getTomorrowDateTimeString();
 
   if (!isOpen) return null;
 
@@ -398,64 +357,26 @@ const ConferenceModal = ({ isOpen, onClose, conference = null, onSuccess }) => {
               />
 
               <div style={styles.datetimeGrid}>
-                <div>
-                  <Input
-                    label= "Start Date"
-                    type="date"
-                    name="startDate"
-                    value={formData.startDate}
-                    onChange={handleChange}
-                    required
-                    disabled={loading}
-                    min={tomorrowString}
-                  />
-                </div>
-                <div>
-                  <Input
-                    label= "Start Time"
-                    type="time"
-                    name="startTime"
-                    value={formData.startTime}
-                    onChange={handleChange}
-                    required
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-
-              <div style={styles.datetimeGrid}>
-                <div>
-                  <Input
-                    label= "End Date"
-                    type="date"
-                    name="endDate"
-                    value={formData.endDate}
-                    onChange={handleChange}
-                    required
-                    disabled={loading || !formData.startDate}
-                    min={minDateForEndDate}
-                    style={{
-                      backgroundColor: (loading || !formData.startDate) ? theme.colors.background.default : undefined,
-                      cursor: (loading || !formData.startDate) ? 'not-allowed' : 'auto',
-                    }}
-                  />
-                </div>
-                <div>
-                  <Input
-                    label= "End Time"
-                    type="time"
-                    name="endTime"
-                    value={formData.endTime}
-                    onChange={handleChange}
-                    required
-                    disabled={loading || !formData.endDate}
-                    min={minTimeForEndTime}
-                    style={{
-                      backgroundColor: (loading || !formData.endDate) ? theme.colors.background.default : undefined,
-                      cursor: (loading || !formData.endDate) ? 'not-allowed' : 'auto',
-                    }}
-                  />
-                </div>
+                <Input
+                  label="Start Date & Time"
+                  type="datetime-local"
+                  name="startDate"
+                  value={formData.startDate}
+                  onChange={handleChange}
+                  required
+                  disabled={loading}
+                  min={tomorrowString}
+                />
+                <Input
+                  label="End Date & Time"
+                  type="datetime-local"
+                  name="endDate"
+                  value={formData.endDate}
+                  onChange={handleChange}
+                  required
+                  disabled={loading}
+                  min={formData.startDate || tomorrowString}
+                />
               </div>
 
               <div>

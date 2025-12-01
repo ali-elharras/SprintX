@@ -111,6 +111,15 @@ const BoothPollManager = ({ onPollCreated }) => {
       toast.error('Poll end date cannot be in the past.');
       return;
     }
+
+    // Check if voting ends at least 2 days before the start date
+    const twoDaysBeforeStart = new Date(startDateObj);
+    twoDaysBeforeStart.setDate(twoDaysBeforeStart.getDate() - 2);
+    
+    if (pollEndDateObj > twoDaysBeforeStart) {
+      toast.error('Voting must end at least 2 days before the event start date.');
+      return;
+    }
     
     // Calculate end date from start date and duration
     const startDate = new Date(formData.startDate);
@@ -170,6 +179,15 @@ const BoothPollManager = ({ onPollCreated }) => {
 
   const now = new Date();
   const minPollEndDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  // Calculate max poll end date (2 days before start date)
+  let maxPollEndDate = '';
+  if (formData.startDate) {
+    const startDate = new Date(formData.startDate);
+    const maxEndDate = new Date(startDate);
+    maxEndDate.setDate(maxEndDate.getDate() - 2);
+    maxPollEndDate = `${maxEndDate.getFullYear()}-${String(maxEndDate.getMonth() + 1).padStart(2, '0')}-${String(maxEndDate.getDate()).padStart(2, '0')}T${String(maxEndDate.getHours()).padStart(2, '0')}:${String(maxEndDate.getMinutes()).padStart(2, '0')}`;
+  }
 
 
   return (
@@ -352,7 +370,7 @@ const BoothPollManager = ({ onPollCreated }) => {
               value={formData.pollEndDate}
               onChange={handleInputChange}
               min={minPollEndDate}
-              max={formData.startDate || ''}
+              max={maxPollEndDate || ''}
               disabled={!formData.startDate}
               style={{
                 width: '100%',
@@ -363,6 +381,11 @@ const BoothPollManager = ({ onPollCreated }) => {
                 backgroundColor: !formData.startDate ? '#f3f4f6' : 'white',
               }}
             />
+            {formData.startDate && (
+              <small style={{ display: 'block', marginTop: '0.25rem', color: theme.colors.text.secondary }}>
+                Must be at least 2 days before start date
+              </small>
+            )}
           </div>
         </div>
 
