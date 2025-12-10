@@ -44,6 +44,15 @@ const eventRatingSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
+  },
+  aiClassification: {
+    type: String,
+    enum: ['Good', 'Spam', 'Inappropriate'],
+    required: false
+  },
+  aiReasoning: {
+    type: String,
+    required: false
   }
 }, {
   timestamps: true

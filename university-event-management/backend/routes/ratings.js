@@ -4,6 +4,7 @@ const EventRating = require("../models/EventRating");
 const User = require("../models/User");
 const Event = require("../models/Event");
 const emailService = require("../services/emailService");
+const axios = require("axios");
 // Auth middleware still used for regular user actions; admin endpoints will be public per request
 const { protect } = require("../middleware/auth");
 
@@ -67,6 +68,35 @@ router.post("/", protect, canRate, async (req, res) => {
       });
     }
 
+    // AI Comment Analysis
+    let aiClassification = "Good";
+    let aiReasoning = "";
+
+    try {
+      const aiResponse = await axios.post("http://127.0.0.1:8000/analyze-comment", {
+        text: comment,
+      });
+
+      const { category, reasoning } = aiResponse.data;
+      aiClassification = category;
+      aiReasoning = reasoning;
+
+      if (category !== "Good") {
+        return res.status(400).json({
+          success: false,
+          message: `Comment rejected as ${category}. Reasoning: ${reasoning}`,
+        });
+      }
+    } catch (error) {
+      console.error("AI Service Error:", error.message);
+      // If AI service is down, we might want to fail safely or block. 
+      // Given the requirement is to use the AI to define type, we'll block on failure to ensure safety.
+      return res.status(503).json({
+        success: false,
+        message: "Comment analysis service unavailable. Please try again later.",
+      });
+    }
+
     // ✅ FIX: Get userName from multiple possible fields
     const userName =
       req.user.name || req.user.username || req.user.email || "Anonymous User";
@@ -94,6 +124,8 @@ router.post("/", protect, canRate, async (req, res) => {
       existingRating.comment = comment;
       existingRating.userName = userName; // Update name too
       existingRating.updatedAt = Date.now();
+      existingRating.aiClassification = aiClassification;
+      existingRating.aiReasoning = aiReasoning;
       savedRating = await existingRating.save();
     } else {
       // Create new rating
@@ -105,6 +137,8 @@ router.post("/", protect, canRate, async (req, res) => {
         userName: userName, // ✅ Use the fallback value
         rating,
         comment,
+        aiClassification,
+        aiReasoning
       });
       savedRating = await newRating.save();
     }
@@ -261,7 +295,7 @@ router.get("/admin/events-with-ratings", async (req, res) => {
         }
       }
     ]);
-    
+
     if (ratingsGrouped.length === 0) {
       return res.status(200).json({
         success: true,
@@ -307,7 +341,7 @@ router.get("/admin/events-with-ratings", async (req, res) => {
 
     // For gym and court, we'll need to import those models if they exist
     // For now, just return the events we have
-    
+
     res.status(200).json({
       success: true,
       data: allEvents,

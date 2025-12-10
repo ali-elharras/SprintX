@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { X, Percent, Tag, FileText, Sparkles } from 'lucide-react';
+import { X, Percent, Tag, FileText, Sparkles, Wand2 } from 'lucide-react';
+import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
 
 /* ========================================
    SKELETON LOADING
@@ -41,7 +43,9 @@ const LoyaltyEnrollmentModal = ({ isOpen, onClose, onEnroll }) => {
     termsAndConditions: ''
   });
   const [submitting, setSubmitting] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [skeletonLoading, setSkeletonLoading] = useState(true);
+  const { vendor } = useAuth();
 
   useEffect(() => {
     if (isOpen) {
@@ -70,6 +74,35 @@ const LoyaltyEnrollmentModal = ({ isOpen, onClose, onEnroll }) => {
       [name]: value
     }));
   };
+
+  const handleGenerateTerms = async () => {
+    if (!formData.discountRate || !formData.promoCode) {
+      toast.error('Please enter Discount Rate and Promo Code first');
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      // Use local FastAPI endpoint
+      const response = await axios.post('http://127.0.0.1:8000/generate-terms', {
+        discount_rate: parseFloat(formData.discountRate),
+        promo_code: formData.promoCode,
+        business_name: vendor?.businessName || "Our Business"
+      });
+
+      setFormData(prev => ({
+        ...prev,
+        termsAndConditions: response.data.generated_text
+      }));
+      toast.success('Terms generated successfully!');
+    } catch (error) {
+      console.error("AI Generation Error:", error);
+      toast.error('Failed to generate terms. Please try again.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -226,16 +259,40 @@ const LoyaltyEnrollmentModal = ({ isOpen, onClose, onEnroll }) => {
                       <FileText size={16} className="text-indigo-600" />
                       Terms and conditions
                     </label>
-                    <textarea
-                      name="termsAndConditions"
-                      value={formData.termsAndConditions}
-                      onChange={handleChange}
-                      placeholder="Describe the terms, restrictions, and validity period..."
-                      rows={5}
-                      className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-                      required
-                      disabled={submitting}
-                    />
+                    <div className="relative">
+                      <textarea
+                        name="termsAndConditions"
+                        value={formData.termsAndConditions}
+                        onChange={handleChange}
+                        placeholder="Describe the terms, restrictions, and validity period..."
+                        rows={5}
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                        required
+                        disabled={submitting || generating}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleGenerateTerms}
+                        disabled={generating || submitting || !formData.discountRate || !formData.promoCode}
+                        className="absolute right-2 bottom-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-indigo-200"
+                        title="Generate terms with AI based on your inputs"
+                      >
+                        {generating ? (
+                          <>
+                            <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Wand2 size={12} />
+                            Generate with AI
+                          </>
+                        )}
+                      </button>
+                    </div>
                     <p className="mt-1.5 text-xs text-gray-500">
                       Specify any limitations or requirements for using this promo code
                     </p>
