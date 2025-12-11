@@ -81,12 +81,16 @@ router.post("/", protect, canRate, async (req, res) => {
       aiClassification = category;
       aiReasoning = reasoning;
 
+      /* 
       if (category !== "Good") {
         return res.status(400).json({
           success: false,
           message: `Comment rejected as ${category}. Reasoning: ${reasoning}`,
         });
       }
+      */
+      // Allow all comments to be posted, admin will review them.
+      console.log(`AI Analysis: ${category} - ${reasoning}`);
     } catch (error) {
       console.error("AI Service Error:", error.message);
       // If AI service is down, we might want to fail safely or block. 
