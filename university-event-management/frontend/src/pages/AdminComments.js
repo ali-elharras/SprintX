@@ -354,6 +354,7 @@ const AdminComments = () => {
                   <th style={tableHeaderCellStyles}>User & Rating</th>
                   <th style={tableHeaderCellStyles}>Comment</th>
                   <th style={tableHeaderCellStyles}>Date</th>
+                  <th style={{ ...tableHeaderCellStyles, width: '100px' }}>AI Rating</th>
                   <th style={{ ...tableHeaderCellStyles, width: '120px' }}>Actions</th>
                   <th style={{ ...tableHeaderCellStyles, width: '60px' }}></th>
                 </tr>
@@ -437,6 +438,35 @@ const AdminComments = () => {
                           {formatDateTime(comment.createdAt)}
                         </td>
                         <td style={tableCellStyles}>
+                          {comment.aiClassification ? (
+                            <span
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontWeight: theme.typography.fontWeight.medium,
+                                color:
+                                  comment.aiClassification === 'Good'
+                                    ? theme.colors.success.main
+                                    : comment.aiClassification === 'Spam' ||
+                                      comment.aiClassification === 'Inappropriate'
+                                    ? theme.colors.error.main
+                                    : theme.colors.text.secondary,
+                                backgroundColor:
+                                  comment.aiClassification === 'Good'
+                                    ? theme.colors.success.main + '10'
+                                    : comment.aiClassification === 'Spam' ||
+                                      comment.aiClassification === 'Inappropriate'
+                                    ? theme.colors.error.main + '10'
+                                    : theme.colors.background.default,
+                              }}
+                            >
+                              {comment.aiClassification}
+                            </span>
+                          ) : (
+                            <span style={{ color: theme.colors.text.secondary }}>N/A</span>
+                          )}
+                        </td>
+                        <td style={tableCellStyles}>
                           <Button
                             variant="danger"
                             size="sm"
@@ -464,7 +494,7 @@ const AdminComments = () => {
                       {/* Expanded Event Details */}
                       {isExpanded && comment.event && (
                         <tr style={expandedRowStyles}>
-                          <td colSpan="5" style={{ ...tableCellStyles, paddingTop: 0 }}>
+                          <td colSpan="6" style={{ ...tableCellStyles, paddingTop: 0 }}>
                             <div style={eventDetailCardStyles}>
                                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: theme.spacing[3] }}>
                                                               <div>
