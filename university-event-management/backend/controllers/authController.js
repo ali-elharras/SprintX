@@ -5,6 +5,7 @@ const Vendor = require("../models/Vendor");
 const crypto = require("crypto");
 const { uploadImage } = require("../utils/imageKitUploader");
 const emailService = require("../services/emailService");
+const { createNotification } = require('./notificationController');
 
 // Helper function to determine if email is a vendor email
 const isVendorEmail = (email) => {
@@ -908,6 +909,28 @@ const login = async (req, res, next) => {
     let dailyRewardInfo = null;
     if (accountType === "user") {
       dailyRewardInfo = await processDailyReward(account);
+
+      // Create an in-app notification for the user when they successfully claim the daily reward
+      if (dailyRewardInfo && dailyRewardInfo.claimed) {
+        try {
+          const pointsEarned = dailyRewardInfo.pointsEarned || 0;
+          const totalPoints = dailyRewardInfo.totalPoints || account.rewardPoints;
+          const consecutiveDays = dailyRewardInfo.consecutiveDays || account.consecutiveDays;
+          const message = `You claimed your daily reward: +${pointsEarned} points!`;
+
+          // Fire-and-forget; don't fail login if notification creation fails
+          await createNotification(
+            account._id,
+            message,
+            'daily_reward',
+            null,
+            null,
+            { pointsEarned, totalPoints, consecutiveDays }
+          );
+        } catch (notifErr) {
+          console.error('Error creating daily reward notification:', notifErr);
+        }
+      }
     }
 
     // Prepare response data

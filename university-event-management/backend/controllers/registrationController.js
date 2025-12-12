@@ -644,18 +644,28 @@ const cancelRegistration = async (req, res) => {
     // Note: The post-remove middleware in the Registration model will automatically
     // decrement the currentParticipants count, so we don't do it manually here
     await Registration.findByIdAndDelete(req.params.id);
-    
+
     // Check if there are users on waiting list and promote the first one
     if (eventFromEvent && eventFromEvent.waitingList && eventFromEvent.waitingList.length > 0) {
-      const nextInLine = eventFromEvent.waitingList[0];
-      
-      // Remove from waiting list
-      eventFromEvent.waitingList.shift();
+      const nextInLine = eventFromEvent.waitingList.shift();
       await eventFromEvent.save();
-      
-      // TODO: Send notification to the user that a spot opened up
+
+      // Create a new registration for the promoted user
+      const promotedRegistration = new Registration({
+        event: eventFromEvent._id,
+        user: nextInLine.user || undefined,
+        firstName: nextInLine.firstName,
+        lastName: nextInLine.lastName,
+        email: nextInLine.email,
+        universityId: nextInLine.universityId,
+        status: 'confirmed',
+        waitlistPosition: null
+      });
+      await promotedRegistration.save();
+
+      // Optionally: send notification to the user (if notification system is available)
       // For now, just log it
-      console.log(`Promoted user from waiting list: ${nextInLine.email}`);
+      console.log(`Promoted user from waiting list and registered: ${nextInLine.email}`);
     }
     
     res.status(200).json({
