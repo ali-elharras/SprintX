@@ -26,14 +26,15 @@ const DailyRewardNotification = ({ dailyReward, onClose }) => {
     return null;
   }
 
+  // Updated the notification card to have a white background and improved visibility
   return (
     <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
-      <div className="bg-gradient-to-br from-purple-600 to-purple-700 text-white rounded-lg shadow-lg p-6 max-w-sm border border-white/20">
+      <div className="bg-white text-black rounded-lg shadow-lg p-6 max-w-sm border border-gray-300">
         <div className="flex justify-between items-start mb-3">
           <div className="text-2xl">🎉</div>
           <button
             onClick={handleClose}
-            className="text-white/80 hover:text-white transition-colors"
+            className="text-black/80 hover:text-black transition-colors"
           >
             <svg
               className="w-5 h-5"
@@ -54,33 +55,33 @@ const DailyRewardNotification = ({ dailyReward, onClose }) => {
         <h3 className="text-xl font-bold mb-2">Daily Reward Claimed!</h3>
         
         <div className="space-y-2 mb-4">
-          <div className="flex justify-between items-center bg-purple-800/25 rounded-lg p-2">
-            <span className="text-sm text-white/80">Points Earned:</span>
-            <span className="text-2xl font-bold text-white">+{dailyReward.pointsEarned}</span>
+          <div className="flex justify-between items-center bg-gray-100 rounded-lg p-2">
+            <span className="text-sm text-gray-600">Points Earned:</span>
+            <span className="text-2xl font-bold text-black">+{dailyReward.pointsEarned}</span>
           </div>
 
-          <div className="flex justify-between items-center bg-purple-800/20 rounded-lg p-2">
-            <span className="text-sm text-white/80">Total Points:</span>
-            <span className="text-lg font-semibold text-white">{dailyReward.totalPoints}</span>
+          <div className="flex justify-between items-center bg-gray-100 rounded-lg p-2">
+            <span className="text-sm text-gray-600">Total Points:</span>
+            <span className="text-lg font-semibold text-black">{dailyReward.totalPoints}</span>
           </div>
 
-          <div className="flex justify-between items-center bg-purple-800/20 rounded-lg p-2">
-            <span className="text-sm text-white/80">Streak:</span>
-            <span className="text-lg font-semibold text-white">{dailyReward.consecutiveDays} day{dailyReward.consecutiveDays > 1 ? 's' : ''} 🔥</span>
+          <div className="flex justify-between items-center bg-gray-100 rounded-lg p-2">
+            <span className="text-sm text-gray-600">Streak:</span>
+            <span className="text-lg font-semibold text-black">{dailyReward.consecutiveDays} day{dailyReward.consecutiveDays > 1 ? 's' : ''} 🔥</span>
           </div>
         </div>
 
         {dailyReward.streakBroken && (
-          <div className="bg-orange-600/80 rounded-lg p-2 mb-3 text-sm text-white">
+          <div className="bg-orange-100 rounded-lg p-2 mb-3 text-sm text-black">
             ⚠️ Your streak was broken, but you've started a new one!
           </div>
         )}
 
-        <div className="text-sm text-white/90 italic">
+        <div className="text-sm text-gray-700 italic">
           {dailyReward.message}
         </div>
 
-        <div className="mt-4 text-xs text-white/70">
+        <div className="mt-4 text-xs text-gray-500">
           💡 Use your points for discounts on paid events!
         </div>
       </div>

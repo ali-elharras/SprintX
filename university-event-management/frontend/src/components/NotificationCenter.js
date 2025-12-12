@@ -427,9 +427,15 @@ const styles = {
         borderBottom: '1px solid #f3f4f6',
         transition: 'background 0.2s',
         cursor: 'pointer',
+        background: '#ffffff', // White background for better visibility
+        border: '1px solid #e5e7eb', // Subtle border for clarity
+        borderRadius: '8px', // Rounded corners for a modern look
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', // Soft shadow for depth
+        padding: '16px', // Increased padding for better spacing
+        marginBottom: '8px', // Add spacing between notifications
     },
     unreadItem: {
-        background: '#f0f9ff',
+        background: '#f9fafb', // Slightly different background for unread notifications
     },
     notificationIcon: {
         fontSize: '24px',
