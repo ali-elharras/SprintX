@@ -423,13 +423,16 @@ const styles = {
     },
     notificationItem: {
         display: 'flex',
+        background: '#ffffff', // Set the card background to white for better visibility
+        borderRadius: '8px', // Add rounded corners for a modern look
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', // Add a subtle shadow for depth
         padding: '12px 16px',
-        borderBottom: '1px solid #f3f4f6',
+        border: '1px solid #e5e7eb', // Add a light border for better contrast
         transition: 'background 0.2s',
         cursor: 'pointer',
     },
     unreadItem: {
-        background: '#f0f9ff',
+        background: '#f9fafb', // Slightly different background for unread notifications
     },
     notificationIcon: {
         fontSize: '24px',
