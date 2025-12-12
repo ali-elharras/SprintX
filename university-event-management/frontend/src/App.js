@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, createContext } from "react";
 import {
   createBrowserRouter,
   RouterProvider,
@@ -52,6 +52,8 @@ import DailyRewardNotification from "./components/DailyRewardNotification";
 
 // --- Layout Components ---
 
+export const SidebarContext = createContext();
+
 const AppLayout = () => {
   const { user, dailyReward, clearDailyReward } = useAuth();
   const isAdmin = user && user.role === "admin";
@@ -62,31 +64,33 @@ const AppLayout = () => {
   };
 
   return (
-    <div
-      style={{
-        backgroundColor: theme.colors.background.default,
-        minHeight: "100vh",
-      }}
-    >
-      {isAdmin && <AdminSidebar isOpen={isSidebarOpen} />}
+    <SidebarContext.Provider value={{ isSidebarOpen, setSidebarOpen }}>
       <div
         style={{
-          marginLeft: isAdmin && isSidebarOpen ? "260px" : "0",
-          transition: "margin-left 0.3s ease-in-out",
+          backgroundColor: theme.colors.background.default,
+          minHeight: "100vh",
         }}
       >
-        <Navbar onMenuClick={isAdmin ? handleToggleSidebar : undefined} />
-        <main style={{ padding: `0 ${theme.spacing[8]} ${theme.spacing[8]}` }}>
-          <Outlet />
-        </main>
+        {isAdmin && <AdminSidebar isOpen={isSidebarOpen} />}
+        <div
+          style={{
+            marginLeft: isAdmin && isSidebarOpen ? "260px" : "0",
+            transition: "margin-left 0.3s ease-in-out",
+          }}
+        >
+          <Navbar onMenuClick={isAdmin ? handleToggleSidebar : undefined} />
+          <main style={{ padding: `0 ${theme.spacing[8]} ${theme.spacing[8]}` }}>
+            <Outlet />
+          </main>
+        </div>
+        {dailyReward && user && !["admin", "events_office"].includes(user.role) && (
+          <DailyRewardNotification
+            dailyReward={dailyReward}
+            onClose={clearDailyReward}
+          />
+        )}
       </div>
-      {dailyReward && user && !["admin", "events_office"].includes(user.role) && (
-        <DailyRewardNotification
-          dailyReward={dailyReward}
-          onClose={clearDailyReward}
-        />
-      )}
-    </div>
+    </SidebarContext.Provider>
   );
 };
 
