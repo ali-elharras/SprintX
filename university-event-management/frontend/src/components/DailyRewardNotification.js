@@ -28,12 +28,12 @@ const DailyRewardNotification = ({ dailyReward, onClose }) => {
 
   return (
     <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
-      <div className="bg-gradient-to-br from-green-400 to-blue-500 text-white rounded-lg shadow-2xl p-6 max-w-sm border-2 border-white/20">
+      <div className="bg-card text-card-foreground rounded-lg shadow-lg p-6 max-w-sm border border-card/10">
         <div className="flex justify-between items-start mb-3">
           <div className="text-2xl">🎉</div>
           <button
             onClick={handleClose}
-            className="text-white/80 hover:text-white transition-colors"
+            className="text-card-foreground/80 hover:text-card-foreground transition-colors"
           >
             <svg
               className="w-5 h-5"
@@ -54,25 +54,19 @@ const DailyRewardNotification = ({ dailyReward, onClose }) => {
         <h3 className="text-xl font-bold mb-2">Daily Reward Claimed!</h3>
         
         <div className="space-y-2 mb-4">
-          <div className="flex justify-between items-center bg-white/20 backdrop-blur-sm rounded-lg p-2">
+          <div className="flex justify-between items-center bg-card/5 rounded-lg p-2">
             <span className="text-sm">Points Earned:</span>
-            <span className="text-2xl font-bold">
-              +{dailyReward.pointsEarned}
-            </span>
+            <span className="text-2xl font-bold">+{dailyReward.pointsEarned}</span>
           </div>
-          
-          <div className="flex justify-between items-center bg-white/20 backdrop-blur-sm rounded-lg p-2">
+
+          <div className="flex justify-between items-center bg-card/5 rounded-lg p-2">
             <span className="text-sm">Total Points:</span>
-            <span className="text-lg font-semibold">
-              {dailyReward.totalPoints}
-            </span>
+            <span className="text-lg font-semibold">{dailyReward.totalPoints}</span>
           </div>
-          
-          <div className="flex justify-between items-center bg-white/20 backdrop-blur-sm rounded-lg p-2">
+
+          <div className="flex justify-between items-center bg-card/5 rounded-lg p-2">
             <span className="text-sm">Streak:</span>
-            <span className="text-lg font-semibold">
-              {dailyReward.consecutiveDays} day{dailyReward.consecutiveDays > 1 ? 's' : ''} 🔥
-            </span>
+            <span className="text-lg font-semibold">{dailyReward.consecutiveDays} day{dailyReward.consecutiveDays > 1 ? 's' : ''} 🔥</span>
           </div>
         </div>
 

@@ -45,7 +45,7 @@ const RewardsDashboard = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center p-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
       </div>
     );
   }
@@ -61,12 +61,21 @@ const RewardsDashboard = () => {
   return (
     <div className="space-y-6">
       {/* Main Rewards Card */}
-      <Card className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+      <Card
+        className="text-white"
+        style={{
+          background: 'linear-gradient(135deg, #6d28d9 0%, #764ba2 100%)',
+          borderRadius: '15px',
+          boxShadow: '0 5px 25px rgba(0, 0, 0, 0.1)',
+          padding: '1.5rem',
+          transition: 'all 0.3s ease',
+        }}
+      >
         <div className="p-6">
           <div className="flex justify-between items-start mb-6">
             <div>
               <h2 className="text-2xl font-bold mb-2">Your Reward Points</h2>
-              <p className="text-blue-100">
+              <p className="text-white/90">
                 {rewards.consecutiveDays > 0
                   ? `${rewards.consecutiveDays} day streak! 🔥`
                   : 'Start your streak today!'}
@@ -74,32 +83,32 @@ const RewardsDashboard = () => {
             </div>
             <div className="text-right">
               <div className="text-5xl font-bold">{rewards.rewardPoints}</div>
-              <div className="text-sm text-blue-100">points</div>
+              <div className="text-sm text-white/80">points</div>
             </div>
           </div>
 
-          <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 space-y-3">
+          <div className="bg-purple-800/20 rounded-lg p-4 space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-sm">Next Reward:</span>
-              <span className="font-semibold">
+              <span className="text-sm text-white/80">Next Reward:</span>
+              <span className="font-semibold text-white">
                 +{rewards.nextRewardAmount} points
               </span>
             </div>
 
             {!rewards.canClaimToday && rewards.nextRewardIn && (
               <div className="flex justify-between items-center">
-                <span className="text-sm">Available in:</span>
-                <span className="font-semibold">
+                <span className="text-sm text-white/80">Available in:</span>
+                <span className="font-semibold text-white">
                   {formatTime(rewards.nextRewardIn)}
                 </span>
               </div>
             )}
 
-            <div className="pt-2 border-t border-white/30">
-              <p className="text-xs text-blue-100">
+            <div className="pt-2 border-t border-white/20">
+              <p className="text-xs text-white/80">
                 💰 {rewards.pointsToMoneyRatio}
               </p>
-              <p className="text-xs text-blue-100">
+              <p className="text-xs text-white/80">
                 🎯 Max {rewards.maxDiscountPercent}% discount per event
               </p>
             </div>
@@ -122,20 +131,20 @@ const RewardsDashboard = () => {
             <h3 className="text-xl font-bold mb-4">🏆 Leaderboard</h3>
             
             {/* Current User Position */}
-            <div className="bg-blue-50 border-2 border-blue-500 rounded-lg p-4 mb-4">
+            <div className="bg-card border border-card/10 rounded-lg p-4 mb-4 text-card-foreground">
               <div className="flex justify-between items-center">
                 <div>
-                  <div className="text-sm text-gray-600">Your Rank</div>
+                  <div className="text-sm text-card-foreground/70">Your Rank</div>
                   <div className="font-bold text-lg">#{leaderboard.currentUser.rank}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-gray-600">Your Points</div>
-                  <div className="font-bold text-lg text-blue-600">
+                  <div className="text-sm text-card-foreground/70">Your Points</div>
+                  <div className="font-bold text-lg text-card-foreground">
                     {leaderboard.currentUser.points}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-gray-600">Streak</div>
+                  <div className="text-sm text-card-foreground/70">Streak</div>
                   <div className="font-bold text-lg">
                     {leaderboard.currentUser.streak} 🔥
                   </div>
@@ -149,9 +158,7 @@ const RewardsDashboard = () => {
                 <div
                   key={index}
                   className={`flex justify-between items-center p-3 rounded-lg ${
-                    index < 3
-                      ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200'
-                      : 'bg-gray-50'
+                    index < 3 ? 'bg-card/5 border border-card/10' : 'bg-card/5'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
@@ -175,7 +182,7 @@ const RewardsDashboard = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="font-bold text-lg text-blue-600">
+                  <div className="font-bold text-lg text-card-foreground">
                     {user.points}
                   </div>
                 </div>

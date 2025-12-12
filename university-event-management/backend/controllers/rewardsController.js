@@ -5,6 +5,14 @@ const User = require("../models/User");
 // @access  Private
 const getMyRewards = async (req, res) => {
   try {
+    // Prevent admin and events office accounts from accessing rewards
+    const forbiddenRoles = ["admin", "events_office"];
+    if (req.user && forbiddenRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Rewards are not available for your account type",
+      });
+    }
     const user = await User.findById(req.user.id).select(
       "rewardPoints lastDailyReward consecutiveDays"
     );
@@ -73,6 +81,14 @@ const getMyRewards = async (req, res) => {
 // @access  Private
 const calculateDiscount = async (req, res) => {
   try {
+    // Prevent admin and events office accounts from using rewards
+    const forbiddenRoles = ["admin", "events_office"];
+    if (req.user && forbiddenRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Rewards are not available for your account type",
+      });
+    }
     const { eventCost, pointsToUse } = req.body;
 
     if (!eventCost || eventCost <= 0) {
@@ -140,6 +156,14 @@ const calculateDiscount = async (req, res) => {
 // @access  Private
 const getLeaderboard = async (req, res) => {
   try {
+    // Prevent admin and events office accounts from viewing rewards leaderboard
+    const forbiddenRoles = ["admin", "events_office"];
+    if (req.user && forbiddenRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Rewards are not available for your account type",
+      });
+    }
     const { limit = 10 } = req.query;
 
     const topUsers = await User.find({

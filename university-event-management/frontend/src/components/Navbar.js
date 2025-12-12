@@ -225,6 +225,16 @@ const Navbar = ({ onMenuClick }) => {
     },
   };
 
+  // Filter nav items based on user role (hide rewards for admin/events office)
+  const filterNavItems = (items = []) => {
+    if (!accountInfo || !accountInfo.role) return items;
+    const restricted = ["admin", "events_office"];
+    if (restricted.includes(accountInfo.role)) {
+      return items.filter((i) => i.path !== "/rewards");
+    }
+    return items;
+  };
+
   const isPathInGroup = (groupItems) => {
     return groupItems.some(item => location.pathname === item.path);
   };
@@ -286,7 +296,7 @@ const Navbar = ({ onMenuClick }) => {
           </button>
           {activeDropdown === "events" && (
             <div style={dropdownMenuStyles}>
-              {studentNavGroups.events.items.map((item, idx) => (
+              {filterNavItems(studentNavGroups.events.items).map((item, idx) => (
                 <button
                   key={idx}
                   onClick={() => {
@@ -510,7 +520,7 @@ const Navbar = ({ onMenuClick }) => {
           </button>
           {activeDropdown === "events" && (
             <div style={dropdownMenuStyles}>
-              {navGroups.events.items.map((item, idx) => (
+              {filterNavItems(navGroups.events.items).map((item, idx) => (
                 <button
                   key={idx}
                   onClick={() => {
@@ -764,7 +774,7 @@ const Navbar = ({ onMenuClick }) => {
           </button>
           {activeDropdown === "events" && (
             <div style={dropdownMenuStyles}>
-              {eventsOfficeNavGroups.events.items.map((item, idx) => (
+              {filterNavItems(eventsOfficeNavGroups.events.items).map((item, idx) => (
                 <button
                   key={idx}
                   onClick={() => {

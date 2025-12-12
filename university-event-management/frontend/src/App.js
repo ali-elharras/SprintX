@@ -79,7 +79,7 @@ const AppLayout = () => {
           <Outlet />
         </main>
       </div>
-      {dailyReward && (
+      {dailyReward && user && !["admin", "events_office"].includes(user.role) && (
         <DailyRewardNotification
           dailyReward={dailyReward}
           onClose={clearDailyReward}
@@ -232,7 +232,14 @@ const router = createBrowserRouter([
       { path: "/gym-schedule", element: <GymSchedulePage /> },
       { path: "/booth-polls", element: <BoothPolls /> },
       { path: "/wallet", element: <WalletPage /> },
-      { path: "/rewards", element: <RewardsPage /> },
+      {
+        path: "/rewards",
+        element: (
+          <RoleRoute allowedRoles={["student", "staff", "ta", "professor"]}>
+            <RewardsPage />
+          </RoleRoute>
+        ),
+      },
       {
         path: "/loyalty-program",
         element: (
