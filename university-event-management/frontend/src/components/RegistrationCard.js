@@ -75,7 +75,7 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false, hideRat
 
   // Check if cancellation is allowed (2 weeks before event)
   const canCancel = () => {
-    if (isPastEvent || registration.status === "cancelled") return false;
+    if (isPastEvent || registration.status === "cancelled" || registration.status === "waitlisted") return false;
     
     const now = new Date();
     const eventStart = new Date(event.startDate);
@@ -97,6 +97,8 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false, hideRat
         return theme.colors.info.main;
       case "no-show":
         return theme.colors.text.secondary;
+      case "waitlisted":
+        return "#f59e0b"; // Orange for waiting list
       default:
         return theme.colors.text.secondary;
     }
@@ -115,6 +117,8 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false, hideRat
         return "Attended";
       case "no-show":
         return "No Show";
+      case "waitlisted":
+        return "⏳ On Waiting List";
       default:
         return status;
     }
@@ -374,6 +378,15 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false, hideRat
               <span style={detailLabelStyles}>👥 Capacity:</span>
               <span style={detailValueStyles}>
                 {event.currentParticipants}/{event.maxParticipants} participants
+              </span>
+            </div>
+          )}
+
+          {registration.status === 'waitlisted' && registration.waitlistPosition && (
+            <div style={detailRowStyles}>
+              <span style={detailLabelStyles}>⏳ Position:</span>
+              <span style={{ ...detailValueStyles, color: '#f59e0b', fontWeight: theme.typography.fontWeight.medium }}>
+                #{registration.waitlistPosition} in waiting list
               </span>
             </div>
           )}

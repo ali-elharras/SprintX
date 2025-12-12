@@ -45,12 +45,14 @@ import BoothPolls from "./pages/BoothPolls";
 import LoyaltyProgram from "./pages/LoyaltyProgram";
 import WalletPage from "./pages/WalletPage";
 import UploadedFilesPage from "./pages/UploadedFilesPage";
+import RewardsPage from "./pages/RewardsPage";
 import RoleRoute from "./components/RoleRoute";
+import DailyRewardNotification from "./components/DailyRewardNotification";
 
 // --- Layout Components ---
 
 const AppLayout = () => {
-  const { user } = useAuth();
+  const { user, dailyReward, clearDailyReward } = useAuth();
   const isAdmin = user && user.role === "admin";
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
@@ -77,6 +79,12 @@ const AppLayout = () => {
           <Outlet />
         </main>
       </div>
+      {dailyReward && (
+        <DailyRewardNotification
+          dailyReward={dailyReward}
+          onClose={clearDailyReward}
+        />
+      )}
     </div>
   );
 };
@@ -224,6 +232,7 @@ const router = createBrowserRouter([
       { path: "/gym-schedule", element: <GymSchedulePage /> },
       { path: "/booth-polls", element: <BoothPolls /> },
       { path: "/wallet", element: <WalletPage /> },
+      { path: "/rewards", element: <RewardsPage /> },
       {
         path: "/loyalty-program",
         element: (

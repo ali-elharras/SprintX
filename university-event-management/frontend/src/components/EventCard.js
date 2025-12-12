@@ -5,6 +5,7 @@ import theme, { getEventTypeColor } from "../theme";
 import Button from "./Button";
 import RegistrationForm from "./RegistrationForm";
 import ViewRatingsModal from "./ViewRatingsModal";
+import WaitingListStatus from "./WaitingListStatus";
 import { useAuth } from "../context/AuthContext";
 import { conferenceAPI } from "../services/api";
 import { eventAPI } from "../services/api";
@@ -36,6 +37,7 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   const [isFavorite, setIsFavorite] = useState(isFavorited);
   const [isHovered, setIsHovered] = useState(false);
   const [hasRegistered, setHasRegistered] = useState(false);
+  const [onWaitingList, setOnWaitingList] = useState(false);
   const navigate = useNavigate();
   const { isEventsOffice, user, isAdmin } = useAuth();
 
@@ -54,12 +56,18 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
     if (!user) {
       console.log("No user logged in");
       setHasRegistered(false);
+      setOnWaitingList(false);
       return;
     }
     
     if (!userRegistrations || userRegistrations.length === 0) {
       console.log("No registrations found");
       setHasRegistered(false);
+      // Check if user is on waiting list
+      const isOnWaitlist = event?.waitingList?.some(entry => 
+        entry.email === user.email || entry.user === user.id
+      );
+      setOnWaitingList(isOnWaitlist);
       return;
     }
     
@@ -73,21 +81,26 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
       const regEventId = registration.event?._id || registration.event;
       const currentEventId = normalizedEvent._id;
       const isActiveStatus = registration.status !== 'cancelled';
+      const isWaitlisted = registration.status === 'waitlisted';
       
       const matches = regEventId === currentEventId && isActiveStatus;
       
       if (matches) {
         console.log("✅ FOUND MATCHING REGISTRATION!");
+        if (isWaitlisted) {
+          console.log("✅ User is on waiting list!");
+          setOnWaitingList(true);
+        }
       }
       
-      return matches;
+      return matches && !isWaitlisted;
     });
     
     console.log("Final hasRegistered value:", isRegistered);
     console.log("=========================");
     
     setHasRegistered(isRegistered);
-  }, [user, userRegistrations, normalizedEvent._id, normalizedEvent.title]);
+  }, [user, userRegistrations, normalizedEvent._id, normalizedEvent.title, event?.waitingList]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -177,6 +190,36 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
     );
   };
 
+  const canJoinWaitingList = () => {
+    const now = new Date();
+    const startDate = new Date(normalizedEvent.startDate);
+    const registrationDeadline = normalizedEvent.registrationDeadline
+      ? new Date(normalizedEvent.registrationDeadline)
+      : null;
+
+    // Check if user is already registered or on waiting list
+    if (isUserRegistered()) {
+      return false;
+    }
+
+    // Prevent professors from joining waiting list for their own workshops
+    if (normalizedEvent.type === "workshop" && user?.role === "professor") {
+      const creatorId = normalizedEvent.createdBy?._id || normalizedEvent.createdBy;
+      const userId = user?._id || user?.id;
+      if (creatorId && userId && creatorId.toString() === userId.toString()) {
+        return false;
+      }
+    }
+
+    return (
+      normalizedEvent.status === "published" &&
+      normalizedEvent.registrationRequired &&
+      startDate > now &&
+      normalizedEvent.currentParticipants >= normalizedEvent.maxParticipants &&
+      (!registrationDeadline || now <= registrationDeadline)
+    );
+  };
+
   const getStatusInfo = () => {
     const now = new Date();
     const startDate = normalizedEvent.startDate ? new Date(normalizedEvent.startDate) : null;
@@ -244,11 +287,19 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
   };
 
   const handleRegistrationSuccess = (registrationData) => {
-    console.log("Registration successful, setting hasRegistered to true");
+    console.log("Registration successful", registrationData);
     setShowRegistrationForm(false);
-    setHasRegistered(true);
-    onRegistrationSuccess && onRegistrationSuccess(registrationData);
-    toast.success("Successfully registered for this event!");
+    
+    // Check if user was added to waiting list
+    if (registrationData?.onWaitingList) {
+      setOnWaitingList(true);
+      onRegistrationSuccess && onRegistrationSuccess(registrationData);
+      // Toast is already shown in RegistrationForm
+    } else {
+      setHasRegistered(true);
+      onRegistrationSuccess && onRegistrationSuccess(registrationData);
+      toast.success("Successfully registered for this event!");
+    }
   };
 
   // Check if user can view ratings
@@ -1093,6 +1144,91 @@ const EventCard = ({ event, showRegistration = true, onRegistrationSuccess, onEv
                     </Button>
                   </motion.div>
                 )}
+                
+                {/* Waiting List Button - Show when event is full and user not already on waiting list */}
+                {!isEventsOffice && !isAdmin && showRegistration && !canRegister() && canJoinWaitingList() && !isUserRegistered() && !onWaitingList && (
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    style={{ gridColumn: "1 / -1" }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                    }}
+                  >
+                    <Button
+                      variant="secondary"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                        setShowRegistrationForm(true);
+                      }}
+                      style={{
+                        width: "100%",
+                        minHeight: "52px",
+                        borderRadius: '0.75rem',
+                        fontWeight: 700,
+                        fontSize: '1rem',
+                        background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                        color: '#92400e',
+                        border: '2px solid #f59e0b',
+                        boxShadow: "0 4px 12px rgba(245, 158, 11, 0.2)",
+                      }}
+                    >
+                      ⏳ Join Waiting List
+                    </Button>
+                  </motion.div>
+                )}
+                
+                {/* Waiting List Status - Show when user is on waiting list */}
+                {!isEventsOffice && !isAdmin && onWaitingList && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ gridColumn: "1 / -1" }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "100%",
+                        minHeight: "52px",
+                        borderRadius: '0.75rem',
+                        fontWeight: 600,
+                        fontSize: '1rem',
+                        background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                        color: '#92400e',
+                        border: '2px solid #f59e0b',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        cursor: 'default',
+                        boxShadow: '0 2px 8px rgba(245, 158, 11, 0.2)',
+                      }}
+                    >
+                      <span style={{ 
+                        fontSize: '1.25rem',
+                        fontWeight: 'bold',
+                      }}>
+                        ⏳
+                      </span>
+                      <span>On Waiting List</span>
+                    </div>
+                  </motion.div>
+                )}
+                
                 {!isEventsOffice && !isAdmin && isUserRegistered() && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}

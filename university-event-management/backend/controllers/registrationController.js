@@ -25,7 +25,9 @@ const registerForEvent = async (req, res) => {
       firstName, 
       lastName, 
       email, 
-      universityId
+      universityId,
+      useRewardPoints,
+      pointsToRedeem
     } = req.body;
 
     // Try to find event in Event model first
@@ -76,19 +78,54 @@ const registerForEvent = async (req, res) => {
       });
     }
 
-    // Check if registration is still open
+    // Check if event has available spots (do this BEFORE checking isRegistrationOpen)
+    // This allows users to join waiting list even if registration appears "closed" due to capacity
+    if (eventData.currentParticipants >= eventData.maxParticipants) {
+      // Event is full - add to waiting list
+      const waitingListEntry = {
+        email: email.toLowerCase().trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        universityId: universityId.trim(),
+      };
+      
+      // If user is authenticated, link to user account
+      if (req.user) {
+        waitingListEntry.user = req.user.id;
+      }
+      
+      // Check if already on waiting list
+      const existingInWaitlist = event.waitingList?.some(
+        entry => entry.email === waitingListEntry.email || entry.universityId === waitingListEntry.universityId
+      );
+      
+      if (existingInWaitlist) {
+        return res.status(400).json({
+          success: false,
+          message: "You are already on the waiting list for this event",
+        });
+      }
+      
+      // Add to waiting list
+      if (!event.waitingList) {
+        event.waitingList = [];
+      }
+      event.waitingList.push(waitingListEntry);
+      await event.save();
+      
+      return res.status(200).json({
+        success: true,
+        message: "Event is full. You have been added to the waiting list.",
+        onWaitingList: true,
+        waitingListPosition: event.waitingList.length,
+      });
+    }
+
+    // Check if registration is still open (check AFTER capacity to allow waiting list)
     if (eventData.isRegistrationOpen === false) {
       return res.status(400).json({
         success: false,
         message: "Registration is closed for this event",
-      });
-    }
-
-    // Check if event has available spots
-    if (eventData.currentParticipants >= eventData.maxParticipants) {
-      return res.status(400).json({
-        success: false,
-        message: "Event is full",
       });
     }
 
@@ -148,8 +185,45 @@ const registerForEvent = async (req, res) => {
     console.log('eventCost > 0?', eventCost > 0);
     console.log('====================');
 
+    // Calculate final cost with reward points discount
+    let finalCost = eventCost;
+    let pointsUsed = 0;
+    let discount = 0;
+    
+    if (useRewardPoints && pointsToRedeem > 0 && req.user && eventCost > 0) {
+      // Fetch user to check reward points
+      const user = await User.findById(req.user.id);
+      
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+      
+      // Validate points to redeem
+      const maxRedeemable = Math.min(pointsToRedeem, user.rewardPoints);
+      
+      // Convert points to discount (10 points = 1 EGP discount, max 50% of event cost)
+      const pointsValue = maxRedeemable / 10;
+      const maxDiscount = eventCost * 0.5; // Max 50% discount
+      discount = Math.min(pointsValue, maxDiscount);
+      
+      finalCost = Math.max(0, eventCost - discount);
+      pointsUsed = Math.floor(discount * 10);
+      
+      console.log('=== REWARD POINTS DEBUG ===');
+      console.log('Original cost:', eventCost);
+      console.log('Points requested:', pointsToRedeem);
+      console.log('User points available:', user.rewardPoints);
+      console.log('Points used:', pointsUsed);
+      console.log('Discount applied:', discount);
+      console.log('Final cost:', finalCost);
+      console.log('=========================');
+    }
+
     // For paid events, DO NOT create registration yet - return event info for payment
-    if (eventCost > 0) {
+    if (finalCost > 0) {
       // Store registration data in response for payment to use
       return res.status(200).json({
         success: true,
@@ -162,7 +236,10 @@ const registerForEvent = async (req, res) => {
           email: registrationData.email,
           universityId: registrationData.universityId,
           userId: registrationData.user,
-          paymentAmount: eventCost
+          paymentAmount: finalCost,
+          originalAmount: eventCost,
+          discount: discount,
+          pointsUsed: pointsUsed,
         },
         event: isConference ? eventData : {
           _id: event._id,
@@ -176,10 +253,22 @@ const registerForEvent = async (req, res) => {
       });
     }
 
-    // For FREE events, create registration immediately
-    registrationData.paymentStatus = "completed";
-    registrationData.paymentMethod = "free";
-    registrationData.status = "confirmed";
+    // For FREE events or fully discounted with points
+    if (pointsUsed > 0 && req.user) {
+      // Deduct the points from user
+      const user = await User.findById(req.user.id);
+      user.rewardPoints -= pointsUsed;
+      await user.save();
+      
+      registrationData.paymentStatus = "completed";
+      registrationData.paymentMethod = "free";
+      registrationData.paymentAmount = 0;
+      registrationData.status = "confirmed";
+    } else {
+      registrationData.paymentStatus = "completed";
+      registrationData.paymentMethod = "free";
+      registrationData.status = "confirmed";
+    }
 
     // Create registration
     const registration = await Registration.create(registrationData);
@@ -555,6 +644,19 @@ const cancelRegistration = async (req, res) => {
     // Note: The post-remove middleware in the Registration model will automatically
     // decrement the currentParticipants count, so we don't do it manually here
     await Registration.findByIdAndDelete(req.params.id);
+    
+    // Check if there are users on waiting list and promote the first one
+    if (eventFromEvent && eventFromEvent.waitingList && eventFromEvent.waitingList.length > 0) {
+      const nextInLine = eventFromEvent.waitingList[0];
+      
+      // Remove from waiting list
+      eventFromEvent.waitingList.shift();
+      await eventFromEvent.save();
+      
+      // TODO: Send notification to the user that a spot opened up
+      // For now, just log it
+      console.log(`Promoted user from waiting list: ${nextInLine.email}`);
+    }
     
     res.status(200).json({
       success: true,

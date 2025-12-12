@@ -122,6 +122,7 @@ const Navbar = ({ onMenuClick }) => {
         { label: "Saved Events", path: "/favorites" },
         { label: "Booth Polls", path: "/booth-polls" },
         { label: "Loyalty Programs", path: "/loyalty-program" },
+        { label: "Rewards", path: "/rewards" },
       ],
     },
     sports: {
@@ -149,6 +150,7 @@ const Navbar = ({ onMenuClick }) => {
         { label: "Saved Events", path: "/favorites" },
         { label: "Booth Polls", path: "/booth-polls" },
         { label: "Loyalty Programs", path: "/loyalty-program" },
+        { label: "Rewards", path: "/rewards" },
       ],
     },
     activities: {
@@ -176,6 +178,7 @@ const Navbar = ({ onMenuClick }) => {
         { label: "Saved Events", path: "/favorites" },
         { label: "Booth Polls", path: "/booth-polls" },
         { label: "Loyalty Programs", path: "/loyalty-program" },
+        { label: "Rewards", path: "/rewards" },
       ],
     },
     activities: {
@@ -211,6 +214,7 @@ const Navbar = ({ onMenuClick }) => {
         { label: "Saved Events", path: "/favorites" },
         { label: "Booth Polls", path: "/booth-polls" },
         { label: "Loyalty Programs", path: "/loyalty-program" },
+        { label: "Rewards", path: "/rewards" },
       ],
     },
     activities: {

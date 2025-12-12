@@ -21,8 +21,8 @@ const checkAndSendEventReminders = async () => {
     
     const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour
     const oneHourWindow = {
-      start: new Date(now.getTime() + 55 * 60 * 1000),  // 55 minutes
-      end: new Date(now.getTime() + 65 * 60 * 1000),    // 65 minutes (1h 5min)
+      start: new Date(now.getTime() + 58 * 60 * 1000),  // 58 minutes
+      end: new Date(now.getTime() + 62 * 60 * 1000),    // 62 minutes (1h 2min)
     };
 
     // Find events starting in ~24 hours

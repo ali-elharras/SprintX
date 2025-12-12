@@ -196,6 +196,22 @@ const userSchema = new mongoose.Schema(
       min: [0, "Balance cannot be negative"],
     },
 
+    // Daily Reward System
+    rewardPoints: {
+      type: Number,
+      default: 0,
+      min: [0, "Reward points cannot be negative"],
+    },
+    lastDailyReward: {
+      type: Date,
+      default: null,
+    },
+    consecutiveDays: {
+      type: Number,
+      default: 0,
+      min: [0, "Consecutive days cannot be negative"],
+    },
+
     // Favorites: saved events
     favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: "Event" }],
   },

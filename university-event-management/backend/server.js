@@ -38,6 +38,7 @@ const LoyaltyRoutes = require("./routes/LoyaltyRoutes");
 const favoritesRoutes = require("./routes/favorites");
 const VendorRouter = require("./routes/VendorRouter");
 const fileRoutes = require("./routes/files");
+const rewardsRoutes = require("./routes/rewards");
 
 const app = express();
 
@@ -157,6 +158,8 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/payments", eventPaymentRoutes);
 // Wallet routes (for user wallet management)
 app.use("/api/wallet", walletRoutes);
+// Rewards routes (for daily rewards and point redemption)
+app.use("/api/rewards", rewardsRoutes);
 //app.use("/api/event-reviews", eventReviewRoutes);
 
 // Workshop routes removed as feature deprecated

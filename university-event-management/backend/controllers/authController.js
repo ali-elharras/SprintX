@@ -31,6 +31,81 @@ const generateToken = (id, userType = "user") => {
   });
 };
 
+// Process Daily Reward System
+const processDailyReward = async (user) => {
+  const now = new Date();
+  const lastReward = user.lastDailyReward;
+  
+  // If never claimed reward before
+  if (!lastReward) {
+    const basePoints = 10;
+    user.rewardPoints += basePoints;
+    user.consecutiveDays = 1;
+    user.lastDailyReward = now;
+    await user.save();
+    
+    return {
+      claimed: true,
+      pointsEarned: basePoints,
+      totalPoints: user.rewardPoints,
+      consecutiveDays: 1,
+      message: "Welcome! You've earned your first daily reward!",
+    };
+  }
+  
+  // Calculate time difference
+  const lastRewardDate = new Date(lastReward);
+  lastRewardDate.setHours(0, 0, 0, 0);
+  const todayDate = new Date(now);
+  todayDate.setHours(0, 0, 0, 0);
+  const daysDiff = Math.floor((todayDate - lastRewardDate) / (1000 * 60 * 60 * 24));
+  
+  // Already claimed today
+  if (daysDiff === 0) {
+    return {
+      claimed: false,
+      message: "You've already claimed your reward today. Come back tomorrow!",
+      totalPoints: user.rewardPoints,
+      consecutiveDays: user.consecutiveDays,
+    };
+  }
+  
+  // Consecutive day
+  if (daysDiff === 1) {
+    const newConsecutiveDays = user.consecutiveDays + 1;
+    const pointsEarned = Math.min(10 + (newConsecutiveDays - 1) * 2, 30); // Cap at 30 points
+    
+    user.rewardPoints += pointsEarned;
+    user.consecutiveDays = newConsecutiveDays;
+    user.lastDailyReward = now;
+    await user.save();
+    
+    return {
+      claimed: true,
+      pointsEarned,
+      totalPoints: user.rewardPoints,
+      consecutiveDays: newConsecutiveDays,
+      message: `${newConsecutiveDays} day streak! Keep it up!`,
+    };
+  }
+  
+  // Streak broken, reset
+  const basePoints = 10;
+  user.rewardPoints += basePoints;
+  user.consecutiveDays = 1;
+  user.lastDailyReward = now;
+  await user.save();
+  
+  return {
+    claimed: true,
+    pointsEarned: basePoints,
+    totalPoints: user.rewardPoints,
+    consecutiveDays: 1,
+    streakBroken: true,
+    message: "Your streak was broken, but you've started a new one!",
+  };
+};
+
 // @desc    Register user (Student/Staff/TA/Professor)
 // @route   POST /api/auth/register/user
 // @access  Public
@@ -829,6 +904,12 @@ const login = async (req, res, next) => {
     // Update login tracking
     await account.updateLastLogin();
 
+    // Daily Reward System - only for users, not vendors
+    let dailyRewardInfo = null;
+    if (accountType === "user") {
+      dailyRewardInfo = await processDailyReward(account);
+    }
+
     // Prepare response data
     let responseData;
     if (accountType === "vendor") {
@@ -859,7 +940,10 @@ const login = async (req, res, next) => {
           department: account.department,
           yearOfStudy: account.yearOfStudy,
           isVerified: account.isVerified,
+          rewardPoints: account.rewardPoints,
+          consecutiveDays: account.consecutiveDays,
         },
+        dailyReward: dailyRewardInfo,
       };
     }
 

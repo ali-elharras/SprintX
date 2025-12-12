@@ -8,6 +8,7 @@ import Button from "./Button";
 import Input from "./Input";
 import { registrationAPI } from "../services/api";
 import PaymentModal from "./PaymentModal";
+import RewardPointsRedemption from "./RewardPointsRedemption";
 import { useAuth } from "../context/AuthContext";
 
 // Validation schema
@@ -30,7 +31,7 @@ const registrationSchema = yup.object({
     .string()
     .required("University/Staff ID is required")
     .matches(
-      /^[A-Za-z0-9\-]+$/,
+      /^[A-Za-z0-9-]+$/,
       "University/Staff ID can only contain letters, numbers, and dashes"
     )
     .max(20, "University/Staff ID cannot exceed 20 characters"),
@@ -41,13 +42,13 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [registrationData, setRegistrationData] = useState(null);
+  const [rewardInfo, setRewardInfo] = useState(null);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     setValue,
-    reset,
   } = useForm({
     resolver: yupResolver(registrationSchema),
   });
@@ -83,12 +84,31 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
         email: data.email.toLowerCase().trim(),
         universityId: data.universityId.trim(),
         role: user?.role || "student", // Use authenticated user's role
+        useRewardPoints: rewardInfo?.pointsToUse > 0,
+        pointsToRedeem: rewardInfo?.pointsToUse || 0,
       };
 
       const response = await registrationAPI.registerForEvent(regData);
 
       console.log("Full registration response:", response);
       console.log("Response data:", response.data);
+
+      // Check if user was added to waiting list
+      if (response.data.onWaitingList) {
+        setIsSubmitting(false);
+        toast.success(`You've been added to the waiting list (Position #${response.data.waitingListPosition})`, {
+          duration: 6000,
+          icon: "⏳",
+        });
+        if (onSuccess) {
+          onSuccess({
+            onWaitingList: true,
+            waitingListPosition: response.data.waitingListPosition,
+            event: event
+          });
+        }
+        return;
+      }
 
       const requiresPayment = response.data.requiresPayment;
       const registrationRecord = response.data.data;
@@ -289,6 +309,16 @@ const RegistrationForm = ({ event, onSuccess, onCancel }) => {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)}>
+        {/* Reward Points Redemption - Only for paid events */}
+        {isPaidEvent && user && (
+          <div style={{ marginBottom: theme.spacing[6] }}>
+            <RewardPointsRedemption
+              eventCost={event.cost}
+              onPointsChange={(info) => setRewardInfo(info)}
+            />
+          </div>
+        )}
+
         {/* Personal Information */}
         <div style={{ marginBottom: theme.spacing[6] }}>
           <h3

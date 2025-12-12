@@ -52,8 +52,12 @@ const registrationSchema = new mongoose.Schema(
     // Registration Status
     status: {
       type: String,
-      enum: ["pending", "confirmed", "cancelled", "attended", "no-show"],
+      enum: ["pending", "confirmed", "cancelled", "attended", "no-show", "waitlisted"],
       default: "pending", // Now pending until payment is confirmed
+    },
+    waitlistPosition: {
+      type: Number,
+      default: null,
     },
     registrationDate: {
       type: Date,

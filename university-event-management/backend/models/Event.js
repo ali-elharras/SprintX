@@ -83,6 +83,22 @@ const eventSchema = new mongoose.Schema(
       default: 0,
       min: [0, "Current participants cannot be negative"],
     },
+    waitingList: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        email: String,
+        firstName: String,
+        lastName: String,
+        universityId: String,
+        joinedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
 
     // Eligibility
     eligibleRoles: {

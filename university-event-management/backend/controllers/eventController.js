@@ -796,6 +796,52 @@ const toggleArchiveStatus = async (req, res) => {
   }
 };
 
+// @desc    Get waiting list for an event
+// @route   GET /api/events/:id/waiting-list
+// @access  Private (Admin/Events Office/Organizer)
+const getWaitingList = async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id).populate(
+      "waitingList.user",
+      "firstName lastName email universityId"
+    );
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    // Check authorization
+    if (
+      !["admin", "events_office"].includes(req.user.role) &&
+      event.organizer.toString() !== req.user.id
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to view waiting list",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        eventTitle: event.title,
+        waitingList: event.waitingList || [],
+        count: event.waitingList ? event.waitingList.length : 0,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching waiting list:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching waiting list",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getUpcomingBazaars,
   seedBazaar,
@@ -806,4 +852,5 @@ module.exports = {
   deleteEvent,
   getEventsByType,
   toggleArchiveStatus,
+  getWaitingList,
 };

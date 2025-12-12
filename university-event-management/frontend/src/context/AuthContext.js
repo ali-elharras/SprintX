@@ -10,6 +10,7 @@ const initialState = {
   userType: null,
   token: null,
   error: null,
+  dailyReward: null,
 };
 
 // Action types
@@ -20,6 +21,8 @@ const AUTH_ACTIONS = {
   SET_ERROR: "SET_ERROR",
   CLEAR_ERROR: "CLEAR_ERROR",
   UPDATE_PROFILE: "UPDATE_PROFILE",
+  SET_DAILY_REWARD: "SET_DAILY_REWARD",
+  CLEAR_DAILY_REWARD: "CLEAR_DAILY_REWARD",
 };
 
 // Reducer function
@@ -75,6 +78,18 @@ const authReducer = (state, action) => {
         };
       }
       return state;
+
+    case AUTH_ACTIONS.SET_DAILY_REWARD:
+      return {
+        ...state,
+        dailyReward: action.payload,
+      };
+
+    case AUTH_ACTIONS.CLEAR_DAILY_REWARD:
+      return {
+        ...state,
+        dailyReward: null,
+      };
 
     default:
       return state;
@@ -143,6 +158,14 @@ export const AuthProvider = ({ children }) => {
           type: AUTH_ACTIONS.LOGIN_SUCCESS,
           payload: authData,
         });
+
+        // Store daily reward if present
+        if (response.data.dailyReward) {
+          dispatch({
+            type: AUTH_ACTIONS.SET_DAILY_REWARD,
+            payload: response.data.dailyReward,
+          });
+        }
 
         return { success: true, data: response.data };
       } else {
@@ -515,6 +538,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Clear daily reward notification
+  const clearDailyReward = () => {
+    dispatch({ type: AUTH_ACTIONS.CLEAR_DAILY_REWARD });
+  };
+
   // Context value
   const value = {
     // State
@@ -529,6 +557,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     clearError,
     updateProfile,
+    clearDailyReward,
 
     // Helpers
     getCurrentAccount,

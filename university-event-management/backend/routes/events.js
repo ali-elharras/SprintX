@@ -10,6 +10,7 @@ const {
   getUpcomingBazaars,
   seedBazaar,
   toggleArchiveStatus,
+  getWaitingList,
 } = require("../controllers/eventController");
 const { protect, authorize, optionalProtect } = require("../middleware/auth");
 
@@ -122,6 +123,11 @@ router.patch(
   "/:id/archive",
   authorize("admin", "events_office"),
   toggleArchiveStatus
+);
+router.get(
+  "/:id/waiting-list",
+  protect,
+  getWaitingList
 );
 
 
