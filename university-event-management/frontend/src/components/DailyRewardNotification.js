@@ -28,12 +28,12 @@ const DailyRewardNotification = ({ dailyReward, onClose }) => {
 
   return (
     <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
-      <div className="bg-card text-card-foreground rounded-lg shadow-lg p-6 max-w-sm border border-card/10">
+      <div className="bg-gradient-to-br from-purple-600 to-purple-700 text-white rounded-lg shadow-lg p-6 max-w-sm border border-white/20">
         <div className="flex justify-between items-start mb-3">
           <div className="text-2xl">🎉</div>
           <button
             onClick={handleClose}
-            className="text-card-foreground/80 hover:text-card-foreground transition-colors"
+            className="text-white/80 hover:text-white transition-colors"
           >
             <svg
               className="w-5 h-5"
@@ -54,24 +54,24 @@ const DailyRewardNotification = ({ dailyReward, onClose }) => {
         <h3 className="text-xl font-bold mb-2">Daily Reward Claimed!</h3>
         
         <div className="space-y-2 mb-4">
-          <div className="flex justify-between items-center bg-card/5 rounded-lg p-2">
-            <span className="text-sm">Points Earned:</span>
-            <span className="text-2xl font-bold">+{dailyReward.pointsEarned}</span>
+          <div className="flex justify-between items-center bg-purple-800/25 rounded-lg p-2">
+            <span className="text-sm text-white/80">Points Earned:</span>
+            <span className="text-2xl font-bold text-white">+{dailyReward.pointsEarned}</span>
           </div>
 
-          <div className="flex justify-between items-center bg-card/5 rounded-lg p-2">
-            <span className="text-sm">Total Points:</span>
-            <span className="text-lg font-semibold">{dailyReward.totalPoints}</span>
+          <div className="flex justify-between items-center bg-purple-800/20 rounded-lg p-2">
+            <span className="text-sm text-white/80">Total Points:</span>
+            <span className="text-lg font-semibold text-white">{dailyReward.totalPoints}</span>
           </div>
 
-          <div className="flex justify-between items-center bg-card/5 rounded-lg p-2">
-            <span className="text-sm">Streak:</span>
-            <span className="text-lg font-semibold">{dailyReward.consecutiveDays} day{dailyReward.consecutiveDays > 1 ? 's' : ''} 🔥</span>
+          <div className="flex justify-between items-center bg-purple-800/20 rounded-lg p-2">
+            <span className="text-sm text-white/80">Streak:</span>
+            <span className="text-lg font-semibold text-white">{dailyReward.consecutiveDays} day{dailyReward.consecutiveDays > 1 ? 's' : ''} 🔥</span>
           </div>
         </div>
 
         {dailyReward.streakBroken && (
-          <div className="bg-orange-500/50 rounded-lg p-2 mb-3 text-sm">
+          <div className="bg-orange-600/80 rounded-lg p-2 mb-3 text-sm text-white">
             ⚠️ Your streak was broken, but you've started a new one!
           </div>
         )}
