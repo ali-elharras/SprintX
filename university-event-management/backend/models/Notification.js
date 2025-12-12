@@ -34,6 +34,7 @@ const notificationSchema = new mongoose.Schema(
         "event_reminder", // For registered users - event reminders (1 day, 1 hour before)
         "gym_session_updated", // For gym participants when session is rescheduled
         "gym_session_cancelled", // For gym participants when session is cancelled
+        "waitlist_promoted", // For users promoted from waitlist to confirmed
       ],
       required: true,
     },

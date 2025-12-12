@@ -14,6 +14,7 @@ import Button from "../components/Button";
 import Input from "../components/Input";
 import Select from "../components/Select";
 import RegistrationCard from "../components/RegistrationCard";
+import ConfirmationModal from "../components/ConfirmationModal";
 import toast from "react-hot-toast";
 import axios from "axios";
 
@@ -36,6 +37,9 @@ const MyRegistrations = () => {
   const [sortBy, setSortBy] = useState("startDate");
   const [sortOrder, setSortOrder] = useState("asc");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedRegistration, setSelectedRegistration] = useState(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
 
   // Ref for request cancellation
   const cancelTokenRef = useRef(null);
@@ -281,26 +285,38 @@ const MyRegistrations = () => {
     });
   }, [allItems, search, filter, sortBy, sortOrder]);
 
-  const handleCancelRegistration = async (
-    registrationId,
-    isGymSession = false,
-    isCourtReservation = false
-  ) => {
-    if (!window.confirm("Are you sure you want to cancel this registration?"))
-      return;
+  const handleCancelRegistration = (item) => {
+    // Open the modal with the selected registration
+    setSelectedRegistration(item);
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!selectedRegistration) return;
+
+    setCancelLoading(true);
     try {
-      if (isCourtReservation) {
-        await courtAPI.cancelReservation(registrationId, "Cancelled by user");
-      } else if (isGymSession) {
-        await gymAPI.cancelRegistration(registrationId);
+      if (selectedRegistration.isCourtReservation) {
+        await courtAPI.cancelReservation(selectedRegistration._id, "Cancelled by user");
+      } else if (selectedRegistration.isGymSession) {
+        await gymAPI.cancelRegistration(selectedRegistration._id);
       } else {
-        await registrationAPI.cancelRegistration(registrationId);
+        await registrationAPI.cancelRegistration(selectedRegistration._id);
       }
       toast.success("Registration cancelled successfully");
+      setShowCancelModal(false);
+      setSelectedRegistration(null);
       setRefreshTrigger((p) => p + 1);
     } catch (error) {
       toast.error(error.message || "Failed to cancel registration");
+    } finally {
+      setCancelLoading(false);
     }
+  };
+
+  const handleCloseCancelModal = () => {
+    setShowCancelModal(false);
+    setSelectedRegistration(null);
   };
 
   const containerStyles = {
@@ -572,19 +588,26 @@ const MyRegistrations = () => {
               <RegistrationCard
                 key={item._id}
                 registration={item}
-                onCancel={(regId) =>
-                  handleCancelRegistration(
-                    regId,
-                    item.isGymSession,
-                    item.isCourtReservation
-                  )
-                }
+                onCancel={() => handleCancelRegistration(item)}
                 isPastEvent={activeTab === "past"}
                 hideRatingsButton={activeTab === "upcoming"}
               />
             ))}
           </div>
         )}
+
+        {/* Cancel Registration Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={showCancelModal}
+          onClose={handleCloseCancelModal}
+          onConfirm={handleConfirmCancel}
+          title="Cancel Registration"
+          message={`Are you sure you want to cancel your registration for "${selectedRegistration?.event?.title || 'this event'}"?`}
+          confirmText="Cancel"
+          cancelText="No"
+          variant="danger"
+          loading={cancelLoading}
+        />
       </div>
     </div>
   );

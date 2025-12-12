@@ -444,7 +444,7 @@ const RegistrationCard = ({ registration, onCancel, isPastEvent = false, hideRat
               <Button
                 variant="danger"
                 size="sm"
-                onClick={() => onCancel(registration._id)}
+                onClick={onCancel}
               >
                 Cancel
               </Button>

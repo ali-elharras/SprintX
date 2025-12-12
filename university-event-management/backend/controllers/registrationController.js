@@ -106,18 +106,35 @@ const registerForEvent = async (req, res) => {
         });
       }
       
-      // Add to waiting list
+      // Add to waiting list in Event model
       if (!event.waitingList) {
         event.waitingList = [];
       }
       event.waitingList.push(waitingListEntry);
       await event.save();
       
+      // Create a Registration record with waitlisted status
+      const waitlistRegistration = new Registration({
+        event: event._id,
+        user: req.user ? req.user.id : undefined,
+        email: email.toLowerCase().trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        universityId: universityId.trim(),
+        status: "waitlisted",
+        waitlistPosition: event.waitingList.length,
+        paymentStatus: "pending",
+        paymentAmount: 0,
+      });
+      
+      await waitlistRegistration.save();
+      
       return res.status(200).json({
         success: true,
         message: "Event is full. You have been added to the waiting list.",
         onWaitingList: true,
         waitingListPosition: event.waitingList.length,
+        registration: waitlistRegistration,
       });
     }
 
@@ -133,7 +150,7 @@ const registerForEvent = async (req, res) => {
     // Include ALL non-cancelled statuses to prevent duplicates
     const existingRegistration = await Registration.findOne({
       event: eventId,
-      status: { $in: ["pending", "confirmed", "attended"] }, // Check pending, confirmed, and attended
+      status: { $in: ["pending", "confirmed", "attended", "waitlisted"] }, // Check pending, confirmed, attended, and waitlisted
       $or: [
         { email: email.toLowerCase() },
         { universityId: universityId }
@@ -148,6 +165,14 @@ const registerForEvent = async (req, res) => {
         return res.status(400).json({
           success: false,
           message: "You have a pending registration for this event. Please complete payment or cancel the existing registration first.",
+        });
+      }
+      
+      // If already on waitlist
+      if (existingRegistration.status === 'waitlisted') {
+        return res.status(400).json({
+          success: false,
+          message: "You are already on the waiting list for this event",
         });
       }
       
@@ -325,7 +350,7 @@ const getMyRegistrations = async (req, res) => {
         { user: req.user.id },
         { email: req.user.email }
       ],
-      status: { $in: ["confirmed", "attended"] }
+      status: { $in: ["confirmed", "attended", "waitlisted"] }
     };
 
     // Find registrations
@@ -650,22 +675,52 @@ const cancelRegistration = async (req, res) => {
       const nextInLine = eventFromEvent.waitingList.shift();
       await eventFromEvent.save();
 
-      // Create a new registration for the promoted user
-      const promotedRegistration = new Registration({
+      // Find and update the existing waitlisted Registration record
+      const waitlistedReg = await Registration.findOne({
         event: eventFromEvent._id,
-        user: nextInLine.user || undefined,
-        firstName: nextInLine.firstName,
-        lastName: nextInLine.lastName,
         email: nextInLine.email,
-        universityId: nextInLine.universityId,
-        status: 'confirmed',
-        waitlistPosition: null
+        status: 'waitlisted'
       });
-      await promotedRegistration.save();
 
-      // Optionally: send notification to the user (if notification system is available)
-      // For now, just log it
-      console.log(`Promoted user from waiting list and registered: ${nextInLine.email}`);
+      if (waitlistedReg) {
+        // Update existing waitlisted registration to confirmed
+        waitlistedReg.status = 'confirmed';
+        waitlistedReg.waitlistPosition = null;
+        await waitlistedReg.save();
+        console.log(`Promoted user from waiting list: ${nextInLine.email}`);
+        
+        // Create notification for the promoted user
+        if (nextInLine.user) {
+          try {
+            const NotificationModel = require("../models/Notification");
+            await NotificationModel.create({
+              recipient: nextInLine.user,
+              type: "waitlist_promoted",
+              message: `Great news! A spot has opened up and you are now officially registered for "${eventFromEvent.title}".`,
+              eventId: eventFromEvent._id,
+              eventName: eventFromEvent.title,
+            });
+            console.log(`Notification sent to promoted user: ${nextInLine.email}`);
+          } catch (notificationError) {
+            console.error("Error creating promotion notification:", notificationError);
+            // Don't fail the registration if notification fails
+          }
+        }
+      } else {
+        // Fallback: Create a new registration if waitlisted record doesn't exist
+        const promotedRegistration = new Registration({
+          event: eventFromEvent._id,
+          user: nextInLine.user || undefined,
+          firstName: nextInLine.firstName,
+          lastName: nextInLine.lastName,
+          email: nextInLine.email,
+          universityId: nextInLine.universityId,
+          status: 'confirmed',
+          waitlistPosition: null
+        });
+        await promotedRegistration.save();
+        console.log(`Created new registration for promoted user: ${nextInLine.email}`);
+      }
     }
     
     res.status(200).json({
