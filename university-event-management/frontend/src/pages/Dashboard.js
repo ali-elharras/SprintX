@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import theme, { getEventTypeColor, getRoleColor } from "../theme";
 import Card from "../components/Card";
+import WebsiteRatingModal from "../components/WebsiteRatingModal";
 
 import axios from "axios";
 import { 
@@ -14,7 +15,8 @@ import {
   Wallet as WalletIcon,
   ArrowRight,
   Bell,
-  TrendingUp
+  TrendingUp,
+  ThumbsUp
 } from "lucide-react";
 
 const styles = {
@@ -531,6 +533,7 @@ const Dashboard = () => {
   const [walletBalance, setWalletBalance] = useState(0);
   const [upcomingRegistrations, setUpcomingRegistrations] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
 
   useEffect(() => {
     if (isUser && user?.role === "student") {
@@ -1084,6 +1087,48 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Floating Rating Button */}
+      {!isVendor && (
+        <button
+          onClick={() => setIsRatingModalOpen(true)}
+          style={{
+            position: "fixed",
+            bottom: "2rem",
+            right: "2rem",
+            width: "60px",
+            height: "60px",
+            borderRadius: "50%",
+            backgroundColor: theme.colors.primary.main,
+            color: "white",
+            border: "none",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.3s ease",
+            zIndex: 1000,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.1)";
+            e.currentTarget.style.boxShadow = "0 6px 30px rgba(0,0,0,0.3)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.2)";
+          }}
+          title="Rate Your Experience"
+        >
+          <ThumbsUp size={28} />
+        </button>
+      )}
+
+      {/* Website Rating Modal */}
+      <WebsiteRatingModal
+        isOpen={isRatingModalOpen}
+        onClose={() => setIsRatingModalOpen(false)}
+      />
     </>
   );
 };

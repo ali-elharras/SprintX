@@ -46,6 +46,7 @@ import LoyaltyProgram from "./pages/LoyaltyProgram";
 import WalletPage from "./pages/WalletPage";
 import UploadedFilesPage from "./pages/UploadedFilesPage";
 import RewardsPage from "./pages/RewardsPage";
+import WebsiteRatingsPage from "./pages/WebsiteRatingsPage";
 import RoleRoute from "./components/RoleRoute";
 import DailyRewardNotification from "./components/DailyRewardNotification";
 
@@ -279,6 +280,14 @@ const router = createBrowserRouter([
         element: (
           <AdminRoute>
             <EventsRatings />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/website-ratings",
+        element: (
+          <AdminRoute>
+            <WebsiteRatingsPage />
           </AdminRoute>
         ),
       },

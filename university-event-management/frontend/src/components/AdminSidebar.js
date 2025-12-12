@@ -10,6 +10,7 @@ import {
   BarChart2,
   ClipboardCheck,
   FileText,
+  ThumbsUp,
 } from "lucide-react";
 import theme from "../theme";
 
@@ -45,6 +46,11 @@ const AdminSidebar = ({ isOpen }) => {
           label: "Event Ratings",
           path: "/events-ratings",
           icon: <Star size={20} />,
+        },
+        {
+          label: "Website Ratings",
+          path: "/website-ratings",
+          icon: <ThumbsUp size={20} />,
         },
         {
           label: "Comments",

@@ -729,3 +729,25 @@ export const boothPollAPI = {
   deletePoll: (pollId) =>
     retryRequest(async () => api.delete(`/booth-polls/${pollId}`)),
 };
+
+export const websiteRatingAPI = {
+  submitRating: (ratingData) =>
+    retryRequest(async () => api.post("/website-ratings", ratingData)),
+
+  getMyRating: () =>
+    retryRequest(async () => api.get("/website-ratings/my-rating")),
+
+  getAllRatings: (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return retryRequest(async () =>
+      api.get(`/website-ratings/all${queryParams ? `?${queryParams}` : ""}`)
+    );
+  },
+
+  getStats: () =>
+    retryRequest(async () => api.get("/website-ratings/stats")),
+
+  deleteRating: (id) =>
+    retryRequest(async () => api.delete(`/website-ratings/${id}`)),
+};
+
